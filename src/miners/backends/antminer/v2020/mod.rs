@@ -348,22 +348,24 @@ impl GetDataLocations for AntMinerV2020 {
                     tag: None,
                 },
             )],
-            DataField::SerialNumber => vec![(
-                system_info_cmd.clone(),
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/serial_no"), // Cant find on 2022 firmware, does exist on 2025 firmware for XP
-                    tag: None,
-                },
-            ),
+            DataField::SerialNumber => vec![
                 (
-                system_info_cmd.clone(),
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/serinum"), // exist on 2025 firmware for s21
-                    tag: None,
-                },
-            )],
+                    system_info_cmd.clone(),
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/serial_no"), // Cant find on 2022 firmware, does exist on 2025 firmware for XP
+                        tag: None,
+                    },
+                ),
+                (
+                    system_info_cmd.clone(),
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/serinum"), // exist on 2025 firmware for s21
+                        tag: None,
+                    },
+                ),
+            ],
             DataField::Messages => vec![(
                 web_summary_cmd,
                 DataExtractor {
