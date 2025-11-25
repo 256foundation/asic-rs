@@ -60,50 +60,50 @@ impl APIClient for BraiinsV2507 {
 
 impl GetDataLocations for BraiinsV2507 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        let network_cmd = MinerCommand::WebAPI {
+        const WEB_NETWORK: MinerCommand = MinerCommand::WebAPI {
             command: "network",
             parameters: None,
         };
-        let version_cmd = MinerCommand::WebAPI {
+        const WEB_VERSION: MinerCommand = MinerCommand::WebAPI {
             command: "version",
             parameters: None,
         };
-        let miner_details_cmd = MinerCommand::WebAPI {
+        const WEB_MINER_DETAILS: MinerCommand = MinerCommand::WebAPI {
             command: "miner/details",
             parameters: None,
         };
-        let locate_cmd = MinerCommand::WebAPI {
+        const WEB_LOCATE: MinerCommand = MinerCommand::WebAPI {
             command: "actions/locate",
             parameters: None,
         };
-        let miner_stats_cmd = MinerCommand::WebAPI {
+        const WEB_MINER_STATS: MinerCommand = MinerCommand::WebAPI {
             command: "miner/stats",
             parameters: None,
         };
-        let performance_tuner_state_cmd = MinerCommand::WebAPI {
+        const WEB_PERFORMANCE_TUNER_STATE: MinerCommand = MinerCommand::WebAPI {
             command: "performance/tuner-state",
             parameters: None,
         };
-        let miner_errors_cmd = MinerCommand::WebAPI {
+        const WEB_MINER_ERRORS: MinerCommand = MinerCommand::WebAPI {
             command: "miner/errors",
             parameters: None,
         };
-        let pools_cmd = MinerCommand::WebAPI {
+        const WEB_POOLS: MinerCommand = MinerCommand::WebAPI {
             command: "pools",
             parameters: None,
         };
-        let cooling_state_cmd = MinerCommand::WebAPI {
+        const WEB_COOLING_STATE: MinerCommand = MinerCommand::WebAPI {
             command: "cooling/state",
             parameters: None,
         };
-        let hashboards_cmd = MinerCommand::WebAPI {
+        const WEB_HASHBOARDS: MinerCommand = MinerCommand::WebAPI {
             command: "miner/hw/hashboards",
             parameters: None,
         };
 
         match data_field {
             DataField::Mac => vec![(
-                network_cmd,
+                WEB_NETWORK,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/mac_address"),
@@ -111,7 +111,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::Hostname => vec![(
-                network_cmd,
+                WEB_NETWORK,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/hostname"),
@@ -119,7 +119,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::ApiVersion => vec![(
-                version_cmd,
+                WEB_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -127,7 +127,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                miner_details_cmd,
+                WEB_MINER_DETAILS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/bos_version/current"),
@@ -135,7 +135,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::Hashrate => vec![(
-                miner_stats_cmd,
+                WEB_MINER_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner_stats/real_hashrate/last_5s/gigahash_per_second"),
@@ -143,7 +143,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                miner_details_cmd,
+                WEB_MINER_DETAILS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/sticker_hashrate/gigahash_per_second"),
@@ -151,7 +151,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::Fans => vec![(
-                cooling_state_cmd,
+                WEB_COOLING_STATE,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/fans"),
@@ -159,7 +159,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::Hashboards => vec![(
-                hashboards_cmd,
+                WEB_HASHBOARDS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/hashboards"),
@@ -167,7 +167,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::LightFlashing => vec![(
-                locate_cmd,
+                WEB_LOCATE,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -175,7 +175,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::IsMining => vec![(
-                miner_details_cmd,
+                WEB_MINER_DETAILS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/status"),
@@ -183,7 +183,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::Uptime => vec![(
-                miner_details_cmd,
+                WEB_MINER_DETAILS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/system_uptime_s"),
@@ -191,7 +191,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                miner_details_cmd,
+                WEB_MINER_DETAILS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/control_board_soc_family"),
@@ -199,7 +199,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::Pools => vec![(
-                pools_cmd,
+                WEB_POOLS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/0/pools"), // assuming there is 1 pool group
@@ -207,7 +207,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::Wattage => vec![(
-                miner_stats_cmd,
+                WEB_MINER_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/power_stats/approximated_consumption/watt"),
@@ -215,7 +215,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::WattageLimit => vec![(
-                performance_tuner_state_cmd,
+                WEB_PERFORMANCE_TUNER_STATE,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/mode_state/powertargetmodestate/current_target/watt"),
@@ -223,7 +223,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::SerialNumber => vec![(
-                miner_details_cmd,
+                WEB_MINER_DETAILS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/serial_number"),
@@ -231,7 +231,7 @@ impl GetDataLocations for BraiinsV2507 {
                 },
             )],
             DataField::Messages => vec![(
-                miner_errors_cmd,
+                WEB_MINER_ERRORS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/errors"),

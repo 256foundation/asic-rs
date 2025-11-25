@@ -61,42 +61,42 @@ impl APIClient for WhatsMinerV2 {
 
 impl GetDataLocations for WhatsMinerV2 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        let get_miner_info_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_GET_MINER_INFO: MinerCommand = MinerCommand::RPC {
             command: "get_miner_info",
             parameters: None,
         };
-        let summary_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
             command: "summary",
             parameters: None,
         };
-        let devs_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_DEVS: MinerCommand = MinerCommand::RPC {
             command: "devs",
             parameters: None,
         };
-        let pools_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_POOLS: MinerCommand = MinerCommand::RPC {
             command: "pools",
             parameters: None,
         };
-        let status_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_STATUS: MinerCommand = MinerCommand::RPC {
             command: "status",
             parameters: None,
         };
-        let get_version_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_GET_VERSION: MinerCommand = MinerCommand::RPC {
             command: "get_version",
             parameters: None,
         };
-        let get_psu_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_GET_PSU: MinerCommand = MinerCommand::RPC {
             command: "get_psu",
             parameters: None,
         };
-        let get_error_code_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_GET_ERROR_CODE: MinerCommand = MinerCommand::RPC {
             command: "get_error_code",
             parameters: None,
         };
 
         match data_field {
             DataField::Mac => vec![(
-                get_miner_info_cmd,
+                RPC_GET_MINER_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/mac"),
@@ -104,7 +104,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::ApiVersion => vec![(
-                get_version_cmd,
+                RPC_GET_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/api_ver"),
@@ -112,7 +112,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                get_version_cmd,
+                RPC_GET_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/fw_ver"),
@@ -120,7 +120,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                get_version_cmd,
+                RPC_GET_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/platform"),
@@ -128,7 +128,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::Hostname => vec![(
-                get_miner_info_cmd,
+                RPC_GET_MINER_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/hostname"),
@@ -136,7 +136,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::LightFlashing => vec![(
-                get_miner_info_cmd,
+                RPC_GET_MINER_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/ledstat"),
@@ -144,7 +144,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::WattageLimit => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/Power Limit"),
@@ -152,7 +152,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::Fans => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0"),
@@ -160,7 +160,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::PsuFans => vec![(
-                get_psu_cmd,
+                RPC_GET_PSU,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/fan_speed"),
@@ -168,7 +168,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::Hashboards => vec![(
-                devs_cmd,
+                RPC_DEVS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -176,7 +176,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::Pools => vec![(
-                pools_cmd,
+                RPC_POOLS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/POOLS"),
@@ -184,7 +184,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::Uptime => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/Elapsed"),
@@ -192,7 +192,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::Wattage => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/Power"),
@@ -200,7 +200,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::Hashrate => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/HS RT"),
@@ -208,7 +208,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/Factory GHS"),
@@ -216,7 +216,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::FluidTemperature => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/Env Temp"),
@@ -224,7 +224,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::IsMining => vec![(
-                status_cmd,
+                RPC_STATUS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/btmineroff"),
@@ -232,7 +232,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 },
             )],
             DataField::Messages => vec![(
-                get_error_code_cmd,
+                RPC_GET_ERROR_CODE,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Msg/error_code"),

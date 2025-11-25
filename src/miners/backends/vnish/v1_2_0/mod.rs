@@ -58,22 +58,30 @@ impl APIClient for VnishV120 {
 
 impl GetDataLocations for VnishV120 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        fn cmd(endpoint: &'static str) -> MinerCommand {
-            MinerCommand::WebAPI {
-                command: endpoint,
-                parameters: None,
-            }
-        }
-
-        let info_cmd = cmd("info");
-        let status_cmd = cmd("status");
-        let summary_cmd = cmd("summary");
-        let chains_cmd = cmd("chains");
-        let factory_info_cmd = cmd("chains/factory-info");
+        const WEB_INFO: MinerCommand = MinerCommand::WebAPI {
+            command: "info",
+            parameters: None,
+        };
+        const WEB_STATUS: MinerCommand = MinerCommand::WebAPI {
+            command: "status",
+            parameters: None,
+        };
+        const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
+            command: "summary",
+            parameters: None,
+        };
+        const WEB_CHAINS: MinerCommand = MinerCommand::WebAPI {
+            command: "chains",
+            parameters: None,
+        };
+        const WEB_FACTORY_INFO: MinerCommand = MinerCommand::WebAPI {
+            command: "chains/factory-info",
+            parameters: None,
+        };
 
         match data_field {
             DataField::Mac => vec![(
-                info_cmd,
+                WEB_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/system/network_status/mac"),
@@ -82,7 +90,7 @@ impl GetDataLocations for VnishV120 {
             )],
             DataField::SerialNumber => vec![
                 (
-                    factory_info_cmd,
+                    WEB_FACTORY_INFO,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/psu_serial"),
@@ -90,7 +98,7 @@ impl GetDataLocations for VnishV120 {
                     },
                 ),
                 (
-                    info_cmd,
+                    WEB_INFO,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/serial"),
@@ -99,7 +107,7 @@ impl GetDataLocations for VnishV120 {
                 ),
             ],
             DataField::Hostname => vec![(
-                info_cmd,
+                WEB_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/system/network_status/hostname"),
@@ -107,7 +115,7 @@ impl GetDataLocations for VnishV120 {
                 },
             )],
             DataField::ApiVersion => vec![(
-                info_cmd,
+                WEB_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/fw_version"),
@@ -115,7 +123,7 @@ impl GetDataLocations for VnishV120 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                info_cmd,
+                WEB_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/fw_version"),
@@ -123,7 +131,7 @@ impl GetDataLocations for VnishV120 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                info_cmd,
+                WEB_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/platform"),
@@ -131,7 +139,7 @@ impl GetDataLocations for VnishV120 {
                 },
             )],
             DataField::Uptime => vec![(
-                info_cmd,
+                WEB_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/system/uptime"),
@@ -139,7 +147,7 @@ impl GetDataLocations for VnishV120 {
                 },
             )],
             DataField::Hashrate => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/hr_realtime"),
@@ -148,7 +156,7 @@ impl GetDataLocations for VnishV120 {
             )],
             DataField::ExpectedHashrate => vec![
                 (
-                    factory_info_cmd,
+                    WEB_FACTORY_INFO,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/hr_stock"),
@@ -156,7 +164,7 @@ impl GetDataLocations for VnishV120 {
                     },
                 ),
                 (
-                    summary_cmd,
+                    WEB_SUMMARY,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/miner/hr_stock"),
@@ -165,7 +173,7 @@ impl GetDataLocations for VnishV120 {
                 ),
             ],
             DataField::Wattage => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/power_consumption"),
@@ -173,7 +181,7 @@ impl GetDataLocations for VnishV120 {
                 },
             )],
             DataField::Fans => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/cooling/fans"),
@@ -182,7 +190,7 @@ impl GetDataLocations for VnishV120 {
             )],
             DataField::Hashboards => vec![
                 (
-                    summary_cmd,
+                    WEB_SUMMARY,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/miner/chains"),
@@ -190,7 +198,7 @@ impl GetDataLocations for VnishV120 {
                     },
                 ),
                 (
-                    chains_cmd,
+                    WEB_CHAINS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -199,7 +207,7 @@ impl GetDataLocations for VnishV120 {
                 ),
             ],
             DataField::Pools => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/pools"),
@@ -207,7 +215,7 @@ impl GetDataLocations for VnishV120 {
                 },
             )],
             DataField::IsMining => vec![(
-                status_cmd,
+                WEB_STATUS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner_state"),
@@ -215,7 +223,7 @@ impl GetDataLocations for VnishV120 {
                 },
             )],
             DataField::LightFlashing => vec![(
-                status_cmd,
+                WEB_STATUS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/find_miner"),

@@ -60,18 +60,18 @@ impl APIClient for Bitaxe290 {
 #[async_trait]
 impl GetDataLocations for Bitaxe290 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        let system_info_cmd: MinerCommand = MinerCommand::WebAPI {
+        const WEB_SYSTEM_INFO: MinerCommand = MinerCommand::WebAPI {
             command: "system/info",
             parameters: None,
         };
-        let asic_info_cmd: MinerCommand = MinerCommand::WebAPI {
+        const WEB_ASIC_INFO: MinerCommand = MinerCommand::WebAPI {
             command: "system/asic",
             parameters: None,
         };
 
         match data_field {
             DataField::Mac => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("macAddr"),
@@ -79,7 +79,7 @@ impl GetDataLocations for Bitaxe290 {
                 },
             )],
             DataField::Hostname => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("hostname"),
@@ -87,7 +87,7 @@ impl GetDataLocations for Bitaxe290 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("version"),
@@ -95,7 +95,7 @@ impl GetDataLocations for Bitaxe290 {
                 },
             )],
             DataField::ApiVersion => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("version"),
@@ -103,7 +103,7 @@ impl GetDataLocations for Bitaxe290 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("boardVersion"),
@@ -111,7 +111,7 @@ impl GetDataLocations for Bitaxe290 {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("expectedHashrate"),
@@ -120,7 +120,7 @@ impl GetDataLocations for Bitaxe290 {
             )],
             DataField::Hashboards => vec![
                 (
-                    system_info_cmd,
+                    WEB_SYSTEM_INFO,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -128,7 +128,7 @@ impl GetDataLocations for Bitaxe290 {
                     },
                 ),
                 (
-                    asic_info_cmd,
+                    WEB_ASIC_INFO,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -137,7 +137,7 @@ impl GetDataLocations for Bitaxe290 {
                 ),
             ],
             DataField::Hashrate => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("hashRate"),
@@ -145,7 +145,7 @@ impl GetDataLocations for Bitaxe290 {
                 },
             )],
             DataField::Fans => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("fanrpm"),
@@ -153,7 +153,7 @@ impl GetDataLocations for Bitaxe290 {
                 },
             )],
             DataField::AverageTemperature => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("temp"),
@@ -161,7 +161,7 @@ impl GetDataLocations for Bitaxe290 {
                 },
             )],
             DataField::Wattage => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("power"),
@@ -169,7 +169,7 @@ impl GetDataLocations for Bitaxe290 {
                 },
             )],
             DataField::Uptime => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("uptimeSeconds"),
@@ -177,7 +177,7 @@ impl GetDataLocations for Bitaxe290 {
                 },
             )],
             DataField::Pools => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),

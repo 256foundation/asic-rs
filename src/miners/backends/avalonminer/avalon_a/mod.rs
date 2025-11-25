@@ -181,26 +181,26 @@ impl SetPowerLimit for AvalonAMiner {
 
 impl GetDataLocations for AvalonAMiner {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        let version_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_VERSION: MinerCommand = MinerCommand::RPC {
             command: "version",
             parameters: None,
         };
-        let stats_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_STATS: MinerCommand = MinerCommand::RPC {
             command: "stats",
             parameters: None,
         };
-        let devs_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_DEVS: MinerCommand = MinerCommand::RPC {
             command: "devs",
             parameters: None,
         };
-        let pools_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_POOLS: MinerCommand = MinerCommand::RPC {
             command: "pools",
             parameters: None,
         };
 
         match data_field {
             DataField::Mac => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/MAC"),
@@ -208,7 +208,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/HWTYPE"),
@@ -216,7 +216,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::ApiVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/API"),
@@ -224,7 +224,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/VERSION"),
@@ -232,7 +232,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::Hashrate => vec![(
-                devs_cmd,
+                RPC_DEVS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/DEVS/0/MHS 1m"),
@@ -240,7 +240,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0/STATS/GHSmm"),
@@ -248,7 +248,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::Hashboards => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0"),
@@ -256,7 +256,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::Wattage => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0/PS"),
@@ -264,7 +264,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::WattageLimit => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0/PS"),
@@ -272,7 +272,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::Fans => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0"),
@@ -280,7 +280,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::LightFlashing => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0/Led"),
@@ -288,7 +288,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::Uptime => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/Elapsed"),
@@ -296,7 +296,7 @@ impl GetDataLocations for AvalonAMiner {
                 },
             )],
             DataField::Pools => vec![(
-                pools_cmd,
+                RPC_POOLS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/POOLS"),

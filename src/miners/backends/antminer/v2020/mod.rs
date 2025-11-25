@@ -1,13 +1,3 @@
-use anyhow;
-use async_trait::async_trait;
-use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature};
-use serde_json::{Value, json};
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::Duration;
-
 use crate::data::board::BoardData;
 use crate::data::device::{
     DeviceInfo, HashAlgorithm, MinerControlBoard, MinerFirmware, MinerMake, MinerModel,
@@ -21,6 +11,15 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
+use anyhow;
+use async_trait::async_trait;
+use macaddr::MacAddr;
+use measurements::{AngularVelocity, Frequency, Power, Temperature};
+use serde_json::{Value, json};
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::str::FromStr;
+use std::time::Duration;
 
 use rpc::AntMinerRPCAPI;
 use web::AntMinerWebAPI;
@@ -190,54 +189,54 @@ impl APIClient for AntMinerV2020 {
 
 impl GetDataLocations for AntMinerV2020 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        let version_cmd = MinerCommand::RPC {
+        const RPC_VERSION: MinerCommand = MinerCommand::RPC {
             command: "version",
             parameters: None,
         };
 
-        let stats_cmd = MinerCommand::RPC {
+        const RPC_STATS: MinerCommand = MinerCommand::RPC {
             command: "stats",
             parameters: None,
         };
 
-        let summary_cmd = MinerCommand::RPC {
+        const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
             command: "summary",
             parameters: None,
         };
 
-        let pools_cmd = MinerCommand::RPC {
+        const RPC_POOLS: MinerCommand = MinerCommand::RPC {
             command: "pools",
             parameters: None,
         };
 
-        let system_info_cmd = MinerCommand::WebAPI {
+        const WEB_SYSTEM_INFO: MinerCommand = MinerCommand::WebAPI {
             command: "get_system_info",
             parameters: None,
         };
 
-        let blink_status_cmd = MinerCommand::WebAPI {
+        const WEB_BLINK_STATUS: MinerCommand = MinerCommand::WebAPI {
             command: "get_blink_status",
             parameters: None,
         };
 
-        let miner_conf_cmd = MinerCommand::WebAPI {
+        const WEB_MINER_CONF: MinerCommand = MinerCommand::WebAPI {
             command: "get_miner_conf",
             parameters: None,
         };
 
-        let web_summary_cmd = MinerCommand::WebAPI {
+        const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
             command: "summary",
             parameters: None,
         };
 
-        let web_miner_type_cmd = MinerCommand::WebAPI {
+        const WEB_MINER_TYPE: MinerCommand = MinerCommand::WebAPI {
             command: "miner_type",
             parameters: None,
         };
 
         match data_field {
             DataField::Mac => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/macaddr"),
@@ -245,7 +244,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::ApiVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/API"),
@@ -253,7 +252,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/CompileTime"),
@@ -261,7 +260,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Hostname => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/hostname"),
@@ -269,7 +268,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                web_miner_type_cmd,
+                WEB_MINER_TYPE,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/subtype"),
@@ -277,7 +276,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Hashrate => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/GHS 5s"),
@@ -285,7 +284,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1/total_rateideal"),
@@ -293,7 +292,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Fans => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1"),
@@ -301,7 +300,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Hashboards => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1"),
@@ -309,7 +308,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::LightFlashing => vec![(
-                blink_status_cmd,
+                WEB_BLINK_STATUS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/blink"),
@@ -317,7 +316,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::IsMining => vec![(
-                miner_conf_cmd,
+                WEB_MINER_CONF,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/bitmain-work-mode"),
@@ -325,7 +324,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Uptime => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1/Elapsed"),
@@ -333,7 +332,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Pools => vec![(
-                pools_cmd,
+                RPC_POOLS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/POOLS"),
@@ -341,7 +340,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Wattage => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1"),
@@ -350,7 +349,7 @@ impl GetDataLocations for AntMinerV2020 {
             )],
             DataField::SerialNumber => vec![
                 (
-                    system_info_cmd.clone(),
+                    WEB_SYSTEM_INFO,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/serial_no"), // Cant find on 2022 firmware, does exist on 2025 firmware for XP
@@ -358,7 +357,7 @@ impl GetDataLocations for AntMinerV2020 {
                     },
                 ),
                 (
-                    system_info_cmd.clone(),
+                    WEB_SYSTEM_INFO,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/serinum"), // exist on 2025 firmware for s21
@@ -367,7 +366,7 @@ impl GetDataLocations for AntMinerV2020 {
                 ),
             ],
             DataField::Messages => vec![(
-                web_summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/status"),

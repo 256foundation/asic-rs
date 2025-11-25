@@ -61,25 +61,42 @@ impl APIClient for PowerPlayV1 {
 
 impl GetDataLocations for PowerPlayV1 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        fn cmd(endpoint: &'static str) -> MinerCommand {
-            MinerCommand::WebAPI {
-                command: endpoint,
-                parameters: None,
-            }
-        }
-
-        let summary_cmd = cmd("summary");
-        let network_cmd = cmd("network");
-        let capabilities_cmd = cmd("capabilities");
-        let chip_temps_cmd = cmd("temps/chip");
-        let chip_voltages_cmd = cmd("voltages");
-        let chip_hashrates_cmd = cmd("hashrate");
-        let chip_clocks_cmd = cmd("clocks");
-        let temps_cmd = cmd("temps");
+        const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
+            command: "summary",
+            parameters: None,
+        };
+        const WEB_NETWORK: MinerCommand = MinerCommand::WebAPI {
+            command: "network",
+            parameters: None,
+        };
+        const WEB_CAPABILITIES: MinerCommand = MinerCommand::WebAPI {
+            command: "capabilities",
+            parameters: None,
+        };
+        const WEB_CHIP_TEMPS: MinerCommand = MinerCommand::WebAPI {
+            command: "temps/chip",
+            parameters: None,
+        };
+        const WEB_CHIP_VOLTAGES: MinerCommand = MinerCommand::WebAPI {
+            command: "voltages",
+            parameters: None,
+        };
+        const WEB_CHIP_HASHRATES: MinerCommand = MinerCommand::WebAPI {
+            command: "hashrate",
+            parameters: None,
+        };
+        const WEB_CHIP_CLOCKS: MinerCommand = MinerCommand::WebAPI {
+            command: "clocks",
+            parameters: None,
+        };
+        const WEB_TEMPS: MinerCommand = MinerCommand::WebAPI {
+            command: "temps",
+            parameters: None,
+        };
 
         match data_field {
             DataField::Mac => vec![(
-                network_cmd,
+                WEB_NETWORK,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -87,7 +104,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::Hostname => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Hostname"),
@@ -95,7 +112,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::Uptime => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Session/Uptime"),
@@ -103,7 +120,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::Wattage => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Power Supply Stats/Input Power"),
@@ -111,7 +128,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::Fans => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Fans Rpm"),
@@ -120,7 +137,7 @@ impl GetDataLocations for PowerPlayV1 {
             )],
             DataField::Hashboards => vec![
                 (
-                    temps_cmd,
+                    WEB_TEMPS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -128,7 +145,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    summary_cmd,
+                    WEB_SUMMARY,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -136,7 +153,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    chip_temps_cmd,
+                    WEB_CHIP_TEMPS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -144,7 +161,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    chip_voltages_cmd,
+                    WEB_CHIP_VOLTAGES,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -152,7 +169,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    chip_hashrates_cmd,
+                    WEB_CHIP_HASHRATES,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -160,7 +177,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    chip_clocks_cmd,
+                    WEB_CHIP_CLOCKS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -168,7 +185,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    capabilities_cmd,
+                    WEB_CAPABILITIES,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -177,7 +194,7 @@ impl GetDataLocations for PowerPlayV1 {
                 ),
             ],
             DataField::Pools => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -185,7 +202,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::IsMining => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Status/Operating State"),
@@ -193,7 +210,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::LightFlashing => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Misc/Locate Miner State"),
@@ -201,7 +218,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                capabilities_cmd,
+                WEB_CAPABILITIES,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Control Board Version/cpuHardware"),
@@ -209,7 +226,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::SerialNumber => vec![(
-                capabilities_cmd,
+                WEB_CAPABILITIES,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Control Board Version/cpuSerial"),
@@ -217,7 +234,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                capabilities_cmd,
+                WEB_CAPABILITIES,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Default Hashrate"),
@@ -225,7 +242,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Software"),
@@ -233,7 +250,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::Hashrate => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/HBs"),
