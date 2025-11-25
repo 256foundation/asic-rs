@@ -17,6 +17,7 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use serde_json::{Value, json};
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
@@ -42,14 +43,15 @@ enum MinerMode {
     High,
 }
 
-impl ToString for MinerMode {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for MinerMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
             MinerMode::Normal => "0".to_string(),
             MinerMode::Sleep => "1".to_string(),
             MinerMode::Low => "3".to_string(),
             _ => "0".to_string(),
-        }
+        };
+        write!(f, "{}", str)
     }
 }
 
