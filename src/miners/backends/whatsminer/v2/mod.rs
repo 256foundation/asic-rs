@@ -456,15 +456,12 @@ impl GetMessages for WhatsMinerV2 {
                 let object = obj.as_object();
                 if let Some(obj) = object {
                     for (code, time) in obj.iter() {
-                        dbg!(time);
                         let timestamp = NaiveDateTime::parse_from_str(
                             time.as_str().unwrap(),
                             "%Y-%m-%d %H:%M:%S",
                         )
                         .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc))
                         .map(|dt| dt.timestamp_millis() as u32);
-
-                        dbg!(&timestamp);
 
                         if let Ok(ts) = timestamp {
                             messages.push(MinerMessage {
