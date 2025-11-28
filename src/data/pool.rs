@@ -87,6 +87,7 @@ impl Display for PoolURL {
 pub struct PoolData {
     pub position: Option<u16>,
     pub url: Option<PoolURL>,
+    pub group: Option<String>,
     pub accepted_shares: Option<u64>,
     pub rejected_shares: Option<u64>,
     pub active: Option<bool>,

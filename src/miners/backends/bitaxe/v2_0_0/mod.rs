@@ -424,6 +424,7 @@ impl GetPools for Bitaxe200 {
         let main_pool_data = PoolData {
             position: Some(0),
             url: Some(main_pool_url),
+            group: None,
             accepted_shares: accepted_share,
             rejected_shares: rejected_share,
             active: Some(!is_using_fallback),
@@ -447,6 +448,7 @@ impl GetPools for Bitaxe200 {
         let fallback_pool_data = PoolData {
             position: Some(1),
             url: Some(fallback_pool_url),
+            group: None,
             accepted_shares: accepted_share,
             rejected_shares: rejected_share,
             active: Some(is_using_fallback),
