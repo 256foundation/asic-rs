@@ -644,8 +644,11 @@ impl GetControlBoardVersion for AntMinerV2020 {
         &self,
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
-        data.extract::<String>(DataField::ControlBoardVersion)
-            .and_then(|s| MinerControlBoard::from_str(s.split("_").collect::<Vec<&str>>()[0]).ok())
+        let cb_type = data.extract::<String>(DataField::ControlBoardVersion)?;
+        match cb_type.as_str() {
+            s if s.to_uppercase().contains("AML") => Some(MinerControlBoard::AMLogic),
+            _ => MinerControlBoard::from_str(cb_type.split("_").collect::<Vec<&str>>()[0]).ok(),
+        }
     }
 }
 
