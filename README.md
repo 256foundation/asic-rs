@@ -121,9 +121,9 @@ async fn main() {
 ```
 
 
- [__cargo_doc2readme_dependencies_info]: ggGkYW0CYXSEG_W_Gn_kaocAGwCcVPfenh7eGy6gYLEwyIe4G6-xw_FwcbpjYXKEG5D_qVKckslCGxwIeK2B_3HPG0dVylfZ-fxqG8PBiqF0DLdRYWSBg2dhc2ljLXJzZTAuMS40Z2FzaWNfcnM
- [__link0]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=miners::factory::MinerFactory
- [__link1]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=miners::factory::MinerFactory
- [__link2]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=data::miner::MinerData
- [__link3]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=miners::backends::traits::GetMinerData
- [__link4]: https://docs.rs/asic-rs/0.1.4/asic_rs/?search=miners::backends::traits::HasMinerControl
+ [__cargo_doc2readme_dependencies_info]: ggGkYW0CYXSEG_W_Gn_kaocAGwCcVPfenh7eGy6gYLEwyIe4G6-xw_FwcbpjYXKEG5D_qVKckslCGxwIeK2B_3HPG0dVylfZ-fxqG8PBiqF0DLdRYWSBg2dhc2ljLXJzZTAuMS41Z2FzaWNfcnM
+ [__link0]: https://docs.rs/asic-rs/0.1.5/asic_rs/?search=miners::factory::MinerFactory
+ [__link1]: https://docs.rs/asic-rs/0.1.5/asic_rs/?search=miners::factory::MinerFactory
+ [__link2]: https://docs.rs/asic-rs/0.1.5/asic_rs/?search=data::miner::MinerData
+ [__link3]: https://docs.rs/asic-rs/0.1.5/asic_rs/?search=miners::backends::traits::GetMinerData
+ [__link4]: https://docs.rs/asic-rs/0.1.5/asic_rs/?search=miners::backends::traits::HasMinerControl
