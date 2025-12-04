@@ -641,6 +641,7 @@ impl GetPools for MaraV1 {
                 pools_vec.push(PoolData {
                     position: index,
                     url,
+                    group: None,
                     accepted_shares: accepted,
                     rejected_shares: rejected,
                     active: Some(active),

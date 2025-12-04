@@ -168,6 +168,7 @@ class PoolData(BaseModel):
 
     position: int | None
     url: Annotated[str, BeforeValidator(str)] | None
+    group: str | None
     accepted_shares: int | None
     rejected_shares: int | None
     active: bool | None
