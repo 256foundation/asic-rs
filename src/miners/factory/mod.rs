@@ -162,7 +162,7 @@ fn parse_type_from_web(
 }
 
 #[tracing::instrument(level = "debug")]
-fn select_backend(
+pub fn select_backend(
     ip: IpAddr,
     model: MinerModel,
     firmware: Option<MinerFirmware>,
