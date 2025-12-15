@@ -9,23 +9,18 @@ use std::{
 };
 
 #[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum HashRateUnit {
     Hash,
     KiloHash,
     MegaHash,
     GigaHash,
+    #[default]
     TeraHash,
     PetaHash,
     ExaHash,
     ZettaHash,
     YottaHash,
-}
-
-impl Default for HashRateUnit {
-    fn default() -> Self {
-        Self::TeraHash
-    }
 }
 
 impl HashRateUnit {
