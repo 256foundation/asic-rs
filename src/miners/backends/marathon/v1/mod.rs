@@ -440,7 +440,7 @@ impl GetHashrate for MaraV1 {
         data.extract::<f64>(DataField::Hashrate)
             .map(|rate| HashRate {
                 value: rate,
-                unit: HashRateUnit::TeraHash,
+                unit: HashRateUnit::GigaHash,
                 algo: String::from("SHA256"),
             })
     }
