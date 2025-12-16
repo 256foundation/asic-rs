@@ -572,6 +572,7 @@ impl GetPools for AvalonAMiner {
                     .get("URL")
                     .and_then(|v| v.as_str())
                     .map(|x| PoolURL::from(x.to_owned())),
+                group: None,
                 user: pool.get("User").and_then(|v| v.as_str()).map(|s| s.into()),
                 position: Some(idx as u16),
                 alive: pool

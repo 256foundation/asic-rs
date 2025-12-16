@@ -747,6 +747,7 @@ impl GetPools for PowerPlayV1 {
                 pools_vec.push(PoolData {
                     position: Some(idx as u16),
                     url,
+                    group: None,
                     accepted_shares: None,
                     rejected_shares: None,
                     active: Some(false),
