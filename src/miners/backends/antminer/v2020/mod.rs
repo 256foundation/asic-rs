@@ -777,9 +777,17 @@ impl crate::miners::backends::traits::Pause for AntMinerV2020 {
     async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;
         if pre.get("bitmain-work-mode").is_some() {
-            return Ok(self.web.set_miner_conf(json!({"bitmain-work-mode": "1"})).await.is_ok());
+            return Ok(self
+                .web
+                .set_miner_conf(json!({"bitmain-work-mode": "1"}))
+                .await
+                .is_ok());
         }
-        Ok(self.web.set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()})).await.is_ok())
+        Ok(self
+            .web
+            .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
+            .await
+            .is_ok())
     }
 }
 
@@ -788,9 +796,17 @@ impl crate::miners::backends::traits::Resume for AntMinerV2020 {
     async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;
         if pre.get("bitmain-work-mode").is_some() {
-            return Ok(self.web.set_miner_conf(json!({"bitmain-work-mode": "0"})).await.is_ok());
+            return Ok(self
+                .web
+                .set_miner_conf(json!({"bitmain-work-mode": "0"}))
+                .await
+                .is_ok());
         }
-        Ok(self.web.set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()})).await.is_ok())
+        Ok(self
+            .web
+            .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))
+            .await
+            .is_ok())
     }
 }
 

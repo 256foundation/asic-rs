@@ -13,8 +13,8 @@ use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
-use serde_json::Value;
 use reqwest::Method;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
@@ -52,7 +52,8 @@ impl MaraV1 {
             .send_command("miner_config", true, None, Method::GET)
             .await?;
 
-        Ok(cfg.pointer("/mode/work-mode-selector")
+        Ok(cfg
+            .pointer("/mode/work-mode-selector")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string()))
     }
@@ -101,10 +102,14 @@ impl MaraV1 {
 
         // Scan newest -> oldest
         for entry in entries.iter().rev() {
-            let Some(obj) = entry.as_object() else { continue; };
+            let Some(obj) = entry.as_object() else {
+                continue;
+            };
 
             for (_k, changes_val) in obj.iter() {
-                let Some(changes) = changes_val.as_array() else { continue; };
+                let Some(changes) = changes_val.as_array() else {
+                    continue;
+                };
 
                 for change in changes {
                     let is_update = change
@@ -140,10 +145,10 @@ impl MaraV1 {
                     let to = change.get("to").and_then(|v| v.as_str());
                     if to.map(|s| s.eq_ignore_ascii_case("Sleep")).unwrap_or(false) {
                         let from = change.get("from").and_then(|v| v.as_str());
-                        if let Some(from) = from {
-                            if !from.eq_ignore_ascii_case("Sleep") {
-                                return Ok(Some(from.to_string()));
-                            }
+                        if let Some(from) = from
+                            && !from.eq_ignore_ascii_case("Sleep")
+                        {
+                            return Ok(Some(from.to_string()));
                         }
                     }
                 }
@@ -153,7 +158,6 @@ impl MaraV1 {
         Ok(None)
     }
 }
-
 
 #[async_trait]
 impl APIClient for MaraV1 {
