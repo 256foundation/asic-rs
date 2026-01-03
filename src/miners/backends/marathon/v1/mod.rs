@@ -14,6 +14,7 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
+use reqwest::Method;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
@@ -44,7 +45,115 @@ impl MaraV1 {
             ),
         }
     }
+
+    async fn get_work_mode(&self) -> anyhow::Result<Option<String>> {
+        let cfg = self
+            .web
+            .send_command("miner_config", true, None, Method::GET)
+            .await?;
+
+        Ok(cfg.pointer("/mode/work-mode-selector")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()))
+    }
+
+    async fn set_work_mode(&self, mode: &str) -> anyhow::Result<bool> {
+        // 1) GET current config
+        let mut cfg = self
+            .web
+            .send_command("miner_config", true, None, Method::GET)
+            .await?;
+
+        // 2) Update mode.work-mode-selector (e.g. "Sleep" or "Stock")
+        if let Some(v) = cfg.pointer_mut("/mode/work-mode-selector") {
+            *v = Value::String(mode.to_string());
+        } else {
+            anyhow::bail!("MaraFW miner_config missing /mode/work-mode-selector");
+        }
+
+        // 3) POST updated config back
+        let resp = self
+            .web
+            .send_command("miner_config", true, Some(cfg), Method::POST)
+            .await?;
+
+        // MaraFW responds with: {"error":false,"msg":"success"}
+        if resp.get("error").and_then(|v| v.as_bool()) == Some(true) {
+            let msg = resp
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown error");
+            anyhow::bail!("MaraFW miner_config POST failed: {msg}");
+        }
+
+        Ok(true)
+    }
+
+    async fn last_mode_before_sleep_from_history(&self) -> anyhow::Result<Option<String>> {
+        let history = self
+            .web
+            .send_command("log?type=miner_config_history", true, None, Method::GET)
+            .await?;
+
+        let Some(entries) = history.as_array() else {
+            return Ok(None);
+        };
+
+        // Scan newest -> oldest
+        for entry in entries.iter().rev() {
+            let Some(obj) = entry.as_object() else { continue; };
+
+            for (_k, changes_val) in obj.iter() {
+                let Some(changes) = changes_val.as_array() else { continue; };
+
+                for change in changes {
+                    let is_update = change
+                        .get("type")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.eq_ignore_ascii_case("update"))
+                        .unwrap_or(false);
+
+                    if !is_update {
+                        continue;
+                    }
+
+                    let path_matches = change
+                        .get("path")
+                        .and_then(|p| p.as_array())
+                        .map(|p| {
+                            p.len() == 2
+                                && p[0]
+                                    .as_str()
+                                    .map(|s| s.eq_ignore_ascii_case("Mode"))
+                                    .unwrap_or(false)
+                                && p[1]
+                                    .as_str()
+                                    .map(|s| s.eq_ignore_ascii_case("WorkModeSelector"))
+                                    .unwrap_or(false)
+                        })
+                        .unwrap_or(false);
+
+                    if !path_matches {
+                        continue;
+                    }
+
+                    let to = change.get("to").and_then(|v| v.as_str());
+                    if to.map(|s| s.eq_ignore_ascii_case("Sleep")).unwrap_or(false) {
+                        let from = change.get("from").and_then(|v| v.as_str());
+                        if let Some(from) = from {
+                            if !from.eq_ignore_ascii_case("Sleep") {
+                                return Ok(Some(from.to_string()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(None)
+    }
 }
+
 
 #[async_trait]
 impl APIClient for MaraV1 {
@@ -679,16 +788,31 @@ impl Restart for MaraV1 {
 
 #[async_trait]
 impl Pause for MaraV1 {
-    #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+        // No-op if already sleeping (e.g., user used the GUI).
+        let current = self.get_work_mode().await?.unwrap_or_default();
+        if current.eq_ignore_ascii_case("Sleep") {
+            return Ok(true);
+        }
+        self.set_work_mode("Sleep").await
     }
 }
 
 #[async_trait]
 impl Resume for MaraV1 {
-    #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+        // If it's not sleeping, nothing to do.
+        let current = self.get_work_mode().await?.unwrap_or_default();
+        if !current.eq_ignore_ascii_case("Sleep") {
+            return Ok(true);
+        }
+
+        // Prefer restoring the last non-Sleep mode from history.
+        let target = self
+            .last_mode_before_sleep_from_history()
+            .await?
+            .unwrap_or_else(|| "Stock".to_string());
+
+        self.set_work_mode(&target).await
     }
 }

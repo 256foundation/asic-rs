@@ -279,16 +279,50 @@ impl MinerFactory {
 
         let timeout = tokio::time::sleep(self.identification_timeout).fuse();
         let tasks = tokio::spawn(async move {
+            // We may get multiple successful identifications.
+            // Keep the "best" one. MaraFW (Marathon) should override Stock.
+            fn score(result: &(Option<MinerMake>, Option<MinerFirmware>)) -> u8 {
+                match result {
+                    // Explicit firmware IDs beat everything else.
+                    (_, Some(MinerFirmware::Marathon)) => 100,
+                    (_, Some(MinerFirmware::BraiinsOS)) => 90,
+                    (_, Some(MinerFirmware::LuxOS)) => 90,
+                    (_, Some(MinerFirmware::VNish)) => 90,
+                    (_, Some(MinerFirmware::EPic)) => 90,
+                    (_, Some(MinerFirmware::HiveOS)) => 90,
+
+                    // Stock/make-only are fallbacks.
+                    (Some(_), Some(MinerFirmware::Stock)) => 50,
+                    (Some(_), None) => 40,
+
+                    _ => 0,
+                }
+            }
+
+            let mut best: Option<(Option<MinerMake>, Option<MinerFirmware>)> = None;
+            let mut best_score: u8 = 0;
+
             loop {
                 if discovery_tasks.is_empty() {
-                    return None;
-                };
+                    return best;
+                }
+
                 match discovery_tasks.join_next().await.unwrap_or(Ok(None)) {
                     Ok(Some(result)) => {
-                        return Some(result);
+                        let s = score(&result);
+
+                        if s > best_score {
+                            best_score = s;
+                            best = Some(result);
+                        }
+
+                        // Stop early once we have a positive non-stock firmware identification.
+                        if best_score >= 90 {
+                            return best;
+                        }
                     }
                     _ => continue,
-                };
+                }
             }
         });
 
