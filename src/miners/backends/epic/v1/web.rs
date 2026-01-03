@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::{Value, json};
@@ -19,7 +19,7 @@ pub struct PowerPlayWebAPI {
 
 #[async_trait]
 impl APIClient for PowerPlayWebAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI {
                 command,
@@ -27,8 +27,8 @@ impl APIClient for PowerPlayWebAPI {
             } => self
                 .send_command(command, false, parameters.clone(), Method::GET)
                 .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Cannot send non web command to web API")),
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!("Cannot send non web command to web API")),
         }
     }
 }
@@ -42,7 +42,7 @@ impl WebAPIClient for PowerPlayWebAPI {
         _privileged: bool,
         parameters: Option<Value>,
         method: Method,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let url = format!("http://{}:{}/{}", self.ip, self.port, command);
 
         let response = self
@@ -85,7 +85,7 @@ impl PowerPlayWebAPI {
         url: &str,
         method: &Method,
         parameters: Option<Value>,
-    ) -> Result<Response, PowerPlayError> {
+    ) -> anyhow::Result<Response, PowerPlayError> {
         let request_builder = match *method {
             Method::GET => self.client.get(url),
             Method::POST => self.client.post(url).json(&{

@@ -1,13 +1,3 @@
-use anyhow::{Result, anyhow, bail};
-use async_trait::async_trait;
-use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature};
-use serde_json::{Value, json};
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::Duration;
-
 use crate::data::board::BoardData;
 use crate::data::device::{
     DeviceInfo, HashAlgorithm, MinerControlBoard, MinerFirmware, MinerMake, MinerModel,
@@ -21,6 +11,16 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
+use anyhow;
+use async_trait::async_trait;
+use macaddr::MacAddr;
+use measurements::{AngularVelocity, Frequency, Power, Temperature};
+use serde_json::{Value, json};
+use std::collections::HashMap;
+use std::fmt::Display;
+use std::net::IpAddr;
+use std::str::FromStr;
+use std::time::Duration;
 
 use rpc::AntMinerRPCAPI;
 use web::AntMinerWebAPI;
@@ -43,14 +43,15 @@ enum MinerMode {
     High,
 }
 
-impl ToString for MinerMode {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for MinerMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
             MinerMode::Normal => "0".to_string(),
             MinerMode::Sleep => "1".to_string(),
             MinerMode::Low => "3".to_string(),
             _ => "0".to_string(),
-        }
+        };
+        write!(f, "{}", str)
     }
 }
 
@@ -179,65 +180,65 @@ impl AntMinerV2020 {
 
 #[async_trait]
 impl APIClient for AntMinerV2020 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for Antminer API")),
+            _ => Err(anyhow::anyhow!("Unsupported command type for Antminer API")),
         }
     }
 }
 
 impl GetDataLocations for AntMinerV2020 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        let version_cmd = MinerCommand::RPC {
+        const RPC_VERSION: MinerCommand = MinerCommand::RPC {
             command: "version",
             parameters: None,
         };
 
-        let stats_cmd = MinerCommand::RPC {
+        const RPC_STATS: MinerCommand = MinerCommand::RPC {
             command: "stats",
             parameters: None,
         };
 
-        let summary_cmd = MinerCommand::RPC {
+        const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
             command: "summary",
             parameters: None,
         };
 
-        let pools_cmd = MinerCommand::RPC {
+        const RPC_POOLS: MinerCommand = MinerCommand::RPC {
             command: "pools",
             parameters: None,
         };
 
-        let system_info_cmd = MinerCommand::WebAPI {
+        const WEB_SYSTEM_INFO: MinerCommand = MinerCommand::WebAPI {
             command: "get_system_info",
             parameters: None,
         };
 
-        let blink_status_cmd = MinerCommand::WebAPI {
+        const WEB_BLINK_STATUS: MinerCommand = MinerCommand::WebAPI {
             command: "get_blink_status",
             parameters: None,
         };
 
-        let miner_conf_cmd = MinerCommand::WebAPI {
+        const WEB_MINER_CONF: MinerCommand = MinerCommand::WebAPI {
             command: "get_miner_conf",
             parameters: None,
         };
 
-        let web_summary_cmd = MinerCommand::WebAPI {
+        const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
             command: "summary",
             parameters: None,
         };
 
-        let web_miner_type_cmd = MinerCommand::WebAPI {
+        const WEB_MINER_TYPE: MinerCommand = MinerCommand::WebAPI {
             command: "miner_type",
             parameters: None,
         };
 
         match data_field {
             DataField::Mac => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/macaddr"),
@@ -245,7 +246,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::ApiVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/API"),
@@ -253,7 +254,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/CompileTime"),
@@ -261,7 +262,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Hostname => vec![(
-                system_info_cmd,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/hostname"),
@@ -269,7 +270,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                web_miner_type_cmd,
+                WEB_MINER_TYPE,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/subtype"),
@@ -277,7 +278,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Hashrate => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/GHS 5s"),
@@ -285,7 +286,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1/total_rateideal"),
@@ -293,7 +294,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Fans => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1"),
@@ -301,7 +302,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Hashboards => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1"),
@@ -309,7 +310,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::LightFlashing => vec![(
-                blink_status_cmd,
+                WEB_BLINK_STATUS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/blink"),
@@ -317,7 +318,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::IsMining => vec![(
-                miner_conf_cmd,
+                WEB_MINER_CONF,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/bitmain-work-mode"),
@@ -325,7 +326,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Uptime => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1/Elapsed"),
@@ -333,7 +334,7 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Pools => vec![(
-                pools_cmd,
+                RPC_POOLS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/POOLS"),
@@ -341,23 +342,33 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::Wattage => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1"),
                     tag: None,
                 },
             )],
-            DataField::SerialNumber => vec![(
-                system_info_cmd,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/serial_no"), // Cant find on 2022 firmware, does exist on 2025 firmware for XP
-                    tag: None,
-                },
-            )],
+            DataField::SerialNumber => vec![
+                (
+                    WEB_SYSTEM_INFO,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/serial_no"), // Cant find on 2022 firmware, does exist on 2025 firmware for XP
+                        tag: None,
+                    },
+                ),
+                (
+                    WEB_SYSTEM_INFO,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/serinum"), // exist on 2025 firmware for s21
+                        tag: None,
+                    },
+                ),
+            ],
             DataField::Messages => vec![(
-                web_summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/status"),
@@ -633,8 +644,11 @@ impl GetControlBoardVersion for AntMinerV2020 {
         &self,
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
-        data.extract::<String>(DataField::ControlBoardVersion)
-            .and_then(|s| MinerControlBoard::from_str(s.split("_").collect::<Vec<&str>>()[0]).ok())
+        let cb_type = data.extract::<String>(DataField::ControlBoardVersion)?;
+        match cb_type.as_str() {
+            s if s.to_uppercase().contains("AML") => Some(MinerControlBoard::AMLogic),
+            _ => MinerControlBoard::from_str(cb_type.split("_").collect::<Vec<&str>>()[0]).ok(),
+        }
     }
 }
 
@@ -738,7 +752,7 @@ impl GetMessages for AntMinerV2020 {
 #[async_trait]
 impl SetFaultLight for AntMinerV2020 {
     #[allow(unused_variables)]
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         Ok(self.web.blink(fault).await.is_ok())
     }
 }
@@ -746,14 +760,14 @@ impl SetFaultLight for AntMinerV2020 {
 #[async_trait]
 impl SetPowerLimit for AntMinerV2020 {
     #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Restart for AntMinerV2020 {
-    async fn restart(&self) -> Result<bool> {
+    async fn restart(&self) -> anyhow::Result<bool> {
         Ok(self.web.reboot().await.is_ok())
     }
 }
@@ -761,7 +775,7 @@ impl Restart for AntMinerV2020 {
 #[async_trait]
 impl Pause for AntMinerV2020 {
     #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self
             .web
             .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
@@ -773,7 +787,7 @@ impl Pause for AntMinerV2020 {
 #[async_trait]
 impl Resume for AntMinerV2020 {
     #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self
             .web
             .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))

@@ -9,7 +9,7 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -48,37 +48,60 @@ impl MaraV1 {
 
 #[async_trait]
 impl APIClient for MaraV1 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for Marathon API")),
+            _ => Err(anyhow::anyhow!("Unsupported command type for Marathon API")),
         }
     }
 }
 
 impl GetDataLocations for MaraV1 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        fn cmd(endpoint: &'static str) -> MinerCommand {
-            MinerCommand::WebAPI {
-                command: endpoint,
-                parameters: None,
-            }
-        }
-
-        let brief_cmd = cmd("brief");
-        let overview_cmd = cmd("overview");
-        let hashboards_cmd = cmd("hashboards");
-        let fans_cmd = cmd("fans");
-        let pools_cmd = cmd("pools");
-        let network_config_cmd = cmd("network_config");
-        let miner_config_cmd = cmd("miner_config");
-        let locate_miner_cmd = cmd("locate_miner");
-        let details_cmd = cmd("details");
-        let messages_cmd = cmd("event_chart");
+        const WEB_BRIEF: MinerCommand = MinerCommand::WebAPI {
+            command: "brief",
+            parameters: None,
+        };
+        const WEB_OVERVIEW: MinerCommand = MinerCommand::WebAPI {
+            command: "overview",
+            parameters: None,
+        };
+        const WEB_HASHBOARDS: MinerCommand = MinerCommand::WebAPI {
+            command: "hashboards",
+            parameters: None,
+        };
+        const WEB_FANS: MinerCommand = MinerCommand::WebAPI {
+            command: "fans",
+            parameters: None,
+        };
+        const WEB_POOLS: MinerCommand = MinerCommand::WebAPI {
+            command: "pools",
+            parameters: None,
+        };
+        const WEB_NETWORK_CONFIG: MinerCommand = MinerCommand::WebAPI {
+            command: "network_config",
+            parameters: None,
+        };
+        const WEB_MINER_CONFIG: MinerCommand = MinerCommand::WebAPI {
+            command: "miner_config",
+            parameters: None,
+        };
+        const WEB_LOCATE_MINER: MinerCommand = MinerCommand::WebAPI {
+            command: "locate_miner",
+            parameters: None,
+        };
+        const WEB_DETAILS: MinerCommand = MinerCommand::WebAPI {
+            command: "details",
+            parameters: None,
+        };
+        const WEB_MESSAGES: MinerCommand = MinerCommand::WebAPI {
+            command: "event_chart",
+            parameters: None,
+        };
 
         match data_field {
             DataField::Mac => vec![(
-                overview_cmd,
+                WEB_OVERVIEW,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/mac"),
@@ -86,7 +109,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                overview_cmd,
+                WEB_OVERVIEW,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/version_firmware"),
@@ -94,7 +117,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                overview_cmd,
+                WEB_OVERVIEW,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/control_board"),
@@ -102,7 +125,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::Hostname => vec![(
-                network_config_cmd,
+                WEB_NETWORK_CONFIG,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/hostname"),
@@ -110,7 +133,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::Hashrate => vec![(
-                brief_cmd,
+                WEB_BRIEF,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/hashrate_realtime"),
@@ -118,7 +141,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                brief_cmd,
+                WEB_BRIEF,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/hashrate_ideal"),
@@ -127,7 +150,7 @@ impl GetDataLocations for MaraV1 {
             )],
             DataField::Hashboards => vec![
                 (
-                    details_cmd,
+                    WEB_DETAILS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/hashboard_infos"),
@@ -135,7 +158,7 @@ impl GetDataLocations for MaraV1 {
                     },
                 ),
                 (
-                    hashboards_cmd,
+                    WEB_HASHBOARDS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/hashboards"),
@@ -144,7 +167,7 @@ impl GetDataLocations for MaraV1 {
                 ),
             ],
             DataField::Wattage => vec![(
-                brief_cmd,
+                WEB_BRIEF,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/power_consumption_estimated"),
@@ -152,7 +175,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::WattageLimit => vec![(
-                miner_config_cmd,
+                WEB_MINER_CONFIG,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/mode/concorde/power-target"),
@@ -160,7 +183,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::Fans => vec![(
-                fans_cmd,
+                WEB_FANS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/fans"),
@@ -168,7 +191,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::LightFlashing => vec![(
-                locate_miner_cmd,
+                WEB_LOCATE_MINER,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/blinking"),
@@ -176,7 +199,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::IsMining => vec![(
-                brief_cmd,
+                WEB_BRIEF,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/status"),
@@ -184,7 +207,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::Uptime => vec![(
-                brief_cmd,
+                WEB_BRIEF,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/elapsed"),
@@ -192,7 +215,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::Pools => vec![(
-                pools_cmd,
+                WEB_POOLS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -200,7 +223,7 @@ impl GetDataLocations for MaraV1 {
                 },
             )],
             DataField::Messages => vec![(
-                messages_cmd,
+                WEB_MESSAGES,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/event_flags"),
@@ -440,7 +463,7 @@ impl GetHashrate for MaraV1 {
         data.extract::<f64>(DataField::Hashrate)
             .map(|rate| HashRate {
                 value: rate,
-                unit: HashRateUnit::TeraHash,
+                unit: HashRateUnit::GigaHash,
                 algo: String::from("SHA256"),
             })
     }
@@ -634,38 +657,38 @@ impl GetPools for MaraV1 {
 #[async_trait]
 impl SetFaultLight for MaraV1 {
     #[allow(unused_variables)]
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl SetPowerLimit for MaraV1 {
     #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Restart for MaraV1 {
-    async fn restart(&self) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn restart(&self) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Pause for MaraV1 {
     #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Resume for MaraV1 {
     #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }

@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
@@ -22,25 +22,25 @@ pub struct BitaxeWebAPI {
 #[allow(dead_code)]
 trait Bitaxe200WebAPI: WebAPIClient {
     /// Get system information
-    async fn system_info(&self) -> Result<Value> {
+    async fn system_info(&self) -> anyhow::Result<Value> {
         self.send_command("system/info", false, None, Method::GET)
             .await
     }
 
     /// Get swarm information
-    async fn swarm_info(&self) -> Result<Value> {
+    async fn swarm_info(&self) -> anyhow::Result<Value> {
         self.send_command("swarm/info", false, None, Method::GET)
             .await
     }
 
     /// Restart the system
-    async fn restart(&self) -> Result<Value> {
+    async fn restart(&self) -> anyhow::Result<Value> {
         self.send_command("system/restart", false, None, Method::POST)
             .await
     }
 
     /// Update system settings
-    async fn update_settings(&self, config: Value) -> Result<Value> {
+    async fn update_settings(&self, config: Value) -> anyhow::Result<Value> {
         self.send_command("system", false, Some(config), Method::PATCH)
             .await
     }
@@ -48,7 +48,7 @@ trait Bitaxe200WebAPI: WebAPIClient {
 
 #[async_trait]
 impl APIClient for BitaxeWebAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI {
                 command,
@@ -56,8 +56,8 @@ impl APIClient for BitaxeWebAPI {
             } => self
                 .send_command(command, false, parameters.clone(), Method::GET)
                 .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Cannot send non web command to web API")),
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!("Cannot send non web command to web API")),
         }
     }
 }
@@ -71,7 +71,7 @@ impl WebAPIClient for BitaxeWebAPI {
         _privileged: bool,
         parameters: Option<Value>,
         method: Method,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let url = format!("http://{}:{}/api/{}", self.ip, self.port, command);
 
         for attempt in 0..=self.retries {
@@ -131,7 +131,7 @@ impl BitaxeWebAPI {
         url: &str,
         method: &Method,
         parameters: Option<Value>,
-    ) -> Result<Response, BitaxeError> {
+    ) -> anyhow::Result<Response, BitaxeError> {
         let request_builder = match *method {
             Method::GET => self.client.get(url),
             Method::POST => {

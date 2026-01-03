@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::net::IpAddr;
@@ -17,7 +17,7 @@ pub struct WhatsMinerRPCAPI {
 
 #[async_trait]
 impl APIClient for WhatsMinerRPCAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC {
                 command,
@@ -25,15 +25,15 @@ impl APIClient for WhatsMinerRPCAPI {
             } => self
                 .send_command(command, false, parameters.clone())
                 .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Cannot send non RPC command to RPC API")),
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!("Cannot send non RPC command to RPC API")),
         }
     }
 }
 
 impl RPCCommandStatus {
-    fn from_btminer_v1(response: &str) -> Result<Self, RPCError> {
-        let parsed: Result<serde_json::Value, _> = serde_json::from_str(response);
+    fn from_btminer_v1(response: &str) -> anyhow::Result<Self, RPCError> {
+        let parsed: anyhow::Result<serde_json::Value, _> = serde_json::from_str(response);
 
         if let Ok(data) = &parsed {
             let command_status = data["STATUS"][0]["STATUS"]
@@ -69,7 +69,7 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         command: &str,
         _privileged: bool,
         parameters: Option<Value>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
@@ -115,7 +115,7 @@ impl WhatsMinerRPCAPI {
         }
     }
 
-    fn parse_rpc_result(&self, response: &str) -> Result<Value> {
+    fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
         let status = RPCCommandStatus::from_btminer_v1(response)?;
         match status.into_result() {
             Ok(_) => Ok(serde_json::from_str(response)?),

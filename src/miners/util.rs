@@ -3,13 +3,16 @@ use reqwest::header::HeaderMap;
 use std::net::IpAddr;
 use tokio;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tracing;
 
+#[tracing::instrument(level = "debug")]
 pub(crate) async fn send_rpc_command(
     ip: &IpAddr,
     command: &'static str,
 ) -> Option<serde_json::Value> {
     let stream = tokio::net::TcpStream::connect(format!("{ip}:4028")).await;
     if stream.is_err() {
+        tracing::debug!("failed to connect to {ip} rpc");
         return None;
     }
     let mut stream = stream.unwrap();
@@ -24,10 +27,12 @@ pub(crate) async fn send_rpc_command(
     let response = String::from_utf8_lossy(&buffer)
         .into_owned()
         .replace('\0', "");
+    tracing::trace!("got response from miner: {response}");
 
     parse_rpc_result(&response)
 }
 
+#[tracing::instrument(level = "debug")]
 pub(crate) async fn send_web_command(
     ip: &IpAddr,
     command: &'static str,
@@ -43,7 +48,7 @@ pub(crate) async fn send_web_command(
             client
                 .get(format!("http://{ip}{command}"))
                 .build()
-                .expect("Failed to construct request."),
+                .expect("Failed to construct request"),
         )
         .await;
     match resp {
@@ -52,14 +57,25 @@ pub(crate) async fn send_web_command(
             let resp_status = &data.status().to_owned();
             let resp_text = &data.text().await;
             match resp_text {
-                Ok(text) => Some((text.clone(), resp_headers.clone(), *resp_status)),
-                Err(_) => None,
+                Ok(text) => {
+                    tracing::trace!("got response from miner: {text}");
+
+                    Some((text.clone(), resp_headers.clone(), *resp_status))
+                }
+                Err(_) => {
+                    tracing::debug!("received no response data from miner");
+                    None
+                }
             }
         }
-        Err(_) => None,
+        Err(_) => {
+            tracing::debug!("failed to connect to {ip} web");
+            None
+        }
     }
 }
 
+#[tracing::instrument(level = "debug")]
 fn parse_rpc_result(response: &str) -> Option<serde_json::Value> {
     // Fix for WM V1, can have newlines in version which breaks the json parser
     let response = response.replace("\n", "");
@@ -75,14 +91,22 @@ fn parse_rpc_result(response: &str) -> Option<serde_json::Value> {
             match command_status {
                 Some(status) => {
                     if success_codes.contains(&status) {
+                        tracing::trace!("found success code from miner: {status}");
                         Some(data)
                     } else {
+                        tracing::debug!("got error status from miner: {status}");
                         None
                     }
                 }
-                None => None,
+                None => {
+                    tracing::debug!("could not find result status");
+                    None
+                }
             }
         }
-        None => None,
+        None => {
+            tracing::debug!("failed to parse response");
+            None
+        }
     }
 }

@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -50,10 +50,10 @@ impl Bitaxe200 {
 
 #[async_trait]
 impl APIClient for Bitaxe200 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for Bitaxe API")),
+            _ => Err(anyhow::anyhow!("Unsupported command type for Bitaxe API")),
         }
     }
 }
@@ -61,14 +61,14 @@ impl APIClient for Bitaxe200 {
 #[async_trait]
 impl GetDataLocations for Bitaxe200 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        let system_info_command: MinerCommand = MinerCommand::WebAPI {
+        const WEB_SYSTEM_INFO: MinerCommand = MinerCommand::WebAPI {
             command: "system/info",
             parameters: None,
         };
 
         match data_field {
             DataField::Mac => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("macAddr"),
@@ -76,7 +76,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::Hostname => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("hostname"),
@@ -84,7 +84,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("version"),
@@ -92,7 +92,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::ApiVersion => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("version"),
@@ -100,7 +100,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("boardVersion"),
@@ -108,7 +108,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::Hashboards => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -116,7 +116,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::Hashrate => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("hashRate"),
@@ -124,7 +124,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -132,7 +132,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::Fans => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("fanrpm"),
@@ -140,7 +140,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::AverageTemperature => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("temp"),
@@ -148,7 +148,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::Wattage => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("power"),
@@ -156,7 +156,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::Uptime => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_key,
                     key: Some("uptimeSeconds"),
@@ -164,7 +164,7 @@ impl GetDataLocations for Bitaxe200 {
                 },
             )],
             DataField::Pools => vec![(
-                system_info_command,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -461,39 +461,39 @@ impl GetPools for Bitaxe200 {
 #[async_trait]
 impl SetFaultLight for Bitaxe200 {
     #[allow(unused_variables)]
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl SetPowerLimit for Bitaxe200 {
     #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Restart for Bitaxe200 {
-    async fn restart(&self) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn restart(&self) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Pause for Bitaxe200 {
     #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Resume for Bitaxe200 {
     #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 

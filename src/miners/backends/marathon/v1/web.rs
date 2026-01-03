@@ -1,6 +1,6 @@
 use crate::miners::backends::traits::{APIClient, WebAPIClient};
 use crate::miners::commands::MinerCommand;
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
 use reqwest::{Client, Method};
@@ -38,13 +38,13 @@ impl MaraWebAPI {
         endpoint: &str,
         method: Method,
         parameters: Option<Value>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let url = format!("http://{}:{}/kaonsu/v1/{}", self.ip, self.port, endpoint);
 
         let mut request_builder = match method {
             Method::GET => self.client.get(&url),
             Method::POST => self.client.post(&url),
-            _ => return Err(anyhow!("Unsupported HTTP method")),
+            _ => return Err(anyhow::anyhow!("Unsupported HTTP method")),
         };
 
         if let Some(params) = parameters
@@ -56,16 +56,16 @@ impl MaraWebAPI {
         let response = request_builder
             .send_with_digest_auth(&self.username, &self.password)
             .await
-            .map_err(|e| anyhow!("HTTP request failed: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("HTTP request failed: {}", e))?;
 
         if response.status().is_success() {
             let json_response = response
                 .json::<Value>()
                 .await
-                .map_err(|e| anyhow!("Failed to parse JSON: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Failed to parse JSON: {}", e))?;
             Ok(json_response)
         } else {
-            Err(anyhow!(
+            Err(anyhow::anyhow!(
                 "HTTP request failed with status: {}",
                 response.status()
             ))
@@ -81,14 +81,14 @@ impl WebAPIClient for MaraWebAPI {
         _privileged: bool,
         parameters: Option<Value>,
         method: Method,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         self.make_request(command, method, parameters).await
     }
 }
 
 #[async_trait]
 impl APIClient for MaraWebAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI {
                 command,
@@ -97,7 +97,9 @@ impl APIClient for MaraWebAPI {
                 self.send_command(command, false, parameters.clone(), Method::GET)
                     .await
             }
-            _ => Err(anyhow!("Unsupported command type for Marathon WebAPI")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for Marathon WebAPI"
+            )),
         }
     }
 }

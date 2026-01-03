@@ -16,4 +16,4 @@ jobs:
         uses: docker://codeberg.org/msrd0/cargo-doc2readme
         with:
           entrypoint: cargo
-          args: doc2readme --check
+          args: doc2readme

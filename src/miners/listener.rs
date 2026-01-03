@@ -1,6 +1,6 @@
 use std::pin::Pin;
 
-use anyhow::Result;
+use anyhow;
 use async_stream::stream;
 use tokio::net::UdpSocket;
 use tokio_stream::{Stream, StreamExt};
@@ -47,7 +47,9 @@ impl MinerListener {
     ///     }
     /// }
     /// ```
-    pub async fn listen(&self) -> Pin<Box<dyn Stream<Item = Result<Option<Box<dyn Miner>>>> + '_>> {
+    pub async fn listen(
+        &self,
+    ) -> Pin<Box<dyn Stream<Item = anyhow::Result<Option<Box<dyn Miner>>>> + '_>> {
         let am_stream = self.antminer_listener.listen().await;
         let wm_stream = self.whatsminer_listener.listen().await;
 
@@ -64,7 +66,9 @@ impl AntMinerListener {
         AntMinerListener {}
     }
 
-    pub(crate) async fn listen(&self) -> impl Stream<Item = Result<Option<Box<dyn Miner>>>> {
+    pub(crate) async fn listen(
+        &self,
+    ) -> impl Stream<Item = anyhow::Result<Option<Box<dyn Miner>>>> {
         stream! {
             let factory = MinerFactory::new();
             let sock = UdpSocket::bind("0.0.0.0:14235").await.expect("Failed to bind to port 14235 to listen for AntMiners.");
@@ -85,7 +89,9 @@ impl WhatsMinerListener {
         WhatsMinerListener {}
     }
 
-    pub(crate) async fn listen(&self) -> impl Stream<Item = Result<Option<Box<dyn Miner>>>> {
+    pub(crate) async fn listen(
+        &self,
+    ) -> impl Stream<Item = anyhow::Result<Option<Box<dyn Miner>>>> {
         stream! {
             let factory = MinerFactory::new();
             let sock = UdpSocket::bind("0.0.0.0:8888").await.expect("Failed to bind to port 8888 to listen for WhatsMiners.");

@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use regex::Regex;
 use serde_json::{Value, json};
@@ -27,27 +27,27 @@ impl AvalonMinerRPCAPI {
         Self { ip, port: 4028 }
     }
 
-    fn parse_rpc_result(&self, response: &str) -> Result<Value> {
+    fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
         let mut val: Value = serde_json::from_str(response)?;
 
         let status_array = val
             .get("STATUS")
             .and_then(|v| v.as_array())
-            .ok_or_else(|| anyhow!("Missing or invalid STATUS array"))?;
+            .ok_or_else(|| anyhow::anyhow!("Missing or invalid STATUS array"))?;
 
         if status_array.is_empty() {
-            bail!("Empty STATUS array");
+            anyhow::bail!("Empty STATUS array");
         }
 
         let status_str = status_array[0]
             .get("STATUS")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing STATUS field"))?;
+            .ok_or_else(|| anyhow::anyhow!("Missing STATUS field"))?;
 
         let message = status_array[0].get("Msg").and_then(|v| v.as_str());
         let status = RPCCommandStatus::from_str(status_str, message);
 
-        status.into_result().map_err(|e| anyhow!(e))?;
+        status.into_result().map_err(|e| anyhow::anyhow!(e))?;
 
         if let Some(stats_arr) = val["STATS"].as_array_mut() {
             for item in stats_arr {
@@ -148,7 +148,7 @@ impl RPCAPIClient for AvalonMinerRPCAPI {
         command: &str,
         _privileged: bool,
         param: Option<Value>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let cmd = match param {
             Some(params) => json!({
                 "command": command,
@@ -171,7 +171,7 @@ impl RPCAPIClient for AvalonMinerRPCAPI {
         stream.read_to_end(&mut buffer).await?;
 
         if buffer.is_empty() {
-            bail!("No data received from miner");
+            anyhow::bail!("No data received from miner");
         }
 
         let response = String::from_utf8_lossy(&buffer)
@@ -179,7 +179,7 @@ impl RPCAPIClient for AvalonMinerRPCAPI {
             .replace('\0', "");
 
         if response == "Socket connect failed: Connection refused\n" {
-            bail!("Miner connection refused");
+            anyhow::bail!("Miner connection refused");
         }
 
         self.parse_rpc_result(&response)
@@ -188,7 +188,7 @@ impl RPCAPIClient for AvalonMinerRPCAPI {
 
 #[async_trait]
 impl APIClient for AvalonMinerRPCAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC {
                 command,
@@ -196,8 +196,8 @@ impl APIClient for AvalonMinerRPCAPI {
             } => self
                 .send_command(command, false, parameters.clone())
                 .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Cannot send non RPC command to RPC API")),
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!("Cannot send non RPC command to RPC API")),
         }
     }
 }

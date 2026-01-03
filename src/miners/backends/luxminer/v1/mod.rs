@@ -11,7 +11,7 @@ use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
 };
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -63,69 +63,69 @@ impl LuxMinerV1 {
 
 #[async_trait]
 impl APIClient for LuxMinerV1 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for LuxMiner API")),
+            _ => Err(anyhow::anyhow!("Unsupported command type for LuxMiner API")),
         }
     }
 }
 
 impl GetDataLocations for LuxMinerV1 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        let version_cmd = MinerCommand::RPC {
+        const RPC_VERSION: MinerCommand = MinerCommand::RPC {
             command: "version",
             parameters: None,
         };
 
-        let stats_cmd = MinerCommand::RPC {
+        const RPC_STATS: MinerCommand = MinerCommand::RPC {
             command: "stats",
             parameters: None,
         };
 
-        let summary_cmd = MinerCommand::RPC {
+        const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
             command: "summary",
             parameters: None,
         };
 
-        let pools_cmd = MinerCommand::RPC {
+        const RPC_POOLS: MinerCommand = MinerCommand::RPC {
             command: "pools",
             parameters: None,
         };
 
-        let config_cmd = MinerCommand::RPC {
+        const RPC_CONFIG: MinerCommand = MinerCommand::RPC {
             command: "config",
             parameters: None,
         };
 
-        let fans_cmd = MinerCommand::RPC {
+        const RPC_FANS: MinerCommand = MinerCommand::RPC {
             command: "fans",
             parameters: None,
         };
 
-        let power_cmd = MinerCommand::RPC {
+        const RPC_POWER: MinerCommand = MinerCommand::RPC {
             command: "power",
             parameters: None,
         };
 
-        let profiles_cmd = MinerCommand::RPC {
+        const RPC_PROFILES: MinerCommand = MinerCommand::RPC {
             command: "profiles",
             parameters: None,
         };
 
-        let temps_cmd = MinerCommand::RPC {
+        const RPC_TEMPS: MinerCommand = MinerCommand::RPC {
             command: "temps",
             parameters: None,
         };
 
-        let devs_cmd = MinerCommand::RPC {
+        const RPC_DEVS: MinerCommand = MinerCommand::RPC {
             command: "devs",
             parameters: None,
         };
 
         match data_field {
             DataField::Mac => vec![(
-                config_cmd,
+                RPC_CONFIG,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/CONFIG/0/MACAddr"),
@@ -133,7 +133,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::Fans => vec![(
-                fans_cmd,
+                RPC_FANS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/FANS"),
@@ -141,7 +141,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::ApiVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/API"),
@@ -149,7 +149,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/Miner"),
@@ -157,7 +157,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::Hostname => vec![(
-                config_cmd,
+                RPC_CONFIG,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/CONFIG/0/Hostname"),
@@ -199,7 +199,7 @@ impl GetDataLocations for LuxMinerV1 {
                     },
                 ),
                 (
-                    stats_cmd,
+                    RPC_STATS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/STATS/1"),
@@ -207,7 +207,7 @@ impl GetDataLocations for LuxMinerV1 {
                     },
                 ),
                 (
-                    temps_cmd.clone(),
+                    RPC_TEMPS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -259,7 +259,7 @@ impl GetDataLocations for LuxMinerV1 {
                     },
                 ),
                 (
-                    temps_cmd,
+                    RPC_TEMPS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -267,7 +267,7 @@ impl GetDataLocations for LuxMinerV1 {
                     },
                 ),
                 (
-                    devs_cmd,
+                    RPC_DEVS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/DEVS"),
@@ -276,7 +276,7 @@ impl GetDataLocations for LuxMinerV1 {
                 ),
             ],
             DataField::LightFlashing => vec![(
-                config_cmd,
+                RPC_CONFIG,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/CONFIG/0/RedLed"),
@@ -284,7 +284,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::IsMining => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/GHS 5s"),
@@ -292,7 +292,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::Uptime => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1/Elapsed"),
@@ -300,7 +300,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::Pools => vec![(
-                pools_cmd,
+                RPC_POOLS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/POOLS"),
@@ -308,7 +308,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::Wattage => vec![(
-                power_cmd,
+                RPC_POWER,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/POWER/0/Watts"),
@@ -317,7 +317,7 @@ impl GetDataLocations for LuxMinerV1 {
             )],
             DataField::WattageLimit => vec![
                 (
-                    config_cmd,
+                    RPC_CONFIG,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/CONFIG/0/Profile"),
@@ -325,7 +325,7 @@ impl GetDataLocations for LuxMinerV1 {
                     },
                 ),
                 (
-                    profiles_cmd,
+                    RPC_PROFILES,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/PROFILES"),
@@ -334,7 +334,7 @@ impl GetDataLocations for LuxMinerV1 {
                 ),
             ],
             DataField::SerialNumber => vec![(
-                config_cmd,
+                RPC_CONFIG,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/CONFIG/0/SerialNumber"),
@@ -342,7 +342,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::Messages => vec![(
-                summary_cmd,
+                RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATUS"),
@@ -350,7 +350,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                config_cmd,
+                RPC_CONFIG,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/CONFIG/0/ControlBoardType"),
@@ -358,7 +358,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::Hashrate => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1/GHS 5s"),
@@ -366,7 +366,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                devs_cmd,
+                RPC_DEVS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/DEVS"),
@@ -374,7 +374,7 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::FluidTemperature => vec![(
-                temps_cmd,
+                RPC_TEMPS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -907,7 +907,7 @@ impl GetMessages for LuxMinerV1 {
 
 #[async_trait]
 impl SetFaultLight for LuxMinerV1 {
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         let mode = match fault {
             true => "blink",
             false => "auto",
@@ -919,14 +919,14 @@ impl SetFaultLight for LuxMinerV1 {
 #[async_trait]
 impl SetPowerLimit for LuxMinerV1 {
     #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Restart for LuxMinerV1 {
-    async fn restart(&self) -> Result<bool> {
+    async fn restart(&self) -> anyhow::Result<bool> {
         Ok(self.rpc.reboot_device().await.is_ok())
     }
 }
@@ -934,7 +934,7 @@ impl Restart for LuxMinerV1 {
 #[async_trait]
 impl Pause for LuxMinerV1 {
     #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self.rpc.sleep().await.is_ok())
     }
 }
@@ -942,7 +942,7 @@ impl Pause for LuxMinerV1 {
 #[async_trait]
 impl Resume for LuxMinerV1 {
     #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self.rpc.wakeup().await.is_ok())
     }
 }
@@ -959,7 +959,7 @@ mod tests {
 
     #[tokio::test]
 
-    async fn test_luxminer_v1() -> Result<()> {
+    async fn test_luxminer_v1() -> anyhow::Result<()> {
         let miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), MinerModel::AntMiner(S19KPro));
 
         let mut results = HashMap::new();

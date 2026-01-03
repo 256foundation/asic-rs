@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::net::IpAddr;
@@ -25,7 +25,7 @@ impl LUXMinerRPCAPI {
         }
     }
 
-    fn parse_rpc_result(&self, response: &str) -> Result<Value> {
+    fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
         let status = RPCCommandStatus::from_luxminer(response)?;
         match status.into_result() {
             Ok(_) => Ok(serde_json::from_str(response)?),
@@ -33,7 +33,7 @@ impl LUXMinerRPCAPI {
         }
     }
 
-    async fn auth(&self) -> Result<String> {
+    async fn auth(&self) -> anyhow::Result<String> {
         if let Ok(data) = self.session().await
             && let Some(session_id) = data
                 .get("SESSION")
@@ -54,102 +54,104 @@ impl LUXMinerRPCAPI {
         {
             Ok(session_id.to_string())
         } else {
-            Err(anyhow!("Failed to get session ID from logon response"))
+            Err(anyhow::anyhow!(
+                "Failed to get session ID from logon response"
+            ))
         }
     }
 
     // Basic commands
-    pub async fn summary(&self) -> Result<Value> {
+    pub async fn summary(&self) -> anyhow::Result<Value> {
         self.send_command("summary", false, None).await
     }
 
-    pub async fn stats(&self) -> Result<Value> {
+    pub async fn stats(&self) -> anyhow::Result<Value> {
         self.send_command("stats", false, None).await
     }
 
-    pub async fn version(&self) -> Result<Value> {
+    pub async fn version(&self) -> anyhow::Result<Value> {
         self.send_command("version", false, None).await
     }
 
-    pub async fn config(&self) -> Result<Value> {
+    pub async fn config(&self) -> anyhow::Result<Value> {
         self.send_command("config", false, None).await
     }
 
-    pub async fn pools(&self) -> Result<Value> {
+    pub async fn pools(&self) -> anyhow::Result<Value> {
         self.send_command("pools", false, None).await
     }
 
-    pub async fn devs(&self) -> Result<Value> {
+    pub async fn devs(&self) -> anyhow::Result<Value> {
         self.send_command("devs", false, None).await
     }
 
-    pub async fn fans(&self) -> Result<Value> {
+    pub async fn fans(&self) -> anyhow::Result<Value> {
         self.send_command("fans", false, None).await
     }
 
-    pub async fn temps(&self) -> Result<Value> {
+    pub async fn temps(&self) -> anyhow::Result<Value> {
         self.send_command("temps", false, None).await
     }
 
-    pub async fn power(&self) -> Result<Value> {
+    pub async fn power(&self) -> anyhow::Result<Value> {
         self.send_command("power", false, None).await
     }
 
-    pub async fn coin(&self) -> Result<Value> {
+    pub async fn coin(&self) -> anyhow::Result<Value> {
         self.send_command("coin", false, None).await
     }
 
-    pub async fn profiles(&self) -> Result<Value> {
+    pub async fn profiles(&self) -> anyhow::Result<Value> {
         self.send_command("profiles", false, None).await
     }
 
-    pub async fn tempctrl(&self) -> Result<Value> {
+    pub async fn tempctrl(&self) -> anyhow::Result<Value> {
         self.send_command("tempctrl", false, None).await
     }
 
-    pub async fn groups(&self) -> Result<Value> {
+    pub async fn groups(&self) -> anyhow::Result<Value> {
         self.send_command("groups", false, None).await
     }
 
-    pub async fn limits(&self) -> Result<Value> {
+    pub async fn limits(&self) -> anyhow::Result<Value> {
         self.send_command("limits", false, None).await
     }
 
     // Session management
-    pub async fn session(&self) -> Result<Value> {
+    pub async fn session(&self) -> anyhow::Result<Value> {
         self.send_command("session", false, None).await
     }
 
-    pub async fn logon(&self) -> Result<Value> {
+    pub async fn logon(&self) -> anyhow::Result<Value> {
         self.send_command("logon", false, None).await
     }
 
-    pub async fn logoff(&mut self) -> Result<Value> {
+    pub async fn logoff(&mut self) -> anyhow::Result<Value> {
         let result = self.send_command("logoff", true, None).await;
         self.session_token = None;
         result
     }
 
     // Privileged commands
-    pub async fn reboot_device(&self) -> Result<Value> {
+    pub async fn reboot_device(&self) -> anyhow::Result<Value> {
         self.send_command("rebootdevice", true, None).await
     }
 
-    pub async fn reset_miner(&self) -> Result<Value> {
+    pub async fn reset_miner(&self) -> anyhow::Result<Value> {
         self.send_command("resetminer", true, None).await
     }
 
-    pub async fn sleep(&self) -> Result<Value> {
+    pub async fn sleep(&self) -> anyhow::Result<Value> {
         self.send_command("curtail", true, Some(Value::String("sleep".to_string())))
             .await
     }
 
-    pub async fn wakeup(&self) -> Result<Value> {
+    pub async fn wakeup(&self) -> anyhow::Result<Value> {
         self.send_command("curtail", true, Some(Value::String("wakeup".to_string())))
             .await
     }
 
-    pub async fn ledset(&self, color: &str, state: &str) -> Result<Value> {
+    pub async fn ledset(&self, color: &str, state: &str) -> anyhow::Result<Value> {
         self.send_command(
             "ledset",
             true,
@@ -158,12 +160,12 @@ impl LUXMinerRPCAPI {
         .await
     }
 
-    pub async fn profileset(&self, profile: &str) -> Result<Value> {
+    pub async fn profileset(&self, profile: &str) -> anyhow::Result<Value> {
         self.send_command("profileset", true, Some(Value::String(profile.to_string())))
             .await
     }
 
-    pub async fn fanset(&self, speed: Option<i32>, min_fans: Option<i32>) -> Result<Value> {
+    pub async fn fanset(&self, speed: Option<i32>, min_fans: Option<i32>) -> anyhow::Result<Value> {
         let mut params = Vec::new();
         if let Some(speed) = speed {
             params.push(format!("speed={}", speed));
@@ -173,7 +175,9 @@ impl LUXMinerRPCAPI {
         }
 
         if params.is_empty() {
-            return Err(anyhow!("At least one parameter required for fanset"));
+            return Err(anyhow::anyhow!(
+                "At least one parameter required for fanset"
+            ));
         }
 
         self.send_command("fanset", true, Some(Value::String(params.join(","))))
@@ -181,7 +185,7 @@ impl LUXMinerRPCAPI {
     }
 
     // ATM (Advanced Thermal Management) commands
-    pub async fn atm(&self) -> Result<Value> {
+    pub async fn atm(&self) -> anyhow::Result<Value> {
         self.send_command("atm", false, None).await
     }
 
@@ -193,7 +197,7 @@ impl LUXMinerRPCAPI {
         temp_window: Option<i32>,
         min_profile: Option<&str>,
         max_profile: Option<&str>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let mut params = Vec::new();
 
         if let Some(enabled) = enabled {
@@ -216,7 +220,9 @@ impl LUXMinerRPCAPI {
         }
 
         if params.is_empty() {
-            return Err(anyhow!("At least one parameter required for atmset"));
+            return Err(anyhow::anyhow!(
+                "At least one parameter required for atmset"
+            ));
         }
 
         self.send_command("atmset", true, Some(Value::String(params.join(","))))
@@ -230,7 +236,7 @@ impl LUXMinerRPCAPI {
         user: &str,
         pass: &str,
         group_id: Option<&str>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let mut params = vec![url, user, pass];
         if let Some(group_id) = group_id {
             params.push(group_id);
@@ -240,7 +246,7 @@ impl LUXMinerRPCAPI {
             .await
     }
 
-    pub async fn removepool(&self, pool_id: i32) -> Result<Value> {
+    pub async fn removepool(&self, pool_id: i32) -> anyhow::Result<Value> {
         self.send_command(
             "removepool",
             false,
@@ -249,7 +255,7 @@ impl LUXMinerRPCAPI {
         .await
     }
 
-    pub async fn switchpool(&self, pool_id: i32) -> Result<Value> {
+    pub async fn switchpool(&self, pool_id: i32) -> anyhow::Result<Value> {
         self.send_command(
             "switchpool",
             false,
@@ -258,7 +264,7 @@ impl LUXMinerRPCAPI {
         .await
     }
 
-    pub async fn enablepool(&self, pool_id: i32) -> Result<Value> {
+    pub async fn enablepool(&self, pool_id: i32) -> anyhow::Result<Value> {
         self.send_command(
             "enablepool",
             false,
@@ -267,7 +273,7 @@ impl LUXMinerRPCAPI {
         .await
     }
 
-    pub async fn disablepool(&self, pool_id: i32) -> Result<Value> {
+    pub async fn disablepool(&self, pool_id: i32) -> anyhow::Result<Value> {
         self.send_command(
             "disablepool",
             false,
@@ -277,7 +283,7 @@ impl LUXMinerRPCAPI {
     }
 
     // Multi-command functionality
-    pub async fn multicommand(&self, commands: &[&str]) -> Result<Value> {
+    pub async fn multicommand(&self, commands: &[&str]) -> anyhow::Result<Value> {
         let mut results = json!({});
 
         for &command in commands {
@@ -347,7 +353,7 @@ impl LUXMinerRPCAPI {
 
 #[async_trait]
 impl APIClient for LUXMinerRPCAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC {
                 command,
@@ -355,8 +361,10 @@ impl APIClient for LUXMinerRPCAPI {
             } => self
                 .send_command(command, false, parameters.clone())
                 .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Unsupported command type for LuxMiner RPC API")),
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for LuxMiner RPC API"
+            )),
         }
     }
 }
@@ -368,7 +376,7 @@ impl RPCAPIClient for LUXMinerRPCAPI {
         command: &str,
         privileged: bool,
         parameters: Option<Value>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
@@ -387,7 +395,9 @@ impl RPCAPIClient for LUXMinerRPCAPI {
                     request["parameter"] = Value::String(token.clone());
                 }
             } else {
-                return Err(anyhow!("No session token available for privileged command"));
+                return Err(anyhow::anyhow!(
+                    "No session token available for privileged command"
+                ));
             }
         } else if let Some(params) = parameters {
             request["parameter"] = params;

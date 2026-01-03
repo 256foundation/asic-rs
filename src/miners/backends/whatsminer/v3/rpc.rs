@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use base64::prelude::*;
 use chrono::Utc;
@@ -22,7 +22,7 @@ pub struct WhatsMinerRPCAPI {
 
 #[async_trait]
 impl APIClient for WhatsMinerRPCAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC {
                 command,
@@ -30,14 +30,14 @@ impl APIClient for WhatsMinerRPCAPI {
             } => self
                 .send_command(command, false, parameters.clone())
                 .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Cannot send non RPC command to RPC API")),
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!("Cannot send non RPC command to RPC API")),
         }
     }
 }
 
 impl RPCCommandStatus {
-    fn from_btminer_v3(response: &str) -> Result<Self, RPCError> {
+    fn from_btminer_v3(response: &str) -> anyhow::Result<Self, RPCError> {
         let value: serde_json::Value = serde_json::from_str(response)?;
 
         match value["code"].as_i64() {
@@ -72,7 +72,7 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         command: &str,
         _privileged: bool,
         parameters: Option<Value>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         if _privileged || command.starts_with("set.") {
             return self.send_privileged_command(command, parameters).await;
         }
@@ -126,7 +126,7 @@ impl WhatsMinerRPCAPI {
         }
     }
 
-    fn parse_rpc_result(&self, response: &str) -> Result<Value> {
+    fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
         let status = RPCCommandStatus::from_btminer_v3(response)?;
         match status.into_result() {
             Ok(_) => Ok(serde_json::from_str(response)?),
@@ -138,10 +138,10 @@ impl WhatsMinerRPCAPI {
         &self,
         command: &str,
         parameters: Option<Value>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let salt = self.get_salt().await;
         if salt.is_none() {
-            bail!("Could not get salt for privileged command.");
+            anyhow::bail!("Could not get salt for privileged command.");
         };
 
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))

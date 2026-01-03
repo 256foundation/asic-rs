@@ -1,6 +1,6 @@
 use aes::Aes256;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit};
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use base64::prelude::*;
 use ecb::cipher::block_padding::ZeroPadding;
@@ -43,7 +43,7 @@ pub struct WhatsMinerRPCAPI {
 
 #[async_trait]
 impl APIClient for WhatsMinerRPCAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC {
                 command,
@@ -51,8 +51,8 @@ impl APIClient for WhatsMinerRPCAPI {
             } => self
                 .send_command(command, false, parameters.clone())
                 .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Cannot send non RPC command to RPC API")),
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!("Cannot send non RPC command to RPC API")),
         }
     }
 }
@@ -98,8 +98,8 @@ fn aes_ecb_dec(key: &str, data: &str) -> String {
 }
 
 impl RPCCommandStatus {
-    fn from_btminer_v2(response: &str) -> Result<Self, RPCError> {
-        let parsed: Result<serde_json::Value, _> = serde_json::from_str(response);
+    fn from_btminer_v2(response: &str) -> anyhow::Result<Self, RPCError> {
+        let parsed: anyhow::Result<serde_json::Value, _> = serde_json::from_str(response);
 
         if let Ok(data) = &parsed {
             let command_status = data["STATUS"][0]["STATUS"]
@@ -135,7 +135,7 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         command: &str,
         _privileged: bool,
         parameters: Option<Value>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         if _privileged || command.starts_with("set_") {
             return self.send_privileged_command(command, parameters).await;
         }
@@ -185,7 +185,7 @@ impl WhatsMinerRPCAPI {
         }
     }
 
-    fn parse_rpc_result(&self, response: &str) -> Result<Value> {
+    fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
         let status = RPCCommandStatus::from_btminer_v2(response)?;
         match status.into_result() {
             Ok(_) => Ok(serde_json::from_str(response)?),
@@ -193,31 +193,31 @@ impl WhatsMinerRPCAPI {
         }
     }
 
-    fn parse_privileged_rpc_result(&self, key: &str, response: &str) -> Result<Value> {
+    fn parse_privileged_rpc_result(&self, key: &str, response: &str) -> anyhow::Result<Value> {
         let enc_result = serde_json::from_str::<Value>(response)?;
         let result = aes_ecb_dec(key, enc_result.get("enc").unwrap().as_str().unwrap());
 
         self.parse_rpc_result(&result)
     }
 
-    async fn get_token_data(&self) -> Result<TokenData> {
+    async fn get_token_data(&self) -> anyhow::Result<TokenData> {
         let api_token = self.send_command("get_token", false, None).await?;
         let salt = api_token
             .get("Msg")
             .and_then(|json| json.get("salt"))
-            .ok_or(anyhow!("Could not get salt"))?
+            .ok_or(anyhow::anyhow!("Could not get salt"))?
             .as_str()
             .unwrap();
         let new_salt = api_token
             .get("Msg")
             .and_then(|json| json.get("newsalt"))
-            .ok_or(anyhow!("Could not get newsalt"))?
+            .ok_or(anyhow::anyhow!("Could not get newsalt"))?
             .as_str()
             .unwrap();
         let api_time = api_token
             .get("Msg")
             .and_then(|json| json.get("time"))
-            .ok_or(anyhow!("Could not get time"))?
+            .ok_or(anyhow::anyhow!("Could not get time"))?
             .as_str()
             .unwrap();
 
@@ -242,7 +242,7 @@ impl WhatsMinerRPCAPI {
         &self,
         command: &str,
         parameters: Option<Value>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let token_data = self.get_token_data().await?;
 
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))

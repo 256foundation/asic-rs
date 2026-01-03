@@ -161,31 +161,35 @@ fn parse_type_from_web(
     }
 }
 
-fn select_backend(
+#[tracing::instrument(level = "debug")]
+pub fn select_backend(
     ip: IpAddr,
-    model: Option<MinerModel>,
+    model: MinerModel,
     firmware: Option<MinerFirmware>,
     version: Option<semver::Version>,
 ) -> Option<Box<dyn Miner>> {
     match (model, firmware) {
-        (Some(MinerModel::WhatsMiner(_)), Some(MinerFirmware::Stock)) => {
-            Some(WhatsMiner::new(ip, model?, version))
+        (MinerModel::WhatsMiner(_), Some(MinerFirmware::Stock)) => {
+            Some(WhatsMiner::new(ip, model, version))
         }
-        (Some(MinerModel::Bitaxe(_)), Some(MinerFirmware::Stock)) => {
-            Some(Bitaxe::new(ip, model?, version))
+        (MinerModel::Bitaxe(_), Some(MinerFirmware::Stock)) => {
+            Some(Bitaxe::new(ip, model, version))
         }
-        (Some(MinerModel::AvalonMiner(_)), Some(MinerFirmware::Stock)) => {
-            Some(AvalonMiner::new(ip, model?, version))
+        (MinerModel::AvalonMiner(_), Some(MinerFirmware::Stock)) => {
+            Some(AvalonMiner::new(ip, model, version))
         }
-        (Some(MinerModel::AntMiner(_)), Some(MinerFirmware::Stock)) => {
-            Some(AntMiner::new(ip, model?, version))
+        (MinerModel::AntMiner(_), Some(MinerFirmware::Stock)) => {
+            Some(AntMiner::new(ip, model, version))
         }
-        (Some(_), Some(MinerFirmware::VNish)) => Some(Vnish::new(ip, model?, version)),
-        (Some(_), Some(MinerFirmware::EPic)) => Some(PowerPlay::new(ip, model?, version)),
-        (Some(_), Some(MinerFirmware::Marathon)) => Some(Marathon::new(ip, model?, version)),
-        (Some(_), Some(MinerFirmware::LuxOS)) => Some(LuxMiner::new(ip, model?, version)),
-        (Some(_), Some(MinerFirmware::BraiinsOS)) => Some(Braiins::new(ip, model?, version)),
-        _ => None,
+        (_, Some(MinerFirmware::VNish)) => Some(Vnish::new(ip, model, version)),
+        (_, Some(MinerFirmware::EPic)) => Some(PowerPlay::new(ip, model, version)),
+        (_, Some(MinerFirmware::Marathon)) => Some(Marathon::new(ip, model, version)),
+        (_, Some(MinerFirmware::LuxOS)) => Some(LuxMiner::new(ip, model, version)),
+        (_, Some(MinerFirmware::BraiinsOS)) => Some(Braiins::new(ip, model, version)),
+        _ => {
+            tracing::debug!("no valid backend found");
+            None
+        }
     }
 }
 
@@ -208,6 +212,7 @@ impl Default for MinerFactory {
 }
 
 impl MinerFactory {
+    #[tracing::instrument(level = "debug", skip(self))]
     pub async fn scan_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         // Quick port check first to avoid wasting time on dead IPs
         if (1..self.connectivity_retries).next().is_some() {
@@ -231,9 +236,11 @@ impl MinerFactory {
                 return self.get_miner(ip).await;
             }
         }
+        tracing::trace!("no response from any miner-specific ports");
         Ok(None)
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         let search_makes = self.search_makes.clone().unwrap_or(vec![
             MinerMake::AntMiner,
@@ -251,7 +258,6 @@ impl MinerFactory {
             MinerFirmware::HiveOS,
             MinerFirmware::LuxOS,
             MinerFirmware::Marathon,
-            MinerFirmware::MSKMiner,
         ]);
         let mut commands: HashSet<MinerCommand> = HashSet::new();
 
@@ -299,7 +305,7 @@ impl MinerFactory {
 
         match miner_info {
             Some((Some(make), Some(MinerFirmware::Stock))) => {
-                let model = make.get_model(ip).await;
+                let model = make.get_model(ip).await?;
                 let version = make.get_version(ip).await;
 
                 Ok(select_backend(
@@ -310,22 +316,21 @@ impl MinerFactory {
                 ))
             }
             Some((_, Some(firmware))) => {
-                let model = firmware.get_model(ip).await;
+                let model = firmware.get_model(ip).await?;
                 let version = firmware.get_version(ip).await;
-
-                if let Some(model) = model {
-                    return Ok(select_backend(ip, Some(model), Some(firmware), version));
-                }
 
                 Ok(select_backend(ip, model, Some(firmware), version))
             }
             Some((Some(make), firmware)) => {
-                let model = make.get_model(ip).await;
+                let model = make.get_model(ip).await?;
                 let version = make.get_version(ip).await;
 
                 Ok(select_backend(ip, model, firmware, version))
             }
-            _ => Ok(None),
+            _ => {
+                tracing::debug!("failed to identify {ip}");
+                Ok(None)
+            }
         }
     }
 

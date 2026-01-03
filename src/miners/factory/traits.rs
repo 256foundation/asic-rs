@@ -1,6 +1,6 @@
 use super::commands::{HTTP_WEB_ROOT, RPC_DEVDETAILS, RPC_VERSION};
 use super::model;
-use crate::data::device::models::MinerModel;
+use crate::data::device::models::{MinerModel, ModelSelectionError};
 use crate::data::device::{MinerFirmware, MinerMake};
 use crate::miners::commands::MinerCommand;
 use semver;
@@ -10,7 +10,7 @@ pub(crate) trait DiscoveryCommands {
     fn get_discovery_commands(&self) -> Vec<MinerCommand>;
 }
 pub(crate) trait ModelSelection {
-    async fn get_model(&self, ip: IpAddr) -> Option<MinerModel>;
+    async fn get_model(&self, ip: IpAddr) -> Result<MinerModel, ModelSelectionError>;
 }
 
 pub(crate) trait VersionSelection {
@@ -39,19 +39,19 @@ impl DiscoveryCommands for MinerFirmware {
             MinerFirmware::HiveOS => vec![],
             MinerFirmware::LuxOS => vec![HTTP_WEB_ROOT, RPC_VERSION],
             MinerFirmware::Marathon => vec![RPC_VERSION],
-            MinerFirmware::MSKMiner => vec![],
         }
     }
 }
 impl ModelSelection for MinerFirmware {
-    async fn get_model(&self, ip: IpAddr) -> Option<MinerModel> {
+    async fn get_model(&self, ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
         match self {
             MinerFirmware::LuxOS => model::get_model_luxos(ip).await,
             MinerFirmware::BraiinsOS => model::get_model_braiins_os(ip).await,
             MinerFirmware::VNish => model::get_model_vnish(ip).await,
             MinerFirmware::EPic => model::get_model_epic(ip).await,
             MinerFirmware::Marathon => model::get_model_marathon(ip).await,
-            _ => None,
+            MinerFirmware::HiveOS => todo!(),
+            MinerFirmware::Stock => unreachable!(),
         }
     }
 }
@@ -66,13 +66,14 @@ impl VersionSelection for MinerFirmware {
 }
 
 impl ModelSelection for MinerMake {
-    async fn get_model(&self, ip: IpAddr) -> Option<MinerModel> {
+    async fn get_model(&self, ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
         match self {
             MinerMake::AntMiner => model::get_model_antminer(ip).await,
             MinerMake::WhatsMiner => model::get_model_whatsminer(ip).await,
             MinerMake::Bitaxe => model::get_model_bitaxe(ip).await,
             MinerMake::AvalonMiner => model::get_model_avalonminer(ip).await,
-            _ => None,
+            MinerMake::EPic => unreachable!(),
+            MinerMake::Braiins => unreachable!(),
         }
     }
 }

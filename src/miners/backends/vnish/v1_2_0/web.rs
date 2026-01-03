@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
@@ -21,7 +21,7 @@ pub struct VnishWebAPI {
 
 #[async_trait]
 impl APIClient for VnishWebAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI {
                 command,
@@ -29,8 +29,8 @@ impl APIClient for VnishWebAPI {
             } => self
                 .send_command(command, false, parameters.clone(), Method::GET)
                 .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Cannot send non web command to web API")),
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!("Cannot send non web command to web API")),
         }
     }
 }
@@ -44,10 +44,10 @@ impl WebAPIClient for VnishWebAPI {
         _privileged: bool,
         parameters: Option<Value>,
         method: Method,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         // Ensure we're authenticated before making the request
         if let Err(e) = self.ensure_authenticated().await {
-            return Err(anyhow!("Failed to authenticate: {}", e));
+            return Err(anyhow::anyhow!("Failed to authenticate: {}", e));
         }
 
         let url = format!("http://{}:{}/api/v1/{}", self.ip, self.port, command);
@@ -86,7 +86,7 @@ impl VnishWebAPI {
     }
 
     /// Ensure authentication token is present, authenticate if needed
-    async fn ensure_authenticated(&self) -> Result<(), VnishError> {
+    async fn ensure_authenticated(&self) -> anyhow::Result<(), VnishError> {
         if self.bearer_token.read().await.is_none() && self.password.is_some() {
             if let Some(ref password) = self.password {
                 match self.authenticate(password).await {
@@ -104,7 +104,7 @@ impl VnishWebAPI {
         }
     }
 
-    async fn authenticate(&self, password: &str) -> Result<String, VnishError> {
+    async fn authenticate(&self, password: &str) -> anyhow::Result<String, VnishError> {
         let unlock_payload = serde_json::json!({ "pw": password });
         let url = format!("http://{}:{}/api/v1/unlock", self.ip, self.port);
 
@@ -139,7 +139,7 @@ impl VnishWebAPI {
         url: &str,
         method: &Method,
         parameters: Option<Value>,
-    ) -> Result<Response, VnishError> {
+    ) -> anyhow::Result<Response, VnishError> {
         let request_builder = match *method {
             Method::GET => self.client.get(url),
             Method::POST => {

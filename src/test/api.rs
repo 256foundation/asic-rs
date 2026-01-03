@@ -2,7 +2,6 @@
 
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
-use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -13,11 +12,11 @@ pub(crate) struct MockAPIClient {
 
 #[async_trait]
 impl APIClient for MockAPIClient {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         if let Some(result) = self.results.get(command) {
             Ok(result.clone())
         } else {
-            Err(anyhow!("Command not found"))
+            Err(anyhow::anyhow!("Command not found"))
         }
     }
 }

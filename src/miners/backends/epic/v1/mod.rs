@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -49,35 +49,54 @@ impl PowerPlayV1 {
 
 #[async_trait]
 impl APIClient for PowerPlayV1 {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for ePIC PowerPlay API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for ePIC PowerPlay API"
+            )),
         }
     }
 }
 
 impl GetDataLocations for PowerPlayV1 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        fn cmd(endpoint: &'static str) -> MinerCommand {
-            MinerCommand::WebAPI {
-                command: endpoint,
-                parameters: None,
-            }
-        }
-
-        let summary_cmd = cmd("summary");
-        let network_cmd = cmd("network");
-        let capabilities_cmd = cmd("capabilities");
-        let chip_temps_cmd = cmd("temps/chip");
-        let chip_voltages_cmd = cmd("voltages");
-        let chip_hashrates_cmd = cmd("hashrate");
-        let chip_clocks_cmd = cmd("clocks");
-        let temps_cmd = cmd("temps");
+        const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
+            command: "summary",
+            parameters: None,
+        };
+        const WEB_NETWORK: MinerCommand = MinerCommand::WebAPI {
+            command: "network",
+            parameters: None,
+        };
+        const WEB_CAPABILITIES: MinerCommand = MinerCommand::WebAPI {
+            command: "capabilities",
+            parameters: None,
+        };
+        const WEB_CHIP_TEMPS: MinerCommand = MinerCommand::WebAPI {
+            command: "temps/chip",
+            parameters: None,
+        };
+        const WEB_CHIP_VOLTAGES: MinerCommand = MinerCommand::WebAPI {
+            command: "voltages",
+            parameters: None,
+        };
+        const WEB_CHIP_HASHRATES: MinerCommand = MinerCommand::WebAPI {
+            command: "hashrate",
+            parameters: None,
+        };
+        const WEB_CHIP_CLOCKS: MinerCommand = MinerCommand::WebAPI {
+            command: "clocks",
+            parameters: None,
+        };
+        const WEB_TEMPS: MinerCommand = MinerCommand::WebAPI {
+            command: "temps",
+            parameters: None,
+        };
 
         match data_field {
             DataField::Mac => vec![(
-                network_cmd,
+                WEB_NETWORK,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -85,7 +104,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::Hostname => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Hostname"),
@@ -93,7 +112,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::Uptime => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Session/Uptime"),
@@ -101,7 +120,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::Wattage => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Power Supply Stats/Input Power"),
@@ -109,7 +128,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::Fans => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Fans Rpm"),
@@ -118,7 +137,7 @@ impl GetDataLocations for PowerPlayV1 {
             )],
             DataField::Hashboards => vec![
                 (
-                    temps_cmd,
+                    WEB_TEMPS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -126,7 +145,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    summary_cmd,
+                    WEB_SUMMARY,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -134,7 +153,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    chip_temps_cmd,
+                    WEB_CHIP_TEMPS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -142,7 +161,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    chip_voltages_cmd,
+                    WEB_CHIP_VOLTAGES,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -150,7 +169,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    chip_hashrates_cmd,
+                    WEB_CHIP_HASHRATES,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -158,7 +177,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    chip_clocks_cmd,
+                    WEB_CHIP_CLOCKS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -166,7 +185,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
-                    capabilities_cmd,
+                    WEB_CAPABILITIES,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -175,7 +194,7 @@ impl GetDataLocations for PowerPlayV1 {
                 ),
             ],
             DataField::Pools => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -183,7 +202,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::IsMining => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Status/Operating State"),
@@ -191,7 +210,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::LightFlashing => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Misc/Locate Miner State"),
@@ -199,7 +218,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::ControlBoardVersion => vec![(
-                capabilities_cmd,
+                WEB_CAPABILITIES,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Control Board Version/cpuHardware"),
@@ -207,7 +226,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::SerialNumber => vec![(
-                capabilities_cmd,
+                WEB_CAPABILITIES,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Control Board Version/cpuSerial"),
@@ -215,7 +234,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                capabilities_cmd,
+                WEB_CAPABILITIES,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Default Hashrate"),
@@ -223,7 +242,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Software"),
@@ -231,7 +250,7 @@ impl GetDataLocations for PowerPlayV1 {
                 },
             )],
             DataField::Hashrate => vec![(
-                summary_cmd,
+                WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/HBs"),
@@ -785,7 +804,7 @@ impl GetPools for PowerPlayV1 {
 #[async_trait]
 impl SetFaultLight for PowerPlayV1 {
     #[allow(unused_variables)]
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         self.web
             .send_command(
                 "identify",
@@ -801,14 +820,14 @@ impl SetFaultLight for PowerPlayV1 {
 #[async_trait]
 impl SetPowerLimit for PowerPlayV1 {
     #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 #[async_trait]
 impl Restart for PowerPlayV1 {
-    async fn restart(&self) -> Result<bool> {
+    async fn restart(&self) -> anyhow::Result<bool> {
         self.web
             .send_command("reboot", false, Some(json!({"param": "0"})), Method::POST)
             .await
@@ -819,7 +838,7 @@ impl Restart for PowerPlayV1 {
 #[async_trait]
 impl Pause for PowerPlayV1 {
     #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         self.web
             .send_command("miner", false, Some(json!({"param": "Stop"})), Method::POST)
             .await
@@ -830,7 +849,7 @@ impl Pause for PowerPlayV1 {
 #[async_trait]
 impl Resume for PowerPlayV1 {
     #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool> {
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         self.web
             .send_command(
                 "miner",
@@ -849,10 +868,10 @@ mod tests {
     use crate::data::device::models::antminer::AntMinerModel::S19XP;
     use crate::test::api::MockAPIClient;
     use crate::test::json::epic::v1::*;
-    use anyhow::Result;
+    use anyhow;
 
     #[tokio::test]
-    async fn parse_data_test_antminer_s19xp() -> Result<()> {
+    async fn parse_data_test_antminer_s19xp() -> anyhow::Result<()> {
         let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), MinerModel::AntMiner(S19XP));
 
         let mut results = HashMap::new();

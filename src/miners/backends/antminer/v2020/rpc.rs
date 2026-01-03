@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use std::net::IpAddr;
@@ -25,7 +25,7 @@ impl AntMinerRPCAPI {
         command: &str,
         _privileged: bool,
         parameters: Option<Value>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
@@ -67,7 +67,7 @@ impl AntMinerRPCAPI {
         self.parse_rpc_result(clean_response)
     }
 
-    fn parse_rpc_result(&self, response: &str) -> Result<Value> {
+    fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
         let status = RPCCommandStatus::from_antminer(response)?;
         match status.into_result() {
             Ok(_) => Ok(serde_json::from_str(response)?),
@@ -75,7 +75,7 @@ impl AntMinerRPCAPI {
         }
     }
 
-    pub async fn stats(&self, new_api: bool) -> Result<Value> {
+    pub async fn stats(&self, new_api: bool) -> anyhow::Result<Value> {
         if new_api {
             self.send_rpc_command("stats", false, Some(json!({"new_api": true})))
                 .await
@@ -84,7 +84,7 @@ impl AntMinerRPCAPI {
         }
     }
 
-    pub async fn summary(&self, new_api: bool) -> Result<Value> {
+    pub async fn summary(&self, new_api: bool) -> anyhow::Result<Value> {
         if new_api {
             self.send_rpc_command("summary", false, Some(json!({"new_api": true})))
                 .await
@@ -93,7 +93,7 @@ impl AntMinerRPCAPI {
         }
     }
 
-    pub async fn pools(&self, new_api: bool) -> Result<Value> {
+    pub async fn pools(&self, new_api: bool) -> anyhow::Result<Value> {
         if new_api {
             self.send_rpc_command("pools", false, Some(json!({"new_api": true})))
                 .await
@@ -102,21 +102,21 @@ impl AntMinerRPCAPI {
         }
     }
 
-    pub async fn version(&self) -> Result<Value> {
+    pub async fn version(&self) -> anyhow::Result<Value> {
         self.send_rpc_command("version", false, None).await
     }
 
-    pub async fn rate(&self) -> Result<Value> {
+    pub async fn rate(&self) -> anyhow::Result<Value> {
         self.send_rpc_command("rate", false, Some(json!({"new_api": true})))
             .await
     }
 
-    pub async fn warning(&self) -> Result<Value> {
+    pub async fn warning(&self) -> anyhow::Result<Value> {
         self.send_rpc_command("warning", false, Some(json!({"new_api": true})))
             .await
     }
 
-    pub async fn reload(&self) -> Result<Value> {
+    pub async fn reload(&self) -> anyhow::Result<Value> {
         self.send_rpc_command("reload", false, Some(json!({"new_api": true})))
             .await
     }
@@ -124,7 +124,7 @@ impl AntMinerRPCAPI {
 
 #[async_trait]
 impl APIClient for AntMinerRPCAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC {
                 command,
@@ -132,8 +132,8 @@ impl APIClient for AntMinerRPCAPI {
             } => self
                 .send_rpc_command(command, false, parameters.clone())
                 .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Unsupported command type for RPC client")),
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!("Unsupported command type for RPC client")),
         }
     }
 }
@@ -145,7 +145,7 @@ impl RPCAPIClient for AntMinerRPCAPI {
         command: &str,
         privileged: bool,
         parameters: Option<Value>,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         self.send_rpc_command(command, privileged, parameters).await
     }
 }

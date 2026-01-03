@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow;
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
@@ -22,7 +22,7 @@ pub struct BraiinsWebAPI {
 
 #[async_trait]
 impl APIClient for BraiinsWebAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI {
                 command,
@@ -30,8 +30,8 @@ impl APIClient for BraiinsWebAPI {
             } => self
                 .send_command(command, false, parameters.clone(), Method::GET)
                 .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Cannot send non web command to web API")),
+                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            _ => Err(anyhow::anyhow!("Cannot send non web command to web API")),
         }
     }
 }
@@ -45,10 +45,10 @@ impl WebAPIClient for BraiinsWebAPI {
         _privileged: bool,
         parameters: Option<Value>,
         method: Method,
-    ) -> Result<Value> {
+    ) -> anyhow::Result<Value> {
         // Ensure we're authenticated before making the request
         if let Err(e) = self.ensure_authenticated().await {
-            return Err(anyhow!("Failed to authenticate: {}", e));
+            return Err(anyhow::anyhow!("Failed to authenticate: {}", e));
         }
 
         let url = format!("http://{}:{}/api/v1/{}", self.ip, self.port, command);
@@ -88,7 +88,7 @@ impl BraiinsWebAPI {
     }
 
     /// Ensure authentication token is present, authenticate if needed
-    async fn ensure_authenticated(&self) -> Result<(), BraiinsError> {
+    async fn ensure_authenticated(&self) -> anyhow::Result<(), BraiinsError> {
         if self.bearer_token.read().await.is_some() {
             return Ok(());
         }
@@ -103,7 +103,7 @@ impl BraiinsWebAPI {
 
         Ok(())
     }
-    async fn authenticate(&self, password: &str) -> Result<String, BraiinsError> {
+    async fn authenticate(&self, password: &str) -> anyhow::Result<String, BraiinsError> {
         let unlock_payload = serde_json::json!({ "password": password, "username": "root" });
         let url = format!("http://{}:{}/api/v1/auth/login", self.ip, self.port);
 
@@ -138,7 +138,7 @@ impl BraiinsWebAPI {
         url: &str,
         method: &Method,
         parameters: Option<Value>,
-    ) -> Result<Response, BraiinsError> {
+    ) -> anyhow::Result<Response, BraiinsError> {
         let request_builder = match *method {
             Method::GET => self.client.get(url),
             Method::POST => {

@@ -1,6 +1,6 @@
 [package]
 name = "asic-rs"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 license = "Apache-2.0"
 description = "Simple ASIC management in Rust"
@@ -31,19 +31,21 @@ aes = "0.8.4"
 hex = "0.4.3"
 ecb = "0.1.2"
 md5crypt = "1.0.0"
+tracing = { version = "0.1.41", features = ["log"] }
 
-pyo3 = { version = "0.26.0", features = [
+pyo3 = { version = "0.27.1", features = [
     "extension-module",
     "experimental-async",
     "experimental-inspect",
     "multiple-pymethods",
     "time",
 ], optional = true }
-pyo3-async-runtimes = { version = "0.26.0", optional = true, features = ["tokio-runtime", "unstable-streams"] }
-pyo3-introspection = { version = "0.26.0", optional = true }
+pyo3-async-runtimes = { version = "0.27.0", optional = true, features = ["tokio-runtime", "unstable-streams"] }
+pyo3-introspection = { version = "0.27.1", optional = true }
+pyo3-log = { version = "0.13.2", optional = true }
 
 [features]
-python = ["dep:pyo3", "dep:pyo3-async-runtimes", "dep:pyo3-introspection"]
+python = ["dep:pyo3", "dep:pyo3-async-runtimes", "dep:pyo3-introspection", "dep:pyo3-log"]
 
 [profile.release]
 opt-level = 3
@@ -55,4 +57,4 @@ strip = true
 
 [lib]
 name = "asic_rs"
-crate-type = ["cdylib", "rlib", "lib"]
+crate-type = ["cdylib", "lib"]

@@ -26,8 +26,6 @@ pub enum MinerFirmware {
     LuxOS,
     #[serde(rename = "Marathon")]
     Marathon,
-    #[serde(rename = "MSKMiner")]
-    MSKMiner,
 }
 
 #[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]

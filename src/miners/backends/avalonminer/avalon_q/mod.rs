@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
@@ -46,7 +46,7 @@ impl AvalonQMiner {
     }
 
     /// Reboot the miner
-    pub async fn reboot(&self) -> Result<bool> {
+    pub async fn reboot(&self) -> anyhow::Result<bool> {
         let data = self.rpc.send_command("restart", false, None).await?;
 
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_str()) {
@@ -59,17 +59,19 @@ impl AvalonQMiner {
 
 #[async_trait]
 impl APIClient for AvalonQMiner {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for AvalonMiner API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for AvalonMiner API"
+            )),
         }
     }
 }
 
 #[async_trait]
 impl Pause for AvalonQMiner {
-    async fn pause(&self, after: Option<Duration>) -> Result<bool> {
+    async fn pause(&self, after: Option<Duration>) -> anyhow::Result<bool> {
         let offset = after.unwrap_or(Duration::from_secs(5));
         let shutdown_time = SystemTime::now() + offset;
 
@@ -101,7 +103,7 @@ impl Pause for AvalonQMiner {
 }
 #[async_trait]
 impl Resume for AvalonQMiner {
-    async fn resume(&self, after: Option<Duration>) -> Result<bool> {
+    async fn resume(&self, after: Option<Duration>) -> anyhow::Result<bool> {
         let offset = after.unwrap_or(Duration::from_secs(5));
         let shutdown_time = SystemTime::now() + offset;
 
@@ -132,7 +134,7 @@ impl Resume for AvalonQMiner {
 }
 #[async_trait]
 impl SetFaultLight for AvalonQMiner {
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         let command = if fault { "1-1" } else { "1-0" };
 
         let data = self
@@ -149,13 +151,13 @@ impl SetFaultLight for AvalonQMiner {
             return Ok(msg == "ASC 0 set OK");
         }
 
-        Err(anyhow!("Failed to set fault light to {}", command))
+        Err(anyhow::anyhow!("Failed to set fault light to {}", command))
     }
 }
 
 #[async_trait]
 impl SetPowerLimit for AvalonQMiner {
-    async fn set_power_limit(&self, limit: Power) -> Result<bool> {
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
         let data = self
             .rpc
             .send_command(
@@ -172,39 +174,39 @@ impl SetPowerLimit for AvalonQMiner {
             return Ok(msg == "ASC 0 set OK");
         }
 
-        Err(anyhow!("Failed to set power limit"))
+        Err(anyhow::anyhow!("Failed to set power limit"))
     }
 }
 
 #[async_trait]
 impl Restart for AvalonQMiner {
-    async fn restart(&self) -> Result<bool> {
-        bail!("Unsupported command");
+    async fn restart(&self) -> anyhow::Result<bool> {
+        anyhow::bail!("Unsupported command");
     }
 }
 
 impl GetDataLocations for AvalonQMiner {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
-        let version_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_VERSION: MinerCommand = MinerCommand::RPC {
             command: "version",
             parameters: None,
         };
-        let stats_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_STATS: MinerCommand = MinerCommand::RPC {
             command: "stats",
             parameters: None,
         };
-        let devs_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_DEVS: MinerCommand = MinerCommand::RPC {
             command: "devs",
             parameters: None,
         };
-        let pools_cmd: MinerCommand = MinerCommand::RPC {
+        const RPC_POOLS: MinerCommand = MinerCommand::RPC {
             command: "pools",
             parameters: None,
         };
 
         match data_field {
             DataField::Mac => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/MAC"),
@@ -212,7 +214,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::ApiVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/API"),
@@ -220,7 +222,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                version_cmd,
+                RPC_VERSION,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/VERSION/0/CGMiner"),
@@ -228,7 +230,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::Hashrate => vec![(
-                devs_cmd,
+                RPC_DEVS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/DEVS/0/MHS 1m"),
@@ -236,7 +238,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::ExpectedHashrate => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS/GHSmm"),
@@ -244,7 +246,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::Hashboards => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/HBinfo"),
@@ -252,7 +254,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::AverageTemperature => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS/ITemp"),
@@ -260,7 +262,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::WattageLimit => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS/MPO"),
@@ -268,7 +270,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::Wattage => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS/WALLPOWER"),
@@ -276,7 +278,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::Fans => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS"),
@@ -284,7 +286,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::LightFlashing => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0:Summary/STATS/Led"),
@@ -292,7 +294,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::Uptime => vec![(
-                stats_cmd,
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/Elapsed"),
@@ -300,7 +302,7 @@ impl GetDataLocations for AvalonQMiner {
                 },
             )],
             DataField::Pools => vec![(
-                pools_cmd,
+                RPC_POOLS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/POOLS"),
@@ -565,7 +567,7 @@ mod tests {
 
     #[tokio::test]
 
-    async fn test_avalon_home_q() -> Result<()> {
+    async fn test_avalon_home_q() -> anyhow::Result<()> {
         let miner = AvalonQMiner::new(
             IpAddr::from([127, 0, 0, 1]),
             MinerModel::AvalonMiner(AvalonHomeQ),

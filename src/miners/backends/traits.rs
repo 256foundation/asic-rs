@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{Power, Temperature};
@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::net::IpAddr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tracing;
 
 use crate::data::board::BoardData;
 use crate::data::device::{DeviceInfo, MinerControlBoard, MinerModel};
@@ -234,7 +235,7 @@ impl<
 
 #[async_trait]
 pub trait APIClient: Send + Sync {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value>;
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value>;
 }
 
 #[async_trait]
@@ -245,7 +246,7 @@ pub trait WebAPIClient: APIClient {
         _privileged: bool,
         parameters: Option<Value>,
         method: Method,
-    ) -> Result<Value>;
+    ) -> anyhow::Result<Value>;
 }
 
 #[async_trait]
@@ -255,7 +256,7 @@ pub trait RPCAPIClient: APIClient {
         command: &str,
         _privileged: bool,
         parameters: Option<Value>,
-    ) -> Result<Value>;
+    ) -> anyhow::Result<Value>;
 }
 
 // Data traits
@@ -296,6 +297,7 @@ impl<T: GetDeviceInfo> GetExpectedFans for T {}
 // MAC Address
 #[async_trait]
 pub trait GetMAC: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_mac(&self) -> Option<MacAddr> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Mac]).await;
@@ -310,6 +312,7 @@ pub trait GetMAC: CollectData {
 // Serial Number
 #[async_trait]
 pub trait GetSerialNumber: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_serial_number(&self) -> Option<String> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::SerialNumber]).await;
@@ -324,6 +327,7 @@ pub trait GetSerialNumber: CollectData {
 // Hostname
 #[async_trait]
 pub trait GetHostname: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_hostname(&self) -> Option<String> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Hostname]).await;
@@ -338,6 +342,7 @@ pub trait GetHostname: CollectData {
 // API Version
 #[async_trait]
 pub trait GetApiVersion: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_api_version(&self) -> Option<String> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::ApiVersion]).await;
@@ -352,6 +357,7 @@ pub trait GetApiVersion: CollectData {
 // Firmware Version
 #[async_trait]
 pub trait GetFirmwareVersion: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_firmware_version(&self) -> Option<String> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::FirmwareVersion]).await;
@@ -366,6 +372,7 @@ pub trait GetFirmwareVersion: CollectData {
 // Control Board Version
 #[async_trait]
 pub trait GetControlBoardVersion: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_control_board_version(&self) -> Option<MinerControlBoard> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::ControlBoardVersion]).await;
@@ -382,6 +389,7 @@ pub trait GetControlBoardVersion: CollectData {
 // Hashboards
 #[async_trait]
 pub trait GetHashboards: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_hashboards(&self) -> Vec<BoardData> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Hashboards]).await;
@@ -396,6 +404,7 @@ pub trait GetHashboards: CollectData {
 // Hashrate
 #[async_trait]
 pub trait GetHashrate: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_hashrate(&self) -> Option<HashRate> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Hashrate]).await;
@@ -411,6 +420,7 @@ pub trait GetHashrate: CollectData {
 // Expected Hashrate
 #[async_trait]
 pub trait GetExpectedHashrate: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_expected_hashrate(&self) -> Option<HashRate> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::ExpectedHashrate]).await;
@@ -426,6 +436,7 @@ pub trait GetExpectedHashrate: CollectData {
 // Fans
 #[async_trait]
 pub trait GetFans: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_fans(&self) -> Vec<FanData> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Fans]).await;
@@ -440,6 +451,7 @@ pub trait GetFans: CollectData {
 // PSU Fans
 #[async_trait]
 pub trait GetPsuFans: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_psu_fans(&self) -> Vec<FanData> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::PsuFans]).await;
@@ -454,6 +466,7 @@ pub trait GetPsuFans: CollectData {
 // Fluid Temperature
 #[async_trait]
 pub trait GetFluidTemperature: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_fluid_temperature(&self) -> Option<Temperature> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::FluidTemperature]).await;
@@ -468,6 +481,7 @@ pub trait GetFluidTemperature: CollectData {
 // Wattage
 #[async_trait]
 pub trait GetWattage: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_wattage(&self) -> Option<Power> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Wattage]).await;
@@ -482,6 +496,7 @@ pub trait GetWattage: CollectData {
 // Wattage Limit
 #[async_trait]
 pub trait GetWattageLimit: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_wattage_limit(&self) -> Option<Power> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::WattageLimit]).await;
@@ -496,6 +511,7 @@ pub trait GetWattageLimit: CollectData {
 // Light Flashing
 #[async_trait]
 pub trait GetLightFlashing: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_light_flashing(&self) -> Option<bool> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::LightFlashing]).await;
@@ -510,32 +526,33 @@ pub trait GetLightFlashing: CollectData {
 // Setters
 #[async_trait]
 pub trait SetFaultLight {
-    async fn set_fault_light(&self, fault: bool) -> Result<bool>;
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool>;
 }
 
 #[async_trait]
 pub trait SetPowerLimit {
-    async fn set_power_limit(&self, limit: Power) -> Result<bool>;
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool>;
 }
 
 #[async_trait]
 pub trait Restart {
-    async fn restart(&self) -> Result<bool>;
+    async fn restart(&self) -> anyhow::Result<bool>;
 }
 
 #[async_trait]
 pub trait Pause {
-    async fn pause(&self, at_time: Option<Duration>) -> Result<bool>;
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool>;
 }
 
 #[async_trait]
 pub trait Resume {
-    async fn resume(&self, at_time: Option<Duration>) -> Result<bool>;
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool>;
 }
 
 // Messages
 #[async_trait]
 pub trait GetMessages: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_messages(&self) -> Vec<MinerMessage> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Messages]).await;
@@ -550,6 +567,7 @@ pub trait GetMessages: CollectData {
 // Uptime
 #[async_trait]
 pub trait GetUptime: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_uptime(&self) -> Option<Duration> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Uptime]).await;
@@ -564,6 +582,7 @@ pub trait GetUptime: CollectData {
 // Is Mining
 #[async_trait]
 pub trait GetIsMining: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_is_mining(&self) -> bool {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::IsMining]).await;
@@ -578,6 +597,7 @@ pub trait GetIsMining: CollectData {
 // Pools
 #[async_trait]
 pub trait GetPools: CollectData {
+    #[tracing::instrument(level = "debug")]
     async fn get_pools(&self) -> Vec<PoolData> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Pools]).await;
