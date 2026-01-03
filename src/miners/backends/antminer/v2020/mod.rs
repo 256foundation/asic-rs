@@ -772,15 +772,40 @@ impl Restart for AntMinerV2020 {
     }
 }
 
+impl AntMinerV2020 {
+    async fn set_paused(&self, paused: bool) -> anyhow::Result<bool> {
+        // Newer firmware/models: bitmain-work-mode: "0" (normal) / "1" (sleep)
+        let work_mode = if paused { "1" } else { "0" };
+
+        if self
+            .web
+            .set_miner_conf(json!({ "bitmain-work-mode": work_mode }))
+            .await
+            .is_ok()
+        {
+            return Ok(true);
+        }
+
+        // Older firmware fallback: miner-mode
+        let legacy_mode = if paused {
+            MinerMode::Sleep.to_string()
+        } else {
+            MinerMode::Normal.to_string()
+        };
+
+        Ok(self
+            .web
+            .set_miner_conf(json!({ "miner-mode": legacy_mode }))
+            .await
+            .is_ok())
+    }
+}
+
 #[async_trait]
 impl Pause for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self
-            .web
-            .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
-            .await
-            .is_ok())
+        self.set_paused(true).await
     }
 }
 
@@ -788,11 +813,7 @@ impl Pause for AntMinerV2020 {
 impl Resume for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self
-            .web
-            .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))
-            .await
-            .is_ok())
+        self.set_paused(false).await
     }
 }
 
