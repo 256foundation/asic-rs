@@ -16,10 +16,10 @@ use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use reqwest::Method;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
-use std::fmt::Display;
 
 use crate::data::message::{MessageSeverity, MinerMessage};
 use web::MaraWebAPI;
@@ -55,11 +55,17 @@ impl Display for MaraWorkMode {
 
 impl MaraWorkMode {
     fn from_str_case_insensitive(s: &str) -> anyhow::Result<Self> {
-        if s.eq_ignore_ascii_case("auto") { Ok(Self::Auto) }
-        else if s.eq_ignore_ascii_case("fixed") { Ok(Self::Fixed) }
-        else if s.eq_ignore_ascii_case("stock") { Ok(Self::Stock) }
-        else if s.eq_ignore_ascii_case("sleep") { Ok(Self::Sleep) }
-        else { anyhow::bail!("Unknown MaraFW work mode: {s}") }
+        if s.eq_ignore_ascii_case("auto") {
+            Ok(Self::Auto)
+        } else if s.eq_ignore_ascii_case("fixed") {
+            Ok(Self::Fixed)
+        } else if s.eq_ignore_ascii_case("stock") {
+            Ok(Self::Stock)
+        } else if s.eq_ignore_ascii_case("sleep") {
+            Ok(Self::Sleep)
+        } else {
+            anyhow::bail!("Unknown MaraFW work mode: {s}")
+        }
     }
 }
 
@@ -83,7 +89,10 @@ impl MaraV1 {
             .send_command("miner_config", true, None, Method::GET)
             .await?;
 
-        let Some(s) = cfg.pointer("/mode/work-mode-selector").and_then(|v| v.as_str()) else {
+        let Some(s) = cfg
+            .pointer("/mode/work-mode-selector")
+            .and_then(|v| v.as_str())
+        else {
             return Ok(None);
         };
 
@@ -111,7 +120,10 @@ impl MaraV1 {
             .await?;
 
         if resp.get("error").and_then(|v| v.as_bool()) == Some(true) {
-            let msg = resp.get("msg").and_then(|v| v.as_str()).unwrap_or("unknown error");
+            let msg = resp
+                .get("msg")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown error");
             anyhow::bail!("MaraFW miner_config POST failed: {msg}");
         }
 
