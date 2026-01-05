@@ -296,13 +296,10 @@ impl MinerFactory {
                         // Keep the best fallback so far: Stock > make-only > None
                         let upgrade = match (&found, &result) {
                             (None, _) => true,
-
+                            // Upgrade none -> stock
+                            (Some((None, None)), (_, Some(MinerFirmware::Stock))) => true,
                             // Upgrade make-only -> stock
-                            (Some((_, None)), (_, Some(MinerFirmware::Stock))) => true,
-
-                            // Upgrade None -> make-only (has make)
-                            (Some((None, None)), (Some(_), None)) => true,
-
+                            (Some((Some(_), None)), (_, Some(MinerFirmware::Stock))) => true,
                             _ => false,
                         };
 

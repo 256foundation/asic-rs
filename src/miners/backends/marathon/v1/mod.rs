@@ -53,21 +53,21 @@ impl Display for MaraWorkMode {
     }
 }
 
-impl MaraWorkMode {
-    fn from_str_case_insensitive(s: &str) -> anyhow::Result<Self> {
-        if s.eq_ignore_ascii_case("auto") {
-            Ok(Self::Auto)
-        } else if s.eq_ignore_ascii_case("fixed") {
-            Ok(Self::Fixed)
-        } else if s.eq_ignore_ascii_case("stock") {
-            Ok(Self::Stock)
-        } else if s.eq_ignore_ascii_case("sleep") {
-            Ok(Self::Sleep)
-        } else {
-            anyhow::bail!("Unknown MaraFW work mode: {s}")
+impl FromStr for MaraWorkMode {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "auto" => Ok(MaraWorkMode::Auto),
+            "fixed" => Ok(MaraWorkMode::Fixed),
+            "stock" => Ok(MaraWorkMode::Stock),
+            "sleep" => Ok(MaraWorkMode::Sleep),
+
+            other => anyhow::bail!("unknown Mara work mode: {other}"),
         }
     }
 }
+
 
 impl MaraV1 {
     pub fn new(ip: IpAddr, model: MinerModel) -> Self {
@@ -96,7 +96,7 @@ impl MaraV1 {
             return Ok(None);
         };
 
-        Ok(Some(MaraWorkMode::from_str_case_insensitive(s)?))
+        Ok(Some(s.parse::<MaraWorkMode>()?))
     }
 
     async fn set_work_mode(&self, mode: MaraWorkMode) -> anyhow::Result<bool> {
@@ -186,7 +186,8 @@ impl MaraV1 {
                         continue;
                     };
 
-                    if MaraWorkMode::from_str_case_insensitive(to)? != MaraWorkMode::Sleep {
+                    let to_mode = to.parse::<MaraWorkMode>()?;
+                    if to_mode != MaraWorkMode::Sleep {
                         continue;
                     }
 
@@ -194,10 +195,11 @@ impl MaraV1 {
                         continue;
                     };
 
-                    let from_mode = MaraWorkMode::from_str_case_insensitive(from)?;
+                    let from_mode = from.parse::<MaraWorkMode>()?;
                     if from_mode != MaraWorkMode::Sleep {
                         return Ok(Some(from_mode));
                     }
+
                 }
             }
         }
