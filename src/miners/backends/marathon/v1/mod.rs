@@ -68,7 +68,6 @@ impl FromStr for MaraWorkMode {
     }
 }
 
-
 impl MaraV1 {
     pub fn new(ip: IpAddr, model: MinerModel) -> Self {
         MaraV1 {
@@ -199,7 +198,6 @@ impl MaraV1 {
                     if from_mode != MaraWorkMode::Sleep {
                         return Ok(Some(from_mode));
                     }
-
                 }
             }
         }
