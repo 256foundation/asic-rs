@@ -19,6 +19,7 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
+use std::fmt::Display;
 
 use crate::data::message::{MessageSeverity, MinerMessage};
 use web::MaraWebAPI;
@@ -30,6 +31,36 @@ pub struct MaraV1 {
     ip: IpAddr,
     web: MaraWebAPI,
     device_info: DeviceInfo,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MaraWorkMode {
+    Auto,
+    Fixed,
+    Stock,
+    Sleep,
+}
+
+impl Display for MaraWorkMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            MaraWorkMode::Auto => "Auto",
+            MaraWorkMode::Fixed => "Fixed",
+            MaraWorkMode::Stock => "Stock",
+            MaraWorkMode::Sleep => "Sleep",
+        };
+        write!(f, "{s}")
+    }
+}
+
+impl MaraWorkMode {
+    fn from_str_case_insensitive(s: &str) -> anyhow::Result<Self> {
+        if s.eq_ignore_ascii_case("auto") { Ok(Self::Auto) }
+        else if s.eq_ignore_ascii_case("fixed") { Ok(Self::Fixed) }
+        else if s.eq_ignore_ascii_case("stock") { Ok(Self::Stock) }
+        else if s.eq_ignore_ascii_case("sleep") { Ok(Self::Sleep) }
+        else { anyhow::bail!("Unknown MaraFW work mode: {s}") }
+    }
 }
 
 impl MaraV1 {
@@ -46,51 +77,48 @@ impl MaraV1 {
         }
     }
 
-    async fn get_work_mode(&self) -> anyhow::Result<Option<String>> {
+    async fn get_work_mode(&self) -> anyhow::Result<Option<MaraWorkMode>> {
         let cfg = self
             .web
             .send_command("miner_config", true, None, Method::GET)
             .await?;
 
-        Ok(cfg
-            .pointer("/mode/work-mode-selector")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string()))
+        let Some(s) = cfg.pointer("/mode/work-mode-selector").and_then(|v| v.as_str()) else {
+            return Ok(None);
+        };
+
+        Ok(Some(MaraWorkMode::from_str_case_insensitive(s)?))
     }
 
-    async fn set_work_mode(&self, mode: &str) -> anyhow::Result<bool> {
-        // 1) GET current config
+    async fn set_work_mode(&self, mode: MaraWorkMode) -> anyhow::Result<bool> {
+        // 1) GET current full config
         let mut cfg = self
             .web
             .send_command("miner_config", true, None, Method::GET)
             .await?;
 
-        // 2) Update mode.work-mode-selector (e.g. "Sleep" or "Stock")
+        // 2) Update only the selector
         if let Some(v) = cfg.pointer_mut("/mode/work-mode-selector") {
             *v = Value::String(mode.to_string());
         } else {
             anyhow::bail!("MaraFW miner_config missing /mode/work-mode-selector");
         }
 
-        // 3) POST updated config back
+        // 3) POST full updated config back
         let resp = self
             .web
             .send_command("miner_config", true, Some(cfg), Method::POST)
             .await?;
 
-        // MaraFW responds with: {"error":false,"msg":"success"}
         if resp.get("error").and_then(|v| v.as_bool()) == Some(true) {
-            let msg = resp
-                .get("msg")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown error");
+            let msg = resp.get("msg").and_then(|v| v.as_str()).unwrap_or("unknown error");
             anyhow::bail!("MaraFW miner_config POST failed: {msg}");
         }
 
         Ok(true)
     }
 
-    async fn last_mode_before_sleep_from_history(&self) -> anyhow::Result<Option<String>> {
+    async fn last_mode_before_sleep_from_history(&self) -> anyhow::Result<Option<MaraWorkMode>> {
         let history = self
             .web
             .send_command("log?type=miner_config_history", true, None, Method::GET)
@@ -142,14 +170,21 @@ impl MaraV1 {
                         continue;
                     }
 
-                    let to = change.get("to").and_then(|v| v.as_str());
-                    if to.map(|s| s.eq_ignore_ascii_case("Sleep")).unwrap_or(false) {
-                        let from = change.get("from").and_then(|v| v.as_str());
-                        if let Some(from) = from
-                            && !from.eq_ignore_ascii_case("Sleep")
-                        {
-                            return Ok(Some(from.to_string()));
-                        }
+                    let Some(to) = change.get("to").and_then(|v| v.as_str()) else {
+                        continue;
+                    };
+
+                    if MaraWorkMode::from_str_case_insensitive(to)? != MaraWorkMode::Sleep {
+                        continue;
+                    }
+
+                    let Some(from) = change.get("from").and_then(|v| v.as_str()) else {
+                        continue;
+                    };
+
+                    let from_mode = MaraWorkMode::from_str_case_insensitive(from)?;
+                    if from_mode != MaraWorkMode::Sleep {
+                        return Ok(Some(from_mode));
                     }
                 }
             }
@@ -793,30 +828,28 @@ impl Restart for MaraV1 {
 #[async_trait]
 impl Pause for MaraV1 {
     async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
-        // No-op if already sleeping (e.g., user used the GUI).
-        let current = self.get_work_mode().await?.unwrap_or_default();
-        if current.eq_ignore_ascii_case("Sleep") {
+        let current = self.get_work_mode().await?.unwrap_or(MaraWorkMode::Stock);
+        if current == MaraWorkMode::Sleep {
             return Ok(true);
         }
-        self.set_work_mode("Sleep").await
+
+        self.set_work_mode(MaraWorkMode::Sleep).await
     }
 }
 
 #[async_trait]
 impl Resume for MaraV1 {
     async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
-        // If it's not sleeping, nothing to do.
-        let current = self.get_work_mode().await?.unwrap_or_default();
-        if !current.eq_ignore_ascii_case("Sleep") {
+        let current = self.get_work_mode().await?.unwrap_or(MaraWorkMode::Stock);
+        if current != MaraWorkMode::Sleep {
             return Ok(true);
         }
 
-        // Prefer restoring the last non-Sleep mode from history.
         let target = self
             .last_mode_before_sleep_from_history()
             .await?
-            .unwrap_or_else(|| "Stock".to_string());
+            .unwrap_or(MaraWorkMode::Stock);
 
-        self.set_work_mode(&target).await
+        self.set_work_mode(target).await
     }
 }

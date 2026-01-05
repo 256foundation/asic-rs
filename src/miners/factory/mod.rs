@@ -279,48 +279,38 @@ impl MinerFactory {
 
         let timeout = tokio::time::sleep(self.identification_timeout).fuse();
         let tasks = tokio::spawn(async move {
-            // We may get multiple successful identifications.
-            // Keep the "best" one. MaraFW (Marathon) should override Stock.
-            fn score(result: &(Option<MinerMake>, Option<MinerFirmware>)) -> u8 {
-                match result {
-                    // Explicit firmware IDs beat everything else.
-                    (_, Some(MinerFirmware::Marathon)) => 100,
-                    (_, Some(MinerFirmware::BraiinsOS)) => 90,
-                    (_, Some(MinerFirmware::LuxOS)) => 90,
-                    (_, Some(MinerFirmware::VNish)) => 90,
-                    (_, Some(MinerFirmware::EPic)) => 90,
-                    (_, Some(MinerFirmware::HiveOS)) => 90,
-
-                    // Stock/make-only are fallbacks.
-                    (Some(_), Some(MinerFirmware::Stock)) => 50,
-                    (Some(_), None) => 40,
-
-                    _ => 0,
-                }
-            }
-
-            let mut best: Option<(Option<MinerMake>, Option<MinerFirmware>)> = None;
-            let mut best_score: u8 = 0;
+            let mut found: Option<(Option<MinerMake>, Option<MinerFirmware>)> = None;
 
             loop {
                 if discovery_tasks.is_empty() {
-                    return best;
+                    return found;
                 }
 
                 match discovery_tasks.join_next().await.unwrap_or(Ok(None)) {
+                    // Any explicit non-stock firmware wins immediately.
+                    Ok(Some(result @ (_, Some(fw)))) if fw != MinerFirmware::Stock => {
+                        return Some(result);
+                    }
+
                     Ok(Some(result)) => {
-                        let s = score(&result);
+                        // Keep the best fallback so far: Stock > make-only > None
+                        let upgrade = match (&found, &result) {
+                            (None, _) => true,
 
-                        if s > best_score {
-                            best_score = s;
-                            best = Some(result);
-                        }
+                            // Upgrade make-only -> stock
+                            (Some((_, None)), (_, Some(MinerFirmware::Stock))) => true,
 
-                        // Stop early once we have a positive non-stock firmware identification.
-                        if best_score >= 90 {
-                            return best;
+                            // Upgrade None -> make-only (has make)
+                            (Some((None, None)), (Some(_), None)) => true,
+
+                            _ => false,
+                        };
+
+                        if upgrade {
+                            found = Some(result);
                         }
                     }
+
                     _ => continue,
                 }
             }

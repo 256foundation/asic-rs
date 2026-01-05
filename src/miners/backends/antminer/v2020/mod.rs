@@ -773,40 +773,54 @@ impl Restart for AntMinerV2020 {
 }
 
 #[async_trait]
-impl crate::miners::backends::traits::Pause for AntMinerV2020 {
-    async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+impl Pause for AntMinerV2020 {
+    #[allow(unused_variables)]
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;
-        if pre.get("bitmain-work-mode").is_some() {
+
+        if pre.get("miner-mode").is_some() {
             return Ok(self
                 .web
-                .set_miner_conf(json!({"bitmain-work-mode": "1"}))
+                .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
                 .await
                 .is_ok());
         }
-        Ok(self
-            .web
-            .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
-            .await
-            .is_ok())
+
+        if pre.get("bitmain-work-mode").is_some() {
+            return Ok(self
+                .web
+                .set_miner_conf(json!({"bitmain-work-mode": MinerMode::Sleep.to_string()}))
+                .await
+                .is_ok());
+        }
+
+        Ok(false)
     }
 }
 
 #[async_trait]
-impl crate::miners::backends::traits::Resume for AntMinerV2020 {
-    async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+impl Resume for AntMinerV2020 {
+    #[allow(unused_variables)]
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;
-        if pre.get("bitmain-work-mode").is_some() {
+
+        if pre.get("miner-mode").is_some() {
             return Ok(self
                 .web
-                .set_miner_conf(json!({"bitmain-work-mode": "0"}))
+                .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))
                 .await
                 .is_ok());
         }
-        Ok(self
-            .web
-            .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))
-            .await
-            .is_ok())
+
+        if pre.get("bitmain-work-mode").is_some() {
+            return Ok(self
+                .web
+                .set_miner_conf(json!({"bitmain-work-mode": MinerMode::Normal.to_string()}))
+                .await
+                .is_ok());
+        }
+
+        Ok(false)
     }
 }
 
