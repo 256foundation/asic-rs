@@ -278,51 +278,56 @@ impl MinerFactory {
         }
 
         let timeout = tokio::time::sleep(self.identification_timeout).fuse();
-        let tasks = tokio::spawn(async move {
-            let mut found: Option<(Option<MinerMake>, Option<MinerFirmware>)> = None;
+        pin_mut!(timeout);
+
+        let mut found: Option<(Option<MinerMake>, Option<MinerFirmware>)> = None;
+
+        loop {
+            if discovery_tasks.is_empty() { break; }
+
+            tokio::select! {
+                _ = &mut timeout => break,
+                r = discovery_tasks.join_next() => {
+                    match r.unwrap_or(Ok(None)) {
+                        Ok(Some(result @ (_, Some(fw)))) if fw != MinerFirmware::Stock => {
+                            found = Some(result);
+                            break;
+                        }
+                        Ok(Some(result)) => {
+                            found = Some(result);
+                            break;
+                        }
+                        _ => continue,
+                    }
+                }
+            }
+        }
+
+        if let Some((_make, Some(MinerFirmware::Stock))) = found {
+            let upgrade_window = tokio::time::sleep(Duration::from_millis(300)).fuse();
+            pin_mut!(upgrade_window);
 
             loop {
-                if discovery_tasks.is_empty() {
-                    return found;
-                }
-
-                match discovery_tasks.join_next().await.unwrap_or(Ok(None)) {
-                    // Any explicit non-stock firmware wins immediately.
-                    Ok(Some(result @ (_, Some(fw)))) if fw != MinerFirmware::Stock => {
-                        return Some(result);
-                    }
-
-                    Ok(Some(result)) => {
-                        // Keep the best fallback so far: Stock > make-only > None
-                        let upgrade = match (&found, &result) {
-                            (None, _) => true,
-                            // Upgrade none -> stock
-                            (Some((None, None)), (_, Some(MinerFirmware::Stock))) => true,
-                            // Upgrade make-only -> stock
-                            (Some((Some(_), None)), (_, Some(MinerFirmware::Stock))) => true,
-                            _ => false,
-                        };
-
-                        if upgrade {
-                            found = Some(result);
+                if discovery_tasks.is_empty() { break; }
+                tokio::select! {
+                    _ = &mut timeout => break,
+                    _ = &mut upgrade_window => break,
+                    r = discovery_tasks.join_next() => {
+                        if let Ok(Some(result @ (_, Some(fw)))) = r.unwrap_or(Ok(None)) {
+                            if fw != MinerFirmware::Stock {
+                                found = Some(result);
+                                break;
+                            }
                         }
                     }
-
-                    _ => continue,
                 }
             }
-        });
+        }
 
-        pin_mut!(timeout, tasks);
+        discovery_tasks.abort_all();
+        while discovery_tasks.join_next().await.is_some() {}
 
-        let miner_info = tokio::select!(
-            Ok(miner_info) = &mut tasks => {
-                miner_info
-            },
-            _ = &mut timeout => {
-                None
-            }
-        );
+        let miner_info = found;
 
         match miner_info {
             Some((Some(make), Some(MinerFirmware::Stock))) => {
