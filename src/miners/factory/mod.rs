@@ -64,9 +64,6 @@ async fn check_port_open(ip: IpAddr, port: u16, connectivity_timeout: Duration) 
     // disable Nagle's algorithm for immediate transmission
     let _ = stream.set_nodelay(true);
 
-    // immediate close without waiting for lingering data
-    let _ = stream.set_linger(Some(Duration::from_secs(0)));
-
     true
 }
 
