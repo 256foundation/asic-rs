@@ -283,7 +283,9 @@ impl MinerFactory {
         let mut found: Option<(Option<MinerMake>, Option<MinerFirmware>)> = None;
 
         loop {
-            if discovery_tasks.is_empty() { break; }
+            if discovery_tasks.is_empty() {
+                break;
+            }
 
             tokio::select! {
                 _ = &mut timeout => break,
@@ -308,17 +310,18 @@ impl MinerFactory {
             pin_mut!(upgrade_window);
 
             loop {
-                if discovery_tasks.is_empty() { break; }
+                if discovery_tasks.is_empty() {
+                    break;
+                }
                 tokio::select! {
                     _ = &mut timeout => break,
                     _ = &mut upgrade_window => break,
                     r = discovery_tasks.join_next() => {
-                        if let Ok(Some(result @ (_, Some(fw)))) = r.unwrap_or(Ok(None)) {
-                            if fw != MinerFirmware::Stock {
+                        if let Ok(Some(result @ (_, Some(fw)))) = r.unwrap_or(Ok(None))
+                            && fw != MinerFirmware::Stock {
                                 found = Some(result);
                                 break;
                             }
-                        }
                     }
                 }
             }
