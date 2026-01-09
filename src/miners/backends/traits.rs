@@ -157,9 +157,7 @@ impl<
         let total_chips = {
             let chips = hashboards
                 .iter()
-                .map(|b| b.working_chips)
-                .filter(|x| x.is_some())
-                .map(|x| x.unwrap())
+                .filter_map(|b| b.working_chips)
                 .collect::<Vec<u16>>();
 
             if !chips.is_empty() {
