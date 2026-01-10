@@ -202,7 +202,7 @@ impl GetDataLocations for BraiinsV2507 {
                 WEB_POOLS,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/0/pools"), // assuming there is 1 pool group
+                    key: Some(""),
                     tag: None,
                 },
             )],
@@ -443,36 +443,47 @@ impl GetPools for BraiinsV2507 {
         if let Some(pools_data) = data.get(&DataField::Pools)
             && let Some(pools_array) = pools_data.as_array()
         {
-            for (idx, pool) in pools_array.iter().enumerate() {
-                let url = pool
-                    .pointer("/url")
-                    .and_then(|v| v.as_str())
-                    .map(String::from)
-                    .map(PoolURL::from);
+            for group in pools_array.iter() {
+                let name = group
+                    .pointer("/name")
+                    .and_then(|s| s.as_str())
+                    .map(|s| s.to_owned())
+                    .or(None);
 
-                let user = pool
-                    .pointer("/user")
-                    .and_then(|v| v.as_str())
-                    .map(String::from);
+                if let Some(group_data) = group.pointer("/pools").and_then(|g| g.as_array()) {
+                    for (idx, pool) in group_data.iter().enumerate() {
+                        let url = pool
+                            .pointer("/url")
+                            .and_then(|v| v.as_str())
+                            .map(String::from)
+                            .map(PoolURL::from);
 
-                let accepted_shares = pool
-                    .pointer("/stats/accepted_shares")
-                    .and_then(|v| v.as_u64());
-                let rejected_shares = pool
-                    .pointer("/stats/rejected_shares")
-                    .and_then(|v| v.as_u64());
-                let active = pool.pointer("/active").and_then(|v| v.as_bool());
-                let alive = pool.pointer("/alive").and_then(|v| v.as_bool());
+                        let user = pool
+                            .pointer("/user")
+                            .and_then(|v| v.as_str())
+                            .map(String::from);
 
-                pools.push(PoolData {
-                    position: Some(idx as u16),
-                    url,
-                    accepted_shares,
-                    rejected_shares,
-                    active,
-                    alive,
-                    user,
-                });
+                        let accepted_shares = pool
+                            .pointer("/stats/accepted_shares")
+                            .and_then(|v| v.as_u64());
+                        let rejected_shares = pool
+                            .pointer("/stats/rejected_shares")
+                            .and_then(|v| v.as_u64());
+                        let active = pool.pointer("/active").and_then(|v| v.as_bool());
+                        let alive = pool.pointer("/alive").and_then(|v| v.as_bool());
+
+                        pools.push(PoolData {
+                            position: Some(idx as u16),
+                            url,
+                            group: name.clone(),
+                            accepted_shares,
+                            rejected_shares,
+                            active,
+                            alive,
+                            user,
+                        });
+                    }
+                }
             }
         }
 

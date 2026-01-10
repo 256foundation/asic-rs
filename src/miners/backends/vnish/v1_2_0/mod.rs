@@ -477,6 +477,7 @@ impl GetPools for VnishV120 {
                 pools.push(PoolData {
                     position: Some(idx as u16),
                     url,
+                    group: None,
                     accepted_shares,
                     rejected_shares,
                     active,

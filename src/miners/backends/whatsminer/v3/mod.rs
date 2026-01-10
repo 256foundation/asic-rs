@@ -466,6 +466,7 @@ impl GetPools for WhatsMinerV3 {
                 pools.push(PoolData {
                     position: Some(idx as u16),
                     url,
+                    group: None,
                     accepted_shares: None,
                     rejected_shares: None,
                     active,

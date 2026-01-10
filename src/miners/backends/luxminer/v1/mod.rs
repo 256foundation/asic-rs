@@ -823,6 +823,10 @@ impl GetPools for LuxMinerV1 {
                     .get("URL")
                     .and_then(|v| v.as_str())
                     .map(|s| PoolURL::from(s.to_string())),
+                group: pool
+                    .get("GROUP")
+                    .and_then(|v| v.as_i64())
+                    .map(|i| i.to_string()),
                 user: pool.get("User").and_then(|v| v.as_str()).map(String::from),
                 alive: pool
                     .get("Status")
@@ -1097,7 +1101,7 @@ mod tests {
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 77);
         assert_eq!(miner_data.pools.len(), 4);
-
+        dbg!(&miner_data.pools);
         Ok(())
     }
 }
