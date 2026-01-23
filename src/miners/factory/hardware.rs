@@ -4,6 +4,7 @@ use crate::data::device::models::avalon::AvalonMinerModel;
 use crate::data::device::models::bitaxe::BitaxeModel;
 use crate::data::device::models::braiins::BraiinsModel;
 use crate::data::device::models::epic::EPicModel;
+use crate::data::device::models::nerdaxe::NerdAxeModel;
 use crate::data::device::models::whatsminer::WhatsMinerModel;
 
 impl From<&AvalonMinerModel> for MinerHardware {
@@ -1921,6 +1922,33 @@ impl From<&BitaxeModel> for MinerHardware {
             chips: Some(1),
             fans: Some(1),
             boards: Some(1),
+        }
+    }
+}
+
+impl From<&NerdAxeModel> for MinerHardware {
+    fn from(model: &NerdAxeModel) -> Self {
+        match model {
+            NerdAxeModel::NerdAxe => Self {
+                chips: Some(1),
+                fans: Some(1),
+                boards: Some(1),
+            },
+            NerdAxeModel::NerdQAxe => Self {
+                chips: Some(4),
+                fans: Some(1),
+                boards: Some(1),
+            },
+            NerdAxeModel::NerdMiner => Self {
+                chips: Some(1),
+                fans: Some(1),
+                boards: Some(1),
+            },
+            NerdAxeModel::NerdAxeUltra => Self {
+                chips: Some(1),
+                fans: Some(1),
+                boards: Some(1),
+            },
         }
     }
 }

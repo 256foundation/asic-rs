@@ -29,6 +29,7 @@ use crate::miners::backends::braiins::Braiins;
 use crate::miners::backends::epic::PowerPlay;
 use crate::miners::backends::luxminer::LuxMiner;
 use crate::miners::backends::marathon::Marathon;
+use crate::miners::backends::nerdaxe::NerdAxe;
 use crate::miners::backends::traits::*;
 use crate::miners::backends::vnish::Vnish;
 use crate::miners::backends::whatsminer::WhatsMiner;
@@ -141,6 +142,13 @@ fn parse_type_from_web(
         }
         _ if resp_text.contains("Braiins OS") => Some((None, Some(MinerFirmware::BraiinsOS))),
         _ if resp_text.contains("Luxor Firmware") => Some((None, Some(MinerFirmware::LuxOS))),
+        _ if resp_text.contains("NerdAxe")
+            || resp_text.contains("NerdQAxe")
+            || resp_text.contains("NerdMiner")
+            || resp_text.contains("Nerd*") =>
+        {
+            Some((Some(MinerMake::NerdAxe), Some(MinerFirmware::Stock)))
+        }
         _ if resp_text.contains("AxeOS") => {
             Some((Some(MinerMake::Bitaxe), Some(MinerFirmware::Stock)))
         }
@@ -171,6 +179,9 @@ pub fn select_backend(
         }
         (MinerModel::Bitaxe(_), Some(MinerFirmware::Stock)) => {
             Some(Bitaxe::new(ip, model, version))
+        }
+        (MinerModel::NerdAxe(_), Some(MinerFirmware::Stock)) => {
+            Some(NerdAxe::new(ip, model, version))
         }
         (MinerModel::AvalonMiner(_), Some(MinerFirmware::Stock)) => {
             Some(AvalonMiner::new(ip, model, version))
@@ -246,6 +257,7 @@ impl MinerFactory {
             MinerMake::EPic,
             MinerMake::Braiins,
             MinerMake::Bitaxe,
+            MinerMake::NerdAxe,
         ]);
         let search_firmwares = self.search_firmwares.clone().unwrap_or(vec![
             MinerFirmware::Stock,
@@ -824,5 +836,35 @@ mod tests {
         assert_eq!(ips.len(), 2);
         assert!(ips.contains(&IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))));
         assert!(ips.contains(&IpAddr::V4(Ipv4Addr::new(192, 168, 1, 2))));
+    }
+
+    #[test]
+    fn parse_type_from_web_nerdaxe() {
+        #[track_caller]
+        fn case(body: &str) {
+            let response = (body.to_string(), HeaderMap::new(), StatusCode::OK);
+            assert_eq!(
+                parse_type_from_web(response),
+                Some((Some(MinerMake::NerdAxe), Some(MinerFirmware::Stock)))
+            );
+        }
+
+        case("<html><title>NerdAxe</title></html>");
+        case("<html><title>NerdQAxe</title></html>");
+        case("<html><title>NerdMiner</title></html>");
+        case("<html><title>Nerd* Dashboard</title></html>");
+    }
+
+    #[test]
+    fn parse_type_from_web_bitaxe_not_nerdaxe() {
+        let response = (
+            "<html><title>AxeOS</title></html>".to_string(),
+            HeaderMap::new(),
+            StatusCode::OK,
+        );
+        assert_eq!(
+            parse_type_from_web(response),
+            Some((Some(MinerMake::Bitaxe), Some(MinerFirmware::Stock)))
+        );
     }
 }

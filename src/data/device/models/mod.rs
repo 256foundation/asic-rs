@@ -7,6 +7,7 @@ use avalon::AvalonMinerModel;
 use bitaxe::BitaxeModel;
 use braiins::BraiinsModel;
 use epic::EPicModel;
+use nerdaxe::NerdAxeModel;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use whatsminer::WhatsMinerModel;
@@ -16,6 +17,7 @@ pub mod avalon;
 pub mod bitaxe;
 pub mod braiins;
 pub mod epic;
+pub mod nerdaxe;
 pub mod whatsminer;
 
 #[derive(Debug, Clone)]
@@ -91,6 +93,15 @@ impl FromStr for EPicModel {
     }
 }
 
+impl FromStr for NerdAxeModel {
+    type Err = ModelSelectionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_value(serde_json::Value::String(s.to_string()))
+            .map_err(|_| ModelSelectionError::UnknownModel(s.to_string()))
+    }
+}
+
 #[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -101,6 +112,7 @@ pub enum MinerModel {
     Bitaxe(BitaxeModel),
     AvalonMiner(AvalonMinerModel),
     EPic(EPicModel),
+    NerdAxe(NerdAxeModel),
 }
 
 impl Display for MinerModel {
@@ -112,6 +124,7 @@ impl Display for MinerModel {
             MinerModel::Bitaxe(m) => Ok(m.fmt(f)?),
             MinerModel::EPic(m) => Ok(m.fmt(f)?),
             MinerModel::AvalonMiner(m) => Ok(m.fmt(f)?),
+            MinerModel::NerdAxe(m) => Ok(m.fmt(f)?),
         }
     }
 }
@@ -125,6 +138,7 @@ impl From<MinerModel> for MinerMake {
             MinerModel::Bitaxe(_) => MinerMake::Bitaxe,
             MinerModel::EPic(_) => MinerMake::EPic,
             MinerModel::AvalonMiner(_) => MinerMake::AvalonMiner,
+            MinerModel::NerdAxe(_) => MinerMake::NerdAxe,
         }
     }
 }
@@ -168,6 +182,10 @@ impl MinerModelFactory {
             Some(MinerMake::AvalonMiner) => {
                 let model = AvalonMinerModel::from_str(model_str)?;
                 Ok(MinerModel::AvalonMiner(model))
+            }
+            Some(MinerMake::NerdAxe) => {
+                let model = NerdAxeModel::from_str(model_str)?;
+                Ok(MinerModel::NerdAxe(model))
             }
             None => match self.firmware {
                 Some(MinerFirmware::BraiinsOS) => {

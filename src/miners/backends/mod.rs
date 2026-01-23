@@ -7,6 +7,7 @@ pub mod braiins;
 pub mod epic;
 pub mod luxminer;
 pub mod marathon;
+pub mod nerdaxe;
 pub mod traits;
 pub mod vnish;
 pub mod whatsminer;

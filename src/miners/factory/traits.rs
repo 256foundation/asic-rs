@@ -26,6 +26,7 @@ impl DiscoveryCommands for MinerMake {
             MinerMake::EPic => vec![HTTP_WEB_ROOT],
             MinerMake::Braiins => vec![RPC_VERSION, HTTP_WEB_ROOT],
             MinerMake::Bitaxe => vec![HTTP_WEB_ROOT],
+            MinerMake::NerdAxe => vec![HTTP_WEB_ROOT],
         }
     }
 }
@@ -71,6 +72,7 @@ impl ModelSelection for MinerMake {
             MinerMake::AntMiner => model::get_model_antminer(ip).await,
             MinerMake::WhatsMiner => model::get_model_whatsminer(ip).await,
             MinerMake::Bitaxe => model::get_model_bitaxe(ip).await,
+            MinerMake::NerdAxe => model::get_model_nerdaxe(ip).await,
             MinerMake::AvalonMiner => model::get_model_avalonminer(ip).await,
             MinerMake::EPic => unreachable!(),
             MinerMake::Braiins => unreachable!(),
@@ -81,6 +83,7 @@ impl VersionSelection for MinerMake {
     async fn get_version(&self, ip: IpAddr) -> Option<semver::Version> {
         match self {
             MinerMake::Bitaxe => model::get_version_bitaxe(ip).await,
+            MinerMake::NerdAxe => model::get_version_nerdaxe(ip).await,
             MinerMake::WhatsMiner => model::get_version_whatsminer(ip).await,
             MinerMake::AntMiner => model::get_version_antminer(ip).await,
             _ => None,

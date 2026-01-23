@@ -5,6 +5,7 @@ pub(crate) mod braiins;
 pub(crate) mod epic;
 pub(crate) mod luxos;
 pub(crate) mod marathon;
+pub(crate) mod nerdaxe;
 pub(crate) mod vnish;
 pub(crate) mod whatsminer;
 
@@ -15,5 +16,6 @@ pub(crate) use braiins::get_model_braiins_os;
 pub(crate) use epic::{get_model_epic, get_version_epic};
 pub(crate) use luxos::get_model_luxos;
 pub(crate) use marathon::get_model_marathon;
+pub(crate) use nerdaxe::{get_model_nerdaxe, get_version_nerdaxe};
 pub(crate) use vnish::{get_model_vnish, get_version_vnish};
 pub(crate) use whatsminer::{get_model_whatsminer, get_version_whatsminer};

@@ -43,6 +43,8 @@ pub enum MinerMake {
     Braiins,
     #[serde(rename = "Bitaxe")]
     Bitaxe,
+    #[serde(rename = "NerdAxe")]
+    NerdAxe,
 }
 
 #[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
@@ -104,6 +106,7 @@ impl From<&MinerModel> for MinerHardware {
             MinerModel::Bitaxe(model_name) => Self::from(model_name),
             MinerModel::EPic(model_name) => Self::from(model_name),
             MinerModel::AvalonMiner(model_name) => Self::from(model_name),
+            MinerModel::NerdAxe(model_name) => Self::from(model_name),
         }
     }
 }
