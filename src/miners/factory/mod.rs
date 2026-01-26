@@ -142,11 +142,7 @@ fn parse_type_from_web(
         }
         _ if resp_text.contains("Braiins OS") => Some((None, Some(MinerFirmware::BraiinsOS))),
         _ if resp_text.contains("Luxor Firmware") => Some((None, Some(MinerFirmware::LuxOS))),
-        _ if resp_text.contains("NerdAxe")
-            || resp_text.contains("NerdQAxe")
-            || resp_text.contains("NerdMiner")
-            || resp_text.contains("Nerd*") =>
-        {
+        _ if resp_text.contains("Nerd") => {
             Some((Some(MinerMake::NerdAxe), Some(MinerFirmware::Stock)))
         }
         _ if resp_text.contains("AxeOS") => {
