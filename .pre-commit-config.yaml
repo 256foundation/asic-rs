@@ -13,3 +13,5 @@ repos:
     hooks:
       - id: fmt
       - id: cargo-check
+      - id: clippy
+        args: ["--all-targets", "--all-features", "--workspace", "--fix", "--allow-dirty"]
