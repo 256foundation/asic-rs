@@ -29,11 +29,7 @@ pub struct NerdAxe;
 
 impl NerdAxe {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(
-        ip: IpAddr,
-        model: MinerModel,
-        _version: Option<semver::Version>,
-    ) -> Box<dyn Miner> {
+    pub fn new(ip: IpAddr, model: MinerModel, _version: Option<semver::Version>) -> Box<dyn Miner> {
         Box::new(NerdAxeV1::new(ip, model))
     }
 }

@@ -136,10 +136,10 @@ impl GetDataLocations for WhatsMinerV3 {
                 },
             )],
             DataField::WattageLimit => vec![(
-                RPC_GET_DEVICE_INFO,
+                rpc_get_miner_status_summary,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/msg/miner/power-limit-set"),
+                    key: Some("/msg/summary/power-limit"),
                     tag: None,
                 },
             )],
@@ -415,8 +415,7 @@ impl GetWattage for WhatsMinerV3 {
 }
 impl GetWattageLimit for WhatsMinerV3 {
     fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        data.extract_map::<String, _>(DataField::WattageLimit, |p| p.parse::<f64>().ok())?
-            .map(Power::from_watts)
+        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
     }
 }
 impl GetLightFlashing for WhatsMinerV3 {
