@@ -796,7 +796,6 @@ impl GetPools for PowerPlayV1 {
                 }
             }
         }
-
         pools_vec
     }
 }

@@ -336,7 +336,6 @@ impl MinerFactory {
         while discovery_tasks.join_next().await.is_some() {}
 
         let miner_info = found;
-
         match miner_info {
             Some((Some(make), Some(MinerFirmware::Stock))) => {
                 let model = make.get_model(ip).await?;

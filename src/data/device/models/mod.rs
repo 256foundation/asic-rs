@@ -156,11 +156,11 @@ impl MinerModelFactory {
         }
     }
 
-    pub(crate) fn with_make(&mut self, make: MinerMake) -> &Self {
+    pub(crate) fn with_make(&mut self, make: MinerMake) -> &mut Self {
         self.make = Some(make);
         self
     }
-    pub(crate) fn with_firmware(&mut self, firmware: MinerFirmware) -> &Self {
+    pub(crate) fn with_firmware(&mut self, firmware: MinerFirmware) -> &mut Self {
         self.firmware = Some(firmware);
         self
     }
