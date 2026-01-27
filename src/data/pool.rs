@@ -50,7 +50,7 @@ pub struct PoolURL {
 
 impl From<String> for PoolURL {
     fn from(url: String) -> Self {
-        let stratum_url = if url.starts_with("stratum") {
+        let stratum_url = if url.starts_with("stratum+") || url.starts_with("stratum2+") {
             url
         } else {
             format!("stratum+tcp://{url}")
