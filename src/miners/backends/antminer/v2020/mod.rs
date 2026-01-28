@@ -581,7 +581,10 @@ impl GetIsMining for AntMinerV2020 {
         data.extract::<String>(DataField::IsMining)
             .map(|status| {
                 let status_lower = status.to_lowercase();
-                status_lower != "stopped" && status_lower != "idle" && status_lower != "sleep" && status_lower != "1"
+                status_lower != "stopped"
+                    && status_lower != "idle"
+                    && status_lower != "sleep"
+                    && status_lower != "1"
             })
             .or_else(|| data.extract::<f64>(DataField::Hashrate).map(|hr| hr > 0.0))
             .unwrap_or(false)
