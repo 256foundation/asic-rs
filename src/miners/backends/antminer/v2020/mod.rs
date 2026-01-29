@@ -585,7 +585,10 @@ impl GetIsMining for AntMinerV2020 {
                     && status_lower != "idle"
                     && status_lower != "sleep"
                     && status_lower != "1")
-                    && data.extract::<f64>(DataField::Hashrate).map(|hr| hr > 0.0).unwrap_or(true)
+                    && data
+                        .extract::<f64>(DataField::Hashrate)
+                        .map(|hr| hr > 0.0)
+                        .unwrap_or(true)
             })
             .or_else(|| data.extract::<f64>(DataField::Hashrate).map(|hr| hr > 0.0))
             .unwrap_or(false)
