@@ -534,32 +534,6 @@ pub trait GetLightFlashing: CollectData {
     }
 }
 
-// Setters
-#[async_trait]
-pub trait SetFaultLight {
-    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool>;
-}
-
-#[async_trait]
-pub trait SetPowerLimit {
-    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool>;
-}
-
-#[async_trait]
-pub trait Restart {
-    async fn restart(&self) -> anyhow::Result<bool>;
-}
-
-#[async_trait]
-pub trait Pause {
-    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool>;
-}
-
-#[async_trait]
-pub trait Resume {
-    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool>;
-}
-
 // Messages
 #[async_trait]
 pub trait GetMessages: CollectData {
@@ -618,4 +592,49 @@ pub trait GetPools: CollectData {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
         vec![]
     }
+}
+
+// Setters
+#[async_trait]
+pub trait SetFaultLight {
+    #[allow(unused_variables)]
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting fault light is not supported on this platform");
+    }
+    fn supports_set_fault_light(&self) -> bool;
+}
+
+#[async_trait]
+pub trait SetPowerLimit {
+    #[allow(unused_variables)]
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting power limit is not supported on this platform");
+    }
+    fn supports_set_power_limit(&self) -> bool;
+}
+
+#[async_trait]
+pub trait Restart {
+    async fn restart(&self) -> anyhow::Result<bool> {
+        anyhow::bail!("Restarting is not supported on this platform");
+    }
+    fn supports_restart(&self) -> bool;
+}
+
+#[async_trait]
+pub trait Pause {
+    #[allow(unused_variables)]
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        anyhow::bail!("Pausing mining is not supported on this platform");
+    }
+    fn supports_pause(&self) -> bool;
+}
+
+#[async_trait]
+pub trait Resume {
+    #[allow(unused_variables)]
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        anyhow::bail!("Resuming mining is not supported on this platform");
+    }
+    fn supports_resume(&self) -> bool;
 }

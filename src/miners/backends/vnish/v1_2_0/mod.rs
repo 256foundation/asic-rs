@@ -648,39 +648,35 @@ impl VnishV120 {
 
 #[async_trait]
 impl SetFaultLight for VnishV120 {
-    #[allow(unused_variables)]
-    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_set_fault_light(&self) -> bool {
+        false
     }
 }
 
 #[async_trait]
 impl SetPowerLimit for VnishV120 {
-    #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_set_power_limit(&self) -> bool {
+        false
     }
 }
 
 #[async_trait]
 impl Restart for VnishV120 {
-    async fn restart(&self) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_restart(&self) -> bool {
+        false
     }
 }
 
 #[async_trait]
 impl Pause for VnishV120 {
-    #[allow(unused_variables)]
-    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_pause(&self) -> bool {
+        false
     }
 }
 
 #[async_trait]
 impl Resume for VnishV120 {
-    #[allow(unused_variables)]
-    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_resume(&self) -> bool {
+        false
     }
 }

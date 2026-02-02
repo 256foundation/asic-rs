@@ -816,24 +816,22 @@ impl GetPools for MaraV1 {
 
 #[async_trait]
 impl SetFaultLight for MaraV1 {
-    #[allow(unused_variables)]
-    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_set_fault_light(&self) -> bool {
+        false
     }
 }
 
 #[async_trait]
 impl SetPowerLimit for MaraV1 {
-    #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_set_power_limit(&self) -> bool {
+        false
     }
 }
 
 #[async_trait]
 impl Restart for MaraV1 {
-    async fn restart(&self) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_restart(&self) -> bool {
+        false
     }
 }
 
@@ -846,6 +844,9 @@ impl Pause for MaraV1 {
         }
 
         self.set_work_mode(MaraWorkMode::Sleep).await
+    }
+    fn supports_pause(&self) -> bool {
+        true
     }
 }
 
@@ -863,5 +864,8 @@ impl Resume for MaraV1 {
             .unwrap_or(MaraWorkMode::Stock);
 
         self.set_work_mode(target).await
+    }
+    fn supports_resume(&self) -> bool {
+        true
     }
 }

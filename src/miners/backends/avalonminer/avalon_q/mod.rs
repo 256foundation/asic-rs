@@ -100,6 +100,9 @@ impl Pause for AvalonQMiner {
 
         Ok(false)
     }
+    fn supports_pause(&self) -> bool {
+        true
+    }
 }
 #[async_trait]
 impl Resume for AvalonQMiner {
@@ -131,6 +134,9 @@ impl Resume for AvalonQMiner {
         }
         Ok(false)
     }
+    fn supports_resume(&self) -> bool {
+        true
+    }
 }
 #[async_trait]
 impl SetFaultLight for AvalonQMiner {
@@ -152,6 +158,9 @@ impl SetFaultLight for AvalonQMiner {
         }
 
         Err(anyhow::anyhow!("Failed to set fault light to {}", command))
+    }
+    fn supports_set_fault_light(&self) -> bool {
+        true
     }
 }
 
@@ -176,12 +185,15 @@ impl SetPowerLimit for AvalonQMiner {
 
         Err(anyhow::anyhow!("Failed to set power limit"))
     }
+    fn supports_set_power_limit(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
 impl Restart for AvalonQMiner {
-    async fn restart(&self) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_restart(&self) -> bool {
+        false
     }
 }
 

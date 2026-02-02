@@ -558,6 +558,9 @@ impl SetFaultLight for BraiinsV2507 {
             .await
             .is_ok())
     }
+    fn supports_set_fault_light(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -574,6 +577,9 @@ impl SetPowerLimit for BraiinsV2507 {
             .await
             .is_ok())
     }
+    fn supports_set_power_limit(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -584,6 +590,9 @@ impl Restart for BraiinsV2507 {
             .send_command("actions/reboot", true, None, Method::PUT)
             .await
             .is_ok())
+    }
+    fn supports_restart(&self) -> bool {
+        true
     }
 }
 
@@ -597,6 +606,9 @@ impl Pause for BraiinsV2507 {
             .await
             .is_ok())
     }
+    fn supports_pause(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -608,5 +620,8 @@ impl Resume for BraiinsV2507 {
             .send_command("actions/resume", true, None, Method::PUT)
             .await
             .is_ok())
+    }
+    fn supports_resume(&self) -> bool {
+        true
     }
 }

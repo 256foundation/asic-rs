@@ -492,6 +492,9 @@ impl SetFaultLight for WhatsMinerV3 {
 
         Ok(data.is_ok())
     }
+    fn supports_set_fault_light(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -504,6 +507,9 @@ impl SetPowerLimit for WhatsMinerV3 {
 
         Ok(data.is_ok())
     }
+    fn supports_set_power_limit(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -512,6 +518,9 @@ impl Restart for WhatsMinerV3 {
         let data = self.rpc.send_command("set.system.reboot", true, None).await;
 
         Ok(data.is_ok())
+    }
+    fn supports_restart(&self) -> bool {
+        true
     }
 }
 
@@ -527,6 +536,9 @@ impl Pause for WhatsMinerV3 {
 
         Ok(data.is_ok())
     }
+    fn supports_pause(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -538,5 +550,8 @@ impl Resume for WhatsMinerV3 {
             .await;
 
         Ok(data.is_ok())
+    }
+    fn supports_resume(&self) -> bool {
+        true
     }
 }

@@ -754,6 +754,10 @@ impl GetMessages for AntMinerV2020 {
 
 #[async_trait]
 impl SetFaultLight for AntMinerV2020 {
+    fn supports_set_fault_light(&self) -> bool {
+        true
+    }
+
     #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         Ok(self.web.blink(fault).await.is_ok())
@@ -762,14 +766,16 @@ impl SetFaultLight for AntMinerV2020 {
 
 #[async_trait]
 impl SetPowerLimit for AntMinerV2020 {
-    #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_set_power_limit(&self) -> bool {
+        false
     }
 }
 
 #[async_trait]
 impl Restart for AntMinerV2020 {
+    fn supports_restart(&self) -> bool {
+        true
+    }
     async fn restart(&self) -> anyhow::Result<bool> {
         Ok(self.web.reboot().await.is_ok())
     }
@@ -777,6 +783,9 @@ impl Restart for AntMinerV2020 {
 
 #[async_trait]
 impl Pause for AntMinerV2020 {
+    fn supports_pause(&self) -> bool {
+        true
+    }
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;
@@ -803,6 +812,9 @@ impl Pause for AntMinerV2020 {
 
 #[async_trait]
 impl Resume for AntMinerV2020 {
+    fn supports_resume(&self) -> bool {
+        true
+    }
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;

@@ -69,6 +69,9 @@ impl Restart for AvalonAMiner {
 
         Ok(false)
     }
+    fn supports_restart(&self) -> bool {
+        true
+    }
 }
 #[async_trait]
 impl Pause for AvalonAMiner {
@@ -101,6 +104,9 @@ impl Pause for AvalonAMiner {
 
         Ok(false)
     }
+    fn supports_pause(&self) -> bool {
+        true
+    }
 }
 #[async_trait]
 impl Resume for AvalonAMiner {
@@ -132,6 +138,9 @@ impl Resume for AvalonAMiner {
         }
         Ok(false)
     }
+    fn supports_resume(&self) -> bool {
+        true
+    }
 }
 #[async_trait]
 impl SetFaultLight for AvalonAMiner {
@@ -153,6 +162,9 @@ impl SetFaultLight for AvalonAMiner {
         }
 
         Err(anyhow::anyhow!("Failed to set fault light to {}", command))
+    }
+    fn supports_set_fault_light(&self) -> bool {
+        true
     }
 }
 
@@ -176,6 +188,9 @@ impl SetPowerLimit for AvalonAMiner {
         }
 
         Err(anyhow::anyhow!("Failed to set power limit"))
+    }
+    fn supports_set_power_limit(&self) -> bool {
+        true
     }
 }
 

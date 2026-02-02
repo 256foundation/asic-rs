@@ -914,13 +914,15 @@ impl SetFaultLight for LuxMinerV1 {
         };
         Ok(self.rpc.ledset("red", mode).await.is_ok())
     }
+    fn supports_set_fault_light(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
 impl SetPowerLimit for LuxMinerV1 {
-    #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_set_power_limit(&self) -> bool {
+        false
     }
 }
 
@@ -928,6 +930,9 @@ impl SetPowerLimit for LuxMinerV1 {
 impl Restart for LuxMinerV1 {
     async fn restart(&self) -> anyhow::Result<bool> {
         Ok(self.rpc.reboot_device().await.is_ok())
+    }
+    fn supports_restart(&self) -> bool {
+        true
     }
 }
 
@@ -937,6 +942,9 @@ impl Pause for LuxMinerV1 {
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self.rpc.sleep().await.is_ok())
     }
+    fn supports_pause(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -944,6 +952,9 @@ impl Resume for LuxMinerV1 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self.rpc.wakeup().await.is_ok())
+    }
+    fn supports_resume(&self) -> bool {
+        true
     }
 }
 

@@ -556,6 +556,9 @@ impl SetFaultLight for WhatsMinerV2 {
         let data = self.rpc.send_command("set_led", true, parameters).await;
         Ok(data.is_ok())
     }
+    fn supports_set_fault_light(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -568,6 +571,9 @@ impl SetPowerLimit for WhatsMinerV2 {
             .await;
         Ok(data.is_ok())
     }
+    fn supports_set_power_limit(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -575,6 +581,9 @@ impl Restart for WhatsMinerV2 {
     async fn restart(&self) -> anyhow::Result<bool> {
         let data = self.rpc.send_command("reboot", true, None).await;
         Ok(data.is_ok())
+    }
+    fn supports_restart(&self) -> bool {
+        true
     }
 }
 
@@ -588,6 +597,9 @@ impl Pause for WhatsMinerV2 {
             .await;
         Ok(data.is_ok())
     }
+    fn supports_pause(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -596,5 +608,8 @@ impl Resume for WhatsMinerV2 {
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let data = self.rpc.send_command("power_on", true, None).await;
         Ok(data.is_ok())
+    }
+    fn supports_resume(&self) -> bool {
+        true
     }
 }

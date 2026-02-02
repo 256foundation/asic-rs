@@ -814,13 +814,15 @@ impl SetFaultLight for PowerPlayV1 {
             .await
             .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
     }
+    fn supports_set_fault_light(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
 impl SetPowerLimit for PowerPlayV1 {
-    #[allow(unused_variables)]
-    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
-        anyhow::bail!("Unsupported command");
+    fn supports_set_power_limit(&self) -> bool {
+        false
     }
 }
 
@@ -832,6 +834,9 @@ impl Restart for PowerPlayV1 {
             .await
             .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
     }
+    fn supports_restart(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -842,6 +847,9 @@ impl Pause for PowerPlayV1 {
             .send_command("miner", false, Some(json!({"param": "Stop"})), Method::POST)
             .await
             .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
+    }
+    fn supports_pause(&self) -> bool {
+        true
     }
 }
 
@@ -858,6 +866,9 @@ impl Resume for PowerPlayV1 {
             )
             .await
             .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
+    }
+    fn supports_resume(&self) -> bool {
+        true
     }
 }
 
