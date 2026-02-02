@@ -277,6 +277,16 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(2),
                 boards: Some(3),
             },
+            WhatsMinerModel::M30SPlusPlusVHA0 => Self {
+                chips: Some(82),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M30SPlusPlusVHB0 => Self {
+                chips: Some(105),
+                fans: Some(2),
+                boards: Some(3),
+            },
             WhatsMinerModel::M30SPlusPlusVI30 => Self {
                 chips: Some(111),
                 fans: Some(2),
@@ -304,6 +314,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M30SPlusPlusVJ70 => Self {
                 chips: Some(117),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M30SPlusPlusVK20 => Self {
+                chips: Some(78),
                 fans: Some(2),
                 boards: Some(3),
             },
@@ -364,6 +379,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M30SPlusV90 => Self {
                 chips: Some(225),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M30SPlusVA0 => Self {
+                chips: Some(215),
                 fans: Some(2),
                 boards: Some(3),
             },
@@ -712,6 +732,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(2),
                 boards: Some(3),
             },
+            WhatsMinerModel::M31SPlusVA0 => Self {
+                chips: Some(111),
+                fans: Some(2),
+                boards: Some(3),
+            },
             WhatsMinerModel::M31SPlusVE10 => Self {
                 chips: Some(82),
                 fans: Some(2),
@@ -982,6 +1007,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(2),
                 boards: Some(3),
             },
+            WhatsMinerModel::M50SPlusPlusVL10 => Self {
+                chips: Some(82),
+                fans: Some(2),
+                boards: Some(3),
+            },
             WhatsMinerModel::M50SPlusPlusVL20 => Self {
                 chips: Some(86),
                 fans: Some(2),
@@ -1147,6 +1177,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(2),
                 boards: Some(3),
             },
+            WhatsMinerModel::M50SVL10 => Self {
+                chips: Some(74),
+                fans: Some(2),
+                boards: Some(3),
+            },
             WhatsMinerModel::M50SVL20 => Self {
                 chips: Some(78),
                 fans: Some(2),
@@ -1247,6 +1282,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(2),
                 boards: Some(3),
             },
+            WhatsMinerModel::M51SPlusVL30 => Self {
+                chips: Some(117),
+                fans: Some(2),
+                boards: Some(3),
+            },
             WhatsMinerModel::M52SPlusPlusVL10 => Self {
                 chips: Some(87),
                 fans: Some(0),
@@ -1282,6 +1322,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M53SPlusPlusVK70 => Self {
+                chips: Some(216),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M53SPlusPlusVL10 => Self {
                 chips: Some(128),
                 fans: Some(0),
@@ -1289,6 +1334,21 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M53SPlusPlusVL30 => Self {
                 chips: Some(174),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M53SPlusPlusVL40 => Self {
+                chips: Some(168),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M53SPlusPlusVL60 => Self {
+                chips: Some(128),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M53SPlusPlusVL80 => Self {
+                chips: Some(144),
                 fans: Some(0),
                 boards: Some(4),
             },
@@ -1322,6 +1382,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M53SVH40 => Self {
+                chips: Some(228),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M53SVJ30 => Self {
                 chips: Some(180),
                 fans: Some(0),
@@ -1329,6 +1394,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M53SVJ40 => Self {
                 chips: Some(192),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M53SVJ50 => Self {
+                chips: Some(228),
                 fans: Some(0),
                 boards: Some(4),
             },
@@ -1374,6 +1444,21 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M54SPlusPlusVL40 => Self {
                 chips: Some(90),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M54SPlusVL30 => Self {
+                chips: Some(84),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M54SVH30 => Self {
+                chips: Some(120),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M54SVK30 => Self {
+                chips: Some(102),
                 fans: Some(0),
                 boards: Some(4),
             },
@@ -1442,6 +1527,16 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M60SPlusPlusVL10 => Self {
+                chips: Some(204),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVL20 => Self {
+                chips: Some(215),
+                fans: Some(2),
+                boards: Some(3),
+            },
             WhatsMinerModel::M60SPlusPlusVL30 => Self {
                 chips: Some(225),
                 fans: Some(2),
@@ -1449,6 +1544,66 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M60SPlusPlusVL40 => Self {
                 chips: Some(235),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVL50 => Self {
+                chips: Some(245),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVL60 => Self {
+                chips: Some(196),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVL70 => Self {
+                chips: Some(294),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVL80 => Self {
+                chips: Some(196),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVL90 => Self {
+                chips: Some(204),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVLA0 => Self {
+                chips: Some(215),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVLB0 => Self {
+                chips: Some(245),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVM30 => Self {
+                chips: Some(117),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVM40 => Self {
+                chips: Some(123),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVM50 => Self {
+                chips: Some(129),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVM60 => Self {
+                chips: Some(135),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusPlusVM70 => Self {
+                chips: Some(141),
                 fans: Some(2),
                 boards: Some(3),
             },
@@ -1482,6 +1637,16 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(2),
                 boards: Some(3),
             },
+            WhatsMinerModel::M60SPlusVL100 => Self {
+                chips: Some(176),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusVL20 => Self {
+                chips: Some(147),
+                fans: Some(2),
+                boards: Some(3),
+            },
             WhatsMinerModel::M60SPlusVL30 => Self {
                 chips: Some(225),
                 fans: Some(2),
@@ -1502,6 +1667,51 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(2),
                 boards: Some(3),
             },
+            WhatsMinerModel::M60SPlusVL70 => Self {
+                chips: Some(225),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusVL80 => Self {
+                chips: Some(180),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusVL90 => Self {
+                chips: Some(184),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusVLA0 => Self {
+                chips: Some(176),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusVLB0 => Self {
+                chips: Some(164),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusVM20 => Self {
+                chips: Some(82),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusVM30 => Self {
+                chips: Some(86),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusVM40 => Self {
+                chips: Some(90),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SPlusVM50 => Self {
+                chips: Some(98),
+                fans: Some(2),
+                boards: Some(3),
+            },
             WhatsMinerModel::M60SVK10 => Self {
                 chips: Some(215),
                 fans: Some(2),
@@ -1519,6 +1729,26 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M60SVK40 => Self {
                 chips: Some(225),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SVK60 => Self {
+                chips: Some(188),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SVK70 => Self {
+                chips: Some(196),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SVK80 => Self {
+                chips: Some(225),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SVK90 => Self {
+                chips: Some(192),
                 fans: Some(2),
                 boards: Some(3),
             },
@@ -1554,6 +1784,26 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M60SVL70 => Self {
                 chips: Some(141),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SVL80 => Self {
+                chips: Some(135),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SVL90 => Self {
+                chips: Some(141),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SVM20 => Self {
+                chips: Some(78),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M60SVM40 => Self {
+                chips: Some(86),
                 fans: Some(2),
                 boards: Some(3),
             },
@@ -1607,8 +1857,28 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(2),
                 boards: Some(3),
             },
+            WhatsMinerModel::M60VM40 => Self {
+                chips: Some(82),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M61SPlusVL20 => Self {
+                chips: Some(204),
+                fans: Some(2),
+                boards: Some(3),
+            },
             WhatsMinerModel::M61SPlusVL30 => Self {
                 chips: Some(225),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M61SVK20 => Self {
+                chips: Some(225),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M61SVK30 => Self {
+                chips: Some(235),
                 fans: Some(2),
                 boards: Some(3),
             },
@@ -1624,6 +1894,26 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M61SVL30 => Self {
                 chips: Some(180),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M61SVL60 => Self {
+                chips: Some(180),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M61SVL70 => Self {
+                chips: Some(147),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M61SVL90 => Self {
+                chips: Some(225),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M61SVM30 => Self {
+                chips: Some(117),
                 fans: Some(2),
                 boards: Some(3),
             },
@@ -1644,6 +1934,16 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M61VK40 => Self {
                 chips: Some(192),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M61VK60 => Self {
+                chips: Some(188),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M61VK70 => Self {
+                chips: Some(172),
                 fans: Some(2),
                 boards: Some(3),
             },
@@ -1672,13 +1972,58 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(2),
                 boards: Some(3),
             },
+            WhatsMinerModel::M62SPlusPlusVM30 => Self {
+                chips: Some(132),
+                fans: Some(0),
+                boards: Some(3),
+            },
             WhatsMinerModel::M62SPlusVK30 => Self {
                 chips: Some(430),
                 fans: Some(0),
                 boards: Some(3),
             },
+            WhatsMinerModel::M63SPlusPlusVL10 => Self {
+                chips: Some(360),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M63SPlusPlusVL20 => Self {
                 chips: Some(380),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusPlusVL40 => Self {
+                chips: Some(304),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusPlusVL50 => Self {
+                chips: Some(340),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusPlusVL60 => Self {
+                chips: Some(380),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusPlusVL70 => Self {
+                chips: Some(288),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusPlusVM10 => Self {
+                chips: Some(152),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusPlusVM20 => Self {
+                chips: Some(186),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusPlusVM30 => Self {
+                chips: Some(198),
                 fans: Some(0),
                 boards: Some(4),
             },
@@ -1702,8 +2047,58 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M63SPlusVL40 => Self {
+                chips: Some(228),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M63SPlusVL50 => Self {
                 chips: Some(272),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusVL60 => Self {
+                chips: Some(304),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusVL70 => Self {
+                chips: Some(240),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusVL80 => Self {
+                chips: Some(256),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusVL90 => Self {
+                chips: Some(256),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusVLA0 => Self {
+                chips: Some(228),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusVLC0 => Self {
+                chips: Some(222),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusVLD0 => Self {
+                chips: Some(340),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusVM30 => Self {
+                chips: Some(136),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SPlusVM40 => Self {
+                chips: Some(144),
                 fans: Some(0),
                 boards: Some(4),
             },
@@ -1722,13 +2117,58 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M63SVK40 => Self {
+                chips: Some(288),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVK50 => Self {
+                chips: Some(300),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M63SVK60 => Self {
                 chips: Some(350),
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M63SVK70 => Self {
+                chips: Some(340),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVK80 => Self {
+                chips: Some(288),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVK90 => Self {
+                chips: Some(304),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVKA0 => Self {
+                chips: Some(272),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M63SVL10 => Self {
                 chips: Some(228),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVL20 => Self {
+                chips: Some(216),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVL30 => Self {
+                chips: Some(272),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVL40 => Self {
+                chips: Some(204),
                 fans: Some(0),
                 boards: Some(4),
             },
@@ -1742,8 +2182,33 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M63SVL70 => Self {
+                chips: Some(228),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVL80 => Self {
+                chips: Some(240),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVL90 => Self {
+                chips: Some(128),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVLA0 => Self {
+                chips: Some(256),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63SVM30 => Self {
+                chips: Some(132),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M63VK10 => Self {
-                chips: None,
+                chips: Some(256),
                 fans: Some(0),
                 boards: Some(4),
             },
@@ -1762,13 +2227,53 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M63VL20 => Self {
+                chips: Some(204),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M63VL30 => Self {
                 chips: Some(216),
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M63VL40 => Self {
+                chips: Some(180),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63VL60 => Self {
+                chips: Some(216),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M63VL70 => Self {
+                chips: Some(174),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M64SPlusPlusVM30 => Self {
+                chips: Some(96),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M64SVL10 => Self {
+                chips: Some(114),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M64SVL20 => Self {
+                chips: Some(120),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M64SVL30 => Self {
                 chips: Some(152),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M64VL20 => Self {
+                chips: Some(96),
                 fans: Some(0),
                 boards: Some(4),
             },
@@ -1787,6 +2292,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M65SPlusVL20 => Self {
+                chips: Some(340),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M65SVK20 => Self {
                 chips: Some(350),
                 fans: Some(0),
@@ -1801,6 +2311,36 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 chips: Some(368),
                 fans: Some(0),
                 boards: Some(3),
+            },
+            WhatsMinerModel::M66SPlusPlusVL40 => Self {
+                chips: Some(288),
+                fans: Some(0),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M66SPlusPlusVL50 => Self {
+                chips: Some(240),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M66SPlusPlusVL60 => Self {
+                chips: Some(250),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M66SPlusPlusVL70 => Self {
+                chips: Some(250),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M66SPlusPlusVL80 => Self {
+                chips: Some(230),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M66SPlusPlusVM30 => Self {
+                chips: Some(138),
+                fans: Some(0),
+                boards: Some(4),
             },
             WhatsMinerModel::M66SPlusVK30 => Self {
                 chips: Some(440),
@@ -1827,8 +2367,23 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M66SPlusVL50 => Self {
+                chips: Some(200),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M66SPlusVL60 => Self {
                 chips: Some(200),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M66SPlusVL70 => Self {
+                chips: Some(230),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M66SPlusVL80 => Self {
+                chips: Some(250),
                 fans: Some(0),
                 boards: Some(4),
             },
@@ -1857,6 +2412,16 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M66SVK70 => Self {
+                chips: Some(210),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M66SVK80 => Self {
+                chips: Some(220),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M66SVL10 => Self {
                 chips: Some(168),
                 fans: Some(0),
@@ -1882,6 +2447,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(4),
             },
+            WhatsMinerModel::M66SVL80 => Self {
+                chips: Some(160),
+                fans: Some(0),
+                boards: Some(4),
+            },
             WhatsMinerModel::M66VK20 => Self {
                 chips: Some(184),
                 fans: Some(0),
@@ -1889,6 +2459,11 @@ impl From<&WhatsMinerModel> for MinerHardware {
             },
             WhatsMinerModel::M66VK30 => Self {
                 chips: Some(192),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M66VK60 => Self {
+                chips: Some(176),
                 fans: Some(0),
                 boards: Some(4),
             },
@@ -1907,10 +2482,120 @@ impl From<&WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(3),
             },
+            WhatsMinerModel::M69SPlusPlusVM30 => Self {
+                chips: Some(228),
+                fans: Some(0),
+                boards: Some(8),
+            },
+            WhatsMinerModel::M69VK30 => Self {
+                chips: Some(228),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M70SPlusVM30 => Self {
+                chips: Some(245),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M70SVM30 => Self {
+                chips: Some(204),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M70VL20 => Self {
+                chips: Some(245),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M70VL30 => Self {
+                chips: Some(255),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M70VM10 => Self {
+                chips: Some(135),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M70VM20 => Self {
+                chips: Some(141),
+                fans: Some(2),
+                boards: Some(3),
+            },
             WhatsMinerModel::M70VM30 => Self {
                 chips: Some(147),
                 fans: Some(2),
                 boards: Some(3),
+            },
+            WhatsMinerModel::M70VM80 => Self {
+                chips: Some(147),
+                fans: Some(2),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M72SVM30 => Self {
+                chips: Some(234),
+                fans: Some(0),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M72VM30 => Self {
+                chips: Some(174),
+                fans: Some(0),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M73SPlusVM40 => Self {
+                chips: Some(380),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M73SVM30 => Self {
+                chips: Some(304),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M73VL30 => Self {
+                chips: Some(380),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M73VM20 => Self {
+                chips: Some(216),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M73VM30 => Self {
+                chips: Some(228),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M73VM70 => Self {
+                chips: Some(204),
+                fans: Some(0),
+                boards: Some(4),
+            },
+            WhatsMinerModel::M76SVM30 => Self {
+                chips: Some(240),
+                fans: Some(0),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M76VL30 => Self {
+                chips: Some(384),
+                fans: Some(0),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M76VM30 => Self {
+                chips: Some(176),
+                fans: Some(0),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M78SVM30 => Self {
+                chips: Some(384),
+                fans: Some(0),
+                boards: Some(3),
+            },
+            WhatsMinerModel::M79SVM30 => Self {
+                chips: Some(304),
+                fans: Some(0),
+                boards: Some(8),
             },
         }
     }
