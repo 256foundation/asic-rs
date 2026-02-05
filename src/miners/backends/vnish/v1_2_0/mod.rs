@@ -206,6 +206,7 @@ impl GetDataLocations for VnishV120 {
                     },
                 ),
             ],
+            DataField::IsMining => vec![],
             DataField::Pools => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
@@ -214,7 +215,7 @@ impl GetDataLocations for VnishV120 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![(
+            DataField::MiningMode => vec![(
                 WEB_STATUS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -352,6 +353,14 @@ impl GetHashrate for VnishV120 {
     }
 }
 
+impl GetIsMining for VnishV120 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        self.parse_hashrate(data)
+            .map(|hr| hr.value > 0.0)
+            .unwrap_or(false)
+    }
+}
+
 impl GetExpectedHashrate for VnishV120 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
@@ -442,11 +451,16 @@ impl GetUptime for VnishV120 {
     }
 }
 
-impl GetIsMining for VnishV120 {
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract::<String>(DataField::IsMining)
+impl GetMiningMode for VnishV120 {
+    fn parse_mining_mode(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> crate::data::miner::MiningMode {
+        let enabled = data
+            .extract::<String>(DataField::MiningMode)
             .map(|state| state == "mining")
-            .unwrap_or(false)
+            .unwrap_or(false);
+        enabled.into()
     }
 }
 
@@ -585,7 +599,7 @@ impl VnishV120 {
 
     fn extract_tuned_status(_chain: &Value, data: &HashMap<DataField, Value>) -> Option<bool> {
         // Check miner state to determine tuning status
-        if let Some(miner_state) = data.extract::<String>(DataField::IsMining) {
+        if let Some(miner_state) = data.extract::<String>(DataField::MiningMode) {
             match miner_state.as_str() {
                 "auto-tuning" => Some(false), // Currently tuning, not yet tuned
                 "mining" => Some(true),       // Tuned and mining

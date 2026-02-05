@@ -177,6 +177,7 @@ impl GetDataLocations for WhatsMinerV3 {
                     },
                 ),
             ],
+            DataField::IsMining => vec![],
             DataField::Pools => vec![(
                 rpc_get_miner_status_pools,
                 DataExtractor {
@@ -361,6 +362,15 @@ impl GetHashrate for WhatsMinerV3 {
         })
     }
 }
+
+impl GetIsMining for WhatsMinerV3 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        self.parse_hashrate(data)
+            .map(|hr| hr.value > 0.0)
+            .unwrap_or(false)
+    }
+}
+
 impl GetExpectedHashrate for WhatsMinerV3 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
@@ -429,7 +439,7 @@ impl GetUptime for WhatsMinerV3 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
-impl GetIsMining for WhatsMinerV3 {}
+impl GetMiningMode for WhatsMinerV3 {}
 impl GetPools for WhatsMinerV3 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
         let mut pools: Vec<PoolData> = Vec::new();

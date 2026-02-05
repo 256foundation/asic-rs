@@ -122,6 +122,7 @@ pub struct MinerData {
     pub light_flashing: Option<bool>,
     pub messages: Vec<MinerMessage>,
     pub uptime: Option<Duration>,
+    pub mining_mode: String,
     pub is_mining: bool,
     pub pools: Vec<PoolData>,
 }
@@ -156,6 +157,7 @@ impl From<&MinerData_Base> for MinerData {
             light_flashing: base.light_flashing,
             messages: base.messages.clone(),
             uptime: base.uptime,
+            mining_mode: base.mining_mode.to_string(),
             is_mining: base.is_mining,
             pools: base.pools.clone(),
         }

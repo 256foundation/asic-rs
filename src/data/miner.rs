@@ -13,6 +13,8 @@ use macaddr::MacAddr;
 use measurements::{Power, Temperature};
 use serde::{Deserialize, Serialize};
 
+pub use super::mode::MiningMode;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinerData {
     /// The schema version of this MinerData object, for use in external APIs
@@ -78,6 +80,8 @@ pub struct MinerData {
     /// The total uptime of the miner's system
     pub uptime: Option<Duration>,
     /// Whether the hashing process is currently running
+    pub mining_mode: MiningMode,
+    /// Whether the miner is currently hashing.
     pub is_mining: bool,
     /// The current pools configured on the miner
     pub pools: Vec<PoolData>,

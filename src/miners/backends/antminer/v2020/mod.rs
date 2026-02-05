@@ -317,7 +317,7 @@ impl GetDataLocations for AntMinerV2020 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![(
+            DataField::MiningMode => vec![(
                 WEB_MINER_CONF,
                 DataExtractor {
                     func: get_by_pointer,
@@ -333,6 +333,7 @@ impl GetDataLocations for AntMinerV2020 {
                     tag: None,
                 },
             )],
+            DataField::IsMining => vec![],
             DataField::Pools => vec![(
                 RPC_POOLS,
                 DataExtractor {
@@ -526,6 +527,14 @@ impl GetHashrate for AntMinerV2020 {
     }
 }
 
+impl GetIsMining for AntMinerV2020 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        self.parse_hashrate(data)
+            .map(|hr| hr.value > 0.0)
+            .unwrap_or(false)
+    }
+}
+
 impl GetExpectedHashrate for AntMinerV2020 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| {
@@ -576,22 +585,24 @@ impl GetUptime for AntMinerV2020 {
     }
 }
 
-impl GetIsMining for AntMinerV2020 {
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract::<String>(DataField::IsMining)
+impl GetMiningMode for AntMinerV2020 {
+    fn parse_mining_mode(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> crate::data::miner::MiningMode {
+        let enabled = data
+            .extract::<String>(DataField::MiningMode)
             .map(|status| {
                 let status_lower = status.to_lowercase();
-                (status_lower != "stopped"
+                status_lower != "stopped"
                     && status_lower != "idle"
                     && status_lower != "sleep"
-                    && status_lower != "1")
-                    && data
-                        .extract::<f64>(DataField::Hashrate)
-                        .map(|hr| hr > 0.0)
-                        .unwrap_or(true)
+                    && status_lower != "1"
             })
             .or_else(|| data.extract::<f64>(DataField::Hashrate).map(|hr| hr > 0.0))
-            .unwrap_or(false)
+            .unwrap_or(false);
+
+        enabled.into()
     }
 }
 

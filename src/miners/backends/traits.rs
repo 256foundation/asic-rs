@@ -18,7 +18,7 @@ use crate::data::message::MinerMessage;
 use crate::data::pool::PoolData;
 use crate::miners::commands::MinerCommand;
 
-use crate::data::miner::MinerData;
+use crate::data::miner::{MinerData, MiningMode};
 use crate::miners::data::{DataCollector, DataField, DataLocation};
 
 pub(crate) trait MinerConstructor {
@@ -61,6 +61,7 @@ pub trait GetMinerData:
     + GetLightFlashing
     + GetMessages
     + GetUptime
+    + GetMiningMode
     + GetIsMining
     + GetPools
 {
@@ -114,6 +115,7 @@ impl<
         + GetLightFlashing
         + GetMessages
         + GetUptime
+        + GetMiningMode
         + GetIsMining
         + GetPools
         + MinerInterface,
@@ -148,6 +150,7 @@ impl<
         let psu_fans = self.parse_psu_fans(&data);
         let hashboards = self.parse_hashboards(&data);
         let light_flashing = self.parse_light_flashing(&data);
+        let mining_mode = self.parse_mining_mode(&data);
         let is_mining = self.parse_is_mining(&data);
         let messages = self.parse_messages(&data);
         let pools = self.parse_pools(&data);
@@ -237,6 +240,7 @@ impl<
             light_flashing,
             messages,
             uptime,
+            mining_mode,
             is_mining,
 
             pools,
@@ -590,19 +594,33 @@ pub trait GetUptime: CollectData {
     }
 }
 
-// Is Mining
+// Mining Mode
 #[async_trait]
-pub trait GetIsMining: CollectData {
+pub trait GetMiningMode: CollectData {
+    #[tracing::instrument(level = "debug")]
+    async fn get_mining_mode(&self) -> MiningMode {
+        let mut collector = self.get_collector();
+        let data = collector.collect(&[DataField::MiningMode]).await;
+        self.parse_mining_mode(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_mining_mode(&self, data: &HashMap<DataField, Value>) -> MiningMode {
+        MiningMode::Enabled
+    }
+}
+
+// IsMining (computed only from Hashrate)
+#[async_trait]
+pub trait GetIsMining: GetHashrate {
     #[tracing::instrument(level = "debug")]
     async fn get_is_mining(&self) -> bool {
         let mut collector = self.get_collector();
-        let data = collector.collect(&[DataField::IsMining]).await;
+        let data = collector.collect(&[DataField::Hashrate]).await;
         self.parse_is_mining(&data)
     }
-    #[allow(unused_variables)]
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        true
-    }
+
+    /// `true` when `hashrate > 0`, otherwise `false`.
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool;
 }
 
 // Pools

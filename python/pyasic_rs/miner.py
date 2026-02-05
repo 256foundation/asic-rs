@@ -103,6 +103,9 @@ class Miner:
     async def get_uptime(self) -> timedelta | None:
         return await self.__inner.get_uptime()
 
+    async def get_mining_mode(self) -> str:
+        return await self.__inner.get_mining_mode()
+
     async def get_is_mining(self) -> bool | None:
         return await self.__inner.get_is_mining()
 

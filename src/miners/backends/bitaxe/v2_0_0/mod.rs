@@ -163,6 +163,7 @@ impl GetDataLocations for Bitaxe200 {
                     tag: None,
                 },
             )],
+            DataField::IsMining => vec![],
             DataField::Pools => vec![(
                 WEB_SYSTEM_INFO,
                 DataExtractor {
@@ -315,6 +316,15 @@ impl GetHashrate for Bitaxe200 {
         })
     }
 }
+
+impl GetIsMining for Bitaxe200 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        self.parse_hashrate(data)
+            .map(|hr| hr.value > 0.0)
+            .unwrap_or(false)
+    }
+}
+
 impl GetExpectedHashrate for Bitaxe200 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         let total_chips =
@@ -396,10 +406,14 @@ impl GetUptime for Bitaxe200 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
-impl GetIsMining for Bitaxe200 {
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+impl GetMiningMode for Bitaxe200 {
+    fn parse_mining_mode(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> crate::data::miner::MiningMode {
         let hashrate = self.parse_hashrate(data);
-        hashrate.as_ref().is_some_and(|hr| hr.value > 0.0)
+        let enabled = hashrate.as_ref().is_some_and(|hr| hr.value > 0.0);
+        enabled.into()
     }
 }
 impl GetPools for Bitaxe200 {
