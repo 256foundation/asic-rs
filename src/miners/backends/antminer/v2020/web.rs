@@ -83,7 +83,7 @@ impl AntMinerWebAPI {
                 .client
                 .get(url)
                 .timeout(self.timeout)
-                .send_with_digest_auth(&self.username, &self.password)
+                .send_digest_auth((self.username.as_str(), self.password.as_str()))
                 .await
                 .map_err(|e| anyhow!(e.to_string()))?,
             Method::POST => {
@@ -92,7 +92,7 @@ impl AntMinerWebAPI {
                     .post(url)
                     .json(&data)
                     .timeout(self.timeout)
-                    .send_with_digest_auth(&self.username, &self.password)
+                    .send_digest_auth((self.username.as_str(), self.password.as_str()))
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?
             }

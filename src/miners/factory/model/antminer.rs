@@ -9,7 +9,7 @@ use std::net::IpAddr;
 pub(crate) async fn get_model_antminer(ip: IpAddr) -> Result<MinerModel, ModelSelectionError> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{ip}/cgi-bin/get_system_info.cgi"))
-        .send_with_digest_auth("root", "root")
+        .send_digest_auth(("root", "root"))
         .await
         .ok();
     match response {
@@ -33,7 +33,7 @@ pub(crate) async fn get_model_antminer(ip: IpAddr) -> Result<MinerModel, ModelSe
 pub(crate) async fn get_version_antminer(ip: IpAddr) -> Option<semver::Version> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{ip}/cgi-bin/summary.cgi"))
-        .send_with_digest_auth("root", "root")
+        .send_digest_auth(("root", "root"))
         .await
         .ok();
     match response {
