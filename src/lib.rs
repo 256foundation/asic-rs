@@ -153,6 +153,10 @@
 //! pip install pre-commit
 //! pre-commit install --hook-type commit-msg --hook-type pre-commit
 //! ```
+//!
+//! ## README
+//! The README is auto generated with `doc2readme`, please do not edit it manually.
+//! Instead, changes can be made in `lib.rs`.
 
 pub use crate::miners::factory::MinerFactory;
 pub use crate::miners::listener::MinerListener;

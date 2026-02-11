@@ -127,13 +127,30 @@ Please format your commits accordingly, for example:
 
 * `feat: add new miner support`
 * `fix: correct hashrate parsing`
+* `fix(python): fix missing reference to rust function`
 * `docs: update getting started guide`
 
+### Setting up pre-commit hooks
 
- [__cargo_doc2readme_dependencies_info]: ggGkYW0CYXSEG7zYzQEoMuUiG7bjUS7Q1YKmGzZY4az0AsGrGx0Aapd5TVHgYXKEG9xeSlsevzdnG8T8_cfSQ6K5G5dA_j5Tq3_LG69X3u_Pf7yXYWSBg2dhc2ljLXJzZTAuMS42Z2FzaWNfcnM
+This project uses [pre-commit][__link6] to enforce commit message formatting and code quality.
+To set up the hooks:
+
+```sh
+pip install pre-commit
+pre-commit install --hook-type commit-msg --hook-type pre-commit
+```
+
+### README
+
+The README is auto generated with `doc2readme`, please do not edit it manually.
+Instead, changes can be made in `lib.rs`.
+
+
+ [__cargo_doc2readme_dependencies_info]: ggGkYW0CYXSEG4IljsKm9mCpG6jFazawiHDzG4aznWaXJoNtG2IgF6W9DkLHYXKEGyCzd9ZJji39G1b-RySpLty4GyKQr6Otjxx2G_b5jmdOCB57YWSBg2dhc2ljLXJzZTAuMS42Z2FzaWNfcnM
  [__link0]: https://docs.rs/asic-rs/0.1.6/asic_rs/?search=miners::factory::MinerFactory
  [__link1]: https://docs.rs/asic-rs/0.1.6/asic_rs/?search=miners::factory::MinerFactory
  [__link2]: https://docs.rs/asic-rs/0.1.6/asic_rs/?search=data::miner::MinerData
  [__link3]: https://docs.rs/asic-rs/0.1.6/asic_rs/?search=miners::backends::traits::GetMinerData
  [__link4]: https://docs.rs/asic-rs/0.1.6/asic_rs/?search=miners::backends::traits::HasMinerControl
  [__link5]: https://www.conventionalcommits.org/
+ [__link6]: https://pre-commit.com/
