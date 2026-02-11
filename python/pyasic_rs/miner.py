@@ -124,3 +124,23 @@ class Miner:
         if isinstance(at_time, int):
             at_time = timedelta(seconds=at_time)
         return await self.__inner.restart(at_time)
+
+    @property
+    def supports_set_fault_light(self) -> bool:
+        return self.__inner.supports_set_fault_light
+
+    @property
+    def supports_set_power_limit(self) -> bool:
+        return self.__inner.supports_set_power_limit
+
+    @property
+    def supports_restart(self) -> bool:
+        return self.__inner.supports_restart
+
+    @property
+    def supports_pause(self) -> bool:
+        return self.__inner.supports_pause
+
+    @property
+    def supports_resume(self) -> bool:
+        return self.__inner.supports_resume

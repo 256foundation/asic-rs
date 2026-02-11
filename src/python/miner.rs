@@ -79,6 +79,27 @@ impl Miner {
         self.inner.get_expected_fans()
     }
 
+    #[getter]
+    fn supports_set_fault_light(&self) -> bool {
+        self.inner.supports_set_fault_light()
+    }
+    #[getter]
+    fn supports_set_power_limit(&self) -> bool {
+        self.inner.supports_set_power_limit()
+    }
+    #[getter]
+    fn supports_restart(&self) -> bool {
+        self.inner.supports_restart()
+    }
+    #[getter]
+    fn supports_pause(&self) -> bool {
+        self.inner.supports_pause()
+    }
+    #[getter]
+    fn supports_resume(&self) -> bool {
+        self.inner.supports_resume()
+    }
+
     // Data functions
     pub fn get_data<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
