@@ -1,4 +1,4 @@
-# asic-rs ![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue) [![asic-rs on crates.io](https://img.shields.io/crates/v/asic-rs)](https://crates.io/crates/asic-rs) [![asic-rs on docs.rs](https://docs.rs/asic-rs/badge.svg)](https://docs.rs/asic-rs)
+# asic-rs ![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue) [![asic-rs on crates.io](https://img.shields.io/crates/v/asic-rs)](https://crates.io/crates/asic-rs) [![asic-rs on docs.rs](https://docs.rs/asic-rs/badge.svg)](https://docs.rs/asic-rs) [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
 
 asic-rs is a miner management and control library, designed to abstract away the complexity of working with different types of ASIC miners.
 
@@ -120,10 +120,20 @@ async fn main() {
 }
 ```
 
+## Contributing
 
- [__cargo_doc2readme_dependencies_info]: ggGkYW0CYXSEG_W_Gn_kaocAGwCcVPfenh7eGy6gYLEwyIe4G6-xw_FwcbpjYXKEG5D_qVKckslCGxwIeK2B_3HPG0dVylfZ-fxqG8PBiqF0DLdRYWSBg2dhc2ljLXJzZTAuMS41Z2FzaWNfcnM
- [__link0]: https://docs.rs/asic-rs/0.1.5/asic_rs/?search=miners::factory::MinerFactory
- [__link1]: https://docs.rs/asic-rs/0.1.5/asic_rs/?search=miners::factory::MinerFactory
- [__link2]: https://docs.rs/asic-rs/0.1.5/asic_rs/?search=data::miner::MinerData
- [__link3]: https://docs.rs/asic-rs/0.1.5/asic_rs/?search=miners::backends::traits::GetMinerData
- [__link4]: https://docs.rs/asic-rs/0.1.5/asic_rs/?search=miners::backends::traits::HasMinerControl
+Contributions are welcome! This project uses the [Conventional Commits][__link5] specification for commit messages.
+Please format your commits accordingly, for example:
+
+* `feat: add new miner support`
+* `fix: correct hashrate parsing`
+* `docs: update getting started guide`
+
+
+ [__cargo_doc2readme_dependencies_info]: ggGkYW0CYXSEG7zYzQEoMuUiG7bjUS7Q1YKmGzZY4az0AsGrGx0Aapd5TVHgYXKEG9xeSlsevzdnG8T8_cfSQ6K5G5dA_j5Tq3_LG69X3u_Pf7yXYWSBg2dhc2ljLXJzZTAuMS42Z2FzaWNfcnM
+ [__link0]: https://docs.rs/asic-rs/0.1.6/asic_rs/?search=miners::factory::MinerFactory
+ [__link1]: https://docs.rs/asic-rs/0.1.6/asic_rs/?search=miners::factory::MinerFactory
+ [__link2]: https://docs.rs/asic-rs/0.1.6/asic_rs/?search=data::miner::MinerData
+ [__link3]: https://docs.rs/asic-rs/0.1.6/asic_rs/?search=miners::backends::traits::GetMinerData
+ [__link4]: https://docs.rs/asic-rs/0.1.6/asic_rs/?search=miners::backends::traits::HasMinerControl
+ [__link5]: https://www.conventionalcommits.org/

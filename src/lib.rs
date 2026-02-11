@@ -133,6 +133,15 @@
 //!     }
 //! }
 //! ```
+//!
+//! # Contributing
+//!
+//! Contributions are welcome! This project uses the [Conventional Commits](https://www.conventionalcommits.org/) specification for commit messages.
+//! Please format your commits accordingly, for example:
+//!
+//! - `feat: add new miner support`
+//! - `fix: correct hashrate parsing`
+//! - `docs: update getting started guide`
 
 pub use crate::miners::factory::MinerFactory;
 pub use crate::miners::listener::MinerListener;
