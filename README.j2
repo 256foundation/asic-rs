@@ -1,0 +1,28 @@
+{# custom template based on cargo-doc2readme default #}
+
+{%- if crate -%}
+# {{ crate }}
+	{%- if license %} ![License: {{ license }}](https://img.shields.io/badge/license-{{ license | replace("-", "--") | urlencode }}-blue)
+	{%- else %} ![License](https://img.shields.io/crates/l/{{ crate | urlencode }})
+	{%- endif %}
+	{%- if crate %} [![{{ crate }} on crates.io](https://img.shields.io/crates/v/{{ crate | urlencode }})](https://crates.io/crates/{{ crate | urlencode }})
+		{%- if target == "lib" %} [![{{ crate }} on docs.rs](https://docs.rs/{{ crate | urlencode }}/badge.svg)](https://docs.rs/{{ crate | urlencode }})
+		{%- endif %}
+	{%- endif %}
+	{%- if repository %}
+		{%- if repository_host == "github.com"     %} [![Source Code Repository](https://img.shields.io/badge/Code-On%20GitHub-blue?logo=GitHub)]({{ repository }})
+		{%- elif repository_host == "gitlab.com"   %} [![Source Code Repository](https://img.shields.io/badge/Code-On%20GitLab-blue?logo=GitLab)]({{ repository }})
+		{%- elif repository_host == "codeberg.org" %} [![Source Code Repository](https://img.shields.io/badge/Code-On%20Codeberg-blue?logo=Codeberg)]({{ repository }})
+		{%- elif repository_host %} [![Source Code Repository](https://img.shields.io/badge/Code-On%20{{ repository_host | replace("-", "--") | urlencode }}-blue)]({{ repository }})
+		{%- endif %}
+	{%- endif %}
+	{%- if rust_version %} ![Rust Version: {{rust_version}}](https://img.shields.io/badge/rustc-{{ rust_version | urlencode }}-orange.svg)
+	{%- endif %} [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
+{%- endif %}
+
+{{ readme }}
+
+{%- if links != "" %}
+
+{{ links }}
+{%- endif -%}

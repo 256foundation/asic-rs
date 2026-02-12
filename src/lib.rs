@@ -133,6 +133,30 @@
 //!     }
 //! }
 //! ```
+//!
+//! # Contributing
+//!
+//! Contributions are welcome! This project uses the [Conventional Commits](https://www.conventionalcommits.org/) specification for commit messages.
+//! Please format your commits accordingly, for example:
+//!
+//! - `feat: add new miner support`
+//! - `fix: correct hashrate parsing`
+//! - `fix(python): fix missing reference to rust function`
+//! - `docs: update getting started guide`
+//!
+//! ## Setting up pre-commit hooks
+//!
+//! This project uses [pre-commit](https://pre-commit.com/) to enforce commit message formatting and code quality.
+//! To set up the hooks:
+//!
+//! ```sh
+//! pip install pre-commit
+//! pre-commit install --hook-type commit-msg --hook-type pre-commit
+//! ```
+//!
+//! ## README
+//! The README is auto generated with `doc2readme`, please do not edit it manually.
+//! Instead, changes can be made in `lib.rs`.
 
 pub use crate::miners::factory::MinerFactory;
 pub use crate::miners::listener::MinerListener;
