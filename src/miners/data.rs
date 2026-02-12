@@ -55,6 +55,8 @@ pub enum DataField {
     Messages,
     /// Uptime in seconds.
     Uptime,
+    /// Whether mining is enabled (i.e., not sleeping/paused/stopped).
+    MiningMode,
     /// Whether the miner is currently hashing.
     IsMining,
     /// Pool configuration (addresses, statuses, etc.).
@@ -275,8 +277,10 @@ impl<'a> DataCollector<'a> {
 
     /// Collects **all** available fields from the miner and returns a map of results.
     pub async fn collect_all(&mut self) -> HashMap<DataField, Value> {
-        self.collect(DataField::iter().collect::<Vec<_>>().as_slice())
-            .await
+        let fields = DataField::iter()
+            .filter(|f| *f != DataField::IsMining)
+            .collect::<Vec<_>>();
+        self.collect(fields.as_slice()).await
     }
 
     /// Collects only the specified fields from the miner and returns a map of results.

@@ -175,6 +175,7 @@ impl GetDataLocations for WhatsMinerV2 {
                     tag: None,
                 },
             )],
+            DataField::IsMining => vec![],
             DataField::Pools => vec![(
                 RPC_POOLS,
                 DataExtractor {
@@ -223,7 +224,7 @@ impl GetDataLocations for WhatsMinerV2 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![(
+            DataField::MiningMode => vec![(
                 RPC_STATUS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -380,6 +381,15 @@ impl GetHashrate for WhatsMinerV2 {
         })
     }
 }
+
+impl GetIsMining for WhatsMinerV2 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        self.parse_hashrate(data)
+            .map(|hr| hr.value > 0.0)
+            .unwrap_or(false)
+    }
+}
+
 impl GetExpectedHashrate for WhatsMinerV2 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| {
@@ -484,10 +494,15 @@ impl GetUptime for WhatsMinerV2 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
-impl GetIsMining for WhatsMinerV2 {
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract_map::<String, _>(DataField::IsMining, |l| l != "false")
-            .unwrap_or(true)
+impl GetMiningMode for WhatsMinerV2 {
+    fn parse_mining_mode(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> crate::data::miner::MiningMode {
+        let enabled = data
+            .extract_map::<String, _>(DataField::MiningMode, |l| l != "false")
+            .unwrap_or(true);
+        enabled.into()
     }
 }
 impl GetPools for WhatsMinerV2 {

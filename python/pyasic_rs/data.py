@@ -1,7 +1,7 @@
 from datetime import timedelta
 from enum import IntEnum
 from ipaddress import IPv4Address
-from typing import Annotated, Self
+from typing import Annotated, Self, Literal
 
 from pydantic import BaseModel, ConfigDict, BeforeValidator, field_serializer, model_serializer
 
@@ -213,6 +213,7 @@ class MinerData(BaseModel):
     light_flashing: bool | None
     messages: list[MinerMessage]
     uptime: timedelta | None
+    mining_mode: Literal["enabled", "disabled"]
     is_mining: bool
     pools: list[PoolData]
 

@@ -193,6 +193,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
             ],
+            DataField::IsMining => vec![],
             DataField::Pools => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
@@ -201,7 +202,7 @@ impl GetDataLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![(
+            DataField::MiningMode => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
@@ -652,6 +653,14 @@ impl GetHashrate for PowerPlayV1 {
     }
 }
 
+impl GetIsMining for PowerPlayV1 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        self.parse_hashrate(data)
+            .map(|hr| hr.value > 0.0)
+            .unwrap_or(false)
+    }
+}
+
 impl GetExpectedHashrate for PowerPlayV1 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
@@ -715,11 +724,16 @@ impl GetUptime for PowerPlayV1 {
     }
 }
 
-impl GetIsMining for PowerPlayV1 {
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract::<String>(DataField::IsMining)
+impl GetMiningMode for PowerPlayV1 {
+    fn parse_mining_mode(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> crate::data::miner::MiningMode {
+        let enabled = data
+            .extract::<String>(DataField::MiningMode)
             .map(|state| state != "Idling")
-            .unwrap_or(false)
+            .unwrap_or(false);
+        enabled.into()
     }
 }
 

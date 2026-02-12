@@ -174,7 +174,7 @@ impl GetDataLocations for BraiinsV2507 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![(
+            DataField::MiningMode => vec![(
                 WEB_MINER_DETAILS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -198,6 +198,7 @@ impl GetDataLocations for BraiinsV2507 {
                     tag: None,
                 },
             )],
+            DataField::IsMining => vec![],
             DataField::Pools => vec![(
                 WEB_POOLS,
                 DataExtractor {
@@ -378,6 +379,14 @@ impl GetHashrate for BraiinsV2507 {
     }
 }
 
+impl GetIsMining for BraiinsV2507 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        self.parse_hashrate(data)
+            .map(|hr| hr.value > 0.0)
+            .unwrap_or(false)
+    }
+}
+
 impl GetExpectedHashrate for BraiinsV2507 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
@@ -425,14 +434,18 @@ impl GetUptime for BraiinsV2507 {
     }
 }
 
-impl GetIsMining for BraiinsV2507 {
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+impl GetMiningMode for BraiinsV2507 {
+    fn parse_mining_mode(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> crate::data::miner::MiningMode {
         // 1 -> Not Started
         // 2 -> Normal
         // 3 -> Paused
         // 4 -> Suspended
         // See: https://github.com/braiins/bos-plus-api/blob/ef28e752f80711c54d5587ec8f2cd838fdb34042/proto/bos/v1/miner.proto#L117-L124
-        data.extract::<u64>(DataField::IsMining) == Some(2)
+        let enabled = data.extract::<u64>(DataField::MiningMode) == Some(2);
+        enabled.into()
     }
 }
 

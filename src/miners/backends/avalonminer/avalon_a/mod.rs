@@ -310,6 +310,7 @@ impl GetDataLocations for AvalonAMiner {
                     tag: None,
                 },
             )],
+            DataField::IsMining => vec![],
             DataField::Pools => vec![(
                 RPC_POOLS,
                 DataExtractor {
@@ -500,6 +501,14 @@ impl GetHashrate for AvalonAMiner {
     }
 }
 
+impl GetIsMining for AvalonAMiner {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        self.parse_hashrate(data)
+            .map(|hr| hr.value > 0.0)
+            .unwrap_or(false)
+    }
+}
+
 impl GetExpectedHashrate for AvalonAMiner {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
@@ -572,7 +581,7 @@ impl GetUptime for AvalonAMiner {
 }
 
 impl GetFluidTemperature for AvalonAMiner {}
-impl GetIsMining for AvalonAMiner {}
+impl GetMiningMode for AvalonAMiner {}
 
 impl GetPools for AvalonAMiner {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {

@@ -283,7 +283,7 @@ impl GetDataLocations for LuxMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![(
+            DataField::MiningMode => vec![(
                 RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
@@ -299,6 +299,7 @@ impl GetDataLocations for LuxMinerV1 {
                     tag: None,
                 },
             )],
+            DataField::IsMining => vec![],
             DataField::Pools => vec![(
                 RPC_POOLS,
                 DataExtractor {
@@ -742,6 +743,14 @@ impl GetHashrate for LuxMinerV1 {
     }
 }
 
+impl GetIsMining for LuxMinerV1 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        self.parse_hashrate(data)
+            .map(|hr| hr.value > 0.0)
+            .unwrap_or(false)
+    }
+}
+
 impl GetExpectedHashrate for LuxMinerV1 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         let data = data
@@ -802,11 +811,16 @@ impl GetUptime for LuxMinerV1 {
     }
 }
 
-impl GetIsMining for LuxMinerV1 {
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract::<f64>(DataField::IsMining)
+impl GetMiningMode for LuxMinerV1 {
+    fn parse_mining_mode(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> crate::data::miner::MiningMode {
+        let enabled = data
+            .extract::<f64>(DataField::MiningMode)
             .map(|hr| hr > 0.0)
-            .unwrap_or(false)
+            .unwrap_or(false);
+        enabled.into()
     }
 }
 

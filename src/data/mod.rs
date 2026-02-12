@@ -9,5 +9,6 @@ pub mod fan;
 pub mod hashrate;
 pub mod message;
 pub mod miner;
+pub mod mode;
 pub mod pool;
 pub(crate) mod serialize;
