@@ -74,6 +74,7 @@ dependencies = [
  "hex",
  "ipnet",
  "macaddr",
+ "md5",
  "md5crypt",
  "measurements",
  "pyo3",
