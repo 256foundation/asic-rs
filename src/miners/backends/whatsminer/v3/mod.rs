@@ -481,8 +481,8 @@ impl GetPools for WhatsMinerV3 {
 impl SetFaultLight for WhatsMinerV3 {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         let parameters = match fault {
-            true => Some(json!("auto")),
-            false => Some(json!([{"color": "red", "period": 60, "duration": 20, "start": 0}])),
+            false => Some(json!("auto")),
+            true => Some(json!([{"color": "red", "period": 200, "duration": 100, "start": 0}])),
         };
 
         let data = self
