@@ -1,5 +1,6 @@
 use reqwest::StatusCode;
 use reqwest::header::HeaderMap;
+use serde_json::json;
 use std::net::IpAddr;
 use tokio;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -73,6 +74,29 @@ pub(crate) async fn send_web_command(
             None
         }
     }
+}
+#[tracing::instrument(level = "debug")]
+pub(crate) async fn send_graphql_command(
+    ip: &IpAddr,
+    command: &'static str,
+) -> Option<serde_json::Value> {
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .danger_accept_invalid_certs(true)
+        .gzip(true)
+        .build()
+        .expect("Failed to initalize client");
+    let query = json!({ "query": command });
+
+    let response = client
+        .post(format!("http://{}/graphql", ip))
+        .header("Content-Type", "application/json")
+        .json(&query)
+        .send()
+        .await
+        .ok()?;
+
+    response.json().await.ok()?
 }
 
 #[tracing::instrument(level = "debug")]
