@@ -61,6 +61,7 @@ impl VersionSelection for MinerFirmware {
         match self {
             MinerFirmware::VNish => model::get_version_vnish(ip).await,
             MinerFirmware::EPic => model::get_version_epic(ip).await,
+            MinerFirmware::BraiinsOS => model::get_version_braiins_os(ip).await,
             _ => None,
         }
     }

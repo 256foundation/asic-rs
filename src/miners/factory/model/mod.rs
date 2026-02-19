@@ -12,7 +12,7 @@ pub(crate) mod whatsminer;
 pub(crate) use antminer::{get_model_antminer, get_version_antminer};
 pub(crate) use avalonminer::get_model_avalonminer;
 pub(crate) use bitaxe::{get_model_bitaxe, get_version_bitaxe};
-pub(crate) use braiins::get_model_braiins_os;
+pub(crate) use braiins::{get_model_braiins_os, get_version_braiins_os};
 pub(crate) use epic::{get_model_epic, get_version_epic};
 pub(crate) use luxos::get_model_luxos;
 pub(crate) use marathon::get_model_marathon;
