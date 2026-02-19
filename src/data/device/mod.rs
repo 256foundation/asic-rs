@@ -4,13 +4,13 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
-use strum::Display;
+use strum::{Display, EnumString};
 
 pub mod models;
 pub use models::MinerModel;
 
 #[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display, EnumString)]
 pub enum MinerFirmware {
     #[serde(rename = "Stock")]
     Stock,
@@ -29,7 +29,7 @@ pub enum MinerFirmware {
 }
 
 #[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display, EnumString)]
 pub enum MinerMake {
     #[serde(rename = "AntMiner")]
     AntMiner,
@@ -48,7 +48,7 @@ pub enum MinerMake {
 }
 
 #[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display, EnumString)]
 pub enum HashAlgorithm {
     #[serde(rename = "SHA256")]
     SHA256,
