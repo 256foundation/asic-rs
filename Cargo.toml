@@ -31,6 +31,7 @@ aes = "0.8.4"
 hex = "0.4.3"
 ecb = "0.1.2"
 md5crypt = "1.0.0"
+md5 = "0.8"
 tracing = { version = "0.1.41", features = ["log"] }
 
 pyo3 = { version = "0.27.1", features = [

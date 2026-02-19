@@ -545,12 +545,8 @@ impl GetPools for WhatsMinerV2 {
 impl SetFaultLight for WhatsMinerV2 {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         let parameters = match fault {
-            false => Some(
-                json!({"auto": true, "color": "red", "period": 60, "duration": 20, "start": 0}),
-            ),
-            true => Some(
-                json!({"auto": false, "color": "red", "period": 60, "duration": 20, "start": 0}),
-            ),
+            false => Some(json!({"param": "auto"})),
+            true => Some(json!({"color": "red", "period": 200, "duration": 100, "start": 0})),
         };
 
         let data = self.rpc.send_command("set_led", true, parameters).await;

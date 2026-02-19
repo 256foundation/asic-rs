@@ -8,12 +8,17 @@ use md5crypt::md5crypt;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::net::IpAddr;
+use std::string::ToString;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::miners::api::rpc::errors::RPCError;
+use crate::miners::api::rpc::errors::RPCError::StatusCheckFailed;
 use crate::miners::api::rpc::status::RPCCommandStatus;
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
+
+const UNLOCK_CLIENT: &str = "heatcore";
+const UNLOCK_MAGIC: &str = "3804fe31981418ce711a31d94bc69651";
 
 type Aes256EcbDec = ecb::Decryptor<Aes256>;
 type Aes256EcbEnc = ecb::Encryptor<Aes256>;
@@ -136,6 +141,29 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         _privileged: bool,
         parameters: Option<Value>,
     ) -> anyhow::Result<Value> {
+        let result = self
+            .send_command_once(command, _privileged, parameters.clone())
+            .await;
+        let _needs_unlock_result =
+            anyhow::Error::from(StatusCheckFailed("can't access write cmd".to_string()));
+        match result {
+            Err(_needs_unlock_result) => {
+                self.unlock_write_commands().await?;
+                self.send_command_once(command, _privileged, parameters)
+                    .await
+            }
+            _ => result,
+        }
+    }
+}
+
+impl WhatsMinerRPCAPI {
+    async fn send_command_once(
+        &self,
+        command: &str,
+        _privileged: bool,
+        parameters: Option<Value>,
+    ) -> anyhow::Result<Value> {
         if _privileged || command.starts_with("set_") {
             return self.send_privileged_command(command, parameters).await;
         }
@@ -173,9 +201,55 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
 
         self.parse_rpc_result(&response)
     }
-}
 
-impl WhatsMinerRPCAPI {
+    async fn unlock_write_commands(&self) -> anyhow::Result<()> {
+        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
+            .await
+            .map_err(|_| RPCError::ConnectionFailed)?;
+
+        let open_cmd = json!({
+            "command": "open_write_api",
+            "client": UNLOCK_CLIENT,
+            "enable": true,
+        });
+        stream.write_all(open_cmd.to_string().as_bytes()).await?;
+
+        let mut buf = vec![0u8; 4096];
+        let n = stream.read(&mut buf).await?;
+        let response: Value = serde_json::from_str(String::from_utf8_lossy(&buf[..n]).trim())?;
+
+        let msg = response
+            .get("Msg")
+            .ok_or_else(|| anyhow::anyhow!("Missing Msg in open_write_api response"))?;
+        let salt = msg["salt"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing salt"))?;
+        let newsalt = msg["newsalt"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing newsalt"))?;
+        let timestamp = msg["time"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing time"))?;
+
+        let crypted = md5crypt(self.password.as_bytes(), salt.as_bytes());
+        let full_password = String::from_utf8_lossy(&crypted);
+        let pwd_md5 = full_password
+            .split('$')
+            .nth(3)
+            .ok_or_else(|| anyhow::anyhow!("Failed to extract md5crypt hash"))?;
+
+        let token_data = format!("{}{}{}{}", timestamp, newsalt, UNLOCK_MAGIC, pwd_md5);
+        let token_md5 = format!("{:x}", md5::compute(token_data.as_bytes()));
+
+        let token_json = json!({ "token": token_md5 });
+        stream.write_all(token_json.to_string().as_bytes()).await?;
+
+        let mut final_buf = vec![0u8; 4096];
+        let _ = stream.read(&mut final_buf).await?;
+
+        Ok(())
+    }
+
     pub fn new(ip: IpAddr, port: Option<u16>) -> Self {
         Self {
             ip,
