@@ -1,3 +1,4 @@
+from ipaddress import IPv4Address
 from typing import Self, AsyncIterable
 
 from pyasic_rs.asic_rs import MinerFactory as _rs_MinerFactory
@@ -42,8 +43,10 @@ class MinerFactory:
         bases = await self.__inner.scan()
         return [Miner(inner=m) for m in filter(lambda x: x is not None, bases)]
 
-    def scan_stream(self) -> AsyncIterable[Miner]:
-        return self.__inner.scan_stream()
+    async def scan_stream(self) -> AsyncIterable[Miner]:
+        async for m in self.__inner.scan_stream():
+            yield Miner(inner=m)
 
-    def scan_stream_with_ip(self) -> AsyncIterable[Miner]:
-        return self.__inner.scan_stream_with_ip()
+    async def scan_stream_with_ip(self) -> AsyncIterable[tuple[IPv4Address, Miner | None]]:
+        async for (ip, m) in self.__inner.scan_stream_with_ip():
+            yield ip, None if m is None else Miner(inner=m)
