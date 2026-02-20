@@ -13,7 +13,7 @@ use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::device::{MinerControlBoard, MinerMake};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
-use crate::data::pool::{PoolData, PoolURL};
+use crate::data::pool::{PoolData, PoolGroupData, PoolURL};
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
@@ -431,7 +431,7 @@ impl GetUptime for WhatsMinerV3 {
 }
 impl GetIsMining for WhatsMinerV3 {}
 impl GetPools for WhatsMinerV3 {
-    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let mut pools: Vec<PoolData> = Vec::new();
         let pools_raw = data.get(&DataField::Pools);
         if let Some(pools_response) = pools_raw {
@@ -473,7 +473,11 @@ impl GetPools for WhatsMinerV3 {
                 });
             }
         }
-        pools
+        vec![PoolGroupData {
+            name: String::new(),
+            quota: 1,
+            pools,
+        }]
     }
 }
 
@@ -509,6 +513,13 @@ impl SetPowerLimit for WhatsMinerV3 {
     }
     fn supports_set_power_limit(&self) -> bool {
         true
+    }
+}
+
+#[async_trait]
+impl SetPools for WhatsMinerV3 {
+    fn supports_set_pools(&self) -> bool {
+        false
     }
 }
 

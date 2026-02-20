@@ -5,7 +5,7 @@ use crate::data::device::{
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
-use crate::data::pool::{PoolData, PoolURL};
+use crate::data::pool::{PoolData, PoolGroupData, PoolURL};
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
@@ -811,8 +811,9 @@ impl GetIsMining for LuxMinerV1 {
 }
 
 impl GetPools for LuxMinerV1 {
-    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
-        data.get(&DataField::Pools)
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
+        let pools = data
+            .get(&DataField::Pools)
             .and_then(|v| v.as_array())
             .into_iter()
             .flatten()
@@ -832,7 +833,12 @@ impl GetPools for LuxMinerV1 {
                 accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
                 rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
             })
-            .collect()
+            .collect();
+        vec![PoolGroupData {
+            name: String::new(),
+            quota: 1,
+            pools,
+        }]
     }
 }
 
@@ -922,6 +928,13 @@ impl SetFaultLight for LuxMinerV1 {
 #[async_trait]
 impl SetPowerLimit for LuxMinerV1 {
     fn supports_set_power_limit(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SetPools for LuxMinerV1 {
+    fn supports_set_pools(&self) -> bool {
         false
     }
 }
@@ -1107,7 +1120,7 @@ mod tests {
         assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(1188f64)));
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 77);
-        assert_eq!(miner_data.pools.len(), 4);
+        assert_eq!(miner_data.pools[0].len(), 4);
 
         Ok(())
     }

@@ -6,7 +6,7 @@ use std::{net::IpAddr, time::Duration};
 
 use super::{
     board::BoardData, device::DeviceInfo, fan::FanData, hashrate::HashRate, message::MinerMessage,
-    pool::PoolData,
+    pool::PoolGroupData,
 };
 use crate::data::device::MinerControlBoard;
 use macaddr::MacAddr;
@@ -80,5 +80,5 @@ pub struct MinerData {
     /// Whether the hashing process is currently running
     pub is_mining: bool,
     /// The current pools configured on the miner
-    pub pools: Vec<PoolData>,
+    pub pools: Vec<PoolGroupData>,
 }

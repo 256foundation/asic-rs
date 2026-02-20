@@ -1,11 +1,12 @@
 from datetime import timedelta
 
-from pyasic_rs.asic_rs import Miner as _rs_Miner
-from pyasic_rs.asic_rs import MinerModel as _rs_MinerModel
 from pyasic_rs.asic_rs import HashAlgorithm as _rs_HashAlgorithm
+from pyasic_rs.asic_rs import Miner as _rs_Miner
 from pyasic_rs.asic_rs import MinerFirmware as _rs_MinerFirmware
 from pyasic_rs.asic_rs import MinerMake as _rs_MinerMake
-from .data import MinerData, BoardData, HashRate, FanData, MinerMessage, PoolData
+from pyasic_rs.asic_rs import MinerModel as _rs_MinerModel
+from .config import PoolGroup
+from .data import MinerData, BoardData, HashRate, FanData, MinerMessage, PoolGroupData
 
 
 class Miner:
@@ -24,7 +25,7 @@ class Miner:
         return self.__inner.make
 
     @property
-    def firmware(self) -> _rs_MinerMake:
+    def firmware(self) -> _rs_MinerFirmware:
         return self.__inner.firmware
 
     @property
@@ -106,8 +107,8 @@ class Miner:
     async def get_is_mining(self) -> bool | None:
         return await self.__inner.get_is_mining()
 
-    async def get_pools(self) -> list[PoolData]:
-        return [PoolData.model_validate(b) for b in await self.__inner.get_pools()]
+    async def get_pools(self) -> list[PoolGroupData]:
+        return [PoolGroupData.model_validate(b) for b in await self.__inner.get_pools()]
 
     async def set_fault_light(self, fault: bool) -> bool | None:
         return await self.__inner.set_fault_light(fault)
@@ -123,7 +124,10 @@ class Miner:
     async def resume(self, at_time: timedelta | int) -> bool | None:
         if isinstance(at_time, int):
             at_time = timedelta(seconds=at_time)
-        return await self.__inner.restart(at_time)
+        return await self.__inner.resume(at_time)
+
+    async def set_pools(self, groups: list[PoolGroup]) -> bool | None:
+        return await self.__inner.set_pools(groups)
 
     @property
     def supports_set_fault_light(self) -> bool:
@@ -144,3 +148,7 @@ class Miner:
     @property
     def supports_resume(self) -> bool:
         return self.__inner.supports_resume
+
+    @property
+    def supports_set_pools(self) -> bool:
+        return self.__inner.supports_set_pools

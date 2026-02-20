@@ -13,7 +13,7 @@ use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::device::{MinerControlBoard, MinerMake};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
-use crate::data::pool::{PoolData, PoolURL};
+use crate::data::pool::{PoolData, PoolGroupData, PoolURL};
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
@@ -191,6 +191,13 @@ impl SetPowerLimit for AvalonAMiner {
     }
     fn supports_set_power_limit(&self) -> bool {
         true
+    }
+}
+
+#[async_trait]
+impl SetPools for AvalonAMiner {
+    fn supports_set_pools(&self) -> bool {
+        false
     }
 }
 
@@ -575,8 +582,9 @@ impl GetFluidTemperature for AvalonAMiner {}
 impl GetIsMining for AvalonAMiner {}
 
 impl GetPools for AvalonAMiner {
-    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
-        data.get(&DataField::Pools)
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
+        let pools = data
+            .get(&DataField::Pools)
             .and_then(|v| v.as_array())
             .map(|slice| slice.to_vec())
             .unwrap_or_default()
@@ -597,7 +605,13 @@ impl GetPools for AvalonAMiner {
                 accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
                 rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
             })
-            .collect()
+            .collect();
+
+        vec![PoolGroupData {
+            name: String::new(),
+            quota: 1,
+            pools,
+        }]
     }
 }
 

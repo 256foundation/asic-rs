@@ -137,6 +137,7 @@
 pub use crate::miners::factory::MinerFactory;
 pub use crate::miners::listener::MinerListener;
 
+pub mod config;
 pub mod data;
 pub mod miners;
 pub(crate) mod test;
