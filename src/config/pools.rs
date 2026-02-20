@@ -1,6 +1,13 @@
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use crate::data::pool::PoolURL;
 use serde::{Deserialize, Serialize};
 
+#[cfg_attr(
+    feature = "python",
+    pyclass(skip_from_py_object, get_all, module = "asic_rs")
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pool {
     pub url: PoolURL,
@@ -8,12 +15,17 @@ pub struct Pool {
     pub password: String,
 }
 
+#[cfg_attr(
+    feature = "python",
+    pyclass(skip_from_py_object, get_all, module = "asic_rs")
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PoolGroup {
     pub name: String,
     pub quota: u32,
     pub pools: Vec<Pool>,
 }
+
 
 #[cfg(feature = "python")]
 mod python_impls {
