@@ -1,7 +1,7 @@
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-use crate::data::pool::PoolURL;
+use crate::data::pool::{PoolGroupData, PoolURL};
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(
@@ -26,6 +26,25 @@ pub struct PoolGroup {
     pub pools: Vec<Pool>,
 }
 
+impl From<PoolGroupData> for PoolGroup {
+    fn from(data: PoolGroupData) -> Self {
+        PoolGroup {
+            name: data.name,
+            quota: data.quota,
+            pools: data
+                .pools
+                .into_iter()
+                .filter_map(|p| {
+                    Some(Pool {
+                        url: p.url?,
+                        username: p.user.unwrap_or_default(),
+                        password: String::from("x"),
+                    })
+                })
+                .collect(),
+        }
+    }
+}
 
 #[cfg(feature = "python")]
 mod python_impls {
