@@ -2,9 +2,11 @@ name: Cargo Assist
 
 permissions:
   contents: write
+  pull-requests: write
 
 on:
   push:
+  pull_request:
 
 jobs:
   cargo-assist:
@@ -19,3 +21,39 @@ jobs:
         uses: MarcoIeni/cargo-assist@v0.1.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  conventional-commits:
+    name: Conventional Commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Validate commit messages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|feature|bug)(\([a-zA-Z0-9_/-]+\))?!?: .+'
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+
+          bad_commits=""
+          while IFS= read -r line; do
+            sha="${line%% *}"
+            msg="${line#* }"
+            if [[ "$msg" =~ ^Merge\  ]]; then
+              continue
+            fi
+            if ! [[ "$msg" =~ $pattern ]]; then
+              bad_commits+="- \`${sha:0:7}\` ${msg}\n"
+            fi
+          done < <(git log --format="%H %s" "$base".."$head")
+
+          if [ -n "$bad_commits" ]; then
+            body=$(printf "### Conventional Commits\n\nThe following commit messages do not follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:\n\n${bad_commits}\nExpected format: \`<type>[optional scope]: <description>\`\n\nValid types: \`feat\`, \`fix\`, \`docs\`, \`style\`, \`refactor\`, \`perf\`, \`test\`, \`build\`, \`ci\`, \`chore\`, \`revert\`")
+            gh pr comment "${{ github.event.pull_request.number }}" --body "$body"
+            echo "::error::Some commit messages do not follow the Conventional Commits specification."
+            exit 1
+          fi
