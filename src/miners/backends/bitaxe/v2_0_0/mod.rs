@@ -473,6 +473,13 @@ impl SetPowerLimit for Bitaxe200 {
 }
 
 #[async_trait]
+impl SetPools for Bitaxe200 {
+    fn supports_set_pools(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
 impl Restart for Bitaxe200 {
     fn supports_restart(&self) -> bool {
         false

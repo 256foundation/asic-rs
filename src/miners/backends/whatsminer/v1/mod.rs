@@ -522,6 +522,13 @@ impl SetPowerLimit for WhatsMinerV1 {
 }
 
 #[async_trait]
+impl SetPools for WhatsMinerV1 {
+    fn supports_set_pools(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
 impl Restart for WhatsMinerV1 {
     fn supports_restart(&self) -> bool {
         false

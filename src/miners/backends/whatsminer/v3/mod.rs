@@ -513,6 +513,13 @@ impl SetPowerLimit for WhatsMinerV3 {
 }
 
 #[async_trait]
+impl SetPools for WhatsMinerV3 {
+    fn supports_set_pools(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
 impl Restart for WhatsMinerV3 {
     async fn restart(&self) -> anyhow::Result<bool> {
         let data = self.rpc.send_command("set.system.reboot", true, None).await;

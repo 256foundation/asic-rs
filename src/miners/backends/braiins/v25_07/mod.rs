@@ -583,6 +583,13 @@ impl SetPowerLimit for BraiinsV2507 {
 }
 
 #[async_trait]
+impl SetPools for BraiinsV2507 {
+    fn supports_set_pools(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
 impl Restart for BraiinsV2507 {
     async fn restart(&self) -> anyhow::Result<bool> {
         Ok(self

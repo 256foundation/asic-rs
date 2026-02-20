@@ -3,6 +3,7 @@ use crate::data::device::{HashAlgorithm, MinerFirmware, MinerHardware, MinerMake
 use crate::miners::backends::traits::Miner as MinerTrait;
 use std::net::IpAddr;
 
+use crate::config::pools::PoolGroup;
 use pyo3::prelude::*;
 use std::sync::Arc;
 use std::time::Duration;
@@ -98,6 +99,10 @@ impl Miner {
     #[getter]
     fn supports_resume(&self) -> bool {
         self.inner.supports_resume()
+    }
+    #[getter]
+    fn supports_set_pools(&self) -> bool {
+        self.inner.supports_set_pools()
     }
 
     // Data functions
@@ -279,6 +284,17 @@ impl Miner {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             let data = inner.resume(at_time).await;
+            Ok(data.ok())
+        })
+    }
+    pub fn set_pools<'a>(
+        &self,
+        py: Python<'a>,
+        groups: Vec<PoolGroup>,
+    ) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let data = inner.set_pools(groups).await;
             Ok(data.ok())
         })
     }

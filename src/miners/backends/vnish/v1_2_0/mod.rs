@@ -661,6 +661,13 @@ impl SetPowerLimit for VnishV120 {
 }
 
 #[async_trait]
+impl SetPools for VnishV120 {
+    fn supports_set_pools(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
 impl Restart for VnishV120 {
     fn supports_restart(&self) -> bool {
         false

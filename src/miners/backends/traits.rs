@@ -10,6 +10,7 @@ use std::net::IpAddr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tracing;
 
+use crate::config::pools::PoolGroup;
 use crate::data::board::BoardData;
 use crate::data::device::{DeviceInfo, MinerControlBoard, MinerModel};
 use crate::data::fan::FanData;
@@ -30,9 +31,12 @@ pub trait Miner: GetMinerData + HasMinerControl {}
 
 impl<T: GetMinerData + HasMinerControl> Miner for T {}
 
-pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
+pub trait HasMinerControl:
+    SetFaultLight + SetPowerLimit + SetPools + Restart + Resume + Pause
+{
+}
 
-impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
+impl<T: SetFaultLight + SetPowerLimit + SetPools + Restart + Resume + Pause> HasMinerControl for T {}
 
 /// Trait that every miner backend must implement to provide miner data.
 #[async_trait]
@@ -611,6 +615,15 @@ pub trait SetPowerLimit {
         anyhow::bail!("Setting power limit is not supported on this platform");
     }
     fn supports_set_power_limit(&self) -> bool;
+}
+
+#[async_trait]
+pub trait SetPools {
+    #[allow(unused_variables)]
+    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting pools is not supported on this platform");
+    }
+    fn supports_set_pools(&self) -> bool;
 }
 
 #[async_trait]

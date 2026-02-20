@@ -194,6 +194,13 @@ impl SetPowerLimit for AvalonAMiner {
     }
 }
 
+#[async_trait]
+impl SetPools for AvalonAMiner {
+    fn supports_set_pools(&self) -> bool {
+        false
+    }
+}
+
 impl GetDataLocations for AvalonAMiner {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const RPC_VERSION: MinerCommand = MinerCommand::RPC {

@@ -191,6 +191,13 @@ impl SetPowerLimit for AvalonQMiner {
 }
 
 #[async_trait]
+impl SetPools for AvalonQMiner {
+    fn supports_set_pools(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
 impl Restart for AvalonQMiner {
     fn supports_restart(&self) -> bool {
         false

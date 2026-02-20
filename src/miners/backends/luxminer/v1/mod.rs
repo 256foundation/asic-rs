@@ -927,6 +927,13 @@ impl SetPowerLimit for LuxMinerV1 {
 }
 
 #[async_trait]
+impl SetPools for LuxMinerV1 {
+    fn supports_set_pools(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
 impl Restart for LuxMinerV1 {
     async fn restart(&self) -> anyhow::Result<bool> {
         Ok(self.rpc.reboot_device().await.is_ok())
