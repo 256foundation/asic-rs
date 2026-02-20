@@ -14,7 +14,7 @@ use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::device::{MinerControlBoard, MinerMake};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
-use crate::data::pool::{PoolData, PoolURL};
+use crate::data::pool::{PoolData, PoolGroupData, PoolURL};
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
@@ -724,7 +724,7 @@ impl GetIsMining for PowerPlayV1 {
 }
 
 impl GetPools for PowerPlayV1 {
-    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let mut pools_vec: Vec<PoolData> = Vec::new();
 
         if let Some(configs) = data
@@ -796,7 +796,11 @@ impl GetPools for PowerPlayV1 {
                 }
             }
         }
-        pools_vec
+        vec![PoolGroupData {
+            name: String::new(),
+            quota: 1,
+            pools: pools_vec,
+        }]
     }
 }
 

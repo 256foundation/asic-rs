@@ -5,7 +5,7 @@ use crate::data::device::{
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
-use crate::data::pool::{PoolData, PoolURL};
+use crate::data::pool::{PoolData, PoolGroupData, PoolURL};
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
@@ -592,7 +592,7 @@ impl GetIsMining for AntMinerV2020 {
 }
 
 impl GetPools for AntMinerV2020 {
-    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let mut pools: Vec<PoolData> = Vec::new();
 
         if let Some(pools_data) = data.get(&DataField::Pools)
@@ -632,7 +632,11 @@ impl GetPools for AntMinerV2020 {
             }
         }
 
-        pools
+        vec![PoolGroupData {
+            name: String::new(),
+            quota: 1,
+            pools,
+        }]
     }
 }
 

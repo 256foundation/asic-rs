@@ -13,7 +13,7 @@ use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::device::{MinerControlBoard, MinerMake};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
-use crate::data::pool::{PoolData, PoolURL};
+use crate::data::pool::{PoolData, PoolGroupData, PoolURL};
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
@@ -451,7 +451,7 @@ impl GetIsMining for VnishV120 {
 }
 
 impl GetPools for VnishV120 {
-    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let mut pools: Vec<PoolData> = Vec::new();
 
         if let Some(pools_data) = data.get(&DataField::Pools)
@@ -486,7 +486,11 @@ impl GetPools for VnishV120 {
             }
         }
 
-        pools
+        vec![PoolGroupData {
+            name: String::new(),
+            quota: 1,
+            pools,
+        }]
     }
 }
 

@@ -93,3 +93,17 @@ pub struct PoolData {
     pub alive: Option<bool>,
     pub user: Option<String>,
 }
+
+#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PoolGroupData {
+    pub name: String,
+    pub quota: u32,
+    pub pools: Vec<PoolData>,
+}
+
+impl PoolGroupData {
+    pub fn len(&self) -> usize {
+        self.pools.len()
+    }
+}

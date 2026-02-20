@@ -5,8 +5,8 @@ use crate::data::board::ChipData as ChipData_Base;
 pub(crate) use crate::data::device::{HashAlgorithm, MinerFirmware, MinerMake, MinerModel};
 use crate::data::fan::FanData as FanData_Base;
 use crate::data::miner::MinerData as MinerData_Base;
-use crate::data::pool::PoolURL;
-use crate::data::{device::DeviceInfo, hashrate::HashRate, message::MinerMessage, pool::PoolData};
+use crate::data::pool::{PoolGroupData, PoolURL};
+use crate::data::{device::DeviceInfo, hashrate::HashRate, message::MinerMessage};
 use serde::{Deserialize, Serialize};
 use std::{net::IpAddr, time::Duration};
 
@@ -123,7 +123,7 @@ pub struct MinerData {
     pub messages: Vec<MinerMessage>,
     pub uptime: Option<Duration>,
     pub is_mining: bool,
-    pub pools: Vec<PoolData>,
+    pub pools: Vec<PoolGroupData>,
 }
 
 impl From<&MinerData_Base> for MinerData {

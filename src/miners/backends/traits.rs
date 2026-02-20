@@ -16,10 +16,10 @@ use crate::data::device::{DeviceInfo, MinerControlBoard, MinerModel};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::MinerMessage;
-use crate::data::pool::PoolData;
 use crate::miners::commands::MinerCommand;
 
 use crate::data::miner::MinerData;
+use crate::data::pool::PoolGroupData;
 use crate::miners::data::{DataCollector, DataField, DataLocation};
 
 pub(crate) trait MinerConstructor {
@@ -587,13 +587,13 @@ pub trait GetIsMining: CollectData {
 #[async_trait]
 pub trait GetPools: CollectData {
     #[tracing::instrument(level = "debug")]
-    async fn get_pools(&self) -> Vec<PoolData> {
+    async fn get_pools(&self) -> Vec<PoolGroupData> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Pools]).await;
         self.parse_pools(&data)
     }
     #[allow(unused_variables)]
-    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         vec![]
     }
 }

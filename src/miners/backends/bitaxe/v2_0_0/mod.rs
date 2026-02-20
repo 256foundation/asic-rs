@@ -14,7 +14,7 @@ use crate::data::device::{MinerControlBoard, MinerMake};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
-use crate::data::pool::{PoolData, PoolScheme, PoolURL};
+use crate::data::pool::{PoolData, PoolGroupData, PoolScheme, PoolURL};
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
@@ -403,7 +403,7 @@ impl GetIsMining for Bitaxe200 {
     }
 }
 impl GetPools for Bitaxe200 {
-    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let main_url =
             data.extract_nested_or::<String>(DataField::Pools, "stratumURL", String::new());
         let main_port = data.extract_nested_or::<u64>(DataField::Pools, "stratumPort", 0);
@@ -454,7 +454,11 @@ impl GetPools for Bitaxe200 {
             user: fallback_user,
         };
 
-        vec![main_pool_data, fallback_pool_data]
+        vec![PoolGroupData {
+            name: String::new(),
+            quota: 1,
+            pools: vec![main_pool_data, fallback_pool_data],
+        }]
     }
 }
 
