@@ -175,6 +175,14 @@ class PoolData(BaseModel):
     user: str | None
 
 
+class PoolGroupData(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    quota: int
+    pools: list[PoolData]
+
+
 class MinerMessage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -214,7 +222,7 @@ class MinerData(BaseModel):
     messages: list[MinerMessage]
     uptime: timedelta | None
     is_mining: bool
-    pools: list[PoolData]
+    pools: list[PoolGroupData]
 
     @field_serializer("uptime")
     def serialize_uptime(self, uptime: timedelta, _info) -> float:

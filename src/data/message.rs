@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
-#[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display)]
 pub enum MessageSeverity {
     Error,
@@ -12,7 +12,10 @@ pub enum MessageSeverity {
     Info,
 }
 
-#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, get_all, module = "asic_rs")
+)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MinerMessage {
     /// The time this message was generated or occurred

@@ -8,7 +8,7 @@ use std::{
     ops::Div,
 };
 
-#[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum HashRateUnit {
     Hash,
@@ -55,7 +55,10 @@ impl Display for HashRateUnit {
     }
 }
 
-#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, get_all, module = "asic_rs")
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HashRate {
     /// The current amount of hashes being computed

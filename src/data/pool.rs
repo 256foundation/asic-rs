@@ -5,7 +5,7 @@ use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-#[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PoolScheme {
     StratumV1,
@@ -34,7 +34,10 @@ impl Display for PoolScheme {
     }
 }
 
-#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, get_all, module = "asic_rs")
+)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolURL {
     /// The scheme being used to connect to this pool
@@ -82,7 +85,10 @@ impl Display for PoolURL {
     }
 }
 
-#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, get_all, module = "asic_rs")
+)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolData {
     pub position: Option<u16>,
@@ -94,7 +100,10 @@ pub struct PoolData {
     pub user: Option<String>,
 }
 
-#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, get_all, module = "asic_rs")
+)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolGroupData {
     pub name: String,

@@ -9,7 +9,7 @@ use strum::{Display, EnumString};
 pub mod models;
 pub use models::MinerModel;
 
-#[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display, EnumString)]
 pub enum MinerFirmware {
     #[serde(rename = "Stock")]
@@ -28,7 +28,7 @@ pub enum MinerFirmware {
     Marathon,
 }
 
-#[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display, EnumString)]
 pub enum MinerMake {
     #[serde(rename = "AntMiner")]
@@ -47,7 +47,7 @@ pub enum MinerMake {
     NerdAxe,
 }
 
-#[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display, EnumString)]
 pub enum HashAlgorithm {
     #[serde(rename = "SHA256")]
@@ -62,7 +62,10 @@ pub enum HashAlgorithm {
     Kadena,
 }
 
-#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, get_all, module = "asic_rs")
+)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub make: MinerMake,
@@ -89,7 +92,10 @@ impl DeviceInfo {
     }
 }
 
-#[cfg_attr(feature = "python", pyclass(get_all, module = "asic_rs"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, get_all, module = "asic_rs")
+)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
 pub struct MinerHardware {
     pub chips: Option<u16>,

@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
-#[cfg_attr(feature = "python", pyclass(str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[derive(Debug, Display, Clone, PartialEq, Eq, Serialize, Deserialize, Copy, Hash)]
 pub enum AvalonMinerModel {
     #[serde(alias = "721")]
