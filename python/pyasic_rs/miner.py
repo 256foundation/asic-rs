@@ -25,7 +25,7 @@ class Miner:
         return self.__inner.make
 
     @property
-    def firmware(self) -> _rs_MinerMake:
+    def firmware(self) -> _rs_MinerFirmware:
         return self.__inner.firmware
 
     @property
