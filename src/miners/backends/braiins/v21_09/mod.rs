@@ -678,3 +678,9 @@ impl Resume for BraiinsV2109 {
         true
     }
 }
+
+impl SetPools for BraiinsV2109 {
+    fn supports_set_pools(&self) -> bool {
+        false
+    }
+}
