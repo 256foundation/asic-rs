@@ -3,7 +3,7 @@ use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerMake, M
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::{MessageSeverity, MinerMessage};
-use crate::data::pool::{PoolData, PoolURL};
+use crate::data::pool::{PoolData, PoolGroupData, PoolURL};
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 use crate::miners::data::{
@@ -107,8 +107,21 @@ impl GetDataLocations for BraiinsV2109 {
         const GQL_POOLS: MinerCommand = MinerCommand::GraphQL {
             command: r#"{
                 bosminer {
+                    config {
+                        ... on BosminerConfig {
+                            groups {
+                                id
+                                strategy {
+                                    ... on QuotaStrategy {
+                                        quota
+                                    }
+                                }
+                            }
+                        }
+                    }
                     info {
                         poolGroups {
+                            name
                             pools {
                                 url
                                 user
@@ -215,7 +228,7 @@ impl GetDataLocations for BraiinsV2109 {
                 GQL_POOLS,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/bosminer/info/poolGroups"),
+                    key: Some("/bosminer"),
                     tag: None,
                 },
             )],
@@ -498,14 +511,21 @@ impl GetIsMining for BraiinsV2109 {
 }
 
 impl GetPools for BraiinsV2109 {
-    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolData> {
-        let mut pools: Vec<PoolData> = Vec::new();
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
+        let mut pools: Vec<PoolGroupData> = Vec::new();
 
         if let Some(groups_data) = data.get(&DataField::Pools)
-            && let Some(groups_array) = groups_data.as_array()
+            && let Some(groups_array) = groups_data
+                .pointer("/info/poolGroups")
+                .and_then(|v| v.as_array())
         {
+            let config_groups = groups_data
+                .pointer("/config/groups")
+                .and_then(|v| v.as_array());
+
             let mut idx = 0u16;
-            for group in groups_array {
+            for (group_idx, group) in groups_array.iter().enumerate() {
+                let mut group_pools: Vec<PoolData> = Vec::new();
                 if let Some(pools_array) = group.get("pools").and_then(|v| v.as_array()) {
                     for pool in pools_array {
                         let url = pool
@@ -529,7 +549,7 @@ impl GetPools for BraiinsV2109 {
                             .and_then(|v| v.as_str())
                             .map(|s| s == "Running" || s == "Active");
 
-                        pools.push(PoolData {
+                        group_pools.push(PoolData {
                             position: Some(idx),
                             url,
                             accepted_shares,
@@ -541,6 +561,22 @@ impl GetPools for BraiinsV2109 {
                         idx += 1;
                     }
                 }
+
+                let quota = config_groups
+                    .and_then(|cg| cg.get(group_idx))
+                    .and_then(|cg| cg.pointer("/strategy/quota"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(1) as u32;
+
+                pools.push(PoolGroupData {
+                    name: group
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    quota,
+                    pools: group_pools,
+                });
             }
         }
 
