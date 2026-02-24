@@ -506,7 +506,7 @@ impl SetPowerLimit for WhatsMinerV3 {
     async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
         let data = self
             .rpc
-            .send_command("set.miner.power_limit", true, Some(json!(limit)))
+            .send_command("set.miner.power_limit", true, Some(json!(limit.as_watts())))
             .await;
 
         Ok(data.is_ok())
