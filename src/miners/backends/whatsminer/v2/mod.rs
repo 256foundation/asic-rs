@@ -1,3 +1,4 @@
+use crate::config::pools::PoolGroup;
 use crate::data::board::BoardData;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::device::{MinerControlBoard, MinerMake};
@@ -578,8 +579,38 @@ impl SetPowerLimit for WhatsMinerV2 {
 
 #[async_trait]
 impl SetPools for WhatsMinerV2 {
+    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+        let group = config
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("No pool groups provided"))?;
+
+        let mut params = serde_json::Map::new();
+        for n in 1..=3 {
+            let pool = group.pools.get(n - 1);
+            params.insert(
+                format!("pool{n}"),
+                json!(pool.map(|p| p.url.to_string()).unwrap_or_default()),
+            );
+            params.insert(
+                format!("worker{n}"),
+                json!(pool.map(|p| p.username.as_str()).unwrap_or_default()),
+            );
+            params.insert(
+                format!("passwd{n}"),
+                json!(pool.map(|p| p.password.as_str()).unwrap_or_default()),
+            );
+        }
+
+        Ok(self
+            .rpc
+            .send_command("update_pools", true, Some(json!(params)))
+            .await
+            .is_ok())
+    }
+
     fn supports_set_pools(&self) -> bool {
-        false
+        true
     }
 }
 
