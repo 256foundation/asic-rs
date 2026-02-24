@@ -1,0 +1,891 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: SubscriptionRoot
+}
+
+# Directs the executor to query only when the field exists.
+directive @ifdef on FIELD
+
+type Appeal {
+  id: ID!
+  kind: AppealKind!
+  timestamp: Timestamp!
+  message: String!
+}
+
+enum AppealKind {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+type AppealRemoveError {
+  message: String!
+}
+
+union AppealRemoveResult = VoidResult | AppealRemoveError
+
+type AttributeError implements Error {
+  message: String!
+}
+
+type Auth {
+  login(username: String!, password: String!): AuthResult!
+  logout: AuthResult!
+  extend: AuthResult!
+}
+
+type AuthError implements Error {
+  message: String!
+}
+
+union AuthResult = VoidResult | AuthError
+
+type Autotuning {
+  enabled: Boolean
+  mode: TunerMode
+  powerTarget: Int
+  hashrateTarget: Float
+}
+
+type AutotuningError implements Error {
+  message: String!
+  mode: String
+  powerTarget: String
+  hashrateTarget: String
+  performanceScaling: PerformanceScalingError
+}
+
+input AutotuningIn {
+  mode: TunerMode
+  powerTarget: Int
+  hashrateTarget: Float
+  performanceScaling: PerformanceScalingSetter
+  hashChains: [HashChainAutotuningSetter!]
+}
+
+type AutotuningMetadata {
+  enabled: BooleanMetadata!
+  modes: [TunerMode!]!
+  modeDefault: TunerMode!
+  powerTarget: UsizeMetadata!
+  hashrateTarget: FloatMetadata!
+}
+
+type AutotuningOut {
+  hashChains: [HashChain!]!
+  autotuning: Autotuning
+  performanceScaling: PerformanceScaling
+}
+
+union AutotuningResult = AutotuningOut | AutotuningError | AttributeError
+
+type BooleanMetadata {
+  default: Boolean!
+}
+
+type BosError implements Error {
+  message: String!
+}
+
+type BosFaultLight {
+  enabled: Boolean!
+}
+
+type BosInfo {
+  mode: BosMode!
+  version: BosVersion!
+}
+
+type BosManager {
+  # BOS management ID
+  managementId: String
+
+  # timestamp of last obtained configuration
+  lastModified: Timestamp
+}
+
+enum BosMode {
+  SD
+  NAND
+}
+
+type BosMutation {
+  reboot: BosResult!
+  system: BosSystemMutation!
+  network: BosNetworkConfigMutation!
+  setPassword(newPassword: String): BosResult!
+  setHostname(hostname: String!): HostnameResult!
+  autoUpgrade(value: Boolean!): BosResult!
+  setFaultLight(enable: Boolean!): BosFaultLight!
+}
+
+union BosNetworkConfig = Dhcp | StaticIp
+
+type BosNetworkConfigMutation {
+  setDhcp: DhcpResult!
+  setStaticIp(
+    address: String!
+    netmask: String!
+    gateway: String!
+    dnsServers: [String!]!
+  ): StaticIpResult!
+}
+
+type BosQuery {
+  hostname: String
+  uptime: BosUptime
+  logTargets: [LogTarget!]!
+  log(target: LogTarget!): [String!]!
+  hwid: String
+  info: BosInfo!
+  manager: BosManager
+  autoUpgrade: Boolean
+  network: BosNetworkConfig!
+  faultLight: Boolean!
+}
+
+union BosResult = VoidResult | BosError
+
+type BosSystemError {
+  message: String!
+}
+
+type BosSystemMutation {
+  callCommand(commandName: String!, args: [String!]!): BosSystemResult!
+}
+
+union BosSystemResult = CmdOk | BosSystemError
+
+type BosUptime {
+  # system up since Unix timestamp (epoch)
+  since: Timestamp!
+
+  # how long the system has been running in seconds
+  durationS: Int!
+}
+
+type BosVersion {
+  full: String!
+  isPlus: Boolean!
+}
+
+type BosminerConfig {
+  hashChainGlobal: HashChainGlobal
+  tempControl: TempControl
+  fanControl: FanControl
+  modelDetection: ModelDetection
+  autotuning: Autotuning
+  performanceScaling: PerformanceScaling
+  management: Management
+  groups: [GroupConfig!]!
+  hashChains: [HashChain!]!
+}
+
+type BosminerConfigError implements Error {
+  message: String!
+}
+
+union BosminerConfigResult = BosminerConfig | BosminerConfigError
+
+type BosminerConfigurator {
+  addGroupWithQuota(name: String!, quota: Int): GroupResult!
+  addGroupWithFixedShareRatio(name: String!, ratio: Float!): GroupResult!
+  removeGroup(id: ID!): GroupListResult!
+  updateGroups(groups: [Group!]!): GroupListResult!
+  group(id: ID!): GroupConfiguratorResult!
+  updateTempAndFans(input: TempAndFansIn!, apply: Boolean!): TempAndFansResult!
+  updatePerformance(input: PerformanceIn!, apply: Boolean!): PerformanceResult!
+  updateAutotuning(input: AutotuningIn!, apply: Boolean!): AutotuningResult!
+}
+
+type BosminerError {
+  message: String!
+}
+
+type BosminerInfo {
+  modelName: String!
+  poolGroups: [GroupInfo!]!
+  summary: SummaryInfo!
+  workSolver: WorkSolverInfo!
+  fans: [FanInfo!]
+  tempCtrl: TempCtrlInfo
+}
+
+type BosminerInfoSample {
+  timestamp: Timestamp!
+  poolGroups: [GroupInfo!]
+  summary: SummaryInfo
+  workSolver: WorkSolverInfo
+  fans: [FanInfo!]
+  tempCtrl: TempCtrlInfo
+}
+
+union BosminerInfoSubscriptionResult =
+    BosminerInfoSample
+  | BosminerInfoUnavailable
+
+type BosminerInfoUnavailable {
+  message: String!
+}
+
+type BosminerMetadata {
+  pool: PoolMetadata!
+  group: GroupMetadata!
+  hashChain: HashChainMetadata
+  tempControl: TempControlMetadata
+  fanControl: FanControlMetadata
+  autotuning: AutotuningMetadata
+  performanceScaling: PerformanceScalingMetadata
+  management: ManagementMetadata
+}
+
+type BosminerMutation {
+  config: BosminerConfigurator!
+  start: BosminerResult!
+  stop: BosminerResult!
+  restart: BosminerResult!
+}
+
+type BosminerQuery {
+  info: BosminerInfo!
+  metadata: BosminerMetadata!
+  config: BosminerConfigResult!
+}
+
+union BosminerResult = VoidResult | BosminerError
+
+type CmdOk {
+  message: String!
+}
+
+enum DashboardDensity {
+  DEFAULT
+  COMPACT
+}
+
+type Dhcp {
+  void: Void!
+}
+
+type DhcpError {
+  message: String!
+}
+
+union DhcpResult = VoidResult | DhcpError
+
+type DynamicPerformanceScaling {
+  status: DynamicPerformanceScalingStatus!
+  statusMessage: String!
+}
+
+enum DynamicPerformanceScalingStatus {
+  DISABLED
+  INITIAL_POWER_TARGET
+  LOWERED_POWER_TARGET
+  INITIAL_HASHRATE_TARGET
+  LOWERED_HASHRATE_TARGET
+  MINING_SHUTDOWN
+}
+
+interface Error {
+  message: String!
+}
+
+type EventMutation {
+  removeAppeal(id: ID!): AppealRemoveResult!
+}
+
+type EventQuery {
+  appeals: [Appeal!]!
+}
+
+union EventSubscriptionResult = Appeal | RemoveAppeal
+
+type FanControl {
+  speed: Int
+  minFans: Int
+  immersionModeEnabled: Boolean
+}
+
+type FanControlMetadata {
+  speed: UsizeMetadata!
+  minFans: UsizeMetadata!
+  immersionModeEnabled: BooleanMetadata
+}
+
+type FanInfo {
+  name: String!
+  speed: Int!
+  rpm: Int!
+}
+
+type FixedShareRatioStrategy {
+  fixedShareRatio: Float!
+}
+
+type FloatMetadata {
+  default: Float!
+  min: Float
+  max: Float
+  step: Float
+  unit: String
+}
+
+input Group {
+  id: ID
+  name: String
+  quota: Int
+  fixedShareRatio: Float
+  pools: [PoolConfigIn!]
+}
+
+type GroupConfig {
+  id: ID!
+  name: String!
+  strategy: LoadBalanceStrategy
+  pools: [PoolConfig!]!
+}
+
+type GroupConfigurator {
+  update(name: String): GroupResult!
+  setQuota(quota: Int): GroupResult!
+  setFixedShareRatio(ratio: Float!): GroupResult!
+  addPool(
+    enabled: Boolean
+    url: String!
+    user: String!
+    password: String
+  ): PoolResult!
+  removePool(id: ID!): PoolListResult!
+  movePool(id: ID!, idTo: ID!): PoolListResult!
+  movePoolByOffset(id: ID!, offset: Int!): PoolListResult!
+  pool(id: ID!): PoolConfiguratorResult!
+}
+
+type GroupConfiguratorError implements Error {
+  message: String!
+}
+
+union GroupConfiguratorResult = GroupConfigurator | AttributeError
+
+type GroupInfo {
+  name: String!
+  pools: [PoolInfo!]!
+}
+
+type GroupList {
+  groups: [GroupConfig!]!
+}
+
+type GroupListError implements Error {
+  message: String!
+  emptyName: String
+  duplicateNames: [String!]!
+  zeroStrategies: String
+  fixedShareRatioSum: String
+  missingQuota: String
+  noSpaceForQuota: String
+  poolRecordErrors: [PoolRecordError!]!
+}
+
+union GroupListResult = GroupList | GroupListError | AttributeError
+
+type GroupMetadata {
+  strategyDefault: LoadBalanceStrategy!
+  name: StringMetadata!
+}
+
+type GroupRecordError implements Error {
+  message: String!
+  name: String
+  strategy: String
+}
+
+union GroupResult = GroupConfig | GroupRecordError
+
+type HashChain {
+  name: String!
+  enabled: Boolean
+  frequency: Float
+  voltage: Float
+}
+
+input HashChainAutotuningSetter {
+  name: String!
+  enabled: Boolean
+}
+
+type HashChainError {
+  name: String!
+  frequency: String
+  voltage: String
+}
+
+type HashChainGlobal {
+  asicBoost: Boolean
+  frequency: Float
+  voltage: Float
+}
+
+type HashChainMetadata {
+  indexNames: [String!]!
+  voltagePerHashChain: Boolean!
+  enabled: BooleanMetadata!
+  asicBoost: BooleanMetadata
+  frequency: FloatMetadata!
+  voltage: FloatMetadata!
+}
+
+input HashChainSetter {
+  name: String!
+  enabled: Boolean
+  frequency: Float
+  voltage: Float
+}
+
+type HostnameError implements Error {
+  message: String!
+}
+
+type HostnameOk {
+  message: String!
+}
+
+union HostnameResult = HostnameOk | HostnameError
+
+type HwDetails {
+  chips: Int
+  frequencyMhz: Float
+  voltageV: Float
+}
+
+type IoError implements Error {
+  message: String!
+  exception: String!
+}
+
+enum Language {
+  CHINESE
+  CZECH
+  ENGLISH
+  PERSIAN
+  RUSSIAN
+  SPANISH
+}
+
+type LanguageLabel {
+  id: Language!
+  label: String!
+}
+
+# Link in UI
+type Link {
+  # Localized link label
+  label: String!
+
+  # Target link address (without hostname and protocol)
+  href: String!
+}
+
+union LoadBalanceStrategy = QuotaStrategy | FixedShareRatioStrategy
+
+enum LogTarget {
+  DMESG
+  SYSLOG
+  BOSMINER
+  BOSER
+  MONITOR
+}
+
+type Management {
+  telemetryEnabled: Boolean
+  telemetrySubmitPeriodSecs: Int
+}
+
+type ManagementMetadata {
+  enabled: BooleanMetadata!
+  telemetrySubmitPeriodSecs: UsizeMetadata!
+}
+
+type ModelDetection {
+  useConfigFallback: Boolean
+}
+
+type Mutation {
+  auth: Auth!
+  events: EventMutation!
+  storage: StorageMutation!
+  bos: BosMutation!
+  bosminer: BosminerMutation!
+}
+
+type PerformanceError implements Error {
+  message: String!
+  globalFrequency: String
+  globalVoltage: String
+  hashChains: [HashChainError!]
+}
+
+input PerformanceIn {
+  asicBoost: Boolean
+  globalFrequency: Float
+  globalVoltage: Float
+  hashChains: [HashChainSetter!]
+}
+
+type PerformanceOut {
+  hashChainGlobal: HashChainGlobal
+  hashChains: [HashChain!]!
+}
+
+union PerformanceResult = PerformanceOut | PerformanceError | AttributeError
+
+type PerformanceScaling {
+  enabled: Boolean
+  powerStep: Int
+  minPowerTarget: Int
+  hashrateStep: Float
+  minHashrateTarget: Float
+  shutdownEnabled: Boolean
+  shutdownDuration: Float
+}
+
+type PerformanceScalingError {
+  powerStep: String
+  minPowerTarget: String
+  hashrateStep: String
+  minHashrateTarget: String
+  shutdownDuration: String
+}
+
+type PerformanceScalingMetadata {
+  enabled: BooleanMetadata!
+  powerStep: UsizeMetadata!
+  minPowerTarget: UsizeMetadata!
+  hashrateStep: FloatMetadata!
+  minHashrateTarget: FloatMetadata!
+  shutdownEnabled: BooleanMetadata!
+  shutdownDuration: FloatMetadata!
+}
+
+input PerformanceScalingSetter {
+  enabled: Boolean
+  powerStep: Int
+  minPowerTarget: Int
+  hashrateStep: Float
+  minHashrateTarget: Float
+  shutdownEnabled: Boolean
+  shutdownDuration: Float
+}
+
+type PoolConfig {
+  id: ID!
+  enabled: Boolean
+  url: String!
+  user: String!
+  password: String
+}
+
+input PoolConfigIn {
+  enabled: Boolean
+  url: String!
+  user: String!
+  password: String
+}
+
+type PoolConfigurator {
+  update(
+    enabled: Boolean
+    url: String
+    user: String
+    password: String
+  ): PoolResult!
+  removePassword: PoolResult!
+}
+
+type PoolConfiguratorError implements Error {
+  message: String!
+}
+
+union PoolConfiguratorResult = PoolConfigurator | PoolConfiguratorError
+
+type PoolInfo {
+  url: String!
+  user: String!
+  status: PoolStatus!
+  active: Boolean!
+  shares: SharesInfo!
+  lastDifficulty: Float!
+  generatedWork: Int!
+  bestShare: Int!
+}
+
+type PoolList {
+  pools: [PoolConfig!]!
+}
+
+type PoolListError implements Error {
+  message: String!
+}
+
+union PoolListResult = PoolList | PoolListError | AttributeError
+
+type PoolMetadata {
+  enabled: BooleanMetadata!
+  url: StringMetadata!
+  user: StringMetadata!
+  password: StringMetadata!
+}
+
+type PoolRecordError implements Error {
+  index: Int
+  message: String!
+  invalidUrl: String
+  invalidUser: String
+}
+
+union PoolResult = PoolConfig | PoolRecordError
+
+enum PoolStatus {
+  DISABLED
+  DEAD
+  ALIVE
+}
+
+type PowerInfo {
+  limitW: Int
+  approxConsumptionW: Int
+  efficiencyWMhs: Float
+}
+
+type PublicStorage {
+  preferredLanguage: Language
+  webTheme: WebTheme
+  dashboardDensity: DashboardDensity
+}
+
+type Query {
+  events: EventQuery!
+  storage: StorageQuery!
+  bos: BosQuery!
+  bosminer: BosminerQuery!
+  languages: [LanguageLabel!]!
+  ui: UiQuery!
+}
+
+type QuotaStrategy {
+  quota: Int!
+}
+
+type RealHashrate {
+  mhsAv: Float!
+  mhs5S: Float!
+  mhs1M: Float!
+  mhs5M: Float!
+  mhs15M: Float!
+  mhs24H: Float!
+}
+
+type RemoveAppeal {
+  id: ID!
+}
+
+type SharesInfo {
+  acceptedDifficulty: Int!
+  acceptedSolutions: Int!
+  rejectedDifficulty: Int!
+  rejectedSolutions: Int!
+  rejectedRatio: Float!
+  staleDifficulty: Int!
+  staleSolutions: Int!
+  staleRatio: Float!
+}
+
+type StaticIp {
+  address: String!
+  netmask: String!
+  gateway: String!
+  dnsServers: [String!]!
+}
+
+type StaticIpError {
+  message: String!
+  address: String
+  netmask: String
+  gateway: String
+  dnsServers: [String]!
+}
+
+union StaticIpResult = VoidResult | StaticIpError
+
+type StorageData {
+  public: PublicStorage!
+}
+
+input StorageIn {
+  preferredLanguage: Language
+  webTheme: WebTheme
+  dashboardDensity: DashboardDensity
+}
+
+type StorageMutation {
+  update(input: StorageIn!): StorageResult!
+}
+
+type StorageQuery {
+  public: PublicStorage!
+}
+
+union StorageResult = StorageData | IoError
+
+type StringMetadata {
+  default: String
+  minLength: Int
+  maxLength: Int
+}
+
+type SubscriptionRoot {
+  event: EventSubscriptionResult!
+  bosminerInfo: BosminerInfoSubscriptionResult!
+}
+
+type SummaryInfo {
+  realHashrate: RealHashrate!
+  poolStatus: PoolStatus!
+  shares: SharesInfo!
+  foundBlocks: Int!
+  bestShare: Int!
+  power: PowerInfo
+  tunerStatus: TunerStatus
+  dynamicPerformanceScaling: DynamicPerformanceScaling
+  temperature: Temperature
+}
+
+enum SystemError {
+  UNAUTHORIZED
+  UNAVAILABLE
+}
+
+type TempAndFansError implements Error {
+  message: String!
+  targetTemp: String
+  hotTemp: String
+  dangerousTemp: String
+  immersionModeEnabled: String
+  speed: String
+  minFans: String
+}
+
+input TempAndFansIn {
+  mode: TempControlMode
+  targetTemp: Float
+  hotTemp: Float
+  dangerousTemp: Float
+  immersionModeEnabled: Boolean
+  speed: Int
+  minFans: Int
+}
+
+type TempAndFansOut {
+  tempControl: TempControl
+  fanControl: FanControl
+}
+
+union TempAndFansResult = TempAndFansOut | TempAndFansError | AttributeError
+
+type TempControl {
+  mode: TempControlMode
+  targetTemp: Float
+  hotTemp: Float
+  dangerousTemp: Float
+}
+
+type TempControlMetadata {
+  modeDefault: TempControlMode!
+  targetTemp: FloatMetadata!
+  hotTemp: FloatMetadata!
+  dangerousTemp: FloatMetadata!
+}
+
+enum TempControlMode {
+  AUTO
+  MANUAL
+  DISABLED
+}
+
+type TempCtrlInfo {
+  targetC: Float
+  hotC: Float
+  dangerousC: Float
+}
+
+type Temperature {
+  name: String!
+  degreesC: Float!
+}
+
+scalar Timestamp
+
+type TunerInfo {
+  status: TunerStatus!
+  statusMessages: [String!]!
+  loadedProfileTimestamp: Timestamp
+  iteration: Int!
+  uptimeS: Int!
+  stageDurationS: Int!
+}
+
+enum TunerMode {
+  POWER_TARGET
+  HASHRATE_TARGET
+}
+
+enum TunerStatus {
+  DISABLED
+  STABLE
+  RUNNING
+  FAILED
+}
+
+# UI Graphql Query
+type UiQuery {
+  # Links for the configuration section
+  configLinks: [Link!]!
+
+  # Link for the system section
+  systemLinks: [Link!]!
+}
+
+type UsizeMetadata {
+  default: Int!
+  min: Int
+  max: Int
+  unit: String
+}
+
+scalar Void
+
+type VoidResult {
+  void: Void!
+}
+
+enum WebTheme {
+  LIGHT
+  DARK
+  AUTO
+}
+
+type WorkSolverInfo {
+  name: String!
+  nominalMhs: Float!
+  realHashrate: RealHashrate!
+  hwErrorMhs15M: Float!
+  hwDetails: HwDetails
+  power: PowerInfo
+  tuner: TunerInfo
+  temperatures: [Temperature!]
+  childSolvers: [WorkSolverInfo!]
+}
