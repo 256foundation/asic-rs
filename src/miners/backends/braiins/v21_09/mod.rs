@@ -1,3 +1,4 @@
+use crate::config::pools::PoolGroup;
 use crate::data::board::BoardData;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerMake, MinerModel};
 use crate::data::fan::FanData;
@@ -715,9 +716,79 @@ impl Resume for BraiinsV2109 {
     }
 }
 
+#[async_trait]
 impl SetPools for BraiinsV2109 {
+    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+        let mutation = r#"mutation ($groups: [Group!]!) {
+            bosminer {
+                config {
+                    updateGroups(groups: $groups) {
+                        ... on GroupList {
+                            groups { id }
+                        }
+                        ... on GroupListError {
+                            message
+                        }
+                    }
+                }
+            }
+        }"#;
+
+        let groups: Vec<Value> = config
+            .iter()
+            .map(|group| {
+                let pools: Vec<Value> = group
+                    .pools
+                    .iter()
+                    .map(|pool| {
+                        json!({
+                            "url": pool.url.to_string(),
+                            "user": pool.username,
+                            "password": pool.password,
+                        })
+                    })
+                    .collect();
+                json!({
+                    "name": group.name,
+                    "quota": group.quota,
+                    "pools": pools,
+                })
+            })
+            .collect();
+
+        let variables = json!({ "groups": groups });
+        let result = self
+            .graphql
+            .send_command(mutation, true, Some(variables))
+            .await?;
+
+        // There is only a message field if there is an error
+        if result
+            .pointer("/bosminer/config/updateGroups/message")
+            .is_some()
+        {
+            return Ok(false);
+        }
+
+        let restart_mutation = r#"mutation {
+            bosminer {
+                restart {
+                    ... on BosminerError {
+                        message
+                    }
+                }
+            }
+        }"#;
+
+        Ok(self
+            .graphql
+            .send_command(restart_mutation, true, None)
+            .await
+            .is_ok())
+    }
+
     fn supports_set_pools(&self) -> bool {
-        false
+        true
     }
 }
 
