@@ -1,0 +1,52 @@
+{
+  "bos": {
+    "faultLight": false,
+    "hostname": "miner-60726c",
+    "info": {
+      "version": {
+        "full": "2022-09-13-0-11012d53-22.08-plus"
+      }
+    },
+    "uptime": {
+      "durationS": 1189
+    }
+  },
+  "bosminer": {
+    "info": {
+      "fans": [
+        {
+          "name": "0",
+          "rpm": 4080,
+          "speed": 100
+        },
+        {
+          "name": "1",
+          "rpm": 5580,
+          "speed": 100
+        },
+        {
+          "name": "2",
+          "rpm": 0,
+          "speed": 100
+        },
+        {
+          "name": "3",
+          "rpm": 0,
+          "speed": 100
+        }
+      ],
+      "summary": {
+        "power": {
+          "approxConsumptionW": 735,
+          "limitW": 900
+        }
+      },
+      "workSolver": {
+        "nominalMhs": 7242402.52323,
+        "realHashrate": {
+          "mhs5S": 7160208.944955902
+        }
+      }
+    }
+  }
+}

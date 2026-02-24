@@ -1,0 +1,54 @@
+{
+  "bosminer": {
+    "config": {
+      "groups": [
+        {
+          "id": "0",
+          "strategy": {
+            "quota": 1
+          }
+        },
+        {
+          "id": "2",
+          "strategy": {
+            "quota": 1
+          }
+        }
+      ]
+    },
+    "info": {
+      "poolGroups": [
+        {
+          "name": "group",
+          "pools": [
+            {
+              "active": true,
+              "shares": {
+                "acceptedSolutions": 31,
+                "rejectedSolutions": 0
+              },
+              "status": "ALIVE",
+              "url": "stratum+tcp://btc1.example.pool:3333",
+              "user": "asic-rs.test"
+            }
+          ]
+        },
+        {
+          "name": "test",
+          "pools": [
+            {
+              "active": true,
+              "shares": {
+                "acceptedSolutions": 18,
+                "rejectedSolutions": 0
+              },
+              "status": "ALIVE",
+              "url": "stratum+tcp://btc2.example.pool:3333",
+              "user": "asic-rs.test"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

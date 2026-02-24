@@ -1,0 +1,18 @@
+{
+  "STATUS": [
+    {
+      "Code": 22,
+      "Description": "BOSer boser-openwrt 0.1.0-11012d53",
+      "Msg": "BOSer versions",
+      "STATUS": "S",
+      "When": 1771947051
+    }
+  ],
+  "VERSION": [
+    {
+      "API": "3.7",
+      "BOSer": "boser-openwrt 0.1.0-11012d53"
+    }
+  ],
+  "id": 1
+}

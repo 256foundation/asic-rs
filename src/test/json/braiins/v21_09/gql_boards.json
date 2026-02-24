@@ -1,0 +1,76 @@
+{
+  "bosminer": {
+    "info": {
+      "workSolver": {
+        "childSolvers": [
+          {
+            "hwDetails": {
+              "chips": 63,
+              "frequencyMhz": 420.170944,
+              "voltageV": 9.097456932067873
+            },
+            "name": "6",
+            "nominalMhs": 3017667.7198079997,
+            "realHashrate": {
+              "mhs5S": 2966950.3918025643
+            },
+            "temperatures": [
+              {
+                "degreesC": 71,
+                "name": "Board"
+              },
+              {
+                "degreesC": 81.625,
+                "name": "Chip"
+              }
+            ]
+          },
+          {
+            "hwDetails": {
+              "chips": 63,
+              "frequencyMhz": 420.170944,
+              "voltageV": 9.097456932067873
+            },
+            "name": "7",
+            "nominalMhs": 3017667.7198079997,
+            "realHashrate": {
+              "mhs5S": 3022858.545443969
+            },
+            "temperatures": [
+              {
+                "degreesC": 75.375,
+                "name": "Board"
+              },
+              {
+                "degreesC": 89.25,
+                "name": "Chip"
+              }
+            ]
+          },
+          {
+            "hwDetails": {
+              "chips": 63,
+              "frequencyMhz": 420.170944,
+              "voltageV": 9.097456932067873
+            },
+            "name": "8",
+            "nominalMhs": 3017667.7198079997,
+            "realHashrate": {
+              "mhs5S": 2946869.1247815643
+            },
+            "temperatures": [
+              {
+                "degreesC": 66.125,
+                "name": "Board"
+              },
+              {
+                "degreesC": 80,
+                "name": "Chip"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

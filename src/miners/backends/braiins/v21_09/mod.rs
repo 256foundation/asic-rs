@@ -720,3 +720,168 @@ impl SetPools for BraiinsV2109 {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::device::models::antminer::AntMinerModel;
+    use crate::test::api::MockAPIClient;
+    use crate::test::json::braiins::v21_09::{
+        GQL_BOARDS_COMMAND, GQL_POOLS_COMMAND, GQL_SYSTEM_COMMAND, VERSION_COMMAND,
+        WEB_NET_CONF_COMMAND,
+    };
+
+    #[tokio::test]
+    async fn test_braiins_os() {
+        let miner = BraiinsV2109::new(
+            IpAddr::from([127, 0, 0, 1]),
+            MinerModel::AntMiner(AntMinerModel::S9),
+        );
+
+        let mut results = HashMap::new();
+
+        let gql_system_command = MinerCommand::GraphQL {
+            command: r#"{
+                bos {
+                    hostname
+                    faultLight
+                    info { version { full } }
+                    uptime { durationS }
+                }
+                bosminer {
+                    info {
+                        workSolver {
+                            realHashrate { mhs5S }
+                            nominalMhs
+                        }
+                        fans { name speed rpm }
+                        summary {
+                            power { limitW approxConsumptionW }
+                        }
+                    }
+                }
+            }"#,
+        };
+        let gql_boards_command = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    info {
+                        workSolver {
+                            childSolvers {
+                                name
+                                realHashrate { mhs5S }
+                                nominalMhs
+                                hwDetails { chips frequencyMhz voltageV }
+                                temperatures { name degreesC }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        };
+        let gql_pools_command = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    config {
+                        ... on BosminerConfig {
+                            groups {
+                                id
+                                strategy {
+                                    ... on QuotaStrategy {
+                                        quota
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    info {
+                        poolGroups {
+                            name
+                            pools {
+                                url
+                                user
+                                status
+                                active
+                                shares { acceptedSolutions rejectedSolutions }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        };
+        let rpc_version_command = MinerCommand::RPC {
+            command: "version",
+            parameters: None,
+        };
+        let web_net_conf_command = MinerCommand::WebAPI {
+            command: "admin/network/iface_status/lan",
+            parameters: None,
+        };
+
+        results.insert(
+            gql_system_command,
+            Value::from_str(GQL_SYSTEM_COMMAND).unwrap(),
+        );
+        results.insert(
+            gql_boards_command,
+            Value::from_str(GQL_BOARDS_COMMAND).unwrap(),
+        );
+        results.insert(
+            gql_pools_command,
+            Value::from_str(GQL_POOLS_COMMAND).unwrap(),
+        );
+        results.insert(
+            rpc_version_command,
+            Value::from_str(VERSION_COMMAND).unwrap(),
+        );
+        results.insert(
+            web_net_conf_command,
+            Value::from_str(WEB_NET_CONF_COMMAND).unwrap(),
+        );
+
+        let mock_api = MockAPIClient::new(results);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect_all().await;
+
+        let miner_data = miner.parse_data(data);
+
+        assert_eq!(miner_data.ip.to_string(), "127.0.0.1".to_owned());
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("01:23:45:67:89:10").unwrap())
+        );
+        assert_eq!(miner_data.hostname, Some("miner-60726c".to_owned()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("2022-09-13-0-11012d53-22.08-plus".to_owned())
+        );
+        assert_eq!(miner_data.hashboards.len(), 3);
+        assert_eq!(miner_data.total_chips, Some(189));
+        assert_eq!(miner_data.light_flashing, Some(false));
+        assert_eq!(miner_data.fans.len(), 2);
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(735.0)));
+        assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(900.0)));
+        assert_eq!(
+            miner_data.expected_hashrate.unwrap(),
+            HashRate {
+                value: 7.24240252323,
+                unit: HashRateUnit::TeraHash,
+                algo: "SHA256".to_string(),
+            }
+        );
+        assert_eq!(
+            miner_data.hashrate.unwrap(),
+            HashRate {
+                value: 7.160208944955902,
+                unit: HashRateUnit::TeraHash,
+                algo: "SHA256".to_string(),
+            }
+        );
+        assert_eq!(miner_data.pools.len(), 2);
+        assert_eq!(miner_data.pools[0].len(), 1);
+        assert_eq!(miner_data.pools[1].len(), 1);
+        assert_eq!(miner_data.pools[0].quota, 1);
+        assert_eq!(miner_data.pools[1].quota, 1);
+    }
+}
