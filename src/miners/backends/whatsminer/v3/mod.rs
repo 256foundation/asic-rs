@@ -8,6 +8,7 @@ use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::config::pools::PoolGroup;
 use crate::data::board::BoardData;
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::device::{MinerControlBoard, MinerMake};
@@ -518,8 +519,33 @@ impl SetPowerLimit for WhatsMinerV3 {
 
 #[async_trait]
 impl SetPools for WhatsMinerV3 {
+    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+        let group = config
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("No pool groups provided"))?;
+
+        let pools: Vec<Value> = group
+            .pools
+            .iter()
+            .map(|pool| {
+                json!({
+                    "pool": pool.url.to_string(),
+                    "worker": pool.username,
+                    "passwd": pool.password,
+                })
+            })
+            .collect();
+
+        let res = self
+            .rpc
+            .send_command("set.miner.pools", true, Some(json!(pools)))
+            .await;
+        Ok(res.is_ok())
+    }
+
     fn supports_set_pools(&self) -> bool {
-        false
+        true
     }
 }
 

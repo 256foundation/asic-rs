@@ -1,7 +1,10 @@
+use aes::Aes256;
+use aes::cipher::{BlockEncryptMut, KeyInit};
 use anyhow;
 use async_trait::async_trait;
 use base64::prelude::*;
 use chrono::Utc;
+use ecb::cipher::block_padding::ZeroPadding;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::net::IpAddr;
@@ -11,6 +14,22 @@ use crate::miners::api::rpc::errors::RPCError;
 use crate::miners::api::rpc::status::RPCCommandStatus;
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
+
+type Aes256EcbEnc = ecb::Encryptor<Aes256>;
+
+fn encrypt_param(aes_key: &[u8], data: &str) -> String {
+    let original_len = data.len();
+    let padded_len = (original_len + 15) & !15;
+    let mut buffer = data.as_bytes().to_vec();
+    buffer.resize(padded_len, 0);
+
+    let enc = Aes256EcbEnc::new_from_slice(aes_key)
+        .unwrap()
+        .encrypt_padded_mut::<ZeroPadding>(&mut buffer, original_len)
+        .unwrap();
+
+    BASE64_STANDARD.encode(enc).replace('\n', "")
+}
 
 #[derive(Debug)]
 pub struct WhatsMinerRPCAPI {
@@ -165,19 +184,15 @@ impl WhatsMinerRPCAPI {
         let token = String::from_utf8_lossy(command_bytes.as_slice());
 
         let request = match parameters {
-            Some(Value::Object(mut obj)) => {
-                // Use the existing object as the base
-                obj.insert("cmd".to_string(), json!(command));
-                obj.insert("token".to_string(), json!(token));
-                obj.insert("account".to_string(), json!(self.user.clone()));
-                obj.insert("ts".to_string(), json!(timestamp));
-                Value::Object(obj)
-            }
             Some(other) => {
-                // Wrap non-objects into the "param" key
+                let param = if command == "set.miner.pools" {
+                    json!(encrypt_param(&hashed_command, &other.to_string()))
+                } else {
+                    other
+                };
                 json!({
                     "cmd": command,
-                    "param": other,
+                    "param": param,
                     "token": token,
                     "account": self.user.clone(),
                     "ts": timestamp,
