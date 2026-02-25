@@ -1,3 +1,4 @@
+use crate::config::pools::PoolGroup;
 use crate::data::board::BoardData;
 use crate::data::device::{
     DeviceInfo, HashAlgorithm, MinerControlBoard, MinerFirmware, MinerMake, MinerModel,
@@ -588,8 +589,40 @@ impl SetPowerLimit for BraiinsV2507 {
 
 #[async_trait]
 impl SetPools for BraiinsV2507 {
+    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+        let groups: Vec<Value> = config
+            .iter()
+            .map(|group| {
+                let pools: Vec<Value> = group
+                    .pools
+                    .iter()
+                    .map(|pool| {
+                        json!({
+                            "url": pool.url.to_string(),
+                            "user": pool.username,
+                            "password": pool.password,
+                        })
+                    })
+                    .collect();
+                json!({
+                    "name": group.name,
+                    "pools": pools,
+                    "load_balance_strategy": {
+                        "quota": { "value": group.quota }
+                    },
+                })
+            })
+            .collect();
+
+        Ok(self
+            .web
+            .send_command("pools/batch", true, Some(json!(groups)), Method::PUT)
+            .await
+            .is_ok())
+    }
+
     fn supports_set_pools(&self) -> bool {
-        false
+        true
     }
 }
 
