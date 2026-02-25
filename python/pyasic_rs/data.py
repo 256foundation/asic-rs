@@ -2,8 +2,9 @@ from datetime import timedelta
 from enum import IntEnum
 from ipaddress import IPv4Address
 from typing import Annotated, Self
+from pyasic_rs.asic_rs import HashRateUnit as _rs_HashRateUnit
 
-from pydantic import BaseModel, ConfigDict, BeforeValidator, field_serializer, model_serializer
+from pydantic import BaseModel, ConfigDict, BeforeValidator, field_serializer, model_serializer, field_validator
 
 
 class MinerHardware(BaseModel):
@@ -103,7 +104,7 @@ class HashRate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     value: float
-    unit: Annotated[HashRateUnit, BeforeValidator(HashRateUnit.from_asic_rs)]
+    unit: HashRateUnit
     algo: str
 
     def __float__(self):
@@ -116,6 +117,11 @@ class HashRate(BaseModel):
     @model_serializer
     def serialize_hashrate(self):
         return self.into_unit(unit=HashRateUnit.default).value
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def parse_unit(cls, value: _rs_HashRateUnit) -> HashRateUnit:
+        return HashRateUnit.from_asic_rs(value)
 
     def into_unit(self, unit: HashRateUnit) -> Self:
         return HashRate(

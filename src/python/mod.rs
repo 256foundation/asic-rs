@@ -27,4 +27,7 @@ mod asic_rs {
     use super::data::MinerMake;
     #[pymodule_export]
     use super::data::MinerModel;
+
+    #[pymodule_export]
+    use crate::data::hashrate::HashRateUnit;
 }
