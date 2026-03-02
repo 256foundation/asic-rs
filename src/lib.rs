@@ -158,13 +158,10 @@
 //! The README is auto generated with `doc2readme`, please do not edit it manually.
 //! Instead, changes can be made in `lib.rs`.
 
-pub use crate::miners::factory::MinerFactory;
-pub use crate::miners::listener::MinerListener;
+pub use factory::MinerFactory;
+pub use listener::MinerListener;
 
-pub mod config;
-pub mod data;
-pub mod miners;
-pub(crate) mod test;
-
+pub mod factory;
+pub mod listener;
 #[cfg(feature = "python")]
 mod python;

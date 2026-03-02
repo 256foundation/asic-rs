@@ -1,6 +1,6 @@
-use crate::miners::backends::traits::Miner as MinerTrait;
-use crate::miners::factory::MinerFactory as MinerFactory_Base;
+use crate::factory::MinerFactory as MinerFactory_Base;
 use crate::python::miner::Miner;
+use asic_rs_core::traits::miner::Miner as MinerTrait;
 
 use futures::{Stream, StreamExt};
 use pyo3::exceptions::{PyConnectionError, PyStopAsyncIteration, PyValueError};
