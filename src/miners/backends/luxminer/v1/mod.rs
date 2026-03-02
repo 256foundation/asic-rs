@@ -752,8 +752,9 @@ impl GetExpectedHashrate for LuxMinerV1 {
         let mut expected_hashrate = 0.0;
 
         for idx in 0..expected_boards {
-            if let Some(hashrate) = data[idx as usize]
-                .get("Nominal MHS")
+            if let Some(hashrate) = data
+                .get(idx as usize)
+                .and_then(|value| value.get("Nominal MHS"))
                 .and_then(|v| v.as_f64())
             {
                 expected_hashrate += hashrate;
