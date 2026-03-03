@@ -252,7 +252,7 @@ impl GetIP for WhatsMinerV2 {
 }
 impl GetDeviceInfo for WhatsMinerV2 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 

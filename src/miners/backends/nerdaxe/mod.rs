@@ -191,7 +191,7 @@ impl GetIP for NerdAxeV1 {
 }
 impl GetDeviceInfo for NerdAxeV1 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 

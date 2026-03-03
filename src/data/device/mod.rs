@@ -45,6 +45,8 @@ pub enum MinerMake {
     Bitaxe,
     #[serde(rename = "NerdAxe")]
     NerdAxe,
+    #[serde(rename = "Unknown")]
+    Unknown,
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
@@ -66,7 +68,7 @@ pub enum HashAlgorithm {
     feature = "python",
     pyclass(from_py_object, get_all, module = "asic_rs")
 )]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub make: MinerMake,
     pub model: MinerModel,
@@ -113,6 +115,12 @@ impl From<&MinerModel> for MinerHardware {
             MinerModel::EPic(model_name) => Self::from(model_name),
             MinerModel::AvalonMiner(model_name) => Self::from(model_name),
             MinerModel::NerdAxe(model_name) => Self::from(model_name),
+            // Unknown models have no hardware specification
+            MinerModel::Unknown(_) => Self {
+                chips: None,
+                fans: None,
+                boards: None,
+            },
         }
     }
 }

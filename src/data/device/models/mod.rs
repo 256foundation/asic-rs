@@ -103,7 +103,7 @@ impl FromStr for NerdAxeModel {
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum MinerModel {
     AntMiner(AntMinerModel),
@@ -113,6 +113,10 @@ pub enum MinerModel {
     AvalonMiner(AvalonMinerModel),
     EPic(EPicModel),
     NerdAxe(NerdAxeModel),
+    /// Represents an unknown or unrecognized model.
+    /// This allows detection of miners when the model cannot be determined,
+    /// such as when all hashboards are down or the model field is "undefined".
+    Unknown(String),
 }
 
 impl Display for MinerModel {
@@ -125,6 +129,7 @@ impl Display for MinerModel {
             MinerModel::EPic(m) => Ok(m.fmt(f)?),
             MinerModel::AvalonMiner(m) => Ok(m.fmt(f)?),
             MinerModel::NerdAxe(m) => Ok(m.fmt(f)?),
+            MinerModel::Unknown(model) => write!(f, "Unknown({})", model),
         }
     }
 }
@@ -139,6 +144,7 @@ impl From<MinerModel> for MinerMake {
             MinerModel::EPic(_) => MinerMake::EPic,
             MinerModel::AvalonMiner(_) => MinerMake::AvalonMiner,
             MinerModel::NerdAxe(_) => MinerMake::NerdAxe,
+            MinerModel::Unknown(_) => MinerMake::Unknown,
         }
     }
 }
@@ -236,6 +242,7 @@ impl MinerModelFactory {
             // Braiins and EPic must be found via the firmware model check
             Some(MinerMake::Braiins) => unreachable!(),
             Some(MinerMake::EPic) => unreachable!(),
+            Some(MinerMake::Unknown) => unreachable!(),
         }
     }
 }

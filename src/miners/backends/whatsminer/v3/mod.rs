@@ -238,7 +238,7 @@ impl GetIP for WhatsMinerV3 {
 }
 impl GetDeviceInfo for WhatsMinerV3 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 

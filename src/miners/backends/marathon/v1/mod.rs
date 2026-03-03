@@ -74,7 +74,7 @@ impl MaraV1 {
             ip,
             web: MaraWebAPI::new(ip, 80),
             device_info: DeviceInfo::new(
-                MinerMake::from(model),
+                MinerMake::from(model.clone()),
                 model,
                 MinerFirmware::Marathon,
                 HashAlgorithm::SHA256,
@@ -403,7 +403,7 @@ impl GetIP for MaraV1 {
 
 impl GetDeviceInfo for MaraV1 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 

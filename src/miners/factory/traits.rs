@@ -27,6 +27,7 @@ impl DiscoveryCommands for MinerMake {
             MinerMake::Braiins => vec![RPC_VERSION, HTTP_WEB_ROOT],
             MinerMake::Bitaxe => vec![HTTP_WEB_ROOT],
             MinerMake::NerdAxe => vec![HTTP_WEB_ROOT],
+            _ => vec![],
         }
     }
 }
@@ -77,6 +78,7 @@ impl ModelSelection for MinerMake {
             MinerMake::AvalonMiner => model::get_model_avalonminer(ip).await,
             MinerMake::EPic => unreachable!(),
             MinerMake::Braiins => unreachable!(),
+            MinerMake::Unknown => unreachable!(),
         }
     }
 }

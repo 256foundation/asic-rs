@@ -388,7 +388,7 @@ impl GetIP for AntMinerV2020 {
 
 impl GetDeviceInfo for AntMinerV2020 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 

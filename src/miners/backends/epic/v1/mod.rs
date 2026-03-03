@@ -38,7 +38,7 @@ impl PowerPlayV1 {
             ip,
             web: PowerPlayWebAPI::new(ip, 4028),
             device_info: DeviceInfo::new(
-                MinerMake::from(model),
+                MinerMake::from(model.clone()),
                 model,
                 MinerFirmware::EPic,
                 HashAlgorithm::SHA256,
@@ -270,7 +270,7 @@ impl GetIP for PowerPlayV1 {
 
 impl GetDeviceInfo for PowerPlayV1 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 

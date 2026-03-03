@@ -169,7 +169,7 @@ pub fn select_backend(
     firmware: Option<MinerFirmware>,
     version: Option<semver::Version>,
 ) -> Option<Box<dyn Miner>> {
-    match (model, firmware) {
+    match (&model, firmware) {
         (MinerModel::WhatsMiner(_), Some(MinerFirmware::Stock)) => {
             Some(WhatsMiner::new(ip, model, version))
         }

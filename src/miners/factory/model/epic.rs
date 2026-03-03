@@ -20,6 +20,10 @@ pub(crate) async fn get_model_epic(ip: IpAddr) -> Result<MinerModel, ModelSelect
 
             let model = json_data["Model"].as_str().unwrap_or("").to_uppercase();
 
+            if model == "UNDEFINED" {
+                return Ok(MinerModel::Unknown(model.to_string()));
+            }
+
             if model.starts_with("WHATSMINER") {
                 // Need to append the subtype to the base type
                 let submodel = json_data["Model Subtype"]
@@ -29,13 +33,14 @@ pub(crate) async fn get_model_epic(ip: IpAddr) -> Result<MinerModel, ModelSelect
                 let split_model = model.split(" ").collect::<Vec<&str>>();
                 let base_model = split_model.get(1);
                 match base_model {
-                    None => Err(ModelSelectionError::UnknownModel(model.to_string())),
+                    None => Ok(MinerModel::Unknown(model.to_string())),
                     Some(base) => {
                         let full_model = format!("{}{}", base, submodel);
                         MinerModelFactory::new()
                             .with_firmware(MinerFirmware::EPic)
                             .with_make(MinerMake::WhatsMiner)
                             .parse_model(&full_model)
+                            .or(Ok(MinerModel::Unknown(model.to_string())))
                     }
                 }
             } else if model.starts_with("ANTMINER") {
@@ -43,10 +48,12 @@ pub(crate) async fn get_model_epic(ip: IpAddr) -> Result<MinerModel, ModelSelect
                     .with_firmware(MinerFirmware::EPic)
                     .with_make(MinerMake::AntMiner)
                     .parse_model(&model)
+                    .or(Ok(MinerModel::Unknown(model.to_string())))
             } else {
                 MinerModelFactory::new()
                     .with_firmware(MinerFirmware::EPic)
                     .parse_model(&model)
+                    .or(Ok(MinerModel::Unknown(model.to_string())))
             }
         }
         None => Err(ModelSelectionError::NoModelResponse),

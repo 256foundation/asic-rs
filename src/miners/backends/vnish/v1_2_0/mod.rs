@@ -37,7 +37,7 @@ impl VnishV120 {
             ip,
             web: VnishWebAPI::new(ip, 80),
             device_info: DeviceInfo::new(
-                MinerMake::from(model),
+                MinerMake::from(model.clone()),
                 model,
                 MinerFirmware::VNish,
                 HashAlgorithm::SHA256,
@@ -243,7 +243,7 @@ impl GetIP for VnishV120 {
 
 impl GetDeviceInfo for VnishV120 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 

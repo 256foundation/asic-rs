@@ -203,7 +203,7 @@ impl<
             mac,
 
             // Device identification
-            device_info,
+            device_info: device_info.clone(),
             serial_number,
             hostname,
 

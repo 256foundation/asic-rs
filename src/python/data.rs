@@ -133,7 +133,7 @@ impl From<&MinerData_Base> for MinerData {
             timestamp: base.timestamp,
             ip: base.ip,
             mac: base.mac.map(|m| m.to_string()),
-            device_info: base.device_info,
+            device_info: base.device_info.clone(),
             serial_number: base.serial_number.clone(),
             hostname: base.hostname.clone(),
             api_version: base.api_version.clone(),

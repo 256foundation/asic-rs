@@ -196,7 +196,7 @@ impl GetIP for Bitaxe290 {
 }
 impl GetDeviceInfo for Bitaxe290 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 

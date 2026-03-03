@@ -43,7 +43,7 @@ impl BraiinsV2109 {
             graphql: BraiinsGraphQLAPI::new(ip),
             web: BraiinsWebAPI::new(ip),
             device_info: DeviceInfo::new(
-                MinerMake::from(model),
+                MinerMake::from(model.clone()),
                 model,
                 MinerFirmware::BraiinsOS,
                 HashAlgorithm::SHA256,
@@ -280,7 +280,7 @@ impl GetIP for BraiinsV2109 {
 
 impl GetDeviceInfo for BraiinsV2109 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 

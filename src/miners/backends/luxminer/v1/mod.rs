@@ -394,7 +394,7 @@ impl GetIP for LuxMinerV1 {
 
 impl GetDeviceInfo for LuxMinerV1 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 

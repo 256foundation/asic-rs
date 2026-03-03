@@ -338,7 +338,7 @@ impl GetIP for AvalonAMiner {
 
 impl GetDeviceInfo for AvalonAMiner {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 
