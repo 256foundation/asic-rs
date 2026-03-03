@@ -129,7 +129,7 @@ impl Display for MinerModel {
             MinerModel::EPic(m) => Ok(m.fmt(f)?),
             MinerModel::AvalonMiner(m) => Ok(m.fmt(f)?),
             MinerModel::NerdAxe(m) => Ok(m.fmt(f)?),
-            MinerModel::Unknown(model) => write!(f, "Unknown({})", model),
+            MinerModel::Unknown(model) => write!(f, "Unknown({model})"),
         }
     }
 }
