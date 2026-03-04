@@ -20,5 +20,7 @@ mod asic_rs {
     use super::miner::Miner;
 
     #[pymodule_export]
+    use asic_rs_core::data::device::HashAlgorithm;
+    #[pymodule_export]
     use asic_rs_core::data::hashrate::HashRateUnit;
 }
