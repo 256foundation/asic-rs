@@ -1,0 +1,43 @@
+use crate::models::EPicModel;
+use asic_rs_core::data::board::MinerControlBoard;
+use asic_rs_core::data::device::MinerHardware;
+use serde::{Deserialize, Serialize};
+use strum::Display;
+
+impl From<EPicModel> for MinerHardware {
+    fn from(value: EPicModel) -> Self {
+        match value {
+            EPicModel::BM520i => Self {
+                chips: Some(124),
+                fans: Some(4),
+                boards: Some(3),
+            },
+            EPicModel::S19JProDual => Self {
+                chips: Some(126),
+                fans: Some(8),
+                boards: Some(6),
+            },
+        }
+    }
+}
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display)]
+pub enum EPicControlBoard {
+    #[serde(rename = "ePIC UMC")]
+    EPicUMC,
+}
+
+impl EPicControlBoard {
+    pub fn parse(s: &str) -> Option<Self> {
+        let cb_model = s.trim().replace(" ", "").to_uppercase();
+        match cb_model.as_ref() {
+            "EPICUMC" => Some(Self::EPicUMC),
+            _ => None,
+        }
+    }
+}
+
+impl From<EPicControlBoard> for MinerControlBoard {
+    fn from(cb: EPicControlBoard) -> Self {
+        MinerControlBoard::Known(cb.to_string())
+    }
+}

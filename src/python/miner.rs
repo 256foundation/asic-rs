@@ -1,9 +1,9 @@
 use super::data::{BoardData, FanData, MinerData};
-use crate::data::device::{HashAlgorithm, MinerFirmware, MinerHardware, MinerMake, MinerModel};
-use crate::miners::backends::traits::Miner as MinerTrait;
+use asic_rs_core::traits::miner::Miner as MinerTrait;
 use std::net::IpAddr;
 
-use crate::config::pools::PoolGroup;
+use asic_rs_core::config::pools::PoolGroup;
+use asic_rs_core::data::device::{HashAlgorithm, MinerHardware};
 use pyo3::prelude::*;
 use std::sync::Arc;
 use std::time::Duration;
@@ -45,15 +45,15 @@ impl Miner {
     }
 
     #[getter]
-    fn model(&self) -> MinerModel {
+    fn model(&self) -> String {
         self.inner.get_device_info().model
     }
     #[getter]
-    fn make(&self) -> MinerMake {
+    fn make(&self) -> String {
         self.inner.get_device_info().make
     }
     #[getter]
-    fn firmware(&self) -> MinerFirmware {
+    fn firmware(&self) -> String {
         self.inner.get_device_info().firmware
     }
     #[getter]

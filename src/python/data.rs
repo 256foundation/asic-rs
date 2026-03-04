@@ -1,12 +1,11 @@
 use pyo3::prelude::*;
 
-use crate::data::board::BoardData as BoardData_Base;
-use crate::data::board::ChipData as ChipData_Base;
-pub(crate) use crate::data::device::{HashAlgorithm, MinerFirmware, MinerMake, MinerModel};
-use crate::data::fan::FanData as FanData_Base;
-use crate::data::miner::MinerData as MinerData_Base;
-use crate::data::pool::{PoolGroupData, PoolURL};
-use crate::data::{device::DeviceInfo, hashrate::HashRate, message::MinerMessage};
+use asic_rs_core::data::board::BoardData as BoardData_Base;
+use asic_rs_core::data::board::ChipData as ChipData_Base;
+use asic_rs_core::data::fan::FanData as FanData_Base;
+use asic_rs_core::data::miner::MinerData as MinerData_Base;
+use asic_rs_core::data::pool::PoolGroupData;
+use asic_rs_core::data::{device::DeviceInfo, hashrate::HashRate, message::MinerMessage};
 use serde::{Deserialize, Serialize};
 use std::{net::IpAddr, time::Duration};
 
@@ -164,42 +163,7 @@ impl From<&MinerData_Base> for MinerData {
 
 #[pymethods]
 impl MinerData {
-    pub fn __repr__<'a>(&self) -> String {
+    pub fn __repr__(&self) -> String {
         serde_json::to_string(self).unwrap()
-    }
-}
-
-#[pymethods]
-impl MinerModel {
-    pub fn __repr__<'a>(&self) -> String {
-        self.to_string()
-    }
-}
-
-#[pymethods]
-impl MinerMake {
-    pub fn __repr__<'a>(&self) -> String {
-        self.to_string()
-    }
-}
-
-#[pymethods]
-impl MinerFirmware {
-    pub fn __repr__<'a>(&self) -> String {
-        self.to_string()
-    }
-}
-
-#[pymethods]
-impl HashAlgorithm {
-    pub fn __repr__<'a>(&self) -> String {
-        self.to_string()
-    }
-}
-
-#[pymethods]
-impl PoolURL {
-    pub fn __repr__<'a>(&self) -> String {
-        self.to_string()
     }
 }

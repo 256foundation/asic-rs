@@ -1,0 +1,24 @@
+[package]
+name = "asic-rs-firmwares-marathon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+asic-rs-core.workspace = true
+asic-rs-makes-antminer.workspace = true
+asic-rs-makes-marathon.workspace = true
+
+async-trait.workspace = true
+reqwest.workspace = true
+diqwest.workspace = true
+serde_json.workspace = true
+semver.workspace = true
+anyhow.workspace = true
+macaddr.workspace = true
+measurements.workspace = true
+
+pyo3 = {workspace = true, optional = true}
+
+[features]
+python = ["dep:pyo3", "asic-rs-core/python"]

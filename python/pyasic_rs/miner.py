@@ -2,9 +2,6 @@ from datetime import timedelta
 
 from pyasic_rs.asic_rs import HashAlgorithm as _rs_HashAlgorithm
 from pyasic_rs.asic_rs import Miner as _rs_Miner
-from pyasic_rs.asic_rs import MinerFirmware as _rs_MinerFirmware
-from pyasic_rs.asic_rs import MinerMake as _rs_MinerMake
-from pyasic_rs.asic_rs import MinerModel as _rs_MinerModel
 from .config import PoolGroup
 from .data import MinerData, BoardData, HashRate, FanData, MinerMessage, PoolGroupData
 
@@ -17,15 +14,15 @@ class Miner:
         return self.__inner.__repr__()
 
     @property
-    def model(self) -> _rs_MinerModel:
+    def model(self) -> str:
         return self.__inner.model
 
     @property
-    def make(self) -> _rs_MinerMake:
+    def make(self) -> str:
         return self.__inner.make
 
     @property
-    def firmware(self) -> _rs_MinerFirmware:
+    def firmware(self) -> str:
         return self.__inner.firmware
 
     @property
