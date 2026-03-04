@@ -63,17 +63,17 @@ measurements = { version = "0.11", features = ["serde"] }
 reqwest = { version = "0.13", features = ["json", "gzip", "rustls"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.47", features = ["full"] }
+tokio = { version = "1.50", features = ["full"] }
 url = "2.5"
 async-trait = "0.1"
-strum = { version = "0.27", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 semver = "1.0"
 anyhow = "1.0"
-ipnet = "2.11"
-rand = "0.9"
-regex = "1.11"
-chrono = "0.4.41"
-tokio-stream = "0.1.17"
+ipnet = "2.12"
+rand = "0.10"
+regex = "1.12"
+chrono = "0.4.44"
+tokio-stream = "0.1.18"
 async-stream = "0.3.6"
 sha2 = "0.10.9"
 base64 = "0.22.1"
@@ -82,7 +82,7 @@ hex = "0.4.3"
 ecb = "0.1.2"
 md5crypt = "1.0.0"
 md5 = "0.8"
-tracing = { version = "0.1.41", features = ["log"] }
+tracing = { version = "0.1.44", features = ["log"] }
 
 pyo3 = { version = "0.28.2", features = [
     "extension-module",
@@ -93,7 +93,7 @@ pyo3 = { version = "0.28.2", features = [
 ]}
 pyo3-async-runtimes = { version = "0.28.0", features = ["tokio-runtime", "unstable-streams"] }
 pyo3-introspection = { version = "0.28.2" }
-pyo3-log = { version = "0.13.2" }
+pyo3-log = { version = "0.13.3" }
 
 [features]
 default = [
