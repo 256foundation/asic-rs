@@ -653,7 +653,11 @@ impl VnishV120 {
 #[async_trait]
 impl SetFaultLight for VnishV120 {
     fn supports_set_fault_light(&self) -> bool {
-        false
+        true
+    }
+
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
+        Ok(self.web.blink(fault).await.is_ok())
     }
 }
 

@@ -1,4 +1,3 @@
-use anyhow;
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
@@ -52,7 +51,9 @@ impl WebAPIClient for VnishWebAPI {
 
         let url = format!("http://{}:{}/api/v1/{}", self.ip, self.port, command);
 
-        let response = self.execute_request(&url, &method, parameters).await?;
+        let response = self
+            .execute_request(&url, &method, parameters, true)
+            .await?;
 
         let status = response.status();
         if status.is_success() {
@@ -82,6 +83,42 @@ impl VnishWebAPI {
             timeout: Duration::from_secs(5),
             bearer_token: RwLock::new(None),
             password: Some("admin".to_string()), // Default password
+        }
+    }
+
+    pub async fn blink(&self, blink: bool) -> anyhow::Result<()> {
+        // Try without auth first, then unlock and retry.
+
+        let payload = serde_json::json!({ "blink": blink });
+
+        let api_url = format!("http://{}:{}/api/v1/find-miner", self.ip, self.port);
+        if self
+            .execute_request(&api_url, &Method::POST, Some(payload.clone()), false)
+            .await
+            .is_ok_and(|r| r.status().is_success())
+        {
+            return Ok(());
+        }
+
+        let Some(password) = self.password.clone() else {
+            anyhow::bail!("VNish unlock password is not configured")
+        };
+
+        let token = self
+            .authenticate(&password)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        *self.bearer_token.write().await = Some(token);
+
+        let resp = self
+            .execute_request(&api_url, &Method::POST, Some(payload), true)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        if resp.status().is_success() {
+            Ok(())
+        } else {
+            anyhow::bail!("VNish blink failed: HTTP {}", resp.status())
         }
     }
 
@@ -139,6 +176,7 @@ impl VnishWebAPI {
         url: &str,
         method: &Method,
         parameters: Option<Value>,
+        include_auth: bool,
     ) -> anyhow::Result<Response, VnishError> {
         let request_builder = match *method {
             Method::GET => self.client.get(url),
@@ -161,8 +199,8 @@ impl VnishWebAPI {
 
         let mut request_builder = request_builder.timeout(self.timeout);
 
-        // Add authentication headers if provided
-        if let Some(ref token) = *self.bearer_token.read().await {
+        // Add authentication headers if requested
+        if include_auth && let Some(ref token) = *self.bearer_token.read().await {
             request_builder = request_builder.header("Authorization", format!("Bearer {token}"));
         }
 
