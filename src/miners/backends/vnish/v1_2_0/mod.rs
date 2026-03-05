@@ -32,16 +32,32 @@ pub struct VnishV120 {
 }
 
 impl VnishV120 {
+    fn build_device_info(model: MinerModel) -> DeviceInfo {
+        DeviceInfo::new(
+            MinerMake::from(model),
+            model,
+            MinerFirmware::VNish,
+            HashAlgorithm::SHA256,
+        )
+    }
+
     pub fn new(ip: IpAddr, model: MinerModel) -> Self {
         VnishV120 {
             ip,
-            web: VnishWebAPI::new(ip, 80),
-            device_info: DeviceInfo::new(
-                MinerMake::from(model.clone()),
-                model,
-                MinerFirmware::VNish,
-                HashAlgorithm::SHA256,
-            ),
+            web: VnishWebAPI::new(ip),
+            device_info: Self::build_device_info(model),
+        }
+    }
+
+    /// Construct a VNish backend with a custom unlock password.
+    ///
+    /// VNish typically uses only a password (no username). The password is used
+    /// to obtain a bearer token via the unlock endpoint when the API requires it.
+    pub fn with_auth(ip: IpAddr, model: MinerModel, password: String) -> Self {
+        VnishV120 {
+            ip,
+            web: VnishWebAPI::with_auth(ip, password),
+            device_info: Self::build_device_info(model),
         }
     }
 }
@@ -243,7 +259,7 @@ impl GetIP for VnishV120 {
 
 impl GetDeviceInfo for VnishV120 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info.clone()
+        self.device_info
     }
 }
 
@@ -657,7 +673,8 @@ impl SetFaultLight for VnishV120 {
     }
 
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
-        Ok(self.web.blink(fault).await.is_ok())
+        self.web.blink(fault).await?;
+        Ok(true)
     }
 }
 
@@ -671,27 +688,80 @@ impl SetPowerLimit for VnishV120 {
 #[async_trait]
 impl SetPools for VnishV120 {
     fn supports_set_pools(&self) -> bool {
-        false
+        true
+    }
+
+    async fn set_pools(&self, config: Vec<crate::config::pools::PoolGroup>) -> anyhow::Result<bool> {
+        if config.len() > 1 {
+            anyhow::bail!(
+                "VNish only supports a single pool group; got {} groups",
+                config.len()
+            );
+        }
+
+        let group = config
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("No pool groups provided"))?;
+
+        if group.pools.is_empty() {
+            anyhow::bail!("No pools provided");
+        }
+
+        let pools: Vec<Value> = group
+            .pools
+            .into_iter()
+            .map(|p| {
+                serde_json::json!({
+                    "url": p.url.to_string(),
+                    "user": p.username,
+                    "pass": p.password,
+                })
+            })
+            .collect();
+
+        self.web.set_pools(pools).await
     }
 }
 
 #[async_trait]
 impl Restart for VnishV120 {
+    async fn restart(&self) -> anyhow::Result<bool> {
+        self.web.restart_mining().await?;
+        Ok(true)
+    }
+
     fn supports_restart(&self) -> bool {
-        false
+        true
     }
 }
 
 #[async_trait]
 impl Pause for VnishV120 {
     fn supports_pause(&self) -> bool {
-        false
+        true
+    }
+
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        if at_time.is_some() {
+            anyhow::bail!("Scheduled pause is not supported on VnishV120");
+        }
+        self.web.stop_mining().await?;
+        Ok(true)
     }
 }
 
 #[async_trait]
 impl Resume for VnishV120 {
     fn supports_resume(&self) -> bool {
-        false
+        true
+    }
+
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        if at_time.is_some() {
+            anyhow::bail!("Scheduled resume is not supported on VnishV120");
+        }
+        self.web.start_mining().await?;
+        Ok(true)
     }
 }
