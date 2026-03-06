@@ -8,7 +8,6 @@ use tokio::sync::RwLock;
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
 
-/// VNish Web API client.
 pub struct VnishWebAPI {
     client: Client,
     pub ip: IpAddr,
@@ -30,38 +29,43 @@ impl std::fmt::Debug for VnishWebAPI {
     }
 }
 
-#[async_trait]
-impl APIClient for VnishWebAPI {
-    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
-        match command {
-            MinerCommand::WebAPI {
-                command,
-                parameters,
-            } => self
-                .send_command(command, false, parameters.clone(), Method::GET)
-                .await
-                .map_err(|e| anyhow!(e.to_string())),
-            _ => Err(anyhow!("Unsupported command type for Web client")),
+impl VnishWebAPI {
+    pub fn new(ip: IpAddr) -> Self {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .expect("Failed to create HTTP client");
+
+        Self {
+            client,
+            ip,
+            port: 80,
+            timeout: Duration::from_secs(5),
+            bearer_token: RwLock::new(None),
+            password: Some("admin".to_string()),
         }
     }
-}
 
-#[async_trait]
-impl WebAPIClient for VnishWebAPI {
-    /// Send a command to the Vnish miner API
-    async fn send_command(
+    pub fn with_auth(ip: IpAddr, password: String) -> Self {
+        let mut client = Self::new(ip);
+        client.password = Some(password);
+        client
+    }
+
+    async fn send_web_command(
         &self,
         command: &str,
         _privileged: bool,
         parameters: Option<Value>,
         method: Method,
     ) -> Result<Value> {
-        let should_auth = self.password.is_some();
-
-        let url = self.build_api_url(command);
-
         let response = self
-            .execute_with_auth_fallback(&url, &method, parameters, should_auth)
+            .execute_with_auth_fallback(
+                &self.web_url(command),
+                &method,
+                parameters,
+                self.password.is_some(),
+            )
             .await?;
 
         let status = response.status();
@@ -72,14 +76,11 @@ impl WebAPIClient for VnishWebAPI {
                 .map_err(|e| VnishError::ParseError(e.to_string()))?;
             Ok(json_data)
         } else {
-            return Err(VnishError::HttpError(status.as_u16()).into());
+            Err(VnishError::HttpError(status.as_u16()).into())
         }
     }
-}
 
-impl VnishWebAPI {
     fn is_timeout_error(err: &anyhow::Error) -> bool {
-        // Prefer the typed timeout first.
         if err
             .downcast_ref::<VnishError>()
             .is_some_and(|e| matches!(e, VnishError::Timeout))
@@ -87,12 +88,11 @@ impl VnishWebAPI {
             return true;
         }
 
-        // Fall back to the raw reqwest timeout if it bubbles up.
         err.downcast_ref::<reqwest::Error>()
             .is_some_and(|e| e.is_timeout())
     }
 
-    fn build_api_url(&self, command: &str) -> String {
+    fn web_url(&self, command: &str) -> String {
         format!("http://{}:{}/api/v1/{}", self.ip, self.port, command)
     }
 
@@ -118,19 +118,19 @@ impl VnishWebAPI {
         };
 
         match self
-            .execute_request(url, method, parameters.clone(), use_auth, self.timeout)
+            .execute_web_request(url, method, parameters.clone(), use_auth)
             .await
         {
-            Ok(resp)
+            Ok(response)
                 if should_auth
                     && matches!(
-                        resp.status(),
+                        response.status(),
                         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
                     ) =>
             {
                 self.retry_after_unauthorized(url, method, parameters).await
             }
-            Ok(resp) => Ok(resp),
+            Ok(response) => Ok(response),
             Err(_) if should_auth => {
                 self.retry_after_error_with_auth(url, method, parameters)
                     .await
@@ -145,12 +145,11 @@ impl VnishWebAPI {
         method: &Method,
         parameters: Option<Value>,
     ) -> Result<Response> {
-        // Token might be stale, so try one fresh auth before falling back.
         *self.bearer_token.write().await = None;
 
         if self.ensure_authenticated().await.is_ok() {
             match self
-                .execute_request(url, method, parameters.clone(), true, self.timeout)
+                .execute_web_request(url, method, parameters.clone(), true)
                 .await
             {
                 Ok(r)
@@ -159,12 +158,12 @@ impl VnishWebAPI {
                     Ok(r)
                 }
                 _ => self
-                    .execute_request(url, method, parameters, false, self.timeout)
+                    .execute_web_request(url, method, parameters, false)
                     .await
                     .map_err(anyhow::Error::from),
             }
         } else {
-            self.execute_request(url, method, parameters, false, self.timeout)
+            self.execute_web_request(url, method, parameters, false)
                 .await
                 .map_err(anyhow::Error::from)
         }
@@ -176,66 +175,39 @@ impl VnishWebAPI {
         method: &Method,
         parameters: Option<Value>,
     ) -> Result<Response> {
-        // Auth failed, so try one fresh login before falling back.
         *self.bearer_token.write().await = None;
 
         if let Err(e) = self.ensure_authenticated().await {
             tracing::warn!("VNish re-auth failed, trying without auth: {e}");
             return self
-                .execute_request(url, method, parameters, false, self.timeout)
+                .execute_web_request(url, method, parameters, false)
                 .await
                 .map_err(anyhow::Error::from);
         }
 
-        let resp = match self
-            .execute_request(url, method, parameters.clone(), true, self.timeout)
+        let response = match self
+            .execute_web_request(url, method, parameters.clone(), true)
             .await
         {
-            Ok(resp)
+            Ok(response)
                 if !matches!(
-                    resp.status(),
+                    response.status(),
                     StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
                 ) =>
             {
-                resp
+                response
             }
             Ok(_) | Err(_) => {
-                self.execute_request(url, method, parameters, false, self.timeout)
+                self.execute_web_request(url, method, parameters, false)
                     .await?
             }
         };
 
-        Ok(resp)
-    }
-
-    /// Create a VNish Web API client.
-    pub fn new(ip: IpAddr) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
-
-        Self {
-            client,
-            ip,
-            port: 80,
-            timeout: Duration::from_secs(5),
-            bearer_token: RwLock::new(None),
-            password: Some("admin".to_string()),
-        }
-    }
-
-    /// Create a VNish Web API client with a custom unlock password.
-    pub fn with_auth(ip: IpAddr, password: String) -> Self {
-        Self {
-            password: Some(password),
-            ..Self::new(ip)
-        }
+        Ok(response)
     }
 
     pub async fn blink(&self, blink: bool) -> Result<()> {
-        // Some builds treat this like a toggle, so check the current state first.
-
+        // Some builds treat this like a toggle, so check first.
         let current = self
             .get_find_miner_state()
             .await
@@ -248,25 +220,79 @@ impl VnishWebAPI {
             return Ok(());
         }
 
-        let payload = serde_json::json!({ "blink": blink });
-        let api_url = format!("http://{}:{}/api/v1/find-miner", self.ip, self.port);
+        self.send_control_command(
+            "find-miner",
+            Some(serde_json::json!({ "blink": blink })),
+            "blink",
+        )
+        .await
+    }
 
-        let resp = self
-            .api_action_call_with_auth_retry(&api_url, Some(payload), None)
-            .await?;
+    pub async fn set_fault_light(&self, fault: bool) -> Result<bool> {
+        self.blink(fault).await?;
+        Ok(true)
+    }
 
-        if resp.status().is_success() {
+    async fn send_control_command(
+        &self,
+        command: &str,
+        parameters: Option<Value>,
+        action: &str,
+    ) -> Result<()> {
+        let Some(password) = self.password.clone() else {
+            bail!("VNish unlock password is not configured");
+        };
+
+        let url = self.web_url(command);
+
+        let response = match self
+            .authenticate(&password)
+            .await
+            .map_err(|e| anyhow!(e.to_string()))
+        {
+            Ok(token) => {
+                *self.bearer_token.write().await = Some(token);
+                match self
+                    .try_post_then_get_with_auth(&url, parameters.clone(), None)
+                    .await
+                {
+                    Ok(response)
+                        if !matches!(
+                            response.status(),
+                            StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+                        ) =>
+                    {
+                        response
+                    }
+                    Ok(_) | Err(_) => {
+                        *self.bearer_token.write().await = None;
+                        let token = self
+                            .authenticate(&password)
+                            .await
+                            .map_err(|e| anyhow!(e.to_string()))?;
+                        *self.bearer_token.write().await = Some(token);
+                        self.try_post_then_get_with_auth(&url, parameters, None)
+                            .await?
+                    }
+                }
+            }
+            Err(error) => return Err(error),
+        };
+
+        if response.status().is_success() {
             return Ok(());
         }
 
-        bail!("VNish blink failed: HTTP {}", resp.status());
+        let status = response.status();
+        let body = Self::response_body_lower(response).await;
+        bail!("VNish {action} failed: HTTP {status}: {body}");
     }
 
     async fn get_find_miner_state(&self) -> Result<Option<bool>> {
-        let status_url = format!("http://{}:{}/api/v1/status", self.ip, self.port);
+        let url = self.web_url("status");
 
         let unauth_resp = self
-            .execute_request(&status_url, &Method::GET, None, false, self.timeout)
+            .execute_web_request(&url, &Method::GET, None, false)
             .await
             .map_err(|e| anyhow!(e.to_string()))?;
 
@@ -283,7 +309,7 @@ impl VnishWebAPI {
                     .map_err(|e| anyhow!(e.to_string()))?;
                 *self.bearer_token.write().await = Some(token);
 
-                self.execute_request(&status_url, &Method::GET, None, true, self.timeout)
+                self.execute_web_request(&url, &Method::GET, None, true)
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?
             }
@@ -307,31 +333,33 @@ impl VnishWebAPI {
     }
 
     pub async fn restart_mining(&self) -> Result<()> {
-        // Try unauth first, then unlock and retry if needed.
-
-        let restart_url = format!("http://{}:{}/api/v1/mining/restart", self.ip, self.port);
-        let restart_resp = self.api_action_call_with_auth(&restart_url).await?;
-
-        Self::finish_action(restart_resp, "restart").await
+        self.send_control_command("mining/restart", None, "restart")
+            .await
     }
 
     pub async fn reboot(&self) -> Result<()> {
-        let reboot_url = format!("http://{}:{}/api/v1/system/reboot", self.ip, self.port);
-        let reboot_resp = self.api_action_call_with_auth(&reboot_url).await?;
+        self.send_control_command("system/reboot", None, "reboot")
+            .await
+    }
 
-        Self::finish_action(reboot_resp, "reboot").await
+    pub async fn restart(&self) -> Result<bool> {
+        self.restart_mining().await?;
+        Ok(true)
     }
 
     pub async fn set_pools(&self, pools: Vec<Value>) -> Result<bool> {
-        let url = format!("http://{}:{}/api/v1/settings", self.ip, self.port);
-
         let payload = serde_json::json!({ "miner": { "pools": pools } });
 
-        // Some builds take a while to apply settings.
+        // Some builds take longer to apply settings.
         let long_timeout = self.timeout.checked_mul(12).unwrap_or(self.timeout);
 
-        let mut resp = match self
-            .api_settings_call_with_auth_retry(&url, payload.clone(), Method::POST, long_timeout)
+        let mut response = match self
+            .api_settings_call_with_auth_retry(
+                "settings",
+                payload.clone(),
+                Method::POST,
+                long_timeout,
+            )
             .await
         {
             Ok(r) => r,
@@ -341,27 +369,29 @@ impl VnishWebAPI {
             Err(e) => return Err(e),
         };
 
-        if resp.status() == StatusCode::METHOD_NOT_ALLOWED {
-            resp = match self
-                .api_settings_call_with_auth_retry(&url, payload, Method::PUT, long_timeout)
+        if response.status() == StatusCode::METHOD_NOT_ALLOWED {
+            response = match self
+                .api_settings_call_with_auth_retry("settings", payload, Method::PUT, long_timeout)
                 .await
             {
                 Ok(r) => r,
                 Err(e) if Self::is_timeout_error(&e) => {
-                    bail!(
-                        "VNish set pools timed out (PUT fallback); apply result is unknown: {e}"
-                    );
+                    bail!("VNish set pools timed out (PUT fallback); apply result is unknown: {e}");
                 }
                 Err(e) => return Err(e),
             };
         }
 
-        let resp = Self::into_success_response(resp, "set pools").await?;
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = Self::response_body_lower(response).await;
+            bail!("VNish set pools failed: HTTP {status}: {body}");
+        }
 
-        let json: Value = match resp.json().await {
+        let json: Value = match response.json().await {
             Ok(v) => v,
             Err(_) => {
-                // Some firmware returns an empty body here.
+                // Some builds return an empty body here.
                 return Ok(true);
             }
         };
@@ -388,158 +418,22 @@ impl VnishWebAPI {
     }
 
     pub async fn stop_mining(&self) -> Result<()> {
-        // Same flow as the other action calls: try POST first, then GET if needed.
+        self.send_control_command("mining/stop", None, "stop").await
+    }
 
-        let stop_url = format!("http://{}:{}/api/v1/mining/stop", self.ip, self.port);
-        let stop_resp = self.api_action_call_with_auth(&stop_url).await?;
-
-        Self::finish_action(stop_resp, "stop").await
+    pub async fn pause(&self) -> Result<bool> {
+        self.stop_mining().await?;
+        Ok(true)
     }
 
     pub async fn start_mining(&self) -> Result<()> {
-        // Same flow as the other action calls: try POST first, then GET if needed.
-
-        let start_url = format!("http://{}:{}/api/v1/mining/start", self.ip, self.port);
-        let start_resp = self.api_action_call_with_auth(&start_url).await?;
-
-        Self::finish_action(start_resp, "start").await
-    }
-
-    async fn try_unauth_requests(
-        &self,
-        url: &str,
-        post_parameters: Option<Value>,
-        get_parameters: Option<Value>,
-    ) -> Result<Option<Response>> {
-        // Try unauth first.
-        let unauth_resp = self
-            .execute_request(
-                url,
-                &Method::POST,
-                post_parameters.clone(),
-                false,
-                self.timeout,
-            )
-            .await;
-
-        match unauth_resp {
-            Ok(resp)
-                if resp.status() != StatusCode::UNAUTHORIZED
-                    && resp.status() != StatusCode::FORBIDDEN =>
-            {
-                if resp.status().is_success() {
-                    return Ok(Some(resp));
-                }
-
-                // Only fall back to GET on a method mismatch.
-                if !matches!(
-                    resp.status(),
-                    StatusCode::METHOD_NOT_ALLOWED | StatusCode::NOT_FOUND
-                ) {
-                    return Ok(Some(resp));
-                }
-
-                // POST failed, so try GET without auth.
-                let get_resp = self
-                    .execute_request(
-                        url,
-                        &Method::GET,
-                        get_parameters.clone(),
-                        false,
-                        self.timeout,
-                    )
-                    .await
-                    .map_err(|e| anyhow!(e.to_string()))?;
-
-                if get_resp.status().is_success() {
-                    return Ok(Some(get_resp));
-                }
-
-                if get_resp.status() != StatusCode::UNAUTHORIZED
-                    && get_resp.status() != StatusCode::FORBIDDEN
-                {
-                    return Ok(Some(get_resp));
-                }
-                // 401/403 on GET should keep going down the unlock path.
-                Ok(None)
-            }
-            Ok(_) => Ok(None),
-            Err(e) => Err(anyhow!(e.to_string())),
-        }
-    }
-
-    async fn try_with_token(
-        &self,
-        url: &str,
-        post_parameters: Option<Value>,
-        get_parameters: Option<Value>,
-    ) -> Result<Option<Response>> {
-        // Try the current token first, and only unlock again after 401/403.
-        if self.bearer_token.read().await.is_none() {
-            return Ok(None);
-        }
-
-        let post_resp = self
-            .execute_request(
-                url,
-                &Method::POST,
-                post_parameters.clone(),
-                true,
-                self.timeout,
-            )
+        self.send_control_command("mining/start", None, "start")
             .await
-            .map_err(|e| anyhow!(e.to_string()))?;
-
-        if post_resp.status().is_success() {
-            return Ok(Some(post_resp));
-        }
-
-        if !matches!(
-            post_resp.status(),
-            StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
-        ) {
-            // Only fall back to GET on a method mismatch.
-            if !matches!(
-                post_resp.status(),
-                StatusCode::METHOD_NOT_ALLOWED | StatusCode::NOT_FOUND
-            ) {
-                return Ok(Some(post_resp));
-            }
-
-            let get_resp = self
-                .execute_request(
-                    url,
-                    &Method::GET,
-                    get_parameters.clone(),
-                    true,
-                    self.timeout,
-                )
-                .await
-                .map_err(|e| anyhow!(e.to_string()))?;
-
-            if get_resp.status().is_success() {
-                return Ok(Some(get_resp));
-            }
-
-            if !matches!(
-                get_resp.status(),
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
-            ) {
-                return Ok(Some(get_resp));
-            }
-            // 401/403 on GET should keep going down the unlock path.
-        }
-
-        Ok(None)
     }
 
-    async fn authenticate_and_set_token(&self, password: &str) -> Result<()> {
-        let token = self
-            .authenticate(password)
-            .await
-            .map_err(|e| anyhow!(e.to_string()))?;
-        *self.bearer_token.write().await = Some(token);
-        Ok(())
+    pub async fn resume(&self) -> Result<bool> {
+        self.start_mining().await?;
+        Ok(true)
     }
 
     async fn try_post_then_get_with_auth(
@@ -549,7 +443,7 @@ impl VnishWebAPI {
         get_parameters: Option<Value>,
     ) -> Result<Response> {
         let post_resp = self
-            .execute_request(url, &Method::POST, post_parameters, true, self.timeout)
+            .execute_web_request(url, &Method::POST, post_parameters, true)
             .await
             .map_err(|e| anyhow!(e.to_string()))?;
 
@@ -557,7 +451,6 @@ impl VnishWebAPI {
             return Ok(post_resp);
         }
 
-        // Only fall back to GET on a method mismatch.
         if !matches!(
             post_resp.status(),
             StatusCode::METHOD_NOT_ALLOWED | StatusCode::NOT_FOUND
@@ -565,68 +458,18 @@ impl VnishWebAPI {
             return Ok(post_resp);
         }
 
-        // POST failed, so try GET with auth.
         let get_resp = self
-            .execute_request(url, &Method::GET, get_parameters, true, self.timeout)
+            .execute_web_request(url, &Method::GET, get_parameters, true)
             .await
             .map_err(|e| anyhow!(e.to_string()))?;
 
         Ok(get_resp)
     }
 
-    async fn api_action_call_with_auth_retry(
-        &self,
-        url: &str,
-        post_parameters: Option<Value>,
-        get_parameters: Option<Value>,
-    ) -> Result<Response> {
-        if let Some(resp) = self
-            .try_unauth_requests(url, post_parameters.clone(), get_parameters.clone())
-            .await?
-        {
-            return Ok(resp);
-        }
-
-        if let Some(resp) = self
-            .try_with_token(url, post_parameters.clone(), get_parameters.clone())
-            .await?
-        {
-            return Ok(resp);
-        }
-
-        let Some(password) = self.password.clone() else {
-            bail!("VNish unlock password is not configured");
-        };
-
-        self.authenticate_and_set_token(&password).await?;
-
-        self.try_post_then_get_with_auth(url, post_parameters, get_parameters)
-            .await
-    }
-
-    async fn api_action_call_with_auth(&self, url: &str) -> Result<Response> {
-        self.api_action_call_with_auth_retry(url, None, None).await
-    }
-
     async fn response_body_lower(response: Response) -> String {
         response.text().await.unwrap_or_default().to_lowercase()
     }
 
-    async fn finish_action(response: Response, action: &str) -> Result<()> {
-        Self::into_success_response(response, action).await.map(|_| ())
-    }
-
-    async fn into_success_response(response: Response, action: &str) -> Result<Response> {
-        if response.status().is_success() {
-            return Ok(response);
-        }
-
-        let status = response.status();
-        let body = Self::response_body_lower(response).await;
-        bail!("VNish {action} failed: HTTP {status}: {body}");
-    }
-
-    /// Make sure an auth token is ready when auth is enabled.
     async fn ensure_authenticated(&self) -> Result<(), VnishError> {
         if self.bearer_token.read().await.is_none() && self.password.is_some() {
             if let Some(ref password) = self.password {
@@ -647,7 +490,7 @@ impl VnishWebAPI {
 
     async fn authenticate(&self, password: &str) -> Result<String, VnishError> {
         let unlock_payload = serde_json::json!({ "pw": password });
-        let url = format!("http://{}:{}/api/v1/unlock", self.ip, self.port);
+        let url = self.web_url("unlock");
 
         let response = self
             .client
@@ -674,8 +517,18 @@ impl VnishWebAPI {
             .ok_or(VnishError::AuthenticationFailed)
     }
 
-    /// Send the HTTP request.
-    async fn execute_request(
+    async fn execute_web_request(
+        &self,
+        url: &str,
+        method: &Method,
+        parameters: Option<Value>,
+        include_auth: bool,
+    ) -> Result<Response, VnishError> {
+        self.execute_web_request_with_timeout(url, method, parameters, include_auth, self.timeout)
+            .await
+    }
+
+    async fn execute_web_request_with_timeout(
         &self,
         url: &str,
         method: &Method,
@@ -711,7 +564,6 @@ impl VnishWebAPI {
 
         let mut request_builder = request_builder.timeout(timeout);
 
-        // Add auth headers when this request needs them.
         if include_auth {
             let token = self.bearer_token.read().await.clone();
             let Some(token) = token else {
@@ -738,67 +590,101 @@ impl VnishWebAPI {
 
     async fn api_settings_call_with_auth_retry(
         &self,
-        url: &str,
+        command: &str,
         parameters: Value,
         method: Method,
         timeout: Duration,
     ) -> Result<Response> {
-        let should_auth = self.password.is_some();
+        let Some(password) = self.password.clone() else {
+            bail!("VNish unlock password is not configured");
+        };
 
-        // Try without auth first.
-        let unauth_resp = self
-            .execute_request(url, &method, Some(parameters.clone()), false, timeout)
+        let url = self.web_url(command);
+
+        let token = self
+            .authenticate(&password)
             .await
-            .map_err(anyhow::Error::from)?;
+            .map_err(|e| anyhow!(e.to_string()))?;
+        *self.bearer_token.write().await = Some(token);
 
-        if unauth_resp.status().is_success() {
-            return Ok(unauth_resp);
-        }
-
-        if should_auth
-            && matches!(
-                unauth_resp.status(),
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+        match self
+            .execute_web_request_with_timeout(
+                &url,
+                &method,
+                Some(parameters.clone()),
+                true,
+                timeout,
             )
+            .await
         {
-            let Some(password) = self.password.clone() else {
-                bail!("VNish unlock password is not configured");
-            };
-
-            let token = self
-                .authenticate(&password)
+            Ok(response)
+                if !matches!(
+                    response.status(),
+                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+                ) =>
+            {
+                Ok(response)
+            }
+            Ok(_) | Err(_) => {
+                *self.bearer_token.write().await = None;
+                let token = self
+                    .authenticate(&password)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                *self.bearer_token.write().await = Some(token);
+                self.execute_web_request_with_timeout(
+                    &url,
+                    &method,
+                    Some(parameters),
+                    true,
+                    timeout,
+                )
                 .await
-                .map_err(anyhow::Error::from)?;
-            *self.bearer_token.write().await = Some(token);
-
-            return self
-                .execute_request(url, &method, Some(parameters), true, timeout)
-                .await
-                .map_err(anyhow::Error::from);
+                .map_err(anyhow::Error::from)
+            }
         }
-
-        Ok(unauth_resp)
     }
 }
 
-/// VNish Web API errors.
+#[async_trait]
+impl APIClient for VnishWebAPI {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
+        match command {
+            MinerCommand::WebAPI {
+                command,
+                parameters,
+            } => self
+                .send_web_command(command, false, parameters.clone(), Method::GET)
+                .await
+                .map_err(|e| anyhow!(e.to_string())),
+            _ => Err(anyhow!("Unsupported command type for Web client")),
+        }
+    }
+}
+
+#[async_trait]
+impl WebAPIClient for VnishWebAPI {
+    async fn send_command(
+        &self,
+        command: &str,
+        privileged: bool,
+        parameters: Option<Value>,
+        method: Method,
+    ) -> Result<Value> {
+        self.send_web_command(command, privileged, parameters, method)
+            .await
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum VnishError {
-    /// Network error.
     NetworkError(String),
-    /// HTTP error.
     HttpError(u16),
-    /// JSON parse error.
     ParseError(String),
-    /// Request build error.
     RequestError(String),
-    /// Timeout error.
     Timeout,
-    /// Unsupported HTTP method.
     UnsupportedMethod(String),
-    /// Authentication failed.
     AuthenticationFailed,
-    /// Auth was requested but no bearer token is set.
     MissingAuthToken,
 }
 

@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -30,30 +30,50 @@ pub struct VnishV120 {
 }
 
 impl VnishV120 {
-    fn build_device_info(model: MinerModel) -> DeviceInfo {
-        DeviceInfo::new(
-            MinerMake::from(model.clone()),
-            model,
-            MinerFirmware::VNish,
-            HashAlgorithm::SHA256,
-        )
-    }
-
     pub fn new(ip: IpAddr, model: MinerModel) -> Self {
-        Self {
+        VnishV120 {
             ip,
             web: VnishWebAPI::new(ip),
-            device_info: Self::build_device_info(model),
+            device_info: DeviceInfo::new(
+                MinerMake::from(model),
+                model,
+                MinerFirmware::VNish,
+                HashAlgorithm::SHA256,
+            ),
         }
     }
 
-    /// Build a VNish backend with a custom unlock password.
     pub fn with_auth(ip: IpAddr, model: MinerModel, password: String) -> Self {
-        Self {
+        VnishV120 {
             ip,
             web: VnishWebAPI::with_auth(ip, password),
-            device_info: Self::build_device_info(model),
+            device_info: DeviceInfo::new(
+                MinerMake::from(model),
+                model,
+                MinerFirmware::VNish,
+                HashAlgorithm::SHA256,
+            ),
         }
+    }
+
+    fn build_pool_settings(config: Vec<crate::config::pools::PoolGroup>) -> Result<Vec<Value>> {
+        let pools: Vec<Value> = config
+            .into_iter()
+            .flat_map(|group| group.pools)
+            .map(|pool| {
+                serde_json::json!({
+                    "url": pool.url.to_string(),
+                    "user": pool.username,
+                    "pass": pool.password,
+                })
+            })
+            .collect();
+
+        if pools.is_empty() {
+            anyhow::bail!("No pools provided");
+        }
+
+        Ok(pools)
     }
 }
 
@@ -254,7 +274,7 @@ impl GetIP for VnishV120 {
 
 impl GetDeviceInfo for VnishV120 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info.clone()
+        self.device_info
     }
 }
 
@@ -664,9 +684,8 @@ impl SetFaultLight for VnishV120 {
         true
     }
 
-    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
-        self.web.blink(fault).await?;
-        Ok(true)
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
+        self.web.set_fault_light(fault).await
     }
 }
 
@@ -686,32 +705,15 @@ impl SetPools for VnishV120 {
     async fn set_pools(
         &self,
         config: Vec<crate::config::pools::PoolGroup>,
-    ) -> Result<bool> {
-        let pools: Vec<Value> = config
-            .into_iter()
-            .flat_map(|group| group.pools)
-            .map(|p| {
-                serde_json::json!({
-                    "url": p.url.to_string(),
-                    "user": p.username,
-                    "pass": p.password,
-                })
-            })
-            .collect();
-
-        if pools.is_empty() {
-            bail!("No pools provided");
-        }
-
-        self.web.set_pools(pools).await
+    ) -> anyhow::Result<bool> {
+        self.web.set_pools(Self::build_pool_settings(config)?).await
     }
 }
 
 #[async_trait]
 impl Restart for VnishV120 {
-    async fn restart(&self) -> Result<bool> {
-        self.web.restart_mining().await?;
-        Ok(true)
+    async fn restart(&self) -> anyhow::Result<bool> {
+        self.web.restart().await
     }
 
     fn supports_restart(&self) -> bool {
@@ -725,9 +727,8 @@ impl Pause for VnishV120 {
         true
     }
 
-    async fn pause(&self, _at_time: Option<Duration>) -> Result<bool> {
-        self.web.stop_mining().await?;
-        Ok(true)
+    async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+        self.web.pause().await
     }
 }
 
@@ -737,8 +738,7 @@ impl Resume for VnishV120 {
         true
     }
 
-    async fn resume(&self, _at_time: Option<Duration>) -> Result<bool> {
-        self.web.start_mining().await?;
-        Ok(true)
+    async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+        self.web.resume().await
     }
 }
