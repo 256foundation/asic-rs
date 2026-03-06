@@ -30,7 +30,6 @@ impl std::fmt::Debug for VnishWebAPI {
     }
 }
 
-
 #[async_trait]
 impl APIClient for VnishWebAPI {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
@@ -109,7 +108,9 @@ impl VnishWebAPI {
             match self.ensure_authenticated().await {
                 Ok(()) => true,
                 Err(e) => {
-                    tracing::warn!("VNish auth setup failed before request, trying without auth: {e}");
+                    tracing::warn!(
+                        "VNish auth setup failed before request, trying without auth: {e}"
+                    );
                     false
                 }
             }
@@ -123,7 +124,10 @@ impl VnishWebAPI {
         {
             Ok(resp)
                 if should_auth
-                    && matches!(resp.status(), StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) =>
+                    && matches!(
+                        resp.status(),
+                        StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+                    ) =>
             {
                 self.retry_after_unauthorized(url, method, parameters).await
             }
@@ -191,7 +195,10 @@ impl VnishWebAPI {
             .await
         {
             Ok(resp)
-                if !matches!(resp.status(), StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) =>
+                if !matches!(
+                    resp.status(),
+                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+                ) =>
             {
                 resp
             }
@@ -258,8 +265,6 @@ impl VnishWebAPI {
         }
 
         anyhow::bail!("VNish blink failed: HTTP {}", resp.status());
-
-
     }
 
     async fn get_find_miner_state(&self) -> anyhow::Result<Option<bool>> {
@@ -311,9 +316,7 @@ impl VnishWebAPI {
         // try unauthenticated first; if that fails due to auth, unlock and retry.
 
         let restart_url = format!("http://{}:{}/api/v1/mining/restart", self.ip, self.port);
-        let restart_resp = self
-            .api_action_call_with_auth(&restart_url)
-            .await?;
+        let restart_resp = self.api_action_call_with_auth(&restart_url).await?;
 
         if restart_resp.status().is_success() {
             return Ok(());
@@ -368,8 +371,10 @@ impl VnishWebAPI {
             {
                 Ok(r) => r,
                 Err(e) if Self::is_timeout_error(&e) => {
-                    anyhow::bail!("VNish set pools timed out (POST fallback); apply result is unknown: {e}");
-                },
+                    anyhow::bail!(
+                        "VNish set pools timed out (POST fallback); apply result is unknown: {e}"
+                    );
+                }
                 Err(e) => return Err(e),
             };
         }
@@ -430,7 +435,6 @@ impl VnishWebAPI {
         anyhow::bail!("VNish stop failed: HTTP {status}: {body}");
     }
 
-    
     pub async fn start_mining(&self) -> anyhow::Result<()> {
         // VNish calls this "start". Same flow as `blink()` / `restart_mining()`:
         // try without auth first; if that doesn't work, unlock and retry.
@@ -502,9 +506,9 @@ impl VnishWebAPI {
                 | StatusCode::METHOD_NOT_ALLOWED
                 | StatusCode::NOT_FOUND
         ) {
-        let status = start_resp.status();
-        let body = Self::response_body_lower(start_resp).await;
-        anyhow::bail!("VNish start failed: HTTP {status}: {body}");
+            let status = start_resp.status();
+            let body = Self::response_body_lower(start_resp).await;
+            anyhow::bail!("VNish start failed: HTTP {status}: {body}");
         }
 
         // Some builds accept unauthenticated start even when auth start fails.
@@ -515,9 +519,7 @@ impl VnishWebAPI {
 
         let status = start_resp_unauth.status();
         let body = Self::response_body_lower(start_resp_unauth).await;
-        anyhow::bail!(
-            "VNish start failed after auth and no-auth retries: HTTP {status}: {body}"
-        );
+        anyhow::bail!("VNish start failed after auth and no-auth retries: HTTP {status}: {body}");
     }
 
     async fn api_action_call_no_auth(&self, url: &str) -> anyhow::Result<Response> {
@@ -554,7 +556,13 @@ impl VnishWebAPI {
     ) -> anyhow::Result<Option<Response>> {
         // Try unauth first.
         let unauth_resp = self
-            .execute_request(url, &Method::POST, post_parameters.clone(), false, self.timeout)
+            .execute_request(
+                url,
+                &Method::POST,
+                post_parameters.clone(),
+                false,
+                self.timeout,
+            )
             .await;
 
         match unauth_resp {
@@ -576,7 +584,13 @@ impl VnishWebAPI {
 
                 // POST failed, try GET (still unauth).
                 let get_resp = self
-                    .execute_request(url, &Method::GET, get_parameters.clone(), false, self.timeout)
+                    .execute_request(
+                        url,
+                        &Method::GET,
+                        get_parameters.clone(),
+                        false,
+                        self.timeout,
+                    )
                     .await
                     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
@@ -609,7 +623,13 @@ impl VnishWebAPI {
         }
 
         let post_resp = self
-            .execute_request(url, &Method::POST, post_parameters.clone(), true, self.timeout)
+            .execute_request(
+                url,
+                &Method::POST,
+                post_parameters.clone(),
+                true,
+                self.timeout,
+            )
             .await
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
@@ -630,7 +650,13 @@ impl VnishWebAPI {
             }
 
             let get_resp = self
-                .execute_request(url, &Method::GET, get_parameters.clone(), true, self.timeout)
+                .execute_request(
+                    url,
+                    &Method::GET,
+                    get_parameters.clone(),
+                    true,
+                    self.timeout,
+                )
                 .await
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
@@ -720,8 +746,6 @@ impl VnishWebAPI {
         self.try_post_then_get_with_auth(url, post_parameters, get_parameters)
             .await
     }
-
-
 
     async fn api_action_call_with_auth(&self, url: &str) -> anyhow::Result<Response> {
         self.api_action_call_with_auth_retry(url, None, None).await
@@ -830,17 +854,13 @@ impl VnishWebAPI {
             .build()
             .map_err(|e| VnishError::RequestError(e.to_string()))?;
 
-        let response = self
-            .client
-            .execute(request)
-            .await
-            .map_err(|e| {
-                if e.is_timeout() {
-                    VnishError::Timeout
-                } else {
-                    VnishError::NetworkError(e.to_string())
-                }
-            })?;
+        let response = self.client.execute(request).await.map_err(|e| {
+            if e.is_timeout() {
+                VnishError::Timeout
+            } else {
+                VnishError::NetworkError(e.to_string())
+            }
+        })?;
 
         Ok(response)
     }

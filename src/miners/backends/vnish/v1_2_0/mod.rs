@@ -691,7 +691,10 @@ impl SetPools for VnishV120 {
         true
     }
 
-    async fn set_pools(&self, config: Vec<crate::config::pools::PoolGroup>) -> anyhow::Result<bool> {
+    async fn set_pools(
+        &self,
+        config: Vec<crate::config::pools::PoolGroup>,
+    ) -> anyhow::Result<bool> {
         if config.len() > 1 {
             anyhow::bail!(
                 "VNish only supports a single pool group; got {} groups",
