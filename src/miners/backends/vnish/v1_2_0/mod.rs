@@ -1,16 +1,14 @@
-use anyhow;
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::Duration;
+use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use crate::data::board::{BoardData, ChipData};
-use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
-use crate::data::device::{MinerControlBoard, MinerMake};
+use crate::data::device::{
+    DeviceInfo, HashAlgorithm, MinerControlBoard, MinerFirmware, MinerMake, MinerModel,
+};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::pool::{PoolData, PoolGroupData, PoolURL};
@@ -42,19 +40,16 @@ impl VnishV120 {
     }
 
     pub fn new(ip: IpAddr, model: MinerModel) -> Self {
-        VnishV120 {
+        Self {
             ip,
             web: VnishWebAPI::new(ip),
             device_info: Self::build_device_info(model),
         }
     }
 
-    /// Construct a VNish backend with a custom unlock password.
-    ///
-    /// VNish typically uses only a password (no username). The password is used
-    /// to obtain a bearer token via the unlock endpoint when the API requires it.
+    /// Build a VNish backend with a custom unlock password.
     pub fn with_auth(ip: IpAddr, model: MinerModel, password: String) -> Self {
-        VnishV120 {
+        Self {
             ip,
             web: VnishWebAPI::with_auth(ip, password),
             device_info: Self::build_device_info(model),
@@ -64,10 +59,10 @@ impl VnishV120 {
 
 #[async_trait]
 impl APIClient for VnishV120 {
-    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for Vnish API")),
+            _ => Err(anyhow!("Unsupported command type for Vnish API")),
         }
     }
 }
@@ -605,15 +600,12 @@ impl VnishV120 {
 
     fn extract_tuned_status(_chain: &Value, data: &HashMap<DataField, Value>) -> Option<bool> {
         // Check miner state to determine tuning status
-        if let Some(miner_state) = data.extract::<String>(DataField::IsMining) {
-            match miner_state.as_str() {
+        data.extract::<String>(DataField::IsMining)
+            .and_then(|miner_state| match miner_state.as_str() {
                 "auto-tuning" => Some(false), // Currently tuning, not yet tuned
                 "mining" => Some(true),       // Tuned and mining
                 _ => None,
-            }
-        } else {
-            None
-        }
+            })
     }
 
     fn extract_chips(chain: &Value) -> Vec<ChipData> {
@@ -672,7 +664,7 @@ impl SetFaultLight for VnishV120 {
         true
     }
 
-    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
+    async fn set_fault_light(&self, fault: bool) -> Result<bool> {
         self.web.blink(fault).await?;
         Ok(true)
     }
@@ -694,7 +686,7 @@ impl SetPools for VnishV120 {
     async fn set_pools(
         &self,
         config: Vec<crate::config::pools::PoolGroup>,
-    ) -> anyhow::Result<bool> {
+    ) -> Result<bool> {
         let pools: Vec<Value> = config
             .into_iter()
             .flat_map(|group| group.pools)
@@ -708,7 +700,7 @@ impl SetPools for VnishV120 {
             .collect();
 
         if pools.is_empty() {
-            anyhow::bail!("No pools provided");
+            bail!("No pools provided");
         }
 
         self.web.set_pools(pools).await
@@ -717,7 +709,7 @@ impl SetPools for VnishV120 {
 
 #[async_trait]
 impl Restart for VnishV120 {
-    async fn restart(&self) -> anyhow::Result<bool> {
+    async fn restart(&self) -> Result<bool> {
         self.web.restart_mining().await?;
         Ok(true)
     }
@@ -733,7 +725,7 @@ impl Pause for VnishV120 {
         true
     }
 
-    async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+    async fn pause(&self, _at_time: Option<Duration>) -> Result<bool> {
         self.web.stop_mining().await?;
         Ok(true)
     }
@@ -745,7 +737,7 @@ impl Resume for VnishV120 {
         true
     }
 
-    async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+    async fn resume(&self, _at_time: Option<Duration>) -> Result<bool> {
         self.web.start_mining().await?;
         Ok(true)
     }
