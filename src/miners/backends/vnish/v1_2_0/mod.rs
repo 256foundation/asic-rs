@@ -691,29 +691,10 @@ impl SetPools for VnishV120 {
         true
     }
 
-    async fn set_pools(
-        &self,
-        config: Vec<crate::config::pools::PoolGroup>,
-    ) -> anyhow::Result<bool> {
-        if config.len() > 1 {
-            anyhow::bail!(
-                "VNish only supports a single pool group; got {} groups",
-                config.len()
-            );
-        }
-
-        let group = config
+    async fn set_pools(&self, config: Vec<crate::config::pools::PoolGroup>) -> anyhow::Result<bool> {
+        let pools: Vec<Value> = config
             .into_iter()
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("No pool groups provided"))?;
-
-        if group.pools.is_empty() {
-            anyhow::bail!("No pools provided");
-        }
-
-        let pools: Vec<Value> = group
-            .pools
-            .into_iter()
+            .flat_map(|group| group.pools)
             .map(|p| {
                 serde_json::json!({
                     "url": p.url.to_string(),
@@ -722,6 +703,10 @@ impl SetPools for VnishV120 {
                 })
             })
             .collect();
+
+        if pools.is_empty() {
+            anyhow::bail!("No pools provided");
+        }
 
         self.web.set_pools(pools).await
     }
@@ -745,10 +730,7 @@ impl Pause for VnishV120 {
         true
     }
 
-    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        if at_time.is_some() {
-            anyhow::bail!("Scheduled pause is not supported on VnishV120");
-        }
+    async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
         self.web.stop_mining().await?;
         Ok(true)
     }
@@ -760,10 +742,7 @@ impl Resume for VnishV120 {
         true
     }
 
-    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        if at_time.is_some() {
-            anyhow::bail!("Scheduled resume is not supported on VnishV120");
-        }
+    async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
         self.web.start_mining().await?;
         Ok(true)
     }

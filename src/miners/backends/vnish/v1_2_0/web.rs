@@ -3,7 +3,6 @@ use reqwest::{Client, Method, Response, StatusCode};
 use serde_json::Value;
 use std::{net::IpAddr, time::Duration};
 use tokio::sync::RwLock;
-use tokio::time;
 
 use crate::miners::backends::traits::*;
 use crate::miners::commands::MinerCommand;
@@ -29,6 +28,7 @@ impl std::fmt::Debug for VnishWebAPI {
             .finish()
     }
 }
+
 
 #[async_trait]
 impl APIClient for VnishWebAPI {
@@ -108,9 +108,7 @@ impl VnishWebAPI {
             match self.ensure_authenticated().await {
                 Ok(()) => true,
                 Err(e) => {
-                    tracing::warn!(
-                        "VNish auth setup failed before request, trying without auth: {e}"
-                    );
+                    tracing::warn!("VNish auth setup failed before request, trying without auth: {e}");
                     false
                 }
             }
@@ -124,10 +122,7 @@ impl VnishWebAPI {
         {
             Ok(resp)
                 if should_auth
-                    && matches!(
-                        resp.status(),
-                        StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
-                    ) =>
+                    && matches!(resp.status(), StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) =>
             {
                 self.retry_after_unauthorized(url, method, parameters).await
             }
@@ -195,10 +190,7 @@ impl VnishWebAPI {
             .await
         {
             Ok(resp)
-                if !matches!(
-                    resp.status(),
-                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
-                ) =>
+                if !matches!(resp.status(), StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) =>
             {
                 resp
             }
@@ -265,6 +257,8 @@ impl VnishWebAPI {
         }
 
         anyhow::bail!("VNish blink failed: HTTP {}", resp.status());
+
+
     }
 
     async fn get_find_miner_state(&self) -> anyhow::Result<Option<bool>> {
@@ -316,33 +310,32 @@ impl VnishWebAPI {
         // try unauthenticated first; if that fails due to auth, unlock and retry.
 
         let restart_url = format!("http://{}:{}/api/v1/mining/restart", self.ip, self.port);
-        let restart_resp = self.api_action_call_with_auth(&restart_url).await?;
+        let restart_resp = self
+            .api_action_call_with_auth(&restart_url)
+            .await?;
 
         if restart_resp.status().is_success() {
             return Ok(());
         }
 
-        // If the endpoint isn't supported, fall back to stop -> start.
-        if matches!(
-            restart_resp.status(),
-            StatusCode::NOT_FOUND | StatusCode::METHOD_NOT_ALLOWED
-        ) {
-            return self.restart_via_stop_start().await;
-        }
-
-        // Some firmware returns 500 with a body that still indicates "already".
-        if restart_resp.status() == StatusCode::INTERNAL_SERVER_ERROR {
-            let body = Self::response_body_lower(restart_resp).await;
-            if body.contains("already") || body.contains("resume") {
-                return Ok(());
-            }
-
-            anyhow::bail!("VNish restart failed: HTTP 500: {body}");
-        }
-
         let status = restart_resp.status();
         let body = Self::response_body_lower(restart_resp).await;
         anyhow::bail!("VNish restart failed: HTTP {status}: {body}");
+    }
+
+    pub async fn reboot(&self) -> anyhow::Result<()> {
+        let reboot_url = format!("http://{}:{}/api/v1/system/reboot", self.ip, self.port);
+        let reboot_resp = self
+            .api_action_call_with_auth(&reboot_url)
+            .await?;
+
+        if reboot_resp.status().is_success() {
+            return Ok(());
+        }
+
+        let status = reboot_resp.status();
+        let body = Self::response_body_lower(reboot_resp).await;
+        anyhow::bail!("VNish reboot failed: HTTP {status}: {body}");
     }
 
     pub async fn set_pools(&self, pools: Vec<Value>) -> anyhow::Result<bool> {
@@ -354,7 +347,7 @@ impl VnishWebAPI {
         let long_timeout = self.timeout.checked_mul(12).unwrap_or(self.timeout);
 
         let mut resp = match self
-            .api_settings_call_with_auth_retry(&url, payload.clone(), Method::PUT, long_timeout)
+            .api_settings_call_with_auth_retry(&url, payload.clone(), Method::POST, long_timeout)
             .await
         {
             Ok(r) => r,
@@ -366,15 +359,13 @@ impl VnishWebAPI {
 
         if resp.status() == StatusCode::METHOD_NOT_ALLOWED {
             resp = match self
-                .api_settings_call_with_auth_retry(&url, payload, Method::POST, long_timeout)
+                .api_settings_call_with_auth_retry(&url, payload, Method::PUT, long_timeout)
                 .await
             {
                 Ok(r) => r,
                 Err(e) if Self::is_timeout_error(&e) => {
-                    anyhow::bail!(
-                        "VNish set pools timed out (POST fallback); apply result is unknown: {e}"
-                    );
-                }
+                    anyhow::bail!("VNish set pools timed out (PUT fallback); apply result is unknown: {e}");
+                },
                 Err(e) => return Err(e),
             };
         }
@@ -393,16 +384,22 @@ impl VnishWebAPI {
             }
         };
 
+        let reboot_required = json
+            .pointer("/reboot_required")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         let restart_required = json
             .pointer("/restart_required")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
+        if reboot_required {
+            self.reboot().await?;
+            return Ok(true);
+        }
+
         if restart_required {
-            // Best-effort: don't fail the pool set if restart fails.
-            if let Err(e) = self.restart_mining().await {
-                tracing::warn!("VNish restart after pool change failed: {e}");
-            }
+            self.restart_mining().await?;
         }
 
         Ok(true)
@@ -420,21 +417,12 @@ impl VnishWebAPI {
             return Ok(());
         }
 
-        // Some firmware returns 500 even when we're already stopped.
-        if stop_resp.status() == StatusCode::INTERNAL_SERVER_ERROR {
-            let body = Self::response_body_lower(stop_resp).await;
-            if body.contains("already") || body.contains("not running") || body.contains("resume") {
-                return Ok(());
-            }
-
-            anyhow::bail!("VNish stop failed: HTTP 500: {body}");
-        }
-
         let status = stop_resp.status();
         let body = Self::response_body_lower(stop_resp).await;
         anyhow::bail!("VNish stop failed: HTTP {status}: {body}");
     }
 
+    
     pub async fn start_mining(&self) -> anyhow::Result<()> {
         // VNish calls this "start". Same flow as `blink()` / `restart_mining()`:
         // try without auth first; if that doesn't work, unlock and retry.
@@ -447,106 +435,9 @@ impl VnishWebAPI {
             return Ok(());
         }
 
-        // Some firmware returns 500 even when we're already running.
-        if start_resp.status() == StatusCode::INTERNAL_SERVER_ERROR {
-            let body = Self::response_body_lower(start_resp).await;
-            if body.contains("failed-to-activate-resume-mode") || body.contains("already") {
-                return Ok(());
-            }
-
-            anyhow::bail!("VNish start failed: HTTP 500: {body}");
-        }
-
         let status = start_resp.status();
         let body = Self::response_body_lower(start_resp).await;
         anyhow::bail!("VNish start failed: HTTP {status}: {body}");
-    }
-
-    async fn restart_via_stop_start(&self) -> anyhow::Result<()> {
-        let stop_url = format!("http://{}:{}/api/v1/mining/stop", self.ip, self.port);
-        let stop_resp = self.api_action_call_with_auth(&stop_url).await?;
-
-        if !stop_resp.status().is_success() {
-            let status = stop_resp.status();
-            let body = Self::response_body_lower(stop_resp).await;
-            let already_stopped = matches!(
-                status,
-                StatusCode::INTERNAL_SERVER_ERROR | StatusCode::CONFLICT | StatusCode::NOT_FOUND
-            ) && (body.contains("already")
-                || body.contains("not running")
-                || body.contains("resume"));
-
-            if !already_stopped {
-                anyhow::bail!("VNish stop failed: HTTP {status}: {body}");
-            }
-        }
-
-        time::sleep(Duration::from_secs(1)).await;
-
-        let start_url = format!("http://{}:{}/api/v1/mining/start", self.ip, self.port);
-        let start_resp = self.api_action_call_with_auth(&start_url).await?;
-
-        if start_resp.status().is_success() {
-            return Ok(());
-        }
-
-        // Keep behavior aligned with `start_mining()`.
-        if start_resp.status() == StatusCode::INTERNAL_SERVER_ERROR {
-            let body = Self::response_body_lower(start_resp).await;
-            if body.contains("failed-to-activate-resume-mode") || body.contains("already") {
-                return Ok(());
-            }
-            anyhow::bail!("VNish start failed: HTTP 500: {body}");
-        }
-
-        if !matches!(
-            start_resp.status(),
-            StatusCode::UNAUTHORIZED
-                | StatusCode::FORBIDDEN
-                | StatusCode::METHOD_NOT_ALLOWED
-                | StatusCode::NOT_FOUND
-        ) {
-            let status = start_resp.status();
-            let body = Self::response_body_lower(start_resp).await;
-            anyhow::bail!("VNish start failed: HTTP {status}: {body}");
-        }
-
-        // Some builds accept unauthenticated start even when auth start fails.
-        let start_resp_unauth = self.api_action_call_no_auth(&start_url).await?;
-        if start_resp_unauth.status().is_success() {
-            return Ok(());
-        }
-
-        let status = start_resp_unauth.status();
-        let body = Self::response_body_lower(start_resp_unauth).await;
-        anyhow::bail!("VNish start failed after auth and no-auth retries: HTTP {status}: {body}");
-    }
-
-    async fn api_action_call_no_auth(&self, url: &str) -> anyhow::Result<Response> {
-        // Mirror restart.py's "POST then GET fallback" behavior.
-        let post_resp = self
-            .execute_request(url, &Method::POST, None, false, self.timeout)
-            .await
-            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
-
-        if post_resp.status().is_success() {
-            return Ok(post_resp);
-        }
-
-        // Keep real POST failures (ex: 500) so callers can inspect the body.
-        if !matches!(
-            post_resp.status(),
-            StatusCode::METHOD_NOT_ALLOWED | StatusCode::NOT_FOUND
-        ) {
-            return Ok(post_resp);
-        }
-
-        let get_resp = self
-            .execute_request(url, &Method::GET, None, false, self.timeout)
-            .await
-            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
-
-        Ok(get_resp)
     }
     async fn try_unauth_requests(
         &self,
@@ -556,13 +447,7 @@ impl VnishWebAPI {
     ) -> anyhow::Result<Option<Response>> {
         // Try unauth first.
         let unauth_resp = self
-            .execute_request(
-                url,
-                &Method::POST,
-                post_parameters.clone(),
-                false,
-                self.timeout,
-            )
+            .execute_request(url, &Method::POST, post_parameters.clone(), false, self.timeout)
             .await;
 
         match unauth_resp {
@@ -584,13 +469,7 @@ impl VnishWebAPI {
 
                 // POST failed, try GET (still unauth).
                 let get_resp = self
-                    .execute_request(
-                        url,
-                        &Method::GET,
-                        get_parameters.clone(),
-                        false,
-                        self.timeout,
-                    )
+                    .execute_request(url, &Method::GET, get_parameters.clone(), false, self.timeout)
                     .await
                     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
@@ -623,13 +502,7 @@ impl VnishWebAPI {
         }
 
         let post_resp = self
-            .execute_request(
-                url,
-                &Method::POST,
-                post_parameters.clone(),
-                true,
-                self.timeout,
-            )
+            .execute_request(url, &Method::POST, post_parameters.clone(), true, self.timeout)
             .await
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
@@ -650,13 +523,7 @@ impl VnishWebAPI {
             }
 
             let get_resp = self
-                .execute_request(
-                    url,
-                    &Method::GET,
-                    get_parameters.clone(),
-                    true,
-                    self.timeout,
-                )
+                .execute_request(url, &Method::GET, get_parameters.clone(), true, self.timeout)
                 .await
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
@@ -746,6 +613,8 @@ impl VnishWebAPI {
         self.try_post_then_get_with_auth(url, post_parameters, get_parameters)
             .await
     }
+
+
 
     async fn api_action_call_with_auth(&self, url: &str) -> anyhow::Result<Response> {
         self.api_action_call_with_auth_retry(url, None, None).await
@@ -854,13 +723,17 @@ impl VnishWebAPI {
             .build()
             .map_err(|e| VnishError::RequestError(e.to_string()))?;
 
-        let response = self.client.execute(request).await.map_err(|e| {
-            if e.is_timeout() {
-                VnishError::Timeout
-            } else {
-                VnishError::NetworkError(e.to_string())
-            }
-        })?;
+        let response = self
+            .client
+            .execute(request)
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    VnishError::Timeout
+                } else {
+                    VnishError::NetworkError(e.to_string())
+                }
+            })?;
 
         Ok(response)
     }
@@ -912,7 +785,6 @@ impl VnishWebAPI {
 
 /// Error types for Vnish WebAPI operations
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum VnishError {
     /// Network error (connection issues, DNS resolution, etc.)
     NetworkError(String),
@@ -926,12 +798,8 @@ pub enum VnishError {
     Timeout,
     /// Unsupported HTTP method
     UnsupportedMethod(String),
-    /// Maximum retries exceeded
-    MaxRetriesExceeded,
     /// Authentication failed
     AuthenticationFailed,
-    /// Unauthorized (401)
-    Unauthorized,
     /// Auth was requested but no bearer token is set
     MissingAuthToken,
 }
@@ -945,9 +813,7 @@ impl std::fmt::Display for VnishError {
             VnishError::RequestError(msg) => write!(f, "Request error: {msg}"),
             VnishError::Timeout => write!(f, "Request timeout"),
             VnishError::UnsupportedMethod(method) => write!(f, "Unsupported method: {method}"),
-            VnishError::MaxRetriesExceeded => write!(f, "Maximum retries exceeded"),
             VnishError::AuthenticationFailed => write!(f, "Authentication failed"),
-            VnishError::Unauthorized => write!(f, "Unauthorized access"),
             VnishError::MissingAuthToken => write!(f, "Missing auth token"),
         }
     }
