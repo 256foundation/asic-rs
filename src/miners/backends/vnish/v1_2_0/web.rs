@@ -348,9 +348,7 @@ impl VnishWebAPI {
             {
                 Ok(r) => r,
                 Err(e) if Self::is_timeout_error(&e) => {
-                    bail!(
-                        "VNish set pools timed out (PUT fallback); apply result is unknown: {e}"
-                    );
+                    bail!("VNish set pools timed out (PUT fallback); apply result is unknown: {e}");
                 }
                 Err(e) => return Err(e),
             };
@@ -613,7 +611,9 @@ impl VnishWebAPI {
     }
 
     async fn finish_action(response: Response, action: &str) -> Result<()> {
-        Self::into_success_response(response, action).await.map(|_| ())
+        Self::into_success_response(response, action)
+            .await
+            .map(|_| ())
     }
 
     async fn into_success_response(response: Response, action: &str) -> Result<Response> {
