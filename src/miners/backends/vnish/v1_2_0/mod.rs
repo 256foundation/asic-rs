@@ -691,7 +691,10 @@ impl SetPools for VnishV120 {
         true
     }
 
-    async fn set_pools(&self, config: Vec<crate::config::pools::PoolGroup>) -> anyhow::Result<bool> {
+    async fn set_pools(
+        &self,
+        config: Vec<crate::config::pools::PoolGroup>,
+    ) -> anyhow::Result<bool> {
         let pools: Vec<Value> = config
             .into_iter()
             .flat_map(|group| group.pools)
