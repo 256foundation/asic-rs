@@ -35,12 +35,7 @@ impl VnishV120 {
         VnishV120 {
             ip,
             web: VnishWebAPI::new(ip),
-            device_info: DeviceInfo::new(
-                make,
-                model,
-                MinerFirmware::VNish,
-                HashAlgorithm::SHA256,
-            ),
+            device_info: DeviceInfo::new(make, model, MinerFirmware::VNish, HashAlgorithm::SHA256),
         }
     }
 
@@ -49,12 +44,7 @@ impl VnishV120 {
         VnishV120 {
             ip,
             web: VnishWebAPI::with_auth(ip, password),
-            device_info: DeviceInfo::new(
-                make,
-                model,
-                MinerFirmware::VNish,
-                HashAlgorithm::SHA256,
-            ),
+            device_info: DeviceInfo::new(make, model, MinerFirmware::VNish, HashAlgorithm::SHA256),
         }
     }
 
@@ -704,10 +694,7 @@ impl SetPools for VnishV120 {
         true
     }
 
-    async fn set_pools(
-        &self,
-        config: Vec<crate::config::pools::PoolGroup>,
-    ) -> Result<bool> {
+    async fn set_pools(&self, config: Vec<crate::config::pools::PoolGroup>) -> Result<bool> {
         let pools = Self::build_pool_settings(config)?;
 
         self.web.set_pools(pools).await
