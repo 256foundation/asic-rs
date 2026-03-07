@@ -1,16 +1,14 @@
-use anyhow;
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::Duration;
+use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use crate::data::board::{BoardData, ChipData};
-use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
-use crate::data::device::{MinerControlBoard, MinerMake};
+use crate::data::device::{
+    DeviceInfo, HashAlgorithm, MinerControlBoard, MinerFirmware, MinerMake, MinerModel,
+};
 use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::pool::{PoolData, PoolGroupData, PoolURL};
@@ -33,25 +31,50 @@ pub struct VnishV120 {
 
 impl VnishV120 {
     pub fn new(ip: IpAddr, model: MinerModel) -> Self {
+        let make = MinerMake::from(model.clone());
         VnishV120 {
             ip,
-            web: VnishWebAPI::new(ip, 80),
-            device_info: DeviceInfo::new(
-                MinerMake::from(model.clone()),
-                model,
-                MinerFirmware::VNish,
-                HashAlgorithm::SHA256,
-            ),
+            web: VnishWebAPI::new(ip),
+            device_info: DeviceInfo::new(make, model, MinerFirmware::VNish, HashAlgorithm::SHA256),
         }
+    }
+
+    pub fn with_auth(ip: IpAddr, model: MinerModel, password: String) -> Self {
+        let make = MinerMake::from(model.clone());
+        VnishV120 {
+            ip,
+            web: VnishWebAPI::with_auth(ip, password),
+            device_info: DeviceInfo::new(make, model, MinerFirmware::VNish, HashAlgorithm::SHA256),
+        }
+    }
+
+    fn build_pool_settings(config: Vec<crate::config::pools::PoolGroup>) -> Result<Vec<Value>> {
+        let pools: Vec<Value> = config
+            .into_iter()
+            .flat_map(|group| group.pools)
+            .map(|pool| {
+                serde_json::json!({
+                    "url": pool.url.to_string(),
+                    "user": pool.username,
+                    "pass": pool.password,
+                })
+            })
+            .collect();
+
+        if pools.is_empty() {
+            anyhow::bail!("No pools provided");
+        }
+
+        Ok(pools)
     }
 }
 
 #[async_trait]
 impl APIClient for VnishV120 {
-    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
+    async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for Vnish API")),
+            _ => Err(anyhow!("Unsupported command type for Vnish API")),
         }
     }
 }
@@ -589,15 +612,12 @@ impl VnishV120 {
 
     fn extract_tuned_status(_chain: &Value, data: &HashMap<DataField, Value>) -> Option<bool> {
         // Check miner state to determine tuning status
-        if let Some(miner_state) = data.extract::<String>(DataField::IsMining) {
-            match miner_state.as_str() {
+        data.extract::<String>(DataField::IsMining)
+            .and_then(|miner_state| match miner_state.as_str() {
                 "auto-tuning" => Some(false), // Currently tuning, not yet tuned
                 "mining" => Some(true),       // Tuned and mining
                 _ => None,
-            }
-        } else {
-            None
-        }
+            })
     }
 
     fn extract_chips(chain: &Value) -> Vec<ChipData> {
@@ -653,7 +673,11 @@ impl VnishV120 {
 #[async_trait]
 impl SetFaultLight for VnishV120 {
     fn supports_set_fault_light(&self) -> bool {
-        false
+        true
+    }
+
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
+        self.web.set_fault_light(fault).await
     }
 }
 
@@ -667,27 +691,45 @@ impl SetPowerLimit for VnishV120 {
 #[async_trait]
 impl SetPools for VnishV120 {
     fn supports_set_pools(&self) -> bool {
-        false
+        true
+    }
+
+    async fn set_pools(&self, config: Vec<crate::config::pools::PoolGroup>) -> Result<bool> {
+        let pools = Self::build_pool_settings(config)?;
+
+        self.web.set_pools(pools).await
     }
 }
 
 #[async_trait]
 impl Restart for VnishV120 {
+    async fn restart(&self) -> anyhow::Result<bool> {
+        self.web.restart().await
+    }
+
     fn supports_restart(&self) -> bool {
-        false
+        true
     }
 }
 
 #[async_trait]
 impl Pause for VnishV120 {
     fn supports_pause(&self) -> bool {
-        false
+        true
+    }
+
+    async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+        self.web.pause().await
     }
 }
 
 #[async_trait]
 impl Resume for VnishV120 {
     fn supports_resume(&self) -> bool {
-        false
+        true
+    }
+
+    async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+        self.web.resume().await
     }
 }
