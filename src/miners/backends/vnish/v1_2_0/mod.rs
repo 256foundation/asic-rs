@@ -31,11 +31,12 @@ pub struct VnishV120 {
 
 impl VnishV120 {
     pub fn new(ip: IpAddr, model: MinerModel) -> Self {
+        let make = MinerMake::from(model.clone());
         VnishV120 {
             ip,
             web: VnishWebAPI::new(ip),
             device_info: DeviceInfo::new(
-                MinerMake::from(model),
+                make,
                 model,
                 MinerFirmware::VNish,
                 HashAlgorithm::SHA256,
@@ -44,11 +45,12 @@ impl VnishV120 {
     }
 
     pub fn with_auth(ip: IpAddr, model: MinerModel, password: String) -> Self {
+        let make = MinerMake::from(model.clone());
         VnishV120 {
             ip,
             web: VnishWebAPI::with_auth(ip, password),
             device_info: DeviceInfo::new(
-                MinerMake::from(model),
+                make,
                 model,
                 MinerFirmware::VNish,
                 HashAlgorithm::SHA256,
@@ -274,7 +276,7 @@ impl GetIP for VnishV120 {
 
 impl GetDeviceInfo for VnishV120 {
     fn get_device_info(&self) -> DeviceInfo {
-        self.device_info
+        self.device_info.clone()
     }
 }
 
@@ -705,8 +707,10 @@ impl SetPools for VnishV120 {
     async fn set_pools(
         &self,
         config: Vec<crate::config::pools::PoolGroup>,
-    ) -> anyhow::Result<bool> {
-        self.web.set_pools(Self::build_pool_settings(config)?).await
+    ) -> Result<bool> {
+        let pools = Self::build_pool_settings(config)?;
+
+        self.web.set_pools(pools).await
     }
 }
 

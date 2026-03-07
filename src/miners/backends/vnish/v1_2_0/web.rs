@@ -470,6 +470,7 @@ impl VnishWebAPI {
         response.text().await.unwrap_or_default().to_lowercase()
     }
 
+    /// Make sure an auth token is ready when auth is enabled.
     async fn ensure_authenticated(&self) -> Result<(), VnishError> {
         if self.bearer_token.read().await.is_none() && self.password.is_some() {
             if let Some(ref password) = self.password {
