@@ -101,9 +101,7 @@ impl VnishWebAPI {
     }
 
     async fn get_auth_token(&self, force_refresh: bool) -> Result<String> {
-        if !force_refresh
-            && let Some(token) = self.bearer_token.read().await.clone()
-        {
+        if !force_refresh && let Some(token) = self.bearer_token.read().await.clone() {
             return Ok(token);
         }
 
@@ -132,8 +130,10 @@ impl VnishWebAPI {
             .execute_web_request_once(url, method, parameters.clone(), first_token.as_deref())
             .await?;
 
-        if matches!(response.status(), StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN)
-            && self.password.is_some()
+        if matches!(
+            response.status(),
+            StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+        ) && self.password.is_some()
         {
             let refreshed = self.get_auth_token(true).await?;
             response = self
