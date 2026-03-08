@@ -2,12 +2,13 @@ use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::config::pools::PoolGroup;
 use crate::data::board::{BoardData, ChipData};
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::device::{MinerControlBoard, MinerMake};
@@ -36,6 +37,19 @@ impl VnishV120 {
         VnishV120 {
             ip,
             web: VnishWebAPI::new(ip, 80),
+            device_info: DeviceInfo::new(
+                MinerMake::from(model.clone()),
+                model,
+                MinerFirmware::VNish,
+                HashAlgorithm::SHA256,
+            ),
+        }
+    }
+
+    pub fn with_auth(ip: IpAddr, model: MinerModel, password: String) -> Self {
+        VnishV120 {
+            ip,
+            web: VnishWebAPI::with_auth(ip, password),
             device_info: DeviceInfo::new(
                 MinerMake::from(model.clone()),
                 model,
@@ -653,7 +667,20 @@ impl VnishV120 {
 #[async_trait]
 impl SetFaultLight for VnishV120 {
     fn supports_set_fault_light(&self) -> bool {
-        false
+        true
+    }
+
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
+        if self.get_light_flashing().await == Some(fault) {
+            return Ok(true);
+        }
+
+        let response = self.web.find_miner(fault).await?;
+        Ok(response
+            .pointer("/on")
+            .and_then(|v| v.as_bool())
+            .map(|on| on == fault)
+            .unwrap_or(true))
     }
 }
 
@@ -666,28 +693,69 @@ impl SetPowerLimit for VnishV120 {
 
 #[async_trait]
 impl SetPools for VnishV120 {
+    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+        let pools: Vec<Value> = config
+            .iter()
+            .flat_map(|group| group.pools.iter())
+            .enumerate()
+            .map(|(idx, pool)| {
+                json!({
+                    "url": format!("{}:{}", pool.url.host, pool.url.port),
+                    "user": pool.username,
+                    "pass": pool.password,
+                    "order": idx,
+                    "id": idx,
+                })
+            })
+            .collect();
+
+        if pools.is_empty() {
+            return Err(anyhow::anyhow!("No pools provided"));
+        }
+
+        Ok(self
+            .web
+            .set_settings(json!({ "miner": { "pools": pools } }))
+            .await
+            .is_ok())
+    }
+
     fn supports_set_pools(&self) -> bool {
-        false
+        true
     }
 }
 
 #[async_trait]
 impl Restart for VnishV120 {
+    async fn restart(&self) -> anyhow::Result<bool> {
+        Ok(self.web.restart().await.is_ok())
+    }
+
     fn supports_restart(&self) -> bool {
-        false
+        true
     }
 }
 
 #[async_trait]
 impl Pause for VnishV120 {
+    #[allow(unused_variables)]
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        Ok(self.web.stop().await.is_ok())
+    }
+
     fn supports_pause(&self) -> bool {
-        false
+        true
     }
 }
 
 #[async_trait]
 impl Resume for VnishV120 {
+    #[allow(unused_variables)]
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        Ok(self.web.start().await.is_ok())
+    }
+
     fn supports_resume(&self) -> bool {
-        false
+        true
     }
 }

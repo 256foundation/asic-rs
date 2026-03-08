@@ -85,6 +85,12 @@ impl VnishWebAPI {
         }
     }
 
+    pub fn with_auth(ip: IpAddr, password: String) -> Self {
+        let mut client = Self::new(ip, 80);
+        client.password = Some(password);
+        client
+    }
+
     /// Ensure authentication token is present, authenticate if needed
     async fn ensure_authenticated(&self) -> anyhow::Result<(), VnishError> {
         if self.bearer_token.read().await.is_none() && self.password.is_some() {
@@ -177,6 +183,44 @@ impl VnishWebAPI {
             .map_err(|e| VnishError::NetworkError(e.to_string()))?;
 
         Ok(response)
+    }
+
+    pub async fn find_miner(&self, on: bool) -> anyhow::Result<Value> {
+        let url = format!("http://{}:{}/api/v1/find-miner", self.ip, self.port);
+        let response = self
+            .execute_request(&url, &Method::POST, Some(serde_json::json!({ "on": on })))
+            .await?;
+
+        let status = response.status();
+        if status.is_success() {
+            let json_data = response
+                .json()
+                .await
+                .map_err(|e| VnishError::ParseError(e.to_string()))?;
+            Ok(json_data)
+        } else {
+            Err(VnishError::HttpError(status.as_u16()))?
+        }
+    }
+
+    pub async fn restart(&self) -> anyhow::Result<Value> {
+        self.send_command("mining/restart", true, None, Method::POST)
+            .await
+    }
+
+    pub async fn stop(&self) -> anyhow::Result<Value> {
+        self.send_command("mining/stop", true, None, Method::POST)
+            .await
+    }
+
+    pub async fn start(&self) -> anyhow::Result<Value> {
+        self.send_command("mining/start", true, None, Method::POST)
+            .await
+    }
+
+    pub async fn set_settings(&self, settings: Value) -> anyhow::Result<Value> {
+        self.send_command("settings", true, Some(settings), Method::POST)
+            .await
     }
 }
 
