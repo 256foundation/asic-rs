@@ -438,6 +438,16 @@ impl GetUptime for VnishV120 {
                     return Some(Duration::from_secs(total_seconds));
                 }
 
+                // Handle "H:MM" or "HH:MM" format (uptime < 1 day)
+                if let Some((hours_str, minutes_str)) = trimmed.split_once(':')
+                    && let (Ok(hours), Ok(minutes)) = (
+                        hours_str.trim().parse::<u64>(),
+                        minutes_str.trim().parse::<u64>(),
+                    )
+                {
+                    return Some(Duration::from_secs(hours * 3600 + minutes * 60));
+                }
+
                 None
             })
     }
