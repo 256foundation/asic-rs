@@ -456,7 +456,7 @@ impl GetUptime for VnishV120 {
 impl GetIsMining for VnishV120 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
-            .map(|state| state == "mining")
+            .map(|state| state == "mining" || state == "auto-tuning")
             .unwrap_or(false)
     }
 }
