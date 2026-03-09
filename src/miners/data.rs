@@ -284,11 +284,20 @@ impl<'a> DataCollector<'a> {
     /// This method sends only the minimum required set of API commands.
     pub async fn collect(&mut self, fields: &[DataField]) -> HashMap<DataField, Value> {
         let mut results = HashMap::new();
-        let required_commands = self.get_required_commands(fields);
+        let required_commands: Vec<MinerCommand> =
+            self.get_required_commands(fields).into_iter().collect();
 
-        for command in required_commands {
-            if let Ok(response) = self.client.get_api_result(&command).await {
-                self.cache.insert(command, response);
+        // Execute all API commands concurrently
+        let responses = futures::future::join_all(
+            required_commands
+                .iter()
+                .map(|cmd| self.client.get_api_result(cmd)),
+        )
+        .await;
+
+        for (command, response) in required_commands.into_iter().zip(responses) {
+            if let Ok(value) = response {
+                self.cache.insert(command, value);
             }
         }
 
