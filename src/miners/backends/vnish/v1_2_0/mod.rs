@@ -195,7 +195,7 @@ impl GetDataLocations for VnishV120 {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/miner/chains"),
-                        tag: None,
+                        tag: Some("summary"),
                     },
                 ),
                 (
@@ -203,7 +203,7 @@ impl GetDataLocations for VnishV120 {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
-                        tag: None,
+                        tag: Some("chains"),
                     },
                 ),
             ],
@@ -297,31 +297,53 @@ impl GetControlBoardVersion for VnishV120 {
 
 impl GetHashboards for VnishV120 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = Vec::new();
+        let hb_data = match data.get(&DataField::Hashboards) {
+            Some(v) => v,
+            None => return Vec::new(),
+        };
 
-        let chains_data = data.get(&DataField::Hashboards).and_then(|v| v.as_array());
+        // Build a map of board ID → merged chain object from both tagged sources.
+        // "summary" has voltage, temperatures, chip_statuses; "chains" has individual chips, sensors.
+        let mut boards: std::collections::BTreeMap<u64, Value> = std::collections::BTreeMap::new();
 
-        if let Some(chains_array) = chains_data {
-            for (idx, chain) in chains_array.iter().enumerate() {
+        for tag in ["summary", "chains"] {
+            if let Some(arr) = hb_data
+                .pointer(&format!("/{tag}"))
+                .and_then(|v| v.as_array())
+            {
+                for (idx, chain) in arr.iter().enumerate() {
+                    let id = chain
+                        .pointer("/id")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(idx as u64);
+                    let entry = boards.entry(id).or_insert_with(|| json!({}));
+                    // Merge fields from this source into the board entry
+                    if let (Some(dst), Value::Object(src)) = (entry.as_object_mut(), chain) {
+                        for (k, v) in src {
+                            dst.entry(k.clone()).or_insert_with(|| v.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        boards
+            .iter()
+            .map(|(&id, chain)| {
                 let hashrate = Self::extract_hashrate(chain, &["/hashrate_rt", "/hr_realtime"]);
                 let expected_hashrate =
                     Self::extract_hashrate(chain, &["/hashrate_ideal", "/hr_nominal"]);
-
                 let frequency = Self::extract_frequency(chain);
                 let voltage = Self::extract_voltage(chain);
                 let (board_temperature, chip_temperature) = Self::extract_temperatures(chain);
-
                 let working_chips = Self::extract_working_chips(chain);
                 let active = Self::extract_chain_active_status(chain, &hashrate);
                 let serial_number = Self::extract_chain_serial(chain, data);
                 let tuned = Self::extract_tuned_status(chain, data);
                 let chips = Self::extract_chips(chain);
 
-                hashboards.push(BoardData {
-                    position: chain
-                        .pointer("/id")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(idx as u64) as u8,
+                BoardData {
+                    position: id as u8,
                     hashrate,
                     expected_hashrate,
                     board_temperature,
@@ -335,11 +357,9 @@ impl GetHashboards for VnishV120 {
                     frequency,
                     tuned,
                     active,
-                });
-            }
-        }
-
-        hashboards
+                }
+            })
+            .collect()
     }
 }
 
@@ -548,24 +568,15 @@ impl VnishV120 {
     }
 
     fn extract_working_chips(chain: &Value) -> Option<u16> {
+        // Prefer individual chip data: count chips with hashrate > 0
         chain
-            .pointer("/chip_statuses")
-            .map(|statuses| {
-                let red = statuses
-                    .pointer("/red")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
-                let orange = statuses
-                    .pointer("/orange")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
-                (red + orange) as u16
-            })
-            .or_else(|| {
-                chain
-                    .pointer("/chips")
-                    .and_then(|v| v.as_array())
-                    .map(|chips| chips.len() as u16)
+            .pointer("/chips")
+            .and_then(|v| v.as_array())
+            .map(|chips| {
+                chips
+                    .iter()
+                    .filter(|c| c.pointer("/hr").and_then(|v| v.as_f64()).unwrap_or(0.0) > 0.0)
+                    .count() as u16
             })
     }
 
