@@ -619,6 +619,16 @@ impl GetHashboards for PowerPlayV1 {
                 })
             });
 
+        for board in &mut hashboards {
+            board.working_chips = Some(
+                board
+                    .chips
+                    .iter()
+                    .filter(|c| c.working.unwrap_or(false))
+                    .count() as u16,
+            );
+        }
+
         hashboards
     }
 }
