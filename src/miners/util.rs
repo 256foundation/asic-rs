@@ -2,24 +2,32 @@ use reqwest::StatusCode;
 use reqwest::header::HeaderMap;
 use serde_json::json;
 use std::net::IpAddr;
-use tokio;
+use std::sync::LazyLock;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tracing;
+
+/// Shared HTTP client for discovery and utility requests.
+/// Reused across all calls to avoid per-request client construction overhead.
+static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .danger_accept_invalid_certs(true)
+        .gzip(true)
+        .pool_max_idle_per_host(0)
+        .build()
+        .expect("Failed to initialize shared HTTP client")
+});
 
 #[tracing::instrument(level = "debug")]
 pub(crate) async fn send_rpc_command(
     ip: &IpAddr,
     command: &'static str,
 ) -> Option<serde_json::Value> {
-    let stream = tokio::net::TcpStream::connect(format!("{ip}:4028")).await;
-    if stream.is_err() {
-        tracing::debug!("failed to connect to {ip} rpc");
-        return None;
-    }
-    let mut stream = stream.unwrap();
+    let mut stream = tokio::net::TcpStream::connect(format!("{ip}:4028"))
+        .await
+        .map_err(|_| tracing::debug!("failed to connect to {ip} rpc"))
+        .ok()?;
 
     let command = format!("{{\"command\":\"{command}\"}}");
-
     stream.write_all(command.as_bytes()).await.unwrap();
 
     let mut buffer = Vec::new();
@@ -38,57 +46,33 @@ pub(crate) async fn send_web_command(
     ip: &IpAddr,
     command: &'static str,
 ) -> Option<(String, HeaderMap, StatusCode)> {
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .danger_accept_invalid_certs(true)
-        .gzip(true)
-        .build()
-        .expect("Failed to initalize client");
-    let resp = client
-        .execute(
-            client
-                .get(format!("http://{ip}{command}"))
-                .build()
-                .expect("Failed to construct request"),
-        )
-        .await;
-    match resp {
-        Ok(data) => {
-            let resp_headers = &data.headers().to_owned();
-            let resp_status = &data.status().to_owned();
-            let resp_text = &data.text().await;
-            match resp_text {
-                Ok(text) => {
-                    tracing::trace!("got response from miner: {text}");
+    let data = HTTP_CLIENT
+        .get(format!("http://{ip}{command}"))
+        .send()
+        .await
+        .map_err(|_| tracing::debug!("failed to connect to {ip} web"))
+        .ok()?;
 
-                    Some((text.clone(), resp_headers.clone(), *resp_status))
-                }
-                Err(_) => {
-                    tracing::debug!("received no response data from miner");
-                    None
-                }
-            }
-        }
-        Err(_) => {
-            tracing::debug!("failed to connect to {ip} web");
-            None
-        }
-    }
+    let headers = data.headers().clone();
+    let status = data.status();
+    let text = data
+        .text()
+        .await
+        .map_err(|_| tracing::debug!("received no response data from miner"))
+        .ok()?;
+
+    tracing::trace!("got response from miner: {text}");
+    Some((text, headers, status))
 }
+
 #[tracing::instrument(level = "debug")]
 pub(crate) async fn send_graphql_command(
     ip: &IpAddr,
     command: &'static str,
 ) -> Option<serde_json::Value> {
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .danger_accept_invalid_certs(true)
-        .gzip(true)
-        .build()
-        .expect("Failed to initalize client");
     let query = json!({ "query": command });
 
-    let response = client
+    let response = HTTP_CLIENT
         .post(format!("http://{}/graphql", ip))
         .header("Content-Type", "application/json")
         .json(&query)
