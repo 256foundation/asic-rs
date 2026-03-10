@@ -968,7 +968,7 @@ mod tests {
 
         let factory = MinerFactory::new();
         let miner = factory
-            .scan_miner(ip)
+            .get_miner(ip)
             .await?
             .context("no miner detected at MINER_IP")?;
         let miner_data = miner.get_data().await;
