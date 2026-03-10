@@ -897,9 +897,10 @@ impl Resume for PowerPlayV1 {
 mod tests {
     use super::*;
     use crate::data::device::models::antminer::AntMinerModel::S19XP;
+    use crate::miners::factory::MinerFactory;
     use crate::test::api::MockAPIClient;
     use crate::test::json::epic::v1::*;
-    use anyhow;
+    use anyhow::{self, Context};
 
     #[tokio::test]
     async fn parse_data_test_antminer_s19xp() -> anyhow::Result<()> {
@@ -954,6 +955,32 @@ mod tests {
                 algo: String::from("SHA256"),
             })
         );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore = "requires live miner; set MINER_IP"]
+    async fn parse_data_live_test_auto_detect() -> anyhow::Result<()> {
+        let ip_str = std::env::var("MINER_IP").context("MINER_IP is not set")?;
+        let ip =
+            IpAddr::from_str(&ip_str).with_context(|| format!("invalid MINER_IP: {ip_str}"))?;
+
+        let factory = MinerFactory::new();
+        let miner = factory
+            .scan_miner(ip)
+            .await?
+            .context("no miner detected at MINER_IP")?;
+        let miner_data = miner.get_data().await;
+        let mut miner_data_print = miner_data.clone();
+        for hashboard in &mut miner_data_print.hashboards {
+            hashboard.chips.clear();
+        }
+        println!("{}", serde_json::to_string_pretty(&miner_data_print)?);
+
+        assert_eq!(miner_data.ip, ip);
+        assert!(miner_data.timestamp > 0);
+        assert!(!miner_data.schema_version.is_empty());
 
         Ok(())
     }
