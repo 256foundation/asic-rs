@@ -9,6 +9,7 @@ use std::net::IpAddr;
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::config::pools::PoolGroup;
 use crate::data::board::{BoardData, ChipData};
 use crate::data::device::{DeviceInfo, HashAlgorithm, MinerFirmware, MinerModel};
 use crate::data::device::{MinerControlBoard, MinerMake};
@@ -44,6 +45,20 @@ impl PowerPlayV1 {
                 HashAlgorithm::SHA256,
             ),
         }
+    }
+
+    fn to_stratum_configs(group: &PoolGroup) -> Vec<Value> {
+        group
+            .pools
+            .iter()
+            .map(|pool| {
+                json!({
+                    "pool": pool.url.to_string(),
+                    "login": pool.username,
+                    "password": pool.password,
+                })
+            })
+            .collect()
     }
 }
 
@@ -842,8 +857,124 @@ impl SetPowerLimit for PowerPlayV1 {
 
 #[async_trait]
 impl SetPools for PowerPlayV1 {
+    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+        let response_ok = |v: &Value| v.get("result").and_then(Value::as_bool).unwrap_or(false);
+
+        let groups: Vec<PoolGroup> = config
+            .into_iter()
+            .filter(|group| !group.pools.is_empty())
+            .collect();
+
+        anyhow::ensure!(!groups.is_empty(), "No non-empty pool groups provided");
+        anyhow::ensure!(groups.len() <= 3, "ePIC supports up to 3 pool groups");
+
+        let coin = "BTC";
+
+        if let [group] = groups.as_slice() {
+            let payload = json!({
+                "param": {
+                    "coin": coin,
+                    "stratum_configs": Self::to_stratum_configs(group),
+                    "unique_id": true,
+                }
+            });
+
+            let set_coin = self
+                .web
+                .send_command("coin", false, Some(payload), Method::POST)
+                .await?;
+
+            if !response_ok(&set_coin) {
+                return Ok(false);
+            }
+
+            let set_id_variant = self
+                .web
+                .send_command(
+                    "id/variant",
+                    false,
+                    // TODO: configure variant in PowerPlayV1 instead of hardcoding
+                    Some(json!({ "param": "MacAddress" })),
+                    Method::POST,
+                )
+                .await?;
+
+            if !response_ok(&set_id_variant) {
+                return Ok(false);
+            }
+
+            let disable_split = self
+                .web
+                .send_command(
+                    "hashratesplit/enable",
+                    false,
+                    Some(json!({ "param": false })),
+                    Method::POST,
+                )
+                .await?;
+
+            Ok(response_ok(&disable_split))
+        } else {
+            let total_quota: u32 = groups.iter().map(|g| g.quota.max(1)).sum();
+            let mut allocated_ratio = 0_u32;
+
+            let split: Vec<Value> = groups
+                .iter()
+                .enumerate()
+                .map(|(idx, group)| {
+                    let remaining = 100_u32.saturating_sub(allocated_ratio);
+                    let ratio = if idx + 1 == groups.len() {
+                        remaining
+                    } else {
+                        let share = ((group.quota.max(1) as f64 / total_quota as f64) * 100.0)
+                            .round() as u32;
+                        let bounded = share.min(remaining);
+                        allocated_ratio += bounded;
+                        bounded
+                    };
+
+                    json!({
+                        "coin": coin,
+                        "ratio": ratio,
+                        "sc_index": idx,
+                        "stratum_configs": Self::to_stratum_configs(group),
+                        "unique_id": true,
+                        // TODO: configure variant in PowerPlayV1 instead of hardcoding
+                        "unique_worker_id_variant": "MacAddress",
+                    })
+                })
+                .collect();
+
+            let set_split = self
+                .web
+                .send_command(
+                    "hashratesplit",
+                    false,
+                    Some(json!({ "param": split })),
+                    Method::POST,
+                )
+                .await?;
+
+            if !response_ok(&set_split) {
+                return Ok(false);
+            }
+
+            let enable_split = self
+                .web
+                .send_command(
+                    "hashratesplit/enable",
+                    false,
+                    Some(json!({ "param": true })),
+                    Method::POST,
+                )
+                .await?;
+
+            Ok(response_ok(&enable_split))
+        }
+    }
+
     fn supports_set_pools(&self) -> bool {
-        false
+        true
     }
 }
 
