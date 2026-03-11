@@ -347,7 +347,7 @@ impl GetDataLocations for AntMinerV2020 {
                     WEB_MINER_CONF,
                     DataExtractor {
                         func: get_by_pointer,
-                        key: None,
+                        key: Some(""),
                         tag: Some("conf"),
                     },
                 ),
