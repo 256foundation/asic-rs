@@ -638,6 +638,7 @@ impl GetPools for AvalonAMiner {
                 active: pool.get("Stratum Active").and_then(|v| v.as_bool()),
                 accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
                 rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
+                password: None,
             })
             .collect();
 

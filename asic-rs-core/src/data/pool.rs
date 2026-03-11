@@ -107,6 +107,7 @@ pub struct PoolData {
     pub active: Option<bool>,
     pub alive: Option<bool>,
     pub user: Option<String>,
+    pub password: Option<String>,
 }
 
 #[cfg_attr(

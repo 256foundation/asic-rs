@@ -436,6 +436,7 @@ impl GetPools for NerdAxeV1 {
             active: Some(!is_using_fallback),
             alive: None,
             user: main_user,
+            password: None,
         };
 
         let fallback_url =
@@ -458,6 +459,7 @@ impl GetPools for NerdAxeV1 {
             active: Some(is_using_fallback),
             alive: None,
             user: fallback_user,
+            password: None,
         };
 
         vec![PoolGroupData {

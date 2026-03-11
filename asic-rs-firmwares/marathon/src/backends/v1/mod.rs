@@ -828,6 +828,7 @@ impl GetPools for MaraV1 {
                     active: Some(active),
                     alive,
                     user,
+                    password: None,
                 });
             }
         }

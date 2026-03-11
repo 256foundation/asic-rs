@@ -641,6 +641,7 @@ impl GetPools for AntMinerV2020 {
                                 active,
                                 alive,
                                 user,
+                                password: None,
                             });
                         }
                         tracing::debug!("Detected {} pools from RPC API", pools.len());
@@ -664,22 +665,29 @@ impl GetPools for AntMinerV2020 {
                             .map(|s| PoolURL::from(s.to_string()));
 
                         let user = pool_info
-                            .get("user")
-                            .and_then(|v| v.as_str())
-                            .filter(|s| !s.is_empty())
-                            .map(String::from);
+                                            .get("user")
+                                            .and_then(|v| v.as_str())
+                                            .filter(|s| !s.is_empty())
+                                            .map(String::from);
 
-                        // Only add pool if both URL and user are present
-                        if url.is_some() && user.is_some() {
-                            pools.push(PoolData {
-                                position: Some(idx as u16),
-                                url,
-                                accepted_shares: None,
-                                rejected_shares: None,
-                                active: None,
-                                alive: None,
-                                user,
-                            });
+                                        let password = pool_info
+                                            .get("pass")
+                                            .and_then(|v| v.as_str())
+                                            .filter(|s| !s.is_empty())
+                                            .map(String::from);
+
+                                        // Only add pool if both URL and user are present
+                                        if url.is_some() && user.is_some() {
+                                            pools.push(PoolData {
+                                                position: Some(idx as u16),
+                                                url,
+                                                accepted_shares: None,
+                                                rejected_shares: None,
+                                                active: None,
+                                                alive: None,
+                                                user,
+                                                password,
+                                            });
                         }
                     }
                     if !pools.is_empty() {

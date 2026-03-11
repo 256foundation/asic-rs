@@ -556,6 +556,7 @@ impl GetPools for WhatsMinerV2 {
                     active,
                     alive,
                     user,
+                    password: None,
                 });
             }
         }

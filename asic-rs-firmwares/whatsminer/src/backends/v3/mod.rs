@@ -504,6 +504,7 @@ impl GetPools for WhatsMinerV3 {
                     active,
                     alive,
                     user,
+                    password: None,
                 });
             }
         }

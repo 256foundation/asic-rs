@@ -902,6 +902,7 @@ impl GetPools for PowerPlayV1 {
                     active: Some(false),
                     alive: None,
                     user,
+                    password: None,
                 });
             }
         }
