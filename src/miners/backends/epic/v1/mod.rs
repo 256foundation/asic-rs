@@ -869,37 +869,26 @@ impl SetPools for PowerPlayV1 {
         anyhow::ensure!(groups.len() <= 3, "ePIC supports up to 3 pool groups");
 
         let coin = "BTC";
+        let unique_id_enabled = false;
 
         if let [group] = groups.as_slice() {
-            let payload = json!({
-                "param": {
-                    "coin": coin,
-                    "stratum_configs": Self::to_stratum_configs(group),
-                    "unique_id": true,
-                }
-            });
-
             let set_coin = self
                 .web
-                .send_command("coin", false, Some(payload), Method::POST)
-                .await?;
-
-            if !response_ok(&set_coin) {
-                return Ok(false);
-            }
-
-            let set_id_variant = self
-                .web
                 .send_command(
-                    "id/variant",
+                    "coin",
                     false,
-                    // TODO: configure variant in PowerPlayV1 instead of hardcoding
-                    Some(json!({ "param": "MacAddress" })),
+                    Some(json!({
+                        "param": {
+                            "coin": coin,
+                            "stratum_configs": Self::to_stratum_configs(group),
+                            "unique_id": unique_id_enabled,
+                        }
+                    })),
                     Method::POST,
                 )
                 .await?;
 
-            if !response_ok(&set_id_variant) {
+            if !response_ok(&set_coin) {
                 return Ok(false);
             }
 
@@ -938,8 +927,8 @@ impl SetPools for PowerPlayV1 {
                         "ratio": ratio,
                         "sc_index": idx,
                         "stratum_configs": Self::to_stratum_configs(group),
-                        "unique_id": true,
-                        // TODO: configure variant in PowerPlayV1 instead of hardcoding
+                        "unique_id": unique_id_enabled,
+                        // this needs to be set since it's not an option
                         "unique_worker_id_variant": "MacAddress",
                     })
                 })
