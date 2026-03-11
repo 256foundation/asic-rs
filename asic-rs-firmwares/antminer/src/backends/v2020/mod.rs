@@ -334,14 +334,24 @@ impl GetDataLocations for AntMinerV2020 {
                     tag: None,
                 },
             )],
-            DataField::Pools => vec![(
-                RPC_POOLS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/POOLS"),
-                    tag: None,
-                },
-            )],
+            DataField::Pools => vec![
+                (
+                    RPC_POOLS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/POOLS"),
+                        tag: Some("rpc"),
+                    },
+                ),
+                (
+                    WEB_MINER_CONF,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: None,
+                        tag: Some("conf"),
+                    },
+                ),
+            ],
             DataField::Wattage => vec![(
                 RPC_STATS,
                 DataExtractor {
@@ -596,40 +606,86 @@ impl GetPools for AntMinerV2020 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let mut pools: Vec<PoolData> = Vec::new();
 
-        if let Some(pools_data) = data.get(&DataField::Pools)
-            && let Some(pools_array) = pools_data.as_array()
-        {
-            for (idx, pool_info) in pools_array.iter().enumerate() {
-                let url = pool_info
-                    .get("URL")
-                    .and_then(|v| v.as_str())
-                    .map(|s| PoolURL::from(s.to_string()));
+        // Try to get runtime pool status from RPC API first (tagged as "rpc")
+        if let Some(pools_data) = data.get(&DataField::Pools) {
+            if let Some(rpc_pools) = pools_data.get("rpc") {
+                if let Some(pools_array) = rpc_pools.as_array() {
+                    if !pools_array.is_empty() {
+                        for (idx, pool_info) in pools_array.iter().enumerate() {
+                            let url = pool_info
+                                .get("URL")
+                                .and_then(|v| v.as_str())
+                                .map(|s| PoolURL::from(s.to_string()));
 
-                let user = pool_info
-                    .get("User")
-                    .and_then(|v| v.as_str())
-                    .map(String::from);
+                            let user = pool_info
+                                .get("User")
+                                .and_then(|v| v.as_str())
+                                .map(String::from);
 
-                let alive = pool_info
-                    .get("Status")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s == "Alive");
+                            let alive = pool_info
+                                .get("Status")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s == "Alive");
 
-                let active = pool_info.get("Stratum Active").and_then(|v| v.as_bool());
+                            let active = pool_info.get("Stratum Active").and_then(|v| v.as_bool());
 
-                let accepted_shares = pool_info.get("Accepted").and_then(|v| v.as_u64());
+                            let accepted_shares = pool_info.get("Accepted").and_then(|v| v.as_u64());
 
-                let rejected_shares = pool_info.get("Rejected").and_then(|v| v.as_u64());
+                            let rejected_shares = pool_info.get("Rejected").and_then(|v| v.as_u64());
 
-                pools.push(PoolData {
-                    position: Some(idx as u16),
-                    url,
-                    accepted_shares,
-                    rejected_shares,
-                    active,
-                    alive,
-                    user,
-                });
+                            pools.push(PoolData {
+                                position: Some(idx as u16),
+                                url,
+                                accepted_shares,
+                                rejected_shares,
+                                active,
+                                alive,
+                                user,
+                            });
+                        }
+                        tracing::debug!("Detected {} pools from RPC API", pools.len());
+                    }
+                }
+            }
+        }
+
+        // If no pools found from RPC, try to parse from miner configuration (tagged as "conf")
+        if pools.is_empty() {
+            if let Some(pools_data) = data.get(&DataField::Pools)
+                && let Some(conf_data) = pools_data.get("conf")
+            {
+                // Parse pools array from miner_conf
+                if let Some(pools_array) = conf_data.get("pools").and_then(|v| v.as_array()) {
+                    for (idx, pool_info) in pools_array.iter().enumerate() {
+                        let url = pool_info
+                            .get("url")
+                            .and_then(|v| v.as_str())
+                            .filter(|s| !s.is_empty())
+                            .map(|s| PoolURL::from(s.to_string()));
+
+                        let user = pool_info
+                            .get("user")
+                            .and_then(|v| v.as_str())
+                            .filter(|s| !s.is_empty())
+                            .map(String::from);
+
+                        // Only add pool if both URL and user are present
+                        if url.is_some() && user.is_some() {
+                            pools.push(PoolData {
+                                position: Some(idx as u16),
+                                url,
+                                accepted_shares: None,
+                                rejected_shares: None,
+                                active: None,
+                                alive: None,
+                                user,
+                            });
+                        }
+                    }
+                    if !pools.is_empty() {
+                        tracing::debug!("Detected {} pools from miner configuration", pools.len());
+                    }
+                }
             }
         }
 
