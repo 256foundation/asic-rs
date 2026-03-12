@@ -3,6 +3,7 @@ name = "asic-rs-makes-epic"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "ePIC hardware information for asic-rs"
 
 [dependencies]
 asic-rs-core.workspace = true

@@ -3,6 +3,7 @@ name = "asic-rs-makes-bitaxe"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "Bitaxe hardware information for asic-rs"
 
 [dependencies]
 asic-rs-core.workspace = true

@@ -3,6 +3,7 @@ name = "asic-rs-firmwares-avalonminer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "Avalonminer firmware implementation for asic-rs"
 
 [dependencies]
 asic-rs-core.workspace = true

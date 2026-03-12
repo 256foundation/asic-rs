@@ -3,6 +3,7 @@ name = "asic-rs-makes-antminer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "Antminer hardware information for asic-rs"
 
 [dependencies]
 asic-rs-core.workspace = true

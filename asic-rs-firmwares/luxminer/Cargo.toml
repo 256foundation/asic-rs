@@ -3,6 +3,7 @@ name = "asic-rs-firmwares-luxminer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "LuxOS firmware implementation for asic-rs"
 
 [dependencies]
 asic-rs-core.workspace = true

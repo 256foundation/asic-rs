@@ -3,6 +3,7 @@ name = "asic-rs-firmwares-marathon"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "Marathon firmware implementation for asic-rs"
 
 [dependencies]
 asic-rs-core.workspace = true
