@@ -1114,7 +1114,12 @@ mod tests {
             Some(AntMinerControlBoard::CVITek.into())
         );
         assert_eq!(miner_data.wattage, Some(Power::from_watts(1051f64)));
-        assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(1188f64)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(crate::data::miner::TuningTarget::Power(Power::from_watts(
+                1188f64
+            )))
+        );
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 77);
         assert_eq!(miner_data.pools[0].len(), 4);

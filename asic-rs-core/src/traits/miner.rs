@@ -19,7 +19,7 @@ use crate::data::fan::FanData;
 use crate::data::hashrate::{HashRate, HashRateUnit};
 use crate::data::message::MinerMessage;
 
-use crate::data::miner::MinerData;
+use crate::data::miner::{MinerData, TuningTarget};
 use crate::data::pool::PoolGroupData;
 use crate::traits::model::MinerModel;
 
@@ -147,7 +147,7 @@ impl<
         let hashrate = self.parse_hashrate(&data);
         let expected_hashrate = self.parse_expected_hashrate(&data);
         let wattage = self.parse_wattage(&data);
-        let wattage_limit = self.parse_wattage_limit(&data);
+        let tuning_target = self.parse_wattage_limit(&data).map(TuningTarget::Power);
         let fluid_temperature = self.parse_fluid_temperature(&data);
         let fans = self.parse_fans(&data);
         let psu_fans = self.parse_psu_fans(&data);
@@ -235,7 +235,7 @@ impl<
 
             // Power information
             wattage,
-            wattage_limit,
+            tuning_target,
             efficiency,
 
             // Status information

@@ -5,6 +5,7 @@ use asic_rs_core::data::board::ChipData as ChipData_Base;
 use asic_rs_core::data::board::{BoardData as BoardData_Base, MinerControlBoard};
 use asic_rs_core::data::fan::FanData as FanData_Base;
 use asic_rs_core::data::miner::MinerData as MinerData_Base;
+use asic_rs_core::data::miner::TuningTarget as TuningTargetBase;
 use asic_rs_core::data::pool::PoolGroupData;
 use asic_rs_core::data::{device::DeviceInfo, hashrate::HashRate, message::MinerMessage};
 use serde::{Deserialize, Serialize};
@@ -83,6 +84,22 @@ pub struct FanData {
     pub rpm: Option<f64>,
 }
 
+#[pyclass(from_py_object, get_all, module = "asic_rs")]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum TuningTarget {
+    Power(f64),
+    HashRate(HashRate),
+}
+
+impl From<&TuningTargetBase> for TuningTarget {
+    fn from(base: &TuningTargetBase) -> Self {
+        match base {
+            TuningTargetBase::Power(power) => TuningTarget::Power(power.as_watts()),
+            TuningTargetBase::HashRate(hashrate) => TuningTarget::HashRate(hashrate.clone()),
+        }
+    }
+}
+
 impl From<&FanData_Base> for FanData {
     fn from(base: &FanData_Base) -> Self {
         Self {
@@ -117,7 +134,7 @@ pub struct MinerData {
     pub average_temperature: Option<f64>,
     pub fluid_temperature: Option<f64>,
     pub wattage: Option<f64>,
-    pub wattage_limit: Option<f64>,
+    pub tuning_target: Option<TuningTarget>,
     pub efficiency: Option<f64>,
     pub light_flashing: Option<bool>,
     pub messages: Vec<MinerMessage>,
@@ -151,7 +168,7 @@ impl From<&MinerData_Base> for MinerData {
             average_temperature: base.average_temperature.map(|t| t.as_celsius()),
             fluid_temperature: base.fluid_temperature.map(|t| t.as_celsius()),
             wattage: base.wattage.map(|w| w.as_watts()),
-            wattage_limit: base.wattage_limit.map(|w| w.as_watts()),
+            tuning_target: base.tuning_target.as_ref().map(TuningTarget::from),
             efficiency: base.efficiency,
             light_flashing: base.light_flashing,
             messages: base.messages.clone(),

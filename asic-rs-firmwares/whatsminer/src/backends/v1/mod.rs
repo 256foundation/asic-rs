@@ -637,7 +637,12 @@ mod tests {
             })
         );
         assert_eq!(miner_data.wattage, Some(Power::from_watts(3417f64)));
-        assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(3500f64)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(crate::data::miner::TuningTarget::Power(Power::from_watts(
+                3500f64
+            )))
+        );
         assert_eq!(miner_data.uptime, Some(Duration::from_secs(10154)));
         assert_eq!(miner_data.fans.len(), 2);
         assert_eq!(miner_data.pools[0].len(), 3);

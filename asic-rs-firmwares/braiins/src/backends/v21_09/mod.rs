@@ -927,7 +927,12 @@ mod tests {
         assert_eq!(miner_data.light_flashing, Some(false));
         assert_eq!(miner_data.fans.len(), 2);
         assert_eq!(miner_data.wattage, Some(Power::from_watts(735.0)));
-        assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(900.0)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(crate::data::miner::TuningTarget::Power(Power::from_watts(
+                900.0
+            )))
+        );
         assert_eq!(
             miner_data.expected_hashrate.unwrap(),
             HashRate {

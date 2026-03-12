@@ -13,6 +13,12 @@ use measurements::{Power, Temperature};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum TuningTarget {
+    Power(Power),
+    HashRate(HashRate),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinerData {
     /// The schema version of this MinerData object, for use in external APIs
     pub schema_version: String,
@@ -65,9 +71,8 @@ pub struct MinerData {
     /// The current power consumption of the miner
     #[serde(serialize_with = "serialize_power")]
     pub wattage: Option<Power>,
-    /// The current power limit or power target of the miner
-    #[serde(serialize_with = "serialize_power")]
-    pub wattage_limit: Option<Power>,
+    /// The current tuning target of the miner, such as power target or hashrate target
+    pub tuning_target: Option<TuningTarget>,
     /// The current efficiency in W/TH/s (J/TH) of the miner
     pub efficiency: Option<f64>,
     /// The state of the fault/alert light on the miner

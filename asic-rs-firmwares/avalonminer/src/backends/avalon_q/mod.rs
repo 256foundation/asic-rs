@@ -623,7 +623,12 @@ mod tests {
         let miner_data = miner.parse_data(data);
 
         assert_eq!(miner_data.uptime, Some(Duration::from_secs(37819)));
-        assert_eq!(miner_data.wattage_limit, Some(Power::from_watts(800.0)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(crate::data::miner::TuningTarget::Power(Power::from_watts(
+                800.0
+            )))
+        );
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 160);
 
