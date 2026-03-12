@@ -439,11 +439,16 @@ impl GetControlBoardVersion for MaraV1 {
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
         let cb = data.extract::<String>(DataField::ControlBoardVersion)?;
-        if cb.starts_with("MaraCB") {
-            // Ignore version (eg `MaraCB_v1.4`)
-            return Some(MarathonControlBoard::MaraCB.into());
-        };
-        AntMinerControlBoard::parse(cb.as_str()).map(|cb| cb.into())
+
+        if cb.is_empty() {
+            None
+        } else if let Some(board) = MarathonControlBoard::parse(cb.as_str()) {
+            Some(board.into())
+        } else if let Some(board) = AntMinerControlBoard::parse(cb.as_str()) {
+            Some(board.into())
+        } else {
+            Some(MinerControlBoard::Unknown(cb.clone()))
+        }
     }
 }
 
