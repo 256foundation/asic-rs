@@ -437,7 +437,6 @@ impl GetPools for Bitaxe290 {
             active: Some(!is_using_fallback),
             alive: None,
             user: main_user,
-            password: None,
         };
 
         // Extract fallback pool data
@@ -461,7 +460,6 @@ impl GetPools for Bitaxe290 {
             active: Some(is_using_fallback),
             alive: None,
             user: fallback_user,
-            password: None,
         };
 
         vec![PoolGroupData {

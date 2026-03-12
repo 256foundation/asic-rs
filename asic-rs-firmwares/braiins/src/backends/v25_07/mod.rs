@@ -489,7 +489,6 @@ impl GetPools for BraiinsV2507 {
                     active,
                     alive,
                     user,
-                    password: None,
                 });
             }
         }

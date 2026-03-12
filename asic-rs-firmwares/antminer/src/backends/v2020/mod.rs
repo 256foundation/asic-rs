@@ -609,27 +609,7 @@ impl GetPools for AntMinerV2020 {
             None => return vec![],
         };
 
-        // Parse passwords from persistent miner config (get_miner_conf.cgi).
-        // This is the only source that includes the pool password field.
-        let conf_passwords: Vec<Option<String>> = pools_data
-            .get("conf")
-            .and_then(|conf| conf.get("pools"))
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .map(|pool_info| {
-                        pool_info
-                            .get("pass")
-                            .and_then(|v| v.as_str())
-                            .filter(|s| !s.is_empty())
-                            .map(String::from)
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-
         // Try to get runtime pool status from RPC API (tagged as "rpc").
-        // RPC provides live status fields (alive, shares) but never includes passwords.
         let rpc_pools: Vec<PoolData> = pools_data
             .get("rpc")
             .and_then(|v| v.as_array())
@@ -657,9 +637,6 @@ impl GetPools for AntMinerV2020 {
                         let accepted_shares = pool_info.get("Accepted").and_then(|v| v.as_u64());
                         let rejected_shares = pool_info.get("Rejected").and_then(|v| v.as_u64());
 
-                        // Merge password from conf at the same position
-                        let password = conf_passwords.get(idx).and_then(|p| p.clone());
-
                         PoolData {
                             position: Some(idx as u16),
                             url,
@@ -668,7 +645,6 @@ impl GetPools for AntMinerV2020 {
                             active,
                             alive,
                             user,
-                            password,
                         }
                     })
                     .collect()
@@ -676,7 +652,6 @@ impl GetPools for AntMinerV2020 {
             .unwrap_or_default();
 
         if !rpc_pools.is_empty() {
-            tracing::debug!("Detected {} pools from RPC API", rpc_pools.len());
             return vec![PoolGroupData {
                 name: String::new(),
                 quota: 1,
@@ -705,12 +680,6 @@ impl GetPools for AntMinerV2020 {
                             .filter(|s| !s.is_empty())
                             .map(String::from);
 
-                        let password = pool_info
-                            .get("pass")
-                            .and_then(|v| v.as_str())
-                            .filter(|s| !s.is_empty())
-                            .map(String::from);
-
                         // Only include pools with at least a URL and user
                         if url.is_some() && user.is_some() {
                             Some(PoolData {
@@ -721,7 +690,6 @@ impl GetPools for AntMinerV2020 {
                                 active: None,
                                 alive: None,
                                 user,
-                                password,
                             })
                         } else {
                             None
@@ -730,10 +698,6 @@ impl GetPools for AntMinerV2020 {
                     .collect()
             })
             .unwrap_or_default();
-
-        if !conf_pools.is_empty() {
-            tracing::debug!("Detected {} pools from miner configuration", conf_pools.len());
-        }
 
         vec![PoolGroupData {
             name: String::new(),
@@ -890,8 +854,28 @@ impl SupportsPoolsConfig for AntMinerV2020 {
             .collect())
     }
 
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
+        let pools: Vec<Value> = config
+            .iter()
+            .flat_map(|group| group.pools.iter())
+            .map(|pool| {
+                json!({
+                    "url": pool.url.to_string(),
+                    "user": pool.username.as_str(),
+                    "pass": pool.password.as_str(),
+                })
+            })
+            .collect();
+
+        Ok(self
+            .web
+            .set_miner_conf(json!({ "pools": pools }))
+            .await
+            .is_ok())
+    }
+
     fn supports_pools_config(&self) -> bool {
-        false
+        true
     }
 }
 

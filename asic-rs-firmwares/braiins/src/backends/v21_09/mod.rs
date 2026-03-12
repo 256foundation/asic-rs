@@ -577,7 +577,6 @@ impl GetPools for BraiinsV2109 {
                             active,
                             alive,
                             user,
-                            password: None,
                         });
                         idx += 1;
                     }
