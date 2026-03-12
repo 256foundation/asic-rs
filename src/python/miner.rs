@@ -1,4 +1,4 @@
-use super::data::{BoardData, FanData, MinerData};
+use super::data::{BoardData, FanData, MinerData, TuningTarget};
 use asic_rs_core::traits::miner::Miner as MinerTrait;
 use std::net::IpAddr;
 
@@ -207,11 +207,11 @@ impl Miner {
             Ok(data.map(|w| w.as_watts()))
         })
     }
-    pub fn get_wattage_limit<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
+    pub fn get_tuning_target<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            let data = inner.get_wattage_limit().await;
-            Ok(data.map(|w| w.as_watts()))
+            let data = inner.get_tuning_target().await;
+            Ok(data.as_ref().map(TuningTarget::from))
         })
     }
     pub fn get_light_flashing<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {

@@ -8,6 +8,7 @@ use asic_rs_core::data::command::MinerCommand;
 use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
 use asic_rs_core::data::fan::FanData;
 use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
+use asic_rs_core::data::miner::TuningTarget;
 use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolURL};
 use asic_rs_core::traits::miner::*;
 use asic_rs_core::traits::model::MinerModel;
@@ -554,13 +555,13 @@ impl GetWattage for AvalonAMiner {
     }
 }
 
-impl GetWattageLimit for AvalonAMiner {
-    fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
+impl GetTuningTarget for AvalonAMiner {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         let limit = data
             .get(&DataField::WattageLimit)
             .and_then(|v| v.as_array())?;
         let limit = limit.get(6).and_then(|watts: &Value| watts.as_f64())?;
-        Some(Power::from_watts(limit))
+        Some(TuningTarget::Power(Power::from_watts(limit)))
     }
 }
 

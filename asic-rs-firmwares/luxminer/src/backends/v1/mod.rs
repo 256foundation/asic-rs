@@ -10,6 +10,7 @@ use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
 use asic_rs_core::data::fan::FanData;
 use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
 use asic_rs_core::data::message::{MessageSeverity, MinerMessage};
+use asic_rs_core::data::miner::TuningTarget;
 use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolURL};
 use asic_rs_core::traits::miner::*;
 use asic_rs_core::traits::model::MinerModel;
@@ -864,8 +865,8 @@ impl GetWattage for LuxMinerV1 {
     }
 }
 
-impl GetWattageLimit for LuxMinerV1 {
-    fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
+impl GetTuningTarget for LuxMinerV1 {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         let wattage_limit_data = data.get(&DataField::WattageLimit)?;
         let profile_name = wattage_limit_data.get("Profile")?.as_str()?;
         let profiles = wattage_limit_data.get("Profiles")?.as_array()?;
@@ -876,7 +877,7 @@ impl GetWattageLimit for LuxMinerV1 {
 
         let watts = profile.get("Watts")?.as_f64()?;
 
-        Some(Power::from_watts(watts))
+        Some(TuningTarget::Power(Power::from_watts(watts)))
     }
 }
 
@@ -1116,9 +1117,7 @@ mod tests {
         assert_eq!(miner_data.wattage, Some(Power::from_watts(1051f64)));
         assert_eq!(
             miner_data.tuning_target,
-            Some(crate::data::miner::TuningTarget::Power(Power::from_watts(
-                1188f64
-            )))
+            Some(TuningTarget::Power(Power::from_watts(1188f64)))
         );
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 77);

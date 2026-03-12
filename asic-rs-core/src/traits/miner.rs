@@ -62,7 +62,7 @@ pub trait GetMinerData:
     + GetPsuFans
     + GetFluidTemperature
     + GetWattage
-    + GetWattageLimit
+    + GetTuningTarget
     + GetLightFlashing
     + GetMessages
     + GetUptime
@@ -115,7 +115,7 @@ impl<
         + GetPsuFans
         + GetFluidTemperature
         + GetWattage
-        + GetWattageLimit
+        + GetTuningTarget
         + GetLightFlashing
         + GetMessages
         + GetUptime
@@ -147,7 +147,7 @@ impl<
         let hashrate = self.parse_hashrate(&data);
         let expected_hashrate = self.parse_expected_hashrate(&data);
         let wattage = self.parse_wattage(&data);
-        let tuning_target = self.parse_wattage_limit(&data).map(TuningTarget::Power);
+        let tuning_target = self.parse_tuning_target(&data);
         let fluid_temperature = self.parse_fluid_temperature(&data);
         let fans = self.parse_fans(&data);
         let psu_fans = self.parse_psu_fans(&data);
@@ -519,17 +519,17 @@ pub trait GetWattage: CollectData {
     }
 }
 
-// Wattage Limit
+// Tuning Target
 #[async_trait]
-pub trait GetWattageLimit: CollectData {
+pub trait GetTuningTarget: CollectData {
     #[tracing::instrument(level = "debug")]
-    async fn get_wattage_limit(&self) -> Option<Power> {
+    async fn get_tuning_target(&self) -> Option<TuningTarget> {
         let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::WattageLimit]).await;
-        self.parse_wattage_limit(&data)
+        self.parse_tuning_target(&data)
     }
     #[allow(unused_variables)]
-    fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         None
     }
 }

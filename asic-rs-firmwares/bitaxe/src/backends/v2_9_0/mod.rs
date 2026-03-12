@@ -348,7 +348,7 @@ impl GetWattage for Bitaxe290 {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
-impl GetWattageLimit for Bitaxe290 {
+impl GetTuningTarget for Bitaxe290 {
     // N/A
 }
 impl GetLightFlashing for Bitaxe290 {

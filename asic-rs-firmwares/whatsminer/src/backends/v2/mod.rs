@@ -10,6 +10,7 @@ use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
 use asic_rs_core::data::fan::FanData;
 use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
 use asic_rs_core::data::message::{MessageSeverity, MinerMessage};
+use asic_rs_core::data::miner::TuningTarget;
 use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolURL};
 use asic_rs_core::traits::miner::*;
 use asic_rs_core::traits::model::MinerModel;
@@ -436,9 +437,10 @@ impl GetWattage for WhatsMinerV2 {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
-impl GetWattageLimit for WhatsMinerV2 {
-    fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
+impl GetTuningTarget for WhatsMinerV2 {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+            .map(TuningTarget::Power)
     }
 }
 impl GetLightFlashing for WhatsMinerV2 {

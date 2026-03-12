@@ -10,6 +10,7 @@ use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
 use asic_rs_core::data::fan::FanData;
 use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
 use asic_rs_core::data::message::{MessageSeverity, MinerMessage};
+use asic_rs_core::data::miner::TuningTarget;
 use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolURL};
 use asic_rs_core::traits::miner::*;
 use asic_rs_core::traits::model::MinerModel;
@@ -512,9 +513,10 @@ impl GetWattage for BraiinsV2507 {
     }
 }
 
-impl GetWattageLimit for BraiinsV2507 {
-    fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
+impl GetTuningTarget for BraiinsV2507 {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.extract_map::<i64, _>(DataField::WattageLimit, |w| Power::from_watts(w as f64))
+            .map(TuningTarget::Power)
     }
 }
 

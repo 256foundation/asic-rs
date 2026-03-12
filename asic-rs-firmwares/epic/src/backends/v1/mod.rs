@@ -721,7 +721,7 @@ impl GetWattage for PowerPlayV1 {
     }
 }
 
-impl GetWattageLimit for PowerPlayV1 {}
+impl GetTuningTarget for PowerPlayV1 {}
 
 impl GetLightFlashing for PowerPlayV1 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {

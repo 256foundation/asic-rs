@@ -351,7 +351,7 @@ impl GetWattage for NerdAxeV1 {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
-impl GetWattageLimit for NerdAxeV1 {}
+impl GetTuningTarget for NerdAxeV1 {}
 impl GetLightFlashing for NerdAxeV1 {}
 impl GetMessages for NerdAxeV1 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {

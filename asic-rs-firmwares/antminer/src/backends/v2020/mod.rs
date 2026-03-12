@@ -666,7 +666,7 @@ impl GetWattage for AntMinerV2020 {
     }
 }
 
-impl GetWattageLimit for AntMinerV2020 {}
+impl GetTuningTarget for AntMinerV2020 {}
 
 impl GetFluidTemperature for AntMinerV2020 {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {

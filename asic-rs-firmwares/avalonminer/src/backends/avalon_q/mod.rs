@@ -8,6 +8,7 @@ use asic_rs_core::data::command::MinerCommand;
 use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
 use asic_rs_core::data::fan::FanData;
 use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
+use asic_rs_core::data::miner::TuningTarget;
 use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolURL};
 use asic_rs_core::traits::miner::*;
 use asic_rs_core::traits::model::MinerModel;
@@ -523,9 +524,10 @@ impl GetWattage for AvalonQMiner {
     }
 }
 
-impl GetWattageLimit for AvalonQMiner {
-    fn parse_wattage_limit(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
+impl GetTuningTarget for AvalonQMiner {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+            .map(TuningTarget::Power)
     }
 }
 
@@ -625,9 +627,7 @@ mod tests {
         assert_eq!(miner_data.uptime, Some(Duration::from_secs(37819)));
         assert_eq!(
             miner_data.tuning_target,
-            Some(crate::data::miner::TuningTarget::Power(Power::from_watts(
-                800.0
-            )))
+            Some(TuningTarget::Power(Power::from_watts(800.0)))
         );
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 160);
