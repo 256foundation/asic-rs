@@ -301,6 +301,7 @@ impl AntMinerControlBoard {
             "BBB" | "BB" | "BEAGLEBONE" | "BEAGLEBONEBLACK" => Some(Self::BeagleBoneBlack),
             "CVITEK" | "CVCTRL" => Some(Self::CVITek),
             "AMLOGIC" | "AML" => Some(Self::AMLogic),
+            "AMCB07" => Some(Self::Xilinx), // Mara FW
             _ => None,
         }
     }
