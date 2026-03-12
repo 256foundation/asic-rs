@@ -20,6 +20,6 @@ impl MarathonControlBoard {
 
 impl From<MarathonControlBoard> for MinerControlBoard {
     fn from(cb: MarathonControlBoard) -> Self {
-        MinerControlBoard::Known(cb.to_string())
+        MinerControlBoard::known(cb.to_string())
     }
 }

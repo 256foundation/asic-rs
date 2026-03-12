@@ -67,6 +67,6 @@ impl BitaxeControlBoard {
 
 impl From<BitaxeControlBoard> for MinerControlBoard {
     fn from(cb: BitaxeControlBoard) -> Self {
-        MinerControlBoard::Known(cb.to_string())
+        MinerControlBoard::known(cb.to_string())
     }
 }

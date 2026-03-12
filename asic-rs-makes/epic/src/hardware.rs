@@ -38,6 +38,6 @@ impl EPicControlBoard {
 
 impl From<EPicControlBoard> for MinerControlBoard {
     fn from(cb: EPicControlBoard) -> Self {
-        MinerControlBoard::Known(cb.to_string())
+        MinerControlBoard::known(cb.to_string())
     }
 }

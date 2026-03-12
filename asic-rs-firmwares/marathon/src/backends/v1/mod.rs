@@ -447,7 +447,7 @@ impl GetControlBoardVersion for MaraV1 {
         } else if let Some(board) = AntMinerControlBoard::parse(cb.as_str()) {
             Some(board.into())
         } else {
-            Some(MinerControlBoard::Unknown(cb.clone()))
+            Some(MinerControlBoard::unknown(cb.clone()))
         }
     }
 }

@@ -39,6 +39,6 @@ impl BraiinsControlBoard {
 
 impl From<BraiinsControlBoard> for MinerControlBoard {
     fn from(cb: BraiinsControlBoard) -> Self {
-        MinerControlBoard::Known(cb.to_string())
+        MinerControlBoard::known(cb.to_string())
     }
 }

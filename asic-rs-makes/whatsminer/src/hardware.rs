@@ -2532,6 +2532,6 @@ impl WhatsMinerControlBoard {
 
 impl From<WhatsMinerControlBoard> for MinerControlBoard {
     fn from(cb: WhatsMinerControlBoard) -> Self {
-        MinerControlBoard::Known(cb.to_string())
+        MinerControlBoard::known(cb.to_string())
     }
 }

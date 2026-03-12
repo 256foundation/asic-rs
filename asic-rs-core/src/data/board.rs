@@ -72,19 +72,25 @@ pub struct BoardData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum MinerControlBoard {
-    Known(String),
-    Unknown(String),
+pub struct MinerControlBoard {
+    pub known: bool,
+    pub name: String,
+}
+impl MinerControlBoard {
+    pub fn unknown(name: String) -> Self {
+        Self { known: false, name }
+    }
+    pub fn known(name: String) -> Self {
+        Self { known: true, name }
+    }
 }
 
 impl Display for MinerControlBoard {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            MinerControlBoard::Known(cb) => cb.to_string(),
-            MinerControlBoard::Unknown(cb) => {
-                format!("Unknown: {cb}")
-            }
-        };
-        write!(f, "{}", str)
+        if self.known {
+            write!(f, "{}", self.name)
+        } else {
+            write!(f, "Unknown: {}", self.name)
+        }
     }
 }

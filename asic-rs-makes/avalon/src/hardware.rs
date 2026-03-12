@@ -120,6 +120,6 @@ impl AvalonMinerControlBoard {
 
 impl From<AvalonMinerControlBoard> for MinerControlBoard {
     fn from(cb: AvalonMinerControlBoard) -> Self {
-        MinerControlBoard::Known(cb.to_string())
+        MinerControlBoard::known(cb.to_string())
     }
 }

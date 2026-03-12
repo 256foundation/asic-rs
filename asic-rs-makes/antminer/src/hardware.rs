@@ -309,6 +309,6 @@ impl AntMinerControlBoard {
 
 impl From<AntMinerControlBoard> for MinerControlBoard {
     fn from(cb: AntMinerControlBoard) -> Self {
-        MinerControlBoard::Known(cb.to_string())
+        MinerControlBoard::known(cb.to_string())
     }
 }

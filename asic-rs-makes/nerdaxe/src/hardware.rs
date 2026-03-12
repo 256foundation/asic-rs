@@ -58,7 +58,7 @@ impl NerdAxeControlBoard {
 
 impl From<NerdAxeControlBoard> for MinerControlBoard {
     fn from(cb: NerdAxeControlBoard) -> Self {
-        MinerControlBoard::Known(cb.to_string())
+        MinerControlBoard::known(cb.to_string())
     }
 }
 
