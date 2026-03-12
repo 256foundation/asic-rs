@@ -1,5 +1,6 @@
 use crate::firmware::EPicFirmware;
 use anyhow;
+use asic_rs_core::config::pools::PoolGroup;
 use asic_rs_core::data::board::{BoardData, ChipData, MinerControlBoard};
 use asic_rs_core::data::collector::{
     DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
@@ -9,7 +10,6 @@ use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
 use asic_rs_core::data::fan::FanData;
 use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
 use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolURL};
-use asic_rs_core::config::pools::PoolGroup;
 use asic_rs_core::traits::miner::*;
 use asic_rs_core::traits::model::MinerModel;
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
