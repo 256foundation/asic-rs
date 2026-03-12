@@ -1,18 +1,21 @@
-use aes::Aes256;
-use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit};
+use std::{net::IpAddr, string::ToString};
+
+use aes::{
+    Aes256,
+    cipher::{BlockDecryptMut, BlockEncryptMut, KeyInit},
+};
 use anyhow;
-use asic_rs_core::data::command::{MinerCommand, RPCCommandStatus};
-use asic_rs_core::errors::RPCError;
-use asic_rs_core::errors::RPCError::StatusCheckFailed;
-use asic_rs_core::traits::miner::*;
+use asic_rs_core::{
+    data::command::{MinerCommand, RPCCommandStatus},
+    errors::{RPCError, RPCError::StatusCheckFailed},
+    traits::miner::*,
+};
 use async_trait::async_trait;
 use base64::prelude::*;
 use ecb::cipher::block_padding::ZeroPadding;
 use md5crypt::md5crypt;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use std::net::IpAddr;
-use std::string::ToString;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const UNLOCK_CLIENT: &str = "heatcore";

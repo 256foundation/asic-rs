@@ -1,6 +1,9 @@
-use asic_rs_core::traits::miner::{Miner, MinerConstructor};
-use asic_rs_core::traits::model::MinerModel;
 use std::net::IpAddr;
+
+use asic_rs_core::traits::{
+    miner::{Miner, MinerConstructor},
+    model::MinerModel,
+};
 pub use v1::WhatsMinerV1;
 pub use v2::WhatsMinerV2;
 pub use v3::WhatsMinerV3;

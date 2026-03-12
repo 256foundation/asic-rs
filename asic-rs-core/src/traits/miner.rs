@@ -1,27 +1,33 @@
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    net::IpAddr,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
+
 use anyhow;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{Power, Temperature};
 use reqwest::Method;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::net::IpAddr;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tracing;
 
-use crate::config::pools::PoolGroup;
-use crate::data::board::{BoardData, MinerControlBoard};
-use crate::data::collector::{DataCollector, DataField, DataLocation};
-use crate::data::command::MinerCommand;
-use crate::data::device::DeviceInfo;
-use crate::data::fan::FanData;
-use crate::data::hashrate::{HashRate, HashRateUnit};
-use crate::data::message::MinerMessage;
-
-use crate::data::miner::{MinerData, TuningTarget};
-use crate::data::pool::PoolGroupData;
-use crate::traits::model::MinerModel;
+use crate::{
+    config::pools::PoolGroup,
+    data::{
+        board::{BoardData, MinerControlBoard},
+        collector::{DataCollector, DataField, DataLocation},
+        command::MinerCommand,
+        device::DeviceInfo,
+        fan::FanData,
+        hashrate::{HashRate, HashRateUnit},
+        message::MinerMessage,
+        miner::{MinerData, TuningTarget},
+        pool::PoolGroupData,
+    },
+    traits::model::MinerModel,
+};
 
 pub trait MinerConstructor {
     #[allow(clippy::new_ret_no_self)]

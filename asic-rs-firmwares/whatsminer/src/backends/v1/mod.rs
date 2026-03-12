@@ -1,28 +1,30 @@
-use crate::firmware::WhatsMinerFirmware;
+use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
+
 use anyhow;
-use asic_rs_core::data::board::{BoardData, MinerControlBoard};
-use asic_rs_core::data::collector::{
-    DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
+use asic_rs_core::{
+    data::{
+        board::{BoardData, MinerControlBoard},
+        collector::{
+            DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
+        },
+        command::MinerCommand,
+        device::{DeviceInfo, HashAlgorithm},
+        fan::FanData,
+        hashrate::{HashRate, HashRateUnit},
+        message::{MessageSeverity, MinerMessage},
+        miner::TuningTarget,
+        pool::{PoolData, PoolGroupData, PoolURL},
+    },
+    traits::{miner::*, model::MinerModel},
 };
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
-use asic_rs_core::data::fan::FanData;
-use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
-use asic_rs_core::data::message::{MessageSeverity, MinerMessage};
-use asic_rs_core::data::miner::TuningTarget;
-use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolURL};
-use asic_rs_core::traits::miner::*;
-use asic_rs_core::traits::model::MinerModel;
 use asic_rs_makes_whatsminer::hardware::WhatsMinerControlBoard;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::WhatsMinerRPCAPI;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::Duration;
+
+use crate::firmware::WhatsMinerFirmware;
 
 mod rpc;
 
@@ -557,13 +559,14 @@ impl Resume for WhatsMinerV1 {
 
 #[cfg(test)]
 mod tests {
+    use asic_rs_core::test::api::MockAPIClient;
+    use asic_rs_makes_whatsminer::models::WhatsMinerModel;
+
     use super::*;
     use crate::test::json::v1::{
         DEVS_COMMAND, GET_PSU_COMMAND, GET_VERSION_COMMAND, POOLS_COMMAND, STATUS_COMMAND,
         SUMMARY_COMMAND,
     };
-    use asic_rs_core::test::api::MockAPIClient;
-    use asic_rs_makes_whatsminer::models::WhatsMinerModel;
 
     #[tokio::test]
     async fn test_whatsminer_v1_data_parsers() -> anyhow::Result<()> {

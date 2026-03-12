@@ -1,8 +1,8 @@
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
 use std::str::FromStr;
 
 use asic_rs_core::errors::ModelSelectionError;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
@@ -36,8 +36,9 @@ impl asic_rs_core::traits::model::MinerModel for NerdAxeModel {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::str::FromStr;
+
+    use super::*;
 
     #[test]
     fn parsing() {

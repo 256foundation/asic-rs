@@ -1,28 +1,35 @@
-use crate::firmware::BitaxeFirmware;
-use anyhow;
-use asic_rs_core::data::board::{BoardData, ChipData, MinerControlBoard};
-use asic_rs_core::data::collector::{
-    DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_key,
-    get_by_pointer,
+use std::{
+    collections::HashMap,
+    net::IpAddr,
+    str::FromStr,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
-use asic_rs_core::data::fan::FanData;
-use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
-use asic_rs_core::data::message::{MessageSeverity, MinerMessage};
-use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolScheme, PoolURL};
-use asic_rs_core::traits::miner::*;
-use asic_rs_core::traits::model::MinerModel;
+
+use anyhow;
+use asic_rs_core::{
+    data::{
+        board::{BoardData, ChipData, MinerControlBoard},
+        collector::{
+            DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_key,
+            get_by_pointer,
+        },
+        command::MinerCommand,
+        device::{DeviceInfo, HashAlgorithm},
+        fan::FanData,
+        hashrate::{HashRate, HashRateUnit},
+        message::{MessageSeverity, MinerMessage},
+        pool::{PoolData, PoolGroupData, PoolScheme, PoolURL},
+    },
+    traits::{miner::*, model::MinerModel},
+};
 use asic_rs_makes_bitaxe::hardware::BitaxeControlBoard;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use web::BitaxeWebAPI;
+
+use crate::firmware::BitaxeFirmware;
 
 mod web;
 

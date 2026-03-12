@@ -1,8 +1,8 @@
+use std::{fmt::Display, str::FromStr};
+
+use asic_rs_core::{errors::ModelSelectionError, traits::make::MinerMake};
+
 use crate::models::NerdAxeModel;
-use asic_rs_core::errors::ModelSelectionError;
-use asic_rs_core::traits::make::MinerMake;
-use std::fmt::Display;
-use std::str::FromStr;
 
 #[derive(Default)]
 pub struct NerdAxeMake {}

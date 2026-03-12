@@ -1,8 +1,8 @@
-use crate::models::BitaxeModel;
-use asic_rs_core::data::board::MinerControlBoard;
-use asic_rs_core::data::device::MinerHardware;
+use asic_rs_core::data::{board::MinerControlBoard, device::MinerHardware};
 use serde::{Deserialize, Serialize};
 use strum::Display;
+
+use crate::models::BitaxeModel;
 
 impl From<BitaxeModel> for MinerHardware {
     fn from(_model: BitaxeModel) -> Self {

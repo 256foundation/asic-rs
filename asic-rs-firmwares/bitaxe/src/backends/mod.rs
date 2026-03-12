@@ -1,6 +1,9 @@
-use asic_rs_core::traits::miner::{Miner, MinerConstructor};
-use asic_rs_core::traits::model::MinerModel;
 use std::net::IpAddr;
+
+use asic_rs_core::traits::{
+    miner::{Miner, MinerConstructor},
+    model::MinerModel,
+};
 pub use v2_0_0::Bitaxe200;
 pub use v2_9_0::Bitaxe290;
 

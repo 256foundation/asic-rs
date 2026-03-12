@@ -1,8 +1,10 @@
-use crate::data::device::MinerHardware;
-use crate::errors::ModelSelectionError;
-use std::any::Any;
-use std::fmt::{Display, Formatter};
-use std::str::FromStr;
+use std::{
+    any::Any,
+    fmt::{Display, Formatter},
+    str::FromStr,
+};
+
+use crate::{data::device::MinerHardware, errors::ModelSelectionError};
 
 pub trait MinerModel: Display + Into<MinerHardware> + Clone + Any {
     fn make_name(&self) -> String;

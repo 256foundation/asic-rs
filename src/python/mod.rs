@@ -15,12 +15,12 @@ mod asic_rs {
     }
 
     #[pymodule_export]
-    use super::factory::MinerFactory;
-    #[pymodule_export]
-    use super::miner::Miner;
-
-    #[pymodule_export]
     use asic_rs_core::data::device::HashAlgorithm;
     #[pymodule_export]
     use asic_rs_core::data::hashrate::HashRateUnit;
+
+    #[pymodule_export]
+    use super::factory::MinerFactory;
+    #[pymodule_export]
+    use super::miner::Miner;
 }

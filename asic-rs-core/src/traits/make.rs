@@ -1,6 +1,6 @@
-use crate::data::board::MinerControlBoard;
-use crate::errors::ModelSelectionError;
-use crate::traits::model::MinerModel;
+use crate::{
+    data::board::MinerControlBoard, errors::ModelSelectionError, traits::model::MinerModel,
+};
 
 pub trait MinerMake: ToString {
     type Model: MinerModel;

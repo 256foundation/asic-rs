@@ -1,15 +1,15 @@
 pub mod avalon_a;
 pub mod avalon_q;
 
-use std::any::Any;
+use std::{any::Any, net::IpAddr};
 
+use asic_rs_core::traits::{
+    miner::{Miner, MinerConstructor},
+    model::MinerModel,
+};
+use asic_rs_makes_avalon::models::AvalonMinerModel;
 pub use avalon_a::AvalonAMiner;
 pub use avalon_q::AvalonQMiner;
-
-use asic_rs_core::traits::miner::{Miner, MinerConstructor};
-use asic_rs_core::traits::model::MinerModel;
-use asic_rs_makes_avalon::models::AvalonMinerModel;
-use std::net::IpAddr;
 
 pub struct AvalonMiner;
 

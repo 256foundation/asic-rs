@@ -1,12 +1,12 @@
 use std::pin::Pin;
 
 use anyhow;
+use asic_rs_core::traits::miner::*;
 use async_stream::stream;
 use tokio::net::UdpSocket;
 use tokio_stream::{Stream, StreamExt};
 
 use crate::factory::MinerFactory;
-use asic_rs_core::traits::miner::*;
 
 pub struct MinerListener {
     antminer_listener: AntMinerListener,

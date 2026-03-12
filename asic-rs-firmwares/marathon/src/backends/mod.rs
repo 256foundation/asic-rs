@@ -1,6 +1,9 @@
-use asic_rs_core::traits::miner::{Miner, MinerConstructor};
-use asic_rs_core::traits::model::MinerModel;
 use std::net::IpAddr;
+
+use asic_rs_core::traits::{
+    miner::{Miner, MinerConstructor},
+    model::MinerModel,
+};
 pub use v1::MaraV1;
 
 pub mod v1;

@@ -1,18 +1,22 @@
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::discovery::{HTTP_WEB_ROOT, RPC_VERSION};
-use asic_rs_core::errors::ModelSelectionError;
-use asic_rs_core::traits::discovery::DiscoveryCommands;
-use asic_rs_core::traits::entry::FirmwareEntry;
-use asic_rs_core::traits::firmware::MinerFirmware;
-use asic_rs_core::traits::identification::{FirmwareIdentification, WebResponse};
-use asic_rs_core::traits::make::MinerMake;
-use asic_rs_core::traits::miner::{Miner, MinerConstructor};
-use asic_rs_core::traits::model::MinerModel;
-use asic_rs_core::util;
+use std::{fmt::Display, net::IpAddr};
+
+use asic_rs_core::{
+    data::command::MinerCommand,
+    discovery::{HTTP_WEB_ROOT, RPC_VERSION},
+    errors::ModelSelectionError,
+    traits::{
+        discovery::DiscoveryCommands,
+        entry::FirmwareEntry,
+        firmware::MinerFirmware,
+        identification::{FirmwareIdentification, WebResponse},
+        make::MinerMake,
+        miner::{Miner, MinerConstructor},
+        model::MinerModel,
+    },
+    util,
+};
 use asic_rs_makes_antminer::make::AntMinerMake;
 use async_trait::async_trait;
-use std::fmt::Display;
-use std::net::IpAddr;
 
 #[derive(Default)]
 pub struct LuxMinerFirmware {}

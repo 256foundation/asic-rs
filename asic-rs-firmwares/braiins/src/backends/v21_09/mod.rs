@@ -1,30 +1,33 @@
-use crate::backends::v21_09::graphql::BraiinsGraphQLAPI;
-use crate::backends::v21_09::rpc::BraiinsRPCAPI;
-use crate::firmware::BraiinsFirmware;
+use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
+
 use anyhow;
-use asic_rs_core::config::pools::PoolGroup;
-use asic_rs_core::data::board::BoardData;
-use asic_rs_core::data::collector::{
-    DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
+use asic_rs_core::{
+    config::pools::PoolGroup,
+    data::{
+        board::BoardData,
+        collector::{
+            DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
+        },
+        command::MinerCommand,
+        device::{DeviceInfo, HashAlgorithm},
+        fan::FanData,
+        hashrate::{HashRate, HashRateUnit},
+        message::{MessageSeverity, MinerMessage},
+        miner::TuningTarget,
+        pool::{PoolData, PoolGroupData, PoolURL},
+    },
+    traits::{miner::*, model::MinerModel},
 };
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
-use asic_rs_core::data::fan::FanData;
-use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
-use asic_rs_core::data::message::{MessageSeverity, MinerMessage};
-use asic_rs_core::data::miner::TuningTarget;
-use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolURL};
-use asic_rs_core::traits::miner::*;
-use asic_rs_core::traits::model::MinerModel;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::{Value, json};
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::Duration;
 use web::BraiinsWebAPI;
+
+use crate::{
+    backends::v21_09::{graphql::BraiinsGraphQLAPI, rpc::BraiinsRPCAPI},
+    firmware::BraiinsFirmware,
+};
 
 mod graphql;
 mod rpc;
@@ -794,13 +797,14 @@ impl SetPools for BraiinsV2109 {
 
 #[cfg(test)]
 mod tests {
+    use asic_rs_core::test::api::MockAPIClient;
+    use asic_rs_makes_antminer::models::AntMinerModel;
+
     use super::*;
     use crate::test::json::v21_09::{
         GQL_BOARDS_COMMAND, GQL_POOLS_COMMAND, GQL_SYSTEM_COMMAND, VERSION_COMMAND,
         WEB_NET_CONF_COMMAND,
     };
-    use asic_rs_core::test::api::MockAPIClient;
-    use asic_rs_makes_antminer::models::AntMinerModel;
 
     #[tokio::test]
     async fn test_braiins_os() {

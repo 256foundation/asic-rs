@@ -1,9 +1,9 @@
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::traits::miner::*;
+use std::{net::IpAddr, time::Duration};
+
+use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
-use std::{net::IpAddr, time::Duration};
 use tokio::time::timeout;
 
 #[derive(Debug)]

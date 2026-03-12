@@ -1,16 +1,21 @@
-use crate::data::deserialize::deserialize_macaddr;
-use crate::data::serialize::serialize_macaddr;
-use crate::data::serialize::serialize_power;
-use crate::data::serialize::serialize_temperature;
 use std::{net::IpAddr, time::Duration};
 
-use super::{
-    board::BoardData, board::MinerControlBoard, device::DeviceInfo, fan::FanData,
-    hashrate::HashRate, message::MinerMessage, pool::PoolGroupData,
-};
 use macaddr::MacAddr;
 use measurements::{Power, Temperature};
 use serde::{Deserialize, Serialize};
+
+use super::{
+    board::{BoardData, MinerControlBoard},
+    device::DeviceInfo,
+    fan::FanData,
+    hashrate::HashRate,
+    message::MinerMessage,
+    pool::PoolGroupData,
+};
+use crate::data::{
+    deserialize::deserialize_macaddr,
+    serialize::{serialize_macaddr, serialize_power, serialize_temperature},
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TuningTarget {

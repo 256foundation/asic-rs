@@ -1,28 +1,29 @@
-use crate::backends::v1::rpc::LUXMinerRPCAPI;
-use crate::firmware::LuxMinerFirmware;
+use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
+
 use anyhow;
-use asic_rs_core::data::board::{BoardData, ChipData, MinerControlBoard};
-use asic_rs_core::data::collector::{
-    DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
+use asic_rs_core::{
+    data::{
+        board::{BoardData, ChipData, MinerControlBoard},
+        collector::{
+            DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
+        },
+        command::MinerCommand,
+        device::{DeviceInfo, HashAlgorithm},
+        fan::FanData,
+        hashrate::{HashRate, HashRateUnit},
+        message::{MessageSeverity, MinerMessage},
+        miner::TuningTarget,
+        pool::{PoolData, PoolGroupData, PoolURL},
+    },
+    traits::{miner::*, model::MinerModel},
 };
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
-use asic_rs_core::data::fan::FanData;
-use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
-use asic_rs_core::data::message::{MessageSeverity, MinerMessage};
-use asic_rs_core::data::miner::TuningTarget;
-use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolURL};
-use asic_rs_core::traits::miner::*;
-use asic_rs_core::traits::model::MinerModel;
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::Duration;
+
+use crate::{backends::v1::rpc::LUXMinerRPCAPI, firmware::LuxMinerFirmware};
 
 mod rpc;
 
@@ -971,13 +972,14 @@ impl Resume for LuxMinerV1 {
 
 #[cfg(test)]
 mod tests {
+    use asic_rs_core::test::api::MockAPIClient;
+    use asic_rs_makes_antminer::models::AntMinerModel;
+
     use super::*;
     use crate::test::json::v1::{
         CONFIG, DEVS, FANS, HEALTHCHIPGET_0, HEALTHCHIPGET_1, HEALTHCHIPGET_2, POOLS, POWER,
         PROFILES, STATS, SUMMARY, TEMPS, VERSION, VOLTAGEGET_0, VOLTAGEGET_1, VOLTAGEGET_2,
     };
-    use asic_rs_core::test::api::MockAPIClient;
-    use asic_rs_makes_antminer::models::AntMinerModel;
 
     #[tokio::test]
 

@@ -1,24 +1,23 @@
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::data::device::MinerHardware;
-use asic_rs_core::discovery::HTTP_WEB_ROOT;
-use asic_rs_core::errors::ModelSelectionError;
-use asic_rs_core::traits::discovery::DiscoveryCommands;
-use asic_rs_core::traits::entry::FirmwareEntry;
-use asic_rs_core::traits::firmware::MinerFirmware;
-use asic_rs_core::traits::identification::{FirmwareIdentification, WebResponse};
-use asic_rs_core::traits::make::MinerMake;
-use asic_rs_core::traits::miner::{Miner, MinerConstructor};
-use asic_rs_core::traits::model::{MinerModel, UnknownMinerModel};
-use asic_rs_makes_antminer::make::AntMinerMake;
-use asic_rs_makes_antminer::models::AntMinerModel;
-use asic_rs_makes_epic::make::EPicMake;
-use asic_rs_makes_epic::models::EPicModel;
-use asic_rs_makes_whatsminer::make::WhatsMinerMake;
-use asic_rs_makes_whatsminer::models::WhatsMinerModel;
+use std::{fmt, fmt::Display, net::IpAddr};
+
+use asic_rs_core::{
+    data::{command::MinerCommand, device::MinerHardware},
+    discovery::HTTP_WEB_ROOT,
+    errors::ModelSelectionError,
+    traits::{
+        discovery::DiscoveryCommands,
+        entry::FirmwareEntry,
+        firmware::MinerFirmware,
+        identification::{FirmwareIdentification, WebResponse},
+        make::MinerMake,
+        miner::{Miner, MinerConstructor},
+        model::{MinerModel, UnknownMinerModel},
+    },
+};
+use asic_rs_makes_antminer::{make::AntMinerMake, models::AntMinerModel};
+use asic_rs_makes_epic::{make::EPicMake, models::EPicModel};
+use asic_rs_makes_whatsminer::{make::WhatsMinerMake, models::WhatsMinerModel};
 use async_trait::async_trait;
-use std::fmt;
-use std::fmt::Display;
-use std::net::IpAddr;
 
 #[derive(Clone)]
 pub enum EPicCompatibleModel {

@@ -1,8 +1,8 @@
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::data::pool::{PoolGroupData, PoolURL};
-use serde::{Deserialize, Serialize};
 
 #[cfg_attr(
     feature = "python",
@@ -48,10 +48,10 @@ impl From<PoolGroupData> for PoolGroup {
 
 #[cfg(feature = "python")]
 mod python_impls {
+    use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
+
     use super::*;
     use crate::data::pool::PoolURL;
-    use pyo3::conversion::FromPyObject;
-    use pyo3::{Borrowed, PyAny, PyErr, PyResult, types::PyAnyMethods};
 
     impl FromPyObject<'_, '_> for Pool {
         type Error = PyErr;

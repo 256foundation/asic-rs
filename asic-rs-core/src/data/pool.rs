@@ -1,7 +1,7 @@
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
 use std::fmt::{Display, Formatter};
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use url::Url;
 

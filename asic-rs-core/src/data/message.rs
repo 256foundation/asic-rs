@@ -1,6 +1,5 @@
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-
 use serde::{Deserialize, Serialize};
 use strum::Display;
 

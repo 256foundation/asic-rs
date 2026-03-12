@@ -1,6 +1,7 @@
-use crate::errors::RPCError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+use crate::errors::RPCError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MinerCommand {

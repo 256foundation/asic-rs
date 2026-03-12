@@ -1,26 +1,22 @@
+use std::{
+    collections::HashSet,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    pin::Pin,
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
+};
+
 use anyhow::Result;
-use futures::future::FutureExt;
-use futures::{Stream, StreamExt, pin_mut, stream};
+use asic_rs_core::{
+    data::command::MinerCommand,
+    traits::{entry::FirmwareEntry, identification::WebResponse, miner::Miner},
+    util::{send_rpc_command, send_web_command},
+};
+use futures::{Stream, StreamExt, future::FutureExt, pin_mut, stream};
 use ipnet::IpNet;
 use rand::seq::SliceRandom;
-use std::collections::HashSet;
-use std::net::IpAddr;
-use std::net::Ipv4Addr;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::net::TcpStream;
-use tokio::task::JoinSet;
-use tokio::time::timeout;
-
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::traits::entry::FirmwareEntry;
-use asic_rs_core::traits::identification::WebResponse;
-use asic_rs_core::traits::miner::Miner;
-use asic_rs_core::util::{send_rpc_command, send_web_command};
-
-use std::net::SocketAddr;
-use std::pin::Pin;
+use tokio::{net::TcpStream, task::JoinSet, time::timeout};
 
 const IDENTIFICATION_TIMEOUT: Duration = Duration::from_secs(10);
 const CONNECTIVITY_TIMEOUT: Duration = Duration::from_secs(1);

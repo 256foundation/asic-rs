@@ -1,12 +1,13 @@
-use super::data::{BoardData, FanData, MinerData, TuningTarget};
-use asic_rs_core::traits::miner::Miner as MinerTrait;
-use std::net::IpAddr;
+use std::{net::IpAddr, sync::Arc, time::Duration};
 
-use asic_rs_core::config::pools::PoolGroup;
-use asic_rs_core::data::device::{HashAlgorithm, MinerHardware};
+use asic_rs_core::{
+    config::pools::PoolGroup,
+    data::device::{HashAlgorithm, MinerHardware},
+    traits::miner::Miner as MinerTrait,
+};
 use pyo3::prelude::*;
-use std::sync::Arc;
-use std::time::Duration;
+
+use super::data::{BoardData, FanData, MinerData, TuningTarget};
 
 #[pyclass(module = "asic_rs")]
 pub(crate) struct Miner {

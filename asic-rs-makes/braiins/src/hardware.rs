@@ -1,8 +1,8 @@
-use crate::models::BraiinsModel;
-use asic_rs_core::data::board::MinerControlBoard;
-use asic_rs_core::data::device::MinerHardware;
+use asic_rs_core::data::{board::MinerControlBoard, device::MinerHardware};
 use serde::{Deserialize, Serialize};
 use strum::Display;
+
+use crate::models::BraiinsModel;
 
 impl From<BraiinsModel> for MinerHardware {
     fn from(value: BraiinsModel) -> Self {

@@ -1,23 +1,23 @@
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::data::device::MinerHardware;
-use asic_rs_core::discovery::{HTTP_WEB_ROOT, RPC_VERSION};
-use asic_rs_core::errors::ModelSelectionError;
-use asic_rs_core::traits::discovery::DiscoveryCommands;
-use asic_rs_core::traits::entry::FirmwareEntry;
-use asic_rs_core::traits::firmware::MinerFirmware;
-use asic_rs_core::traits::identification::{FirmwareIdentification, WebResponse};
-use asic_rs_core::traits::make::MinerMake;
-use asic_rs_core::traits::miner::{Miner, MinerConstructor};
-use asic_rs_core::traits::model::MinerModel;
-use asic_rs_core::util;
-use asic_rs_makes_antminer::make::AntMinerMake;
-use asic_rs_makes_antminer::models::AntMinerModel;
-use asic_rs_makes_braiins::make::BraiinsMake;
-use asic_rs_makes_braiins::models::BraiinsModel;
+use std::{fmt, fmt::Display, net::IpAddr};
+
+use asic_rs_core::{
+    data::{command::MinerCommand, device::MinerHardware},
+    discovery::{HTTP_WEB_ROOT, RPC_VERSION},
+    errors::ModelSelectionError,
+    traits::{
+        discovery::DiscoveryCommands,
+        entry::FirmwareEntry,
+        firmware::MinerFirmware,
+        identification::{FirmwareIdentification, WebResponse},
+        make::MinerMake,
+        miner::{Miner, MinerConstructor},
+        model::MinerModel,
+    },
+    util,
+};
+use asic_rs_makes_antminer::{make::AntMinerMake, models::AntMinerModel};
+use asic_rs_makes_braiins::{make::BraiinsMake, models::BraiinsModel};
 use async_trait::async_trait;
-use std::fmt;
-use std::fmt::Display;
-use std::net::IpAddr;
 
 #[derive(Clone)]
 pub enum BraiinsCompatibleModel {

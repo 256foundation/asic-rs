@@ -1,8 +1,8 @@
-use crate::models::NerdAxeModel;
-use asic_rs_core::data::board::MinerControlBoard;
-use asic_rs_core::data::device::MinerHardware;
+use asic_rs_core::data::{board::MinerControlBoard, device::MinerHardware};
 use serde::{Deserialize, Serialize};
 use strum::Display;
+
+use crate::models::NerdAxeModel;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display)]
 pub enum NerdAxeControlBoard {

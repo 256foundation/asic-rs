@@ -1,15 +1,13 @@
-use crate::data::command::MinerCommand;
-use crate::traits::entry::FirmwareEntry;
-use crate::traits::identification::WebResponse;
-use crate::traits::miner::Miner;
-use crate::util::{send_rpc_command, send_web_command};
-use futures::FutureExt;
-use futures::pin_mut;
-use std::collections::HashSet;
-use std::net::IpAddr;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{collections::HashSet, net::IpAddr, sync::Arc, time::Duration};
+
+use futures::{FutureExt, pin_mut};
 use tokio::task::JoinSet;
+
+use crate::{
+    data::command::MinerCommand,
+    traits::{entry::FirmwareEntry, identification::WebResponse, miner::Miner},
+    util::{send_rpc_command, send_web_command},
+};
 
 pub async fn get_miner(
     ip: IpAddr,

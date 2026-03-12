@@ -1,8 +1,7 @@
-use reqwest::StatusCode;
-use reqwest::header::HeaderMap;
+use std::{net::IpAddr, sync::LazyLock};
+
+use reqwest::{StatusCode, header::HeaderMap};
 use serde_json::json;
-use std::net::IpAddr;
-use std::sync::LazyLock;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// Shared HTTP client for discovery and utility requests.

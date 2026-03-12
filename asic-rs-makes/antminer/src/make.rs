@@ -1,10 +1,10 @@
-use crate::hardware::AntMinerControlBoard;
-use crate::models::AntMinerModel;
-use asic_rs_core::data::board::MinerControlBoard;
-use asic_rs_core::errors::ModelSelectionError;
-use asic_rs_core::traits::make::MinerMake;
-use std::fmt::Display;
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
+
+use asic_rs_core::{
+    data::board::MinerControlBoard, errors::ModelSelectionError, traits::make::MinerMake,
+};
+
+use crate::{hardware::AntMinerControlBoard, models::AntMinerModel};
 
 #[derive(Default)]
 pub struct AntMinerMake {}

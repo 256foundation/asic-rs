@@ -1,6 +1,9 @@
-use asic_rs_core::traits::miner::{Miner, MinerConstructor};
-use asic_rs_core::traits::model::MinerModel;
 use std::net::IpAddr;
+
+use asic_rs_core::traits::{
+    miner::{Miner, MinerConstructor},
+    model::MinerModel,
+};
 pub use v1_2_0::VnishV120;
 
 pub mod v1_2_0;

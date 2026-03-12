@@ -1,13 +1,14 @@
+use std::{collections::HashMap, net::IpAddr, sync::LazyLock};
+
 use anyhow;
-use asic_rs_core::data::command::{MinerCommand, RPCCommandStatus};
-use asic_rs_core::errors::RPCError;
-use asic_rs_core::traits::miner::{APIClient, RPCAPIClient};
+use asic_rs_core::{
+    data::command::{MinerCommand, RPCCommandStatus},
+    errors::RPCError,
+    traits::miner::{APIClient, RPCAPIClient},
+};
 use async_trait::async_trait;
 use regex::Regex;
 use serde_json::{Value, json};
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::sync::LazyLock;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 static STATS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\w+)\[([^]]+)]").unwrap());
@@ -201,9 +202,10 @@ impl APIClient for AvalonMinerRPCAPI {
 }
 #[cfg(test)]
 mod parse_rpc_result_nested_tests {
+    use std::net::{IpAddr, Ipv4Addr};
+
     use super::*;
     use crate::test::json::{STATS_COMMAND, VERSION_COMMAND};
-    use std::net::{IpAddr, Ipv4Addr};
 
     fn test_rpc() -> AvalonMinerRPCAPI {
         AvalonMinerRPCAPI::new(IpAddr::V4(Ipv4Addr::LOCALHOST))

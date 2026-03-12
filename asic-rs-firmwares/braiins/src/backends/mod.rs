@@ -1,9 +1,12 @@
 pub mod v21_09;
 pub mod v25_07;
 
-use asic_rs_core::traits::miner::{Miner, MinerConstructor};
-use asic_rs_core::traits::model::MinerModel;
 use std::net::IpAddr;
+
+use asic_rs_core::traits::{
+    miner::{Miner, MinerConstructor},
+    model::MinerModel,
+};
 use v21_09::BraiinsV2109;
 use v25_07::BraiinsV2507;
 

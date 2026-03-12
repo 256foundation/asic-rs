@@ -1,26 +1,33 @@
-use crate::firmware::AvalonStockFirmware;
-use anyhow;
-use asic_rs_core::data::board::{BoardData, ChipData};
-use asic_rs_core::data::collector::{
-    DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
+use std::{
+    collections::HashMap,
+    net::IpAddr,
+    str::FromStr,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::data::device::{DeviceInfo, HashAlgorithm};
-use asic_rs_core::data::fan::FanData;
-use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
-use asic_rs_core::data::miner::TuningTarget;
-use asic_rs_core::data::pool::{PoolData, PoolGroupData, PoolURL};
-use asic_rs_core::traits::miner::*;
-use asic_rs_core::traits::model::MinerModel;
+
+use anyhow;
+use asic_rs_core::{
+    data::{
+        board::{BoardData, ChipData},
+        collector::{
+            DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
+        },
+        command::MinerCommand,
+        device::{DeviceInfo, HashAlgorithm},
+        fan::FanData,
+        hashrate::{HashRate, HashRateUnit},
+        miner::TuningTarget,
+        pool::{PoolData, PoolGroupData, PoolURL},
+    },
+    traits::{miner::*, model::MinerModel},
+};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
 use rpc::AvalonMinerRPCAPI;
 use serde_json::{Value, json};
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use crate::firmware::AvalonStockFirmware;
 
 mod rpc;
 
@@ -584,10 +591,11 @@ impl GetPools for AvalonQMiner {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::test::json::{DEVS_COMMAND, PARSED_STATS_COMMAND, POOLS_COMMAND, VERSION_COMMAND};
     use asic_rs_core::test::api::MockAPIClient;
     use asic_rs_makes_avalon::models::AvalonMinerModel;
+
+    use super::*;
+    use crate::test::json::{DEVS_COMMAND, PARSED_STATS_COMMAND, POOLS_COMMAND, VERSION_COMMAND};
 
     #[tokio::test]
 

@@ -1,9 +1,11 @@
-use crate::errors::ModelSelectionError;
-use crate::traits::discovery::DiscoveryCommands;
-use crate::traits::identification::FirmwareIdentification;
-use crate::traits::miner::Miner;
-use async_trait::async_trait;
 use std::net::IpAddr;
+
+use async_trait::async_trait;
+
+use crate::{
+    errors::ModelSelectionError,
+    traits::{discovery::DiscoveryCommands, identification::FirmwareIdentification, miner::Miner},
+};
 
 /// Combined trait for firmware registry entries.
 ///

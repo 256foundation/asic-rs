@@ -1,15 +1,17 @@
+use std::{net::IpAddr, time::Duration};
+
+use asic_rs_core::data::{
+    board::{BoardData as BoardData_Base, ChipData as ChipData_Base, MinerControlBoard},
+    device::DeviceInfo,
+    fan::FanData as FanData_Base,
+    hashrate::HashRate,
+    message::MinerMessage,
+    miner::{MinerData as MinerData_Base, TuningTarget as TuningTargetBase},
+    pool::PoolGroupData,
+};
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-
-use asic_rs_core::data::board::ChipData as ChipData_Base;
-use asic_rs_core::data::board::{BoardData as BoardData_Base, MinerControlBoard};
-use asic_rs_core::data::fan::FanData as FanData_Base;
-use asic_rs_core::data::miner::MinerData as MinerData_Base;
-use asic_rs_core::data::miner::TuningTarget as TuningTargetBase;
-use asic_rs_core::data::pool::PoolGroupData;
-use asic_rs_core::data::{device::DeviceInfo, hashrate::HashRate, message::MinerMessage};
 use serde::{Deserialize, Serialize};
-use std::{net::IpAddr, time::Duration};
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

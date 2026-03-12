@@ -1,8 +1,9 @@
-use crate::data::command::MinerCommand;
-use crate::traits::miner::APIClient;
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use serde_json::Value;
-use std::collections::HashMap;
+
+use crate::{data::command::MinerCommand, traits::miner::APIClient};
 
 pub struct MockAPIClient {
     results: HashMap<MinerCommand, Value>,

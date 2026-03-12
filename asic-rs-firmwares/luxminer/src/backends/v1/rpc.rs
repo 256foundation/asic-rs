@@ -1,10 +1,13 @@
+use std::net::IpAddr;
+
 use anyhow;
-use asic_rs_core::data::command::{MinerCommand, RPCCommandStatus};
-use asic_rs_core::errors::RPCError;
-use asic_rs_core::traits::miner::*;
+use asic_rs_core::{
+    data::command::{MinerCommand, RPCCommandStatus},
+    errors::RPCError,
+    traits::miner::*,
+};
 use async_trait::async_trait;
 use serde_json::{Value, json};
-use std::net::IpAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Debug)]

@@ -1,11 +1,14 @@
+use std::fmt::Display;
+
+use measurements::{Frequency, Temperature, Voltage};
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-
-use super::hashrate::HashRate;
-use super::serialize::{serialize_frequency, serialize_temperature, serialize_voltage};
-use measurements::{Frequency, Temperature, Voltage};
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+
+use super::{
+    hashrate::HashRate,
+    serialize::{serialize_frequency, serialize_temperature, serialize_voltage},
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ChipData {

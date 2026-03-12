@@ -1,8 +1,12 @@
-use crate::data::command::MinerCommand;
-use crate::traits::miner::{APIClient, MinerInterface};
-use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
+
+use serde_json::{Value, json};
 use strum::{EnumIter, IntoEnumIterator};
+
+use crate::{
+    data::command::MinerCommand,
+    traits::miner::{APIClient, MinerInterface},
+};
 
 /// Represents the individual pieces of data that can be queried from a miner device.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Copy, EnumIter)]

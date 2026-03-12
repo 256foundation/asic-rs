@@ -1,10 +1,9 @@
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-
-use crate::traits::firmware::MinerFirmware;
-use crate::traits::model::MinerModel;
 use serde::{Deserialize, Serialize};
 use strum::{Display as StrumDisplay, EnumString};
+
+use crate::traits::{firmware::MinerFirmware, model::MinerModel};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(

@@ -1,12 +1,14 @@
+use std::{net::IpAddr, time::Duration};
+
 use anyhow;
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::traits::miner::{APIClient, WebAPIClient};
+use asic_rs_core::{
+    data::command::MinerCommand,
+    traits::miner::{APIClient, WebAPIClient},
+};
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
 use reqwest::{Client, Method};
 use serde_json::Value;
-use std::net::IpAddr;
-use std::time::Duration;
 
 #[derive(Debug)]
 pub struct MaraWebAPI {

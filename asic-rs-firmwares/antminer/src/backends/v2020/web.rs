@@ -1,11 +1,11 @@
+use std::{net::IpAddr, time::Duration};
+
 use anyhow::{Result, anyhow, bail};
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::traits::miner::*;
+use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
 use reqwest::{Client, Method, Response};
 use serde_json::{Value, json};
-use std::{net::IpAddr, time::Duration};
 
 #[derive(Debug)]
 pub struct AntMinerWebAPI {

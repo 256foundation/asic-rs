@@ -1,7 +1,8 @@
-use crate::data::serialize;
 use measurements::AngularVelocity;
 use serde::{Deserialize, Serialize};
 use serialize::serialize_angular_velocity;
+
+use crate::data::serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FanData {

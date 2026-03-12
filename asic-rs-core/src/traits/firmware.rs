@@ -1,8 +1,11 @@
-use crate::errors::ModelSelectionError;
-use crate::traits::discovery::DiscoveryCommands;
-use crate::traits::model::MinerModel;
-use async_trait::async_trait;
 use std::net::IpAddr;
+
+use async_trait::async_trait;
+
+use crate::{
+    errors::ModelSelectionError,
+    traits::{discovery::DiscoveryCommands, model::MinerModel},
+};
 
 #[async_trait]
 pub trait MinerFirmware: ToString + DiscoveryCommands {

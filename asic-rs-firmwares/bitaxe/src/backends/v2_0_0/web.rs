@@ -1,10 +1,13 @@
+use std::{net::IpAddr, time::Duration};
+
 use anyhow;
-use asic_rs_core::data::command::MinerCommand;
-use asic_rs_core::traits::miner::{APIClient, WebAPIClient};
+use asic_rs_core::{
+    data::command::MinerCommand,
+    traits::miner::{APIClient, WebAPIClient},
+};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
 use serde_json::Value;
-use std::{net::IpAddr, time::Duration};
 use tokio::time::timeout;
 
 /// Bitaxe WebAPI client for communicating with Bitaxe and similar miners

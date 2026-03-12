@@ -1,12 +1,12 @@
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
-
-use measurements::Power;
-use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
     ops::Div,
 };
+
+use measurements::Power;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
