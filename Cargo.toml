@@ -34,27 +34,27 @@ members = [
 ]
 
 [workspace.dependencies]
-asic-rs-core = { path = "asic-rs-core" }
+asic-rs-core = { path = "asic-rs-core", version = "0.3.0" }
 
-asic-rs-makes-antminer = { path = "asic-rs-makes/antminer" }
-asic-rs-makes-avalon = { path = "asic-rs-makes/avalon" }
-asic-rs-makes-bitaxe = { path = "asic-rs-makes/bitaxe" }
-asic-rs-makes-braiins = { path = "asic-rs-makes/braiins" }
-asic-rs-makes-epic = { path = "asic-rs-makes/epic" }
-asic-rs-makes-nerdaxe = { path = "asic-rs-makes/nerdaxe" }
-asic-rs-makes-whatsminer = { path = "asic-rs-makes/whatsminer" }
-asic-rs-makes-marathon = { path = "asic-rs-makes/marathon" }
+asic-rs-makes-antminer = { path = "asic-rs-makes/antminer", version = "0.3.0" }
+asic-rs-makes-avalon = { path = "asic-rs-makes/avalon", version = "0.3.0" }
+asic-rs-makes-bitaxe = { path = "asic-rs-makes/bitaxe", version = "0.3.0" }
+asic-rs-makes-braiins = { path = "asic-rs-makes/braiins", version = "0.3.0" }
+asic-rs-makes-epic = { path = "asic-rs-makes/epic", version = "0.3.0" }
+asic-rs-makes-nerdaxe = { path = "asic-rs-makes/nerdaxe", version = "0.3.0" }
+asic-rs-makes-whatsminer = { path = "asic-rs-makes/whatsminer", version = "0.3.0" }
+asic-rs-makes-marathon = { path = "asic-rs-makes/marathon", version = "0.3.0" }
 
-asic-rs-firmwares-antminer = { path = "asic-rs-firmwares/antminer" }
-asic-rs-firmwares-avalonminer = { path = "asic-rs-firmwares/avalonminer" }
-asic-rs-firmwares-bitaxe = { path = "asic-rs-firmwares/bitaxe" }
-asic-rs-firmwares-braiins = { path = "asic-rs-firmwares/braiins" }
-asic-rs-firmwares-epic = { path = "asic-rs-firmwares/epic" }
-asic-rs-firmwares-luxminer = { path = "asic-rs-firmwares/luxminer" }
-asic-rs-firmwares-marathon = { path = "asic-rs-firmwares/marathon" }
-asic-rs-firmwares-nerdaxe = { path = "asic-rs-firmwares/nerdaxe" }
-asic-rs-firmwares-vnish = { path = "asic-rs-firmwares/vnish" }
-asic-rs-firmwares-whatsminer = { path = "asic-rs-firmwares/whatsminer" }
+asic-rs-firmwares-antminer = { path = "asic-rs-firmwares/antminer", version = "0.3.0" }
+asic-rs-firmwares-avalonminer = { path = "asic-rs-firmwares/avalonminer", version = "0.3.0" }
+asic-rs-firmwares-bitaxe = { path = "asic-rs-firmwares/bitaxe", version = "0.3.0" }
+asic-rs-firmwares-braiins = { path = "asic-rs-firmwares/braiins", version = "0.3.0" }
+asic-rs-firmwares-epic = { path = "asic-rs-firmwares/epic", version = "0.3.0" }
+asic-rs-firmwares-luxminer = { path = "asic-rs-firmwares/luxminer", version = "0.3.0" }
+asic-rs-firmwares-marathon = { path = "asic-rs-firmwares/marathon", version = "0.3.0" }
+asic-rs-firmwares-nerdaxe = { path = "asic-rs-firmwares/nerdaxe", version = "0.3.0" }
+asic-rs-firmwares-vnish = { path = "asic-rs-firmwares/vnish", version = "0.3.0" }
+asic-rs-firmwares-whatsminer = { path = "asic-rs-firmwares/whatsminer", version = "0.3.0" }
 
 diqwest = "3.2"
 futures = "0.3"
