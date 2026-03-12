@@ -17,9 +17,9 @@ impl From<String> for PoolScheme {
     fn from(scheme: String) -> Self {
         match scheme.as_str() {
             "stratum+tcp" => PoolScheme::StratumV1,
-            "stratum+ssl" => PoolScheme::StratumV1SSL,
+            "stratum+ssl" | "stratum+tls" => PoolScheme::StratumV1SSL,
             "stratum2+tcp" => PoolScheme::StratumV2,
-            _ => panic!("Invalid pool scheme"),
+            _ => PoolScheme::StratumV1,
         }
     }
 }
@@ -54,24 +54,33 @@ pub struct PoolURL {
 impl From<String> for PoolURL {
     fn from(url: String) -> Self {
         let stratum_url = if url.starts_with("stratum+") || url.starts_with("stratum2+") {
-            url
+            url.clone()
         } else {
             format!("stratum+tcp://{url}")
         };
-        let parsed = Url::parse(&stratum_url).expect("Invalid pool URL");
-        let scheme = PoolScheme::from(parsed.scheme().to_string());
-        let host = parsed.host_str().unwrap_or("").to_string();
-        let port = parsed.port().unwrap_or(80);
-        let path = parsed.path();
-        let pubkey = match path {
-            "" => None,
-            _ => Some(path[1..].to_string()),
-        };
-        PoolURL {
-            scheme,
-            host,
-            port,
-            pubkey,
+        match Url::parse(&stratum_url) {
+            Ok(parsed) => {
+                let scheme = PoolScheme::from(parsed.scheme().to_string());
+                let host = parsed.host_str().unwrap_or("").to_string();
+                let port = parsed.port().unwrap_or(80);
+                let path = parsed.path();
+                let pubkey = match path {
+                    "" | "/" => None,
+                    _ => Some(path[1..].to_string()),
+                };
+                PoolURL {
+                    scheme,
+                    host,
+                    port,
+                    pubkey,
+                }
+            }
+            Err(_) => PoolURL {
+                scheme: PoolScheme::StratumV1,
+                host: url,
+                port: 0,
+                pubkey: None,
+            },
         }
     }
 }

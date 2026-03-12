@@ -297,31 +297,47 @@ impl GetControlBoardVersion for VnishV120 {
 
 impl GetHashboards for VnishV120 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = Vec::new();
+        let all_chains = data.get(&DataField::Hashboards).and_then(|v| v.as_array());
+        let Some(all_chains) = all_chains else {
+            return Vec::new();
+        };
 
-        let chains_data = data.get(&DataField::Hashboards).and_then(|v| v.as_array());
+        let board_count = self.device_info.hardware.boards.unwrap_or(0) as u64;
 
-        if let Some(chains_array) = chains_data {
-            for (idx, chain) in chains_array.iter().enumerate() {
-                let hashrate = Self::extract_hashrate(chain, &["/hashrate_rt", "/hr_realtime"]);
+        // Both /summary and /chains endpoints are concatenated into all_chains.
+        // Iterate by expected board count, merge entries matching each board ID.
+        (1..=board_count)
+            .filter_map(|id| {
+                let mut merged = serde_json::Map::new();
+                for entry in all_chains
+                    .iter()
+                    .filter(|c| c.pointer("/id").and_then(|v| v.as_u64()) == Some(id))
+                {
+                    if let Value::Object(obj) = entry {
+                        for (k, v) in obj {
+                            merged.entry(k.clone()).or_insert_with(|| v.clone());
+                        }
+                    }
+                }
+                if merged.is_empty() {
+                    return None;
+                }
+                let chain = Value::Object(merged);
+
+                let hashrate = Self::extract_hashrate(&chain, &["/hashrate_rt", "/hr_realtime"]);
                 let expected_hashrate =
-                    Self::extract_hashrate(chain, &["/hashrate_ideal", "/hr_nominal"]);
+                    Self::extract_hashrate(&chain, &["/hashrate_ideal", "/hr_nominal"]);
+                let frequency = Self::extract_frequency(&chain);
+                let voltage = Self::extract_voltage(&chain);
+                let (board_temperature, chip_temperature) = Self::extract_temperatures(&chain);
+                let working_chips = Self::extract_working_chips(&chain);
+                let active = Self::extract_chain_active_status(&chain, &hashrate);
+                let serial_number = Self::extract_chain_serial(&chain, data);
+                let tuned = Self::extract_tuned_status(&chain, data);
+                let chips = Self::extract_chips(&chain);
 
-                let frequency = Self::extract_frequency(chain);
-                let voltage = Self::extract_voltage(chain);
-                let (board_temperature, chip_temperature) = Self::extract_temperatures(chain);
-
-                let working_chips = Self::extract_working_chips(chain);
-                let active = Self::extract_chain_active_status(chain, &hashrate);
-                let serial_number = Self::extract_chain_serial(chain, data);
-                let tuned = Self::extract_tuned_status(chain, data);
-                let chips = Self::extract_chips(chain);
-
-                hashboards.push(BoardData {
-                    position: chain
-                        .pointer("/id")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(idx as u64) as u8,
+                Some(BoardData {
+                    position: id as u8,
                     hashrate,
                     expected_hashrate,
                     board_temperature,
@@ -335,11 +351,9 @@ impl GetHashboards for VnishV120 {
                     frequency,
                     tuned,
                     active,
-                });
-            }
-        }
-
-        hashboards
+                })
+            })
+            .collect()
     }
 }
 
@@ -438,6 +452,16 @@ impl GetUptime for VnishV120 {
                     return Some(Duration::from_secs(total_seconds));
                 }
 
+                // Handle "H:MM" or "HH:MM" format (uptime < 1 day)
+                if let Some((hours_str, minutes_str)) = trimmed.split_once(':')
+                    && let (Ok(hours), Ok(minutes)) = (
+                        hours_str.trim().parse::<u64>(),
+                        minutes_str.trim().parse::<u64>(),
+                    )
+                {
+                    return Some(Duration::from_secs(hours * 3600 + minutes * 60));
+                }
+
                 None
             })
     }
@@ -446,7 +470,7 @@ impl GetUptime for VnishV120 {
 impl GetIsMining for VnishV120 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
-            .map(|state| state == "mining")
+            .map(|state| state == "mining" || state == "auto-tuning")
             .unwrap_or(false)
     }
 }
@@ -538,24 +562,15 @@ impl VnishV120 {
     }
 
     fn extract_working_chips(chain: &Value) -> Option<u16> {
+        // Prefer individual chip data: count chips with hashrate > 0
         chain
-            .pointer("/chip_statuses")
-            .map(|statuses| {
-                let red = statuses
-                    .pointer("/red")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
-                let orange = statuses
-                    .pointer("/orange")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
-                (red + orange) as u16
-            })
-            .or_else(|| {
-                chain
-                    .pointer("/chips")
-                    .and_then(|v| v.as_array())
-                    .map(|chips| chips.len() as u16)
+            .pointer("/chips")
+            .and_then(|v| v.as_array())
+            .map(|chips| {
+                chips
+                    .iter()
+                    .filter(|c| c.pointer("/hr").and_then(|v| v.as_f64()).unwrap_or(0.0) > 0.0)
+                    .count() as u16
             })
     }
 
