@@ -1,3 +1,6 @@
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 use super::hashrate::HashRate;
 use super::serialize::{serialize_frequency, serialize_temperature, serialize_voltage};
 use measurements::{Frequency, Temperature, Voltage};
@@ -72,6 +75,10 @@ pub struct BoardData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, get_all, module = "asic_rs")
+)]
 pub struct MinerControlBoard {
     pub known: bool,
     pub name: String,

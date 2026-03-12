@@ -1,7 +1,8 @@
+#[cfg(feature = "python")]
 use pyo3::prelude::*;
 
-use asic_rs_core::data::board::BoardData as BoardData_Base;
 use asic_rs_core::data::board::ChipData as ChipData_Base;
+use asic_rs_core::data::board::{BoardData as BoardData_Base, MinerControlBoard};
 use asic_rs_core::data::fan::FanData as FanData_Base;
 use asic_rs_core::data::miner::MinerData as MinerData_Base;
 use asic_rs_core::data::pool::PoolGroupData;
@@ -103,7 +104,7 @@ pub struct MinerData {
     pub hostname: Option<String>,
     pub api_version: Option<String>,
     pub firmware_version: Option<String>,
-    pub control_board_version: Option<String>,
+    pub control_board_version: Option<MinerControlBoard>,
     pub expected_hashboards: Option<u8>,
     pub hashboards: Vec<BoardData>,
     pub hashrate: Option<HashRate>,
@@ -137,7 +138,7 @@ impl From<&MinerData_Base> for MinerData {
             hostname: base.hostname.clone(),
             api_version: base.api_version.clone(),
             firmware_version: base.firmware_version.clone(),
-            control_board_version: base.control_board_version.clone().map(|cb| cb.to_string()),
+            control_board_version: base.control_board_version.clone(),
             expected_hashboards: base.expected_hashboards,
             hashboards: base.hashboards.iter().map(BoardData::from).collect(),
             hashrate: base.hashrate.clone(),
