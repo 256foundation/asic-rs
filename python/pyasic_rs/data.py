@@ -3,9 +3,15 @@ from enum import IntEnum
 from ipaddress import IPv4Address
 from typing import Annotated, Self
 from pyasic_rs.asic_rs import HashRateUnit as _rs_HashRateUnit
-from pyasic_rs.asic_rs import TuningTarget as _rs_TuningTarget
 
-from pydantic import BaseModel, ConfigDict, BeforeValidator, field_serializer, model_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    BeforeValidator,
+    field_serializer,
+    model_serializer,
+    field_validator,
+)
 
 
 class MinerHardware(BaseModel):
@@ -126,9 +132,7 @@ class HashRate(BaseModel):
 
     def into_unit(self, unit: HashRateUnit) -> Self:
         return HashRate(
-            value=(self.value / int(self.unit)) * int(unit),
-            unit=unit,
-            algo=self.algo
+            value=(self.value / int(self.unit)) * int(unit), unit=unit, algo=self.algo
         )
 
 
@@ -190,6 +194,43 @@ class PoolGroupData(BaseModel):
     pools: list[PoolData]
 
 
+class TuningTargetPower(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    watts: float
+
+    @model_serializer
+    def serialize_tuning_target(self):
+        return {"type": "power", "value": self.watts}
+
+
+class TuningTargetHashRate(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    hashrate: HashRate
+
+    @model_serializer
+    def serialize_tuning_target(self):
+        return {"type": "hashrate", "value": self.hashrate.serialize_hashrate()}
+
+
+def _parse_tuning_target(v):
+    if isinstance(v, (dict, TuningTargetPower, TuningTargetHashRate)):
+        return v
+    variant = type(v).__name__
+    if variant == "Power" and hasattr(v, "_0"):
+        return TuningTargetPower(watts=float(v._0))
+    if variant == "HashRate" and hasattr(v, "_0"):
+        return TuningTargetHashRate(hashrate=HashRate.model_validate(v._0))
+    return v
+
+
+TuningTarget = Annotated[
+    TuningTargetPower | TuningTargetHashRate,
+    BeforeValidator(_parse_tuning_target),
+]
+
+
 class MinerMessage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -213,6 +254,7 @@ class MinerControlBoard(BaseModel):
         if self.known:
             return self.name
         return f"Unknown: {self.name}"
+
 
 class MinerData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -239,7 +281,7 @@ class MinerData(BaseModel):
     average_temperature: float | None
     fluid_temperature: float | None
     wattage: float | None
-    tuning_target: _rs_TuningTarget | None
+    tuning_target: TuningTarget | None
     efficiency: float | None
     light_flashing: bool | None
     messages: list[MinerMessage]
