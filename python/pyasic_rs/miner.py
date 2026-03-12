@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from pyasic_rs.asic_rs import HashAlgorithm as _rs_HashAlgorithm
 from pyasic_rs.asic_rs import Miner as _rs_Miner
+from pyasic_rs.asic_rs import TuningTarget as _rs_TuningTarget
 from .config import PoolGroup
 from .data import MinerData, BoardData, HashRate, FanData, MinerMessage, PoolGroupData
 
@@ -89,8 +90,8 @@ class Miner:
     async def get_wattage(self) -> float | None:
         return await self.__inner.get_wattage()
 
-    async def get_wattage_limit(self) -> float | None:
-        return await self.__inner.get_wattage_limit()
+    async def get_tuning_target(self) -> _rs_TuningTarget | None:
+        return await self.__inner.get_tuning_target()
 
     async def get_light_flashing(self) -> bool | None:
         return await self.__inner.get_light_flashing()
