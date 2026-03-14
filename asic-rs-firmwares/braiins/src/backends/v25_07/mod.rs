@@ -600,8 +600,8 @@ impl SupportsPoolsConfig for BraiinsV2507 {
                     .map(|pool| {
                         json!({
                             "url": pool.url.to_string(),
-                            "user": pool.username,
-                            "password": pool.password,
+                            "user": pool.username.as_str(),
+                            "password": pool.password.as_str(),
                         })
                     })
                     .collect();
