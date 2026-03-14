@@ -12,7 +12,6 @@ use asic_rs_core::{
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
-        miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -60,54 +59,6 @@ impl PowerPlayV1 {
             .collect()
     }
 
-    fn value_as_f64(value: &Value) -> Option<f64> {
-        value
-            .as_f64()
-            .or_else(|| value.as_i64().map(|v| v as f64))
-            .or_else(|| value.as_u64().map(|v| v as f64))
-    }
-
-    fn parse_algorithm_stats_target(stats: &Value, algo: &str) -> Option<TuningTarget> {
-        let target = Self::value_as_f64(stats.get("Target")?)?;
-        let unit = stats
-            .get("Unit")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
-        let normalized = unit.trim().to_ascii_uppercase().replace(' ', "");
-
-        if normalized.contains('W') {
-            return Some(TuningTarget::Power(Power::from_watts(target)));
-        }
-
-        if let Ok(hr_unit) = unit.parse::<HashRateUnit>() {
-            return Some(TuningTarget::HashRate(HashRate {
-                value: target,
-                unit: hr_unit,
-                algo: algo.to_string(),
-            }));
-        }
-
-        None
-    }
-
-    fn parse_tuning_target_from_perpetual_tune(value: &Value, algo: &str) -> Option<TuningTarget> {
-        if let Some(current_algo) = value.get("Current Algorithm").and_then(Value::as_str)
-            && let Some(stats) = value.pointer(&format!("/Algorithms/{current_algo}"))
-            && let Some(target) = Self::parse_algorithm_stats_target(stats, algo)
-        {
-            return Some(target);
-        }
-
-        if let Some(algorithms) = value.get("Algorithm").and_then(Value::as_object) {
-            for stats in algorithms.values() {
-                if let Some(target) = Self::parse_algorithm_stats_target(stats, algo) {
-                    return Some(target);
-                }
-            }
-        }
-
-        None
-    }
 }
 
 #[async_trait]
@@ -156,11 +107,6 @@ impl GetDataLocations for PowerPlayV1 {
             command: "temps",
             parameters: None,
         };
-        const WEB_PERPETUAL_TUNE: MinerCommand = MinerCommand::WebAPI {
-            command: "perpetualtune",
-            parameters: None,
-        };
-
         match data_field {
             DataField::Mac => vec![(
                 WEB_NETWORK,
@@ -194,24 +140,6 @@ impl GetDataLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![
-                (
-                    WEB_PERPETUAL_TUNE,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some(""),
-                        tag: Some("PerpetualTuneEndpoint"),
-                    },
-                ),
-                (
-                    WEB_SUMMARY,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some(""),
-                        tag: Some("Summary"),
-                    },
-                ),
-            ],
             DataField::Fans => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
@@ -795,41 +723,7 @@ impl GetWattage for PowerPlayV1 {
     }
 }
 
-impl GetTuningTarget for PowerPlayV1 {
-    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        let algo = data
-            .get(&DataField::WattageLimit)
-            .and_then(|v| v.pointer("/Summary/Mining/Algorithm"))
-            .and_then(Value::as_str)
-            .unwrap_or("SHA256");
-
-        if let Some(target_data) = data.get(&DataField::WattageLimit) {
-            if let Some(perpetual) = target_data.get("PerpetualTuneEndpoint")
-                && let Some(target) = Self::parse_tuning_target_from_perpetual_tune(perpetual, algo)
-            {
-                return Some(target);
-            }
-
-            if let Some(summary) = target_data.get("Summary") {
-                if let Some(perpetual_summary) = summary.get("PerpetualTune")
-                    && let Some(target) =
-                        Self::parse_tuning_target_from_perpetual_tune(perpetual_summary, algo)
-                {
-                    return Some(target);
-                }
-
-                if let Some(watts) = summary
-                    .pointer("/PresetInfo/Target Power")
-                    .and_then(Self::value_as_f64)
-                {
-                    return Some(TuningTarget::Power(Power::from_watts(watts)));
-                }
-            }
-        }
-
-        None
-    }
-}
+impl GetTuningTarget for PowerPlayV1 {}
 
 impl GetLightFlashing for PowerPlayV1 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
