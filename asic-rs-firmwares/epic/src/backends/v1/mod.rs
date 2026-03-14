@@ -52,8 +52,8 @@ impl PowerPlayV1 {
             .map(|pool| {
                 json!({
                     "pool": pool.url.to_string(),
-                    "login": pool.username,
-                    "password": pool.password,
+                    "login": pool.username.as_str(),
+                    "password": pool.password.as_str(),
                 })
             })
             .collect()
