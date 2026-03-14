@@ -108,6 +108,12 @@ class Miner:
     async def get_pools(self) -> list[PoolGroupData]:
         return [PoolGroupData.model_validate(b) for b in await self.__inner.get_pools()]
 
+    async def get_pools_config(self) -> list[PoolGroup] | None:
+        inner = await self.__inner.get_pools_config()
+        if inner is not None:
+            return [PoolGroup.model_validate(group) for group in inner]
+        return None
+
     async def set_fault_light(self, fault: bool) -> bool | None:
         return await self.__inner.set_fault_light(fault)
 
@@ -124,8 +130,8 @@ class Miner:
             at_time = timedelta(seconds=at_time)
         return await self.__inner.resume(at_time)
 
-    async def set_pools(self, groups: list[PoolGroup]) -> bool | None:
-        return await self.__inner.set_pools(groups)
+    async def set_pools_config(self, groups: list[PoolGroup]) -> bool | None:
+        return await self.__inner.set_pools_config(groups)
 
     @property
     def supports_set_fault_light(self) -> bool:
@@ -148,5 +154,5 @@ class Miner:
         return self.__inner.supports_resume
 
     @property
-    def supports_set_pools(self) -> bool:
-        return self.__inner.supports_set_pools
+    def supports_pools_config(self) -> bool:
+        return self.__inner.supports_pools_config

@@ -105,10 +105,6 @@ impl Miner {
     fn supports_pools_config(&self) -> bool {
         self.inner.supports_pools_config()
     }
-    #[getter]
-    fn supports_set_pools(&self) -> bool {
-        self.supports_pools_config()
-    }
 
     // Data functions
     pub fn get_data<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
@@ -310,13 +306,5 @@ impl Miner {
             let data = inner.set_pools_config(groups).await;
             Ok(data.ok())
         })
-    }
-
-    pub fn set_pools<'a>(
-        &self,
-        py: Python<'a>,
-        groups: Vec<PoolGroupConfig>,
-    ) -> PyResult<Bound<'a, PyAny>> {
-        self.set_pools_config(py, groups)
     }
 }
