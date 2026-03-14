@@ -13,6 +13,7 @@ use asic_rs_core::{
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
+        miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -518,9 +519,9 @@ impl GetTuningTarget for BraiinsV2507 {
     fn parse_tuning_target(
         &self,
         data: &HashMap<DataField, Value>,
-    ) -> Option<asic_rs_core::data::miner::TuningTarget> {
+    ) -> Option<TuningTarget> {
         data.extract_map::<i64, _>(DataField::WattageLimit, |w| Power::from_watts(w as f64))
-            .map(asic_rs_core::data::miner::TuningTarget::Power)
+            .map(TuningTarget::Power)
     }
 }
 

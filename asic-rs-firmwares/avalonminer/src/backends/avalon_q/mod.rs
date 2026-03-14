@@ -16,6 +16,7 @@ use asic_rs_core::{
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
+        miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -535,9 +536,9 @@ impl GetTuningTarget for AvalonQMiner {
     fn parse_tuning_target(
         &self,
         data: &HashMap<DataField, Value>,
-    ) -> Option<asic_rs_core::data::miner::TuningTarget> {
+    ) -> Option<TuningTarget> {
         data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
-            .map(asic_rs_core::data::miner::TuningTarget::Power)
+            .map(TuningTarget::Power)
     }
 }
 
@@ -638,9 +639,7 @@ mod tests {
         assert_eq!(miner_data.uptime, Some(Duration::from_secs(37819)));
         assert_eq!(
             miner_data.tuning_target,
-            Some(asic_rs_core::data::miner::TuningTarget::Power(
-                Power::from_watts(800.0)
-            ))
+            Some(TuningTarget::Power(Power::from_watts(800.0)))
         );
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 160);
