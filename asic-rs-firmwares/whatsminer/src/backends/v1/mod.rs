@@ -536,7 +536,6 @@ impl SupportsPoolsConfig for WhatsMinerV1 {
     }
 }
 
-
 #[async_trait]
 impl Restart for WhatsMinerV1 {
     fn supports_restart(&self) -> bool {

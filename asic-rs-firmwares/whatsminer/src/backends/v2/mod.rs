@@ -618,7 +618,6 @@ impl SupportsPoolsConfig for WhatsMinerV2 {
     }
 }
 
-
 #[async_trait]
 impl Restart for WhatsMinerV2 {
     async fn restart(&self) -> anyhow::Result<bool> {

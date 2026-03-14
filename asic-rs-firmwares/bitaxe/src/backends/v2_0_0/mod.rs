@@ -485,7 +485,6 @@ impl SupportsPoolsConfig for Bitaxe200 {
     }
 }
 
-
 #[async_trait]
 impl Restart for Bitaxe200 {
     fn supports_restart(&self) -> bool {

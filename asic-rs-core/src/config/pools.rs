@@ -48,7 +48,7 @@ impl From<PoolGroupData> for PoolGroupConfig {
 
 #[cfg(feature = "python")]
 mod python_impls {
-    use pyo3::{conversion::FromPyObject, types::PyAnyMethods, Borrowed, PyAny, PyErr, PyResult};
+    use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
 
     use super::*;
     use crate::data::pool::PoolURL;

@@ -516,10 +516,7 @@ impl GetWattage for BraiinsV2507 {
 }
 
 impl GetTuningTarget for BraiinsV2507 {
-    fn parse_tuning_target(
-        &self,
-        data: &HashMap<DataField, Value>,
-    ) -> Option<TuningTarget> {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.extract_map::<i64, _>(DataField::WattageLimit, |w| Power::from_watts(w as f64))
             .map(TuningTarget::Power)
     }
@@ -629,7 +626,6 @@ impl SupportsPoolsConfig for BraiinsV2507 {
         true
     }
 }
-
 
 #[async_trait]
 impl Restart for BraiinsV2507 {

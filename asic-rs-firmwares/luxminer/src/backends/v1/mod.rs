@@ -938,7 +938,6 @@ impl SupportsPoolsConfig for LuxMinerV1 {
     }
 }
 
-
 #[async_trait]
 impl Restart for LuxMinerV1 {
     async fn restart(&self) -> anyhow::Result<bool> {

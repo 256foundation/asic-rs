@@ -1073,7 +1073,6 @@ impl SupportsPoolsConfig for PowerPlayV1 {
     }
 }
 
-
 #[async_trait]
 impl Restart for PowerPlayV1 {
     async fn restart(&self) -> anyhow::Result<bool> {

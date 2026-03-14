@@ -720,7 +720,6 @@ impl SupportsPoolsConfig for VnishV120 {
     }
 }
 
-
 #[async_trait]
 impl Restart for VnishV120 {
     async fn restart(&self) -> anyhow::Result<bool> {

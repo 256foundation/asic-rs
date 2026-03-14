@@ -844,7 +844,6 @@ impl SupportsPoolsConfig for MaraV1 {
     }
 }
 
-
 #[async_trait]
 impl Restart for MaraV1 {
     fn supports_restart(&self) -> bool {

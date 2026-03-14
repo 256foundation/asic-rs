@@ -203,7 +203,6 @@ impl SupportsPoolsConfig for AvalonQMiner {
     }
 }
 
-
 #[async_trait]
 impl Restart for AvalonQMiner {
     fn supports_restart(&self) -> bool {
@@ -533,10 +532,7 @@ impl GetWattage for AvalonQMiner {
 }
 
 impl GetTuningTarget for AvalonQMiner {
-    fn parse_tuning_target(
-        &self,
-        data: &HashMap<DataField, Value>,
-    ) -> Option<TuningTarget> {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
             .map(TuningTarget::Power)
     }

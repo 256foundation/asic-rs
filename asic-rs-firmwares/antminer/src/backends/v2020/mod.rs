@@ -764,7 +764,6 @@ impl SupportsPoolsConfig for AntMinerV2020 {
     }
 }
 
-
 #[async_trait]
 impl Restart for AntMinerV2020 {
     fn supports_restart(&self) -> bool {

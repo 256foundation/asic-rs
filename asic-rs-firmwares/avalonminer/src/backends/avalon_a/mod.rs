@@ -208,7 +208,6 @@ impl SupportsPoolsConfig for AvalonAMiner {
     }
 }
 
-
 impl GetDataLocations for AvalonAMiner {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const RPC_VERSION: MinerCommand = MinerCommand::RPC {

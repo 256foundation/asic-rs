@@ -472,7 +472,6 @@ impl SupportsPoolsConfig for NerdAxeV1 {
     }
 }
 
-
 #[async_trait]
 impl Restart for NerdAxeV1 {
     fn supports_restart(&self) -> bool {
