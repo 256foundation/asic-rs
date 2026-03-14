@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::pools::PoolGroupConfig,
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -12,6 +12,7 @@ use asic_rs_core::{
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
+        miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -45,7 +46,7 @@ impl PowerPlayV1 {
         }
     }
 
-    fn to_stratum_configs(group: &PoolGroup) -> Vec<Value> {
+    fn to_stratum_configs(group: &PoolGroupConfig) -> Vec<Value> {
         group
             .pools
             .iter()
@@ -57,6 +58,55 @@ impl PowerPlayV1 {
                 })
             })
             .collect()
+    }
+
+    fn value_as_f64(value: &Value) -> Option<f64> {
+        value
+            .as_f64()
+            .or_else(|| value.as_i64().map(|v| v as f64))
+            .or_else(|| value.as_u64().map(|v| v as f64))
+    }
+
+    fn parse_algorithm_stats_target(stats: &Value, algo: &str) -> Option<TuningTarget> {
+        let target = Self::value_as_f64(stats.get("Target")?)?;
+        let unit = stats
+            .get("Unit")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let normalized = unit.trim().to_ascii_uppercase().replace(' ', "");
+
+        if normalized.contains('W') {
+            return Some(TuningTarget::Power(Power::from_watts(target)));
+        }
+
+        if let Ok(hr_unit) = unit.parse::<HashRateUnit>() {
+            return Some(TuningTarget::HashRate(HashRate {
+                value: target,
+                unit: hr_unit,
+                algo: algo.to_string(),
+            }));
+        }
+
+        None
+    }
+
+    fn parse_tuning_target_from_perpetual_tune(value: &Value, algo: &str) -> Option<TuningTarget> {
+        if let Some(current_algo) = value.get("Current Algorithm").and_then(Value::as_str)
+            && let Some(stats) = value.pointer(&format!("/Algorithms/{current_algo}"))
+            && let Some(target) = Self::parse_algorithm_stats_target(stats, algo)
+        {
+            return Some(target);
+        }
+
+        if let Some(algorithms) = value.get("Algorithm").and_then(Value::as_object) {
+            for stats in algorithms.values() {
+                if let Some(target) = Self::parse_algorithm_stats_target(stats, algo) {
+                    return Some(target);
+                }
+            }
+        }
+
+        None
     }
 }
 
@@ -106,6 +156,10 @@ impl GetDataLocations for PowerPlayV1 {
             command: "temps",
             parameters: None,
         };
+        const WEB_PERPETUAL_TUNE: MinerCommand = MinerCommand::WebAPI {
+            command: "perpetualtune",
+            parameters: None,
+        };
 
         match data_field {
             DataField::Mac => vec![(
@@ -140,6 +194,24 @@ impl GetDataLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
+            DataField::WattageLimit => vec![
+                (
+                    WEB_PERPETUAL_TUNE,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: Some("PerpetualTuneEndpoint"),
+                    },
+                ),
+                (
+                    WEB_SUMMARY,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: Some("Summary"),
+                    },
+                ),
+            ],
             DataField::Fans => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
@@ -723,7 +795,41 @@ impl GetWattage for PowerPlayV1 {
     }
 }
 
-impl GetTuningTarget for PowerPlayV1 {}
+impl GetTuningTarget for PowerPlayV1 {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        let algo = data
+            .get(&DataField::WattageLimit)
+            .and_then(|v| v.pointer("/Summary/Mining/Algorithm"))
+            .and_then(Value::as_str)
+            .unwrap_or("SHA256");
+
+        if let Some(target_data) = data.get(&DataField::WattageLimit) {
+            if let Some(perpetual) = target_data.get("PerpetualTuneEndpoint")
+                && let Some(target) = Self::parse_tuning_target_from_perpetual_tune(perpetual, algo)
+            {
+                return Some(target);
+            }
+
+            if let Some(summary) = target_data.get("Summary") {
+                if let Some(perpetual_summary) = summary.get("PerpetualTune")
+                    && let Some(target) =
+                        Self::parse_tuning_target_from_perpetual_tune(perpetual_summary, algo)
+                {
+                    return Some(target);
+                }
+
+                if let Some(watts) = summary
+                    .pointer("/PresetInfo/Target Power")
+                    .and_then(Self::value_as_f64)
+                {
+                    return Some(TuningTarget::Power(Power::from_watts(watts)));
+                }
+            }
+        }
+
+        None
+    }
+}
 
 impl GetLightFlashing for PowerPlayV1 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
@@ -856,11 +962,11 @@ impl SetPowerLimit for PowerPlayV1 {
 }
 
 #[async_trait]
-impl SetPools for PowerPlayV1 {
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+impl SupportsPoolsConfig for PowerPlayV1 {
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let response_ok = |v: &Value| v.get("result").and_then(Value::as_bool).unwrap_or(false);
 
-        let groups: Vec<PoolGroup> = config
+        let groups: Vec<PoolGroupConfig> = config
             .into_iter()
             .filter(|group| !group.pools.is_empty())
             .collect();
@@ -962,10 +1068,11 @@ impl SetPools for PowerPlayV1 {
         }
     }
 
-    fn supports_set_pools(&self) -> bool {
+    fn supports_pools_config(&self) -> bool {
         true
     }
 }
+
 
 #[async_trait]
 impl Restart for PowerPlayV1 {
@@ -1100,6 +1207,11 @@ mod tests {
             hashboard.chips.clear();
         }
         println!("{}", serde_json::to_string_pretty(&miner_data_print)?);
+
+        println!(
+            "pools {}",
+            serde_json::to_string_pretty(&miner.get_pools_config().await?)?
+        );
 
         assert_eq!(miner_data.ip, ip);
         assert!(miner_data.timestamp > 0);

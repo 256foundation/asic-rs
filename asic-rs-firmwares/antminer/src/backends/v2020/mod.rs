@@ -758,11 +758,12 @@ impl SetPowerLimit for AntMinerV2020 {
 }
 
 #[async_trait]
-impl SetPools for AntMinerV2020 {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for AntMinerV2020 {
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }
+
 
 #[async_trait]
 impl Restart for AntMinerV2020 {

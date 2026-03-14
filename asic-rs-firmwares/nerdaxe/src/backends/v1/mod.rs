@@ -466,11 +466,12 @@ impl SetPowerLimit for NerdAxeV1 {
 }
 
 #[async_trait]
-impl SetPools for NerdAxeV1 {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for NerdAxeV1 {
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }
+
 
 #[async_trait]
 impl Restart for NerdAxeV1 {

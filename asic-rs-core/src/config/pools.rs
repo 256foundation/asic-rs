@@ -9,7 +9,7 @@ use crate::data::pool::{PoolGroupData, PoolURL};
     pyclass(skip_from_py_object, get_all, module = "asic_rs")
 )]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Pool {
+pub struct PoolConfig {
     pub url: PoolURL,
     pub username: String,
     pub password: String,
@@ -20,22 +20,22 @@ pub struct Pool {
     pyclass(skip_from_py_object, get_all, module = "asic_rs")
 )]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PoolGroup {
+pub struct PoolGroupConfig {
     pub name: String,
     pub quota: u32,
-    pub pools: Vec<Pool>,
+    pub pools: Vec<PoolConfig>,
 }
 
-impl From<PoolGroupData> for PoolGroup {
+impl From<PoolGroupData> for PoolGroupConfig {
     fn from(data: PoolGroupData) -> Self {
-        PoolGroup {
+        PoolGroupConfig {
             name: data.name,
             quota: data.quota,
             pools: data
                 .pools
                 .into_iter()
                 .filter_map(|p| {
-                    Some(Pool {
+                    Some(PoolConfig {
                         url: p.url?,
                         username: p.user.unwrap_or_default(),
                         password: String::from("x"),
@@ -48,12 +48,12 @@ impl From<PoolGroupData> for PoolGroup {
 
 #[cfg(feature = "python")]
 mod python_impls {
-    use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
+    use pyo3::{conversion::FromPyObject, types::PyAnyMethods, Borrowed, PyAny, PyErr, PyResult};
 
     use super::*;
     use crate::data::pool::PoolURL;
 
-    impl FromPyObject<'_, '_> for Pool {
+    impl FromPyObject<'_, '_> for PoolConfig {
         type Error = PyErr;
 
         fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
@@ -61,7 +61,7 @@ mod python_impls {
             let url = url_ob
                 .extract::<PoolURL>()
                 .or_else(|_| url_ob.extract::<String>().map(PoolURL::from))?;
-            Ok(Pool {
+            Ok(PoolConfig {
                 url,
                 username: obj.getattr("username")?.extract()?,
                 password: obj.getattr("password")?.extract()?,
@@ -69,11 +69,11 @@ mod python_impls {
         }
     }
 
-    impl FromPyObject<'_, '_> for PoolGroup {
+    impl FromPyObject<'_, '_> for PoolGroupConfig {
         type Error = PyErr;
 
         fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
-            Ok(PoolGroup {
+            Ok(PoolGroupConfig {
                 name: obj.getattr("name")?.extract()?,
                 quota: obj.getattr("quota")?.extract()?,
                 pools: obj.getattr("pools")?.extract()?,

@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::pools::PoolGroupConfig,
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -521,8 +521,8 @@ impl SetPowerLimit for WhatsMinerV3 {
 }
 
 #[async_trait]
-impl SetPools for WhatsMinerV3 {
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+impl SupportsPoolsConfig for WhatsMinerV3 {
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let group = config
             .into_iter()
             .next()
@@ -547,10 +547,11 @@ impl SetPools for WhatsMinerV3 {
         Ok(res.is_ok())
     }
 
-    fn supports_set_pools(&self) -> bool {
+    fn supports_pools_config(&self) -> bool {
         true
     }
 }
+
 
 #[async_trait]
 impl Restart for WhatsMinerV3 {

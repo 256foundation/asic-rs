@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::pools::PoolGroupConfig,
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -691,8 +691,8 @@ impl SetPowerLimit for VnishV120 {
 }
 
 #[async_trait]
-impl SetPools for VnishV120 {
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+impl SupportsPoolsConfig for VnishV120 {
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let pools: Vec<Value> = config
             .iter()
             .flat_map(|group| group.pools.iter())
@@ -715,10 +715,11 @@ impl SetPools for VnishV120 {
             .is_ok())
     }
 
-    fn supports_set_pools(&self) -> bool {
+    fn supports_pools_config(&self) -> bool {
         true
     }
 }
+
 
 #[async_trait]
 impl Restart for VnishV120 {

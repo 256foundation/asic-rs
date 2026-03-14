@@ -2,7 +2,7 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
-    config::pools::PoolGroup,
+    config::pools::PoolGroupConfig,
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -13,7 +13,6 @@ use asic_rs_core::{
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
-        miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -516,9 +515,12 @@ impl GetWattage for BraiinsV2507 {
 }
 
 impl GetTuningTarget for BraiinsV2507 {
-    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+    fn parse_tuning_target(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<asic_rs_core::data::miner::TuningTarget> {
         data.extract_map::<i64, _>(DataField::WattageLimit, |w| Power::from_watts(w as f64))
-            .map(TuningTarget::Power)
+            .map(asic_rs_core::data::miner::TuningTarget::Power)
     }
 }
 
@@ -589,8 +591,8 @@ impl SetPowerLimit for BraiinsV2507 {
 }
 
 #[async_trait]
-impl SetPools for BraiinsV2507 {
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
+impl SupportsPoolsConfig for BraiinsV2507 {
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let groups: Vec<Value> = config
             .iter()
             .map(|group| {
@@ -622,10 +624,11 @@ impl SetPools for BraiinsV2507 {
             .is_ok())
     }
 
-    fn supports_set_pools(&self) -> bool {
+    fn supports_pools_config(&self) -> bool {
         true
     }
 }
+
 
 #[async_trait]
 impl Restart for BraiinsV2507 {

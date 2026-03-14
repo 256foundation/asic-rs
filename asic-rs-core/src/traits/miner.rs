@@ -14,7 +14,7 @@ use serde_json::Value;
 use tracing;
 
 use crate::{
-    config::pools::PoolGroup,
+    config::pools::PoolGroupConfig,
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{DataCollector, DataField, DataLocation},
@@ -34,16 +34,13 @@ pub trait MinerConstructor {
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner>;
 }
 
-pub trait Miner: GetMinerData + HasMinerControl {}
+pub trait Miner: GetMinerData + HasMinerControl + SupportsPoolsConfig {}
 
-impl<T: GetMinerData + HasMinerControl> Miner for T {}
+impl<T: GetMinerData + HasMinerControl + SupportsPoolsConfig> Miner for T {}
 
-pub trait HasMinerControl:
-    SetFaultLight + SetPowerLimit + SetPools + Restart + Resume + Pause
-{
-}
+pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
 
-impl<T: SetFaultLight + SetPowerLimit + SetPools + Restart + Resume + Pause> HasMinerControl for T {}
+impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
 
 /// Trait that every miner backend must implement to provide miner data.
 #[async_trait]
@@ -635,15 +632,6 @@ pub trait SetPowerLimit {
 }
 
 #[async_trait]
-pub trait SetPools {
-    #[allow(unused_variables)]
-    async fn set_pools(&self, config: Vec<PoolGroup>) -> anyhow::Result<bool> {
-        anyhow::bail!("Setting pools is not supported on this platform");
-    }
-    fn supports_set_pools(&self) -> bool;
-}
-
-#[async_trait]
 pub trait Restart {
     async fn restart(&self) -> anyhow::Result<bool> {
         anyhow::bail!("Restarting is not supported on this platform");
@@ -667,4 +655,22 @@ pub trait Resume {
         anyhow::bail!("Resuming mining is not supported on this platform");
     }
     fn supports_resume(&self) -> bool;
+}
+
+// Config traits
+#[async_trait]
+pub trait SupportsPoolsConfig: GetPools {
+    #[allow(unused_variables)]
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting pools is not supported on this platform");
+    }
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+    fn supports_pools_config(&self) -> bool;
 }

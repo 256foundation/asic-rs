@@ -202,11 +202,12 @@ impl SetPowerLimit for AvalonAMiner {
 }
 
 #[async_trait]
-impl SetPools for AvalonAMiner {
-    fn supports_set_pools(&self) -> bool {
+impl SupportsPoolsConfig for AvalonAMiner {
+    fn supports_pools_config(&self) -> bool {
         false
     }
 }
+
 
 impl GetDataLocations for AvalonAMiner {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
