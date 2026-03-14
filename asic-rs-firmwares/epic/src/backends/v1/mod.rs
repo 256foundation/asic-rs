@@ -58,7 +58,6 @@ impl PowerPlayV1 {
             })
             .collect()
     }
-
 }
 
 #[async_trait]
@@ -107,6 +106,7 @@ impl GetDataLocations for PowerPlayV1 {
             command: "temps",
             parameters: None,
         };
+
         match data_field {
             DataField::Mac => vec![(
                 WEB_NETWORK,
