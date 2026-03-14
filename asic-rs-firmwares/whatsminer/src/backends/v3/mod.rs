@@ -534,8 +534,8 @@ impl SupportsPoolsConfig for WhatsMinerV3 {
             .map(|pool| {
                 json!({
                     "pool": pool.url.to_string(),
-                    "worker": pool.username,
-                    "passwd": pool.password,
+                    "worker": pool.username.as_str(),
+                    "passwd": pool.password.as_str(),
                 })
             })
             .collect();
