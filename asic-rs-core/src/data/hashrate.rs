@@ -24,6 +24,19 @@ pub enum HashRateUnit {
     YottaHash,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HashRateUnitParseError {
+    input: String,
+}
+
+impl Display for HashRateUnitParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unknown hash rate unit: {}", self.input)
+    }
+}
+
+impl std::error::Error for HashRateUnitParseError {}
+
 impl HashRateUnit {
     fn to_multiplier(&self) -> f64 {
         match self {
@@ -41,7 +54,7 @@ impl HashRateUnit {
 }
 
 impl FromStr for HashRateUnit {
-    type Err = ();
+    type Err = HashRateUnitParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let normalized = s.trim().to_ascii_uppercase().replace([' ', '_'], "");
@@ -56,7 +69,9 @@ impl FromStr for HashRateUnit {
             "EXAHASH" | "EH" | "EHS" | "EH/S" => Ok(HashRateUnit::ExaHash),
             "ZETTAHASH" | "ZH" | "ZHS" | "ZH/S" => Ok(HashRateUnit::ZettaHash),
             "YOTTAHASH" | "YH" | "YHS" | "YH/S" => Ok(HashRateUnit::YottaHash),
-            _ => Err(()),
+            _ => Err(HashRateUnitParseError {
+                input: s.to_string(),
+            }),
         }
     }
 }
