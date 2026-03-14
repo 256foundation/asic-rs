@@ -700,8 +700,8 @@ impl SupportsPoolsConfig for VnishV120 {
             .map(|(idx, pool)| {
                 json!({
                     "url": format!("{}:{}", pool.url.host, pool.url.port),
-                    "user": pool.username,
-                    "pass": pool.password,
+                    "user": pool.username.as_str(),
+                    "pass": pool.password.as_str(),
                     "order": idx,
                     "id": idx,
                 })
