@@ -63,10 +63,7 @@ impl PowerPlayV1 {
         value.as_u64().and_then(|v| u32::try_from(v).ok())
     }
 
-    fn parse_scaling_config_from_stats(
-        stats: &Value,
-        algorithm: Option<&str>,
-    ) -> Option<ScalingConfig> {
+    fn parse_scaling_config_from_stats(stats: &Value) -> Option<ScalingConfig> {
         let minimum = stats
             .get("Min Throttle Target")
             .or_else(|| stats.get("min"))
@@ -76,13 +73,7 @@ impl PowerPlayV1 {
             .or_else(|| stats.get("step"))
             .and_then(Self::value_as_u32)?;
 
-        let config = ScalingConfig::new(step, minimum);
-
-        let Some(name) = algorithm else {
-            return Some(config);
-        };
-
-        Some(config.with_algorithm(name))
+        Some(ScalingConfig::new(step, minimum))
     }
 
     fn parse_scaling_config_from_summary(summary: &Value) -> Option<ScalingConfig> {
@@ -90,8 +81,8 @@ impl PowerPlayV1 {
         let algorithms = perpetual.get("Algorithm").and_then(Value::as_object)?;
 
         algorithms
-            .iter()
-            .find_map(|(name, stats)| Self::parse_scaling_config_from_stats(stats, Some(name)))
+            .values()
+            .find_map(Self::parse_scaling_config_from_stats)
     }
 }
 
@@ -1142,7 +1133,6 @@ mod tests {
         let config = PowerPlayV1::parse_scaling_config_from_summary(&summary)
             .context("failed to parse scaling config from summary")?;
 
-        assert_eq!(config.algorithm.as_deref(), Some("VoltageOptimizer"));
         assert_eq!(config.minimum, 50);
         assert_eq!(config.step, 5);
 
