@@ -13,10 +13,12 @@ use crate::{factory::MinerFactory as MinerFactory_Base, python::miner::Miner};
 
 #[pyclass]
 pub struct PyMinerStream {
+    #[allow(clippy::type_complexity)]
     inner: Arc<tokio::sync::Mutex<Pin<Box<dyn Stream<Item = Box<dyn MinerTrait>> + Send>>>>,
 }
 
 impl PyMinerStream {
+    #[allow(clippy::type_complexity)]
     fn new(inner: Pin<Box<dyn Stream<Item = Box<dyn MinerTrait>> + Send>>) -> Self {
         Self {
             inner: Arc::new(tokio::sync::Mutex::new(inner)),
@@ -44,6 +46,7 @@ impl PyMinerStream {
 
 #[pyclass]
 pub struct PyMinerStreamWithIP {
+    #[allow(clippy::type_complexity)]
     inner: Arc<
         tokio::sync::Mutex<
             Pin<Box<dyn Stream<Item = (IpAddr, Option<Box<dyn MinerTrait>>)> + Send>>,
@@ -52,6 +55,7 @@ pub struct PyMinerStreamWithIP {
 }
 
 impl PyMinerStreamWithIP {
+    #[allow(clippy::type_complexity)]
     fn new(
         inner: Pin<Box<dyn Stream<Item = (IpAddr, Option<Box<dyn MinerTrait>>)> + Send>>,
     ) -> Self {
