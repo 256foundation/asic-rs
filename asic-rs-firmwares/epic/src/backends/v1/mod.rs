@@ -58,7 +58,6 @@ impl PowerPlayV1 {
             })
             .collect()
     }
-
 }
 
 #[async_trait]
