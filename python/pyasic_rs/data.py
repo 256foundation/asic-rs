@@ -2,9 +2,9 @@ from datetime import timedelta
 from enum import IntEnum
 from ipaddress import IPv4Address
 from typing import Annotated, Self
+
 from pyasic_rs.asic_rs import HashRateUnit as _rs_HashRateUnit
 from pyasic_rs.asic_rs import TuningTarget as _rs_TuningTarget
-
 from pydantic import BaseModel, ConfigDict, BeforeValidator, field_serializer, model_serializer, field_validator
 
 

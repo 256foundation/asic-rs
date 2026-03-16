@@ -71,6 +71,7 @@ impl APIClient for LuxMinerV1 {
 }
 
 impl GetConfigsLocations for LuxMinerV1 {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }

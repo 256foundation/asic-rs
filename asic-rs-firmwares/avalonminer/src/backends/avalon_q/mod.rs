@@ -221,6 +221,7 @@ impl Restart for AvalonQMiner {
 }
 
 impl GetConfigsLocations for AvalonQMiner {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }

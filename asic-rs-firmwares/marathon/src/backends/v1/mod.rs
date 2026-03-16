@@ -218,6 +218,7 @@ impl APIClient for MaraV1 {
 }
 
 impl GetConfigsLocations for MaraV1 {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }

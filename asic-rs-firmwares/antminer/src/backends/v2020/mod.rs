@@ -173,6 +173,7 @@ impl APIClient for AntMinerV2020 {
 }
 
 impl GetConfigsLocations for AntMinerV2020 {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }

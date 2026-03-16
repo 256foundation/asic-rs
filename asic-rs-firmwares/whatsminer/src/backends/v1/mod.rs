@@ -63,6 +63,7 @@ impl APIClient for WhatsMinerV1 {
 }
 
 impl GetConfigsLocations for WhatsMinerV1 {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }

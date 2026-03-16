@@ -3,6 +3,7 @@ from datetime import timedelta
 from pyasic_rs.asic_rs import HashAlgorithm as _rs_HashAlgorithm
 from pyasic_rs.asic_rs import Miner as _rs_Miner
 from pyasic_rs.asic_rs import TuningTarget as _rs_TuningTarget
+
 from .config import PoolGroup
 from .data import MinerData, BoardData, HashRate, FanData, MinerMessage, PoolGroupData
 

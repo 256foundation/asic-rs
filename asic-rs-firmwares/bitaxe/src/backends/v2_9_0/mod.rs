@@ -63,6 +63,7 @@ impl APIClient for Bitaxe290 {
 }
 
 impl GetConfigsLocations for Bitaxe290 {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }

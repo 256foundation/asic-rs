@@ -219,6 +219,7 @@ impl SupportsPoolsConfig for AvalonAMiner {
 }
 
 impl GetConfigsLocations for AvalonAMiner {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }

@@ -61,6 +61,7 @@ impl APIClient for NerdAxeV1 {
 }
 
 impl GetConfigsLocations for NerdAxeV1 {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }

@@ -56,6 +56,7 @@ impl APIClient for VnishV120 {
 }
 
 impl GetConfigsLocations for VnishV120 {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }

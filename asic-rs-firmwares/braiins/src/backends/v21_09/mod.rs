@@ -68,6 +68,7 @@ impl APIClient for BraiinsV2109 {
 }
 
 impl GetConfigsLocations for BraiinsV2109 {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }

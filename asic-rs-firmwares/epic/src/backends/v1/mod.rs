@@ -74,6 +74,7 @@ impl APIClient for PowerPlayV1 {
 }
 
 impl GetConfigsLocations for PowerPlayV1 {
+    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }
