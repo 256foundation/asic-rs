@@ -41,7 +41,7 @@ pub trait FromValue: Sized {
     fn from_value(value: &Value) -> Option<Self>;
 }
 
-/// Extension trait for HashMap<ConfigField, &Value> to provide cleaner value extraction.
+/// Extension trait for HashMap<ConfigField, Value> to provide cleaner value extraction.
 pub trait ConfigExtensions {
     /// Extract a value of type T from the config map for the given field.
     fn extract<T: FromValue>(&self, field: ConfigField) -> Option<T>;
@@ -264,7 +264,7 @@ impl<'a> ConfigCollector<'a> {
                 match extractor.tag {
                     Some(tag) => {
                         let tag = tag.to_string();
-                        success.push(json!({ tag: value.clone() }).clone());
+                        success.push(json!({ tag: value.clone() }));
                     }
                     None => {
                         success.push(value.clone());

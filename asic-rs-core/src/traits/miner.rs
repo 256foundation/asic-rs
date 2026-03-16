@@ -57,9 +57,10 @@ pub trait CollectConfigs: GetConfigsLocations {
 pub trait GetConfigsLocations: MinerInterface + Send + Sync + Debug {
     /// Returns the locations of the specified config field on the miner.
     ///
-    /// This associates API commands (routes) with `DataExtractor` structs,
-    /// describing how to extract the config for a given `ConfigField`.
-    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation>;
+    /// This associates API commands (routes) with `ConfigLocation` values
+    /// (and their associated config extractors), describing how to extract
+    /// the config for a given `ConfigField`.
+    fn get_configs_locations(&self, config_field: ConfigField) -> Vec<ConfigLocation>;
 }
 
 /// Trait that every miner backend must implement to provide miner data.
