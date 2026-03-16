@@ -8,15 +8,15 @@ use serde::{Deserialize, Serialize};
 )]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScalingConfig {
-    pub step: usize,
-    pub minimum: usize,
+    pub step: u32,
+    pub minimum: u32,
     pub algorithm: Option<String>,
     pub shutdown: Option<bool>,
     pub shutdown_duration: Option<f32>,
 }
 
 impl ScalingConfig {
-    pub fn new(step: usize, minimum: usize) -> Self {
+    pub fn new(step: u32, minimum: u32) -> Self {
         Self {
             step,
             minimum,

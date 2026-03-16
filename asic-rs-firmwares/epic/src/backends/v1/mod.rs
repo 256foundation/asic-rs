@@ -59,8 +59,8 @@ impl PowerPlayV1 {
             .collect()
     }
 
-    fn value_as_usize(value: &Value) -> Option<usize> {
-        value.as_u64().and_then(|v| usize::try_from(v).ok())
+    fn value_as_u32(value: &Value) -> Option<u32> {
+        value.as_u64().and_then(|v| u32::try_from(v).ok())
     }
 
     fn parse_scaling_config_from_stats(
@@ -70,11 +70,11 @@ impl PowerPlayV1 {
         let minimum = stats
             .get("Min Throttle Target")
             .or_else(|| stats.get("min"))
-            .and_then(Self::value_as_usize)?;
+            .and_then(Self::value_as_u32)?;
         let step = stats
             .get("Throttle Step")
             .or_else(|| stats.get("step"))
-            .and_then(Self::value_as_usize)?;
+            .and_then(Self::value_as_u32)?;
 
         let config = ScalingConfig::new(step, minimum);
 
