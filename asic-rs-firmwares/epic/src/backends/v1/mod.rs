@@ -485,6 +485,21 @@ impl GetHashboards for PowerPlayV1 {
                 })
             });
 
+        if let Some(tuned) = data
+            .get(&DataField::Hashboards)
+            .and_then(|v| v.pointer("/Summary/PerpetualTune/Algorithm"))
+            .and_then(|v| v.as_object())
+            .and_then(|algorithms| {
+                algorithms
+                    .values()
+                    .find_map(|algo| algo.get("Optimized").and_then(|v| v.as_bool()))
+            })
+        {
+            for hashboard in &mut hashboards {
+                hashboard.tuned = Some(tuned);
+            }
+        }
+
         //Temp Data
         data.get(&DataField::Hashboards)
             .and_then(|v| v.pointer("/Board Temps"))
