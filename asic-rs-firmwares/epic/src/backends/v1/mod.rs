@@ -59,31 +59,6 @@ impl PowerPlayV1 {
             .collect()
     }
 
-    fn value_as_u32(value: &Value) -> Option<u32> {
-        value.as_u64().and_then(|v| u32::try_from(v).ok())
-    }
-
-    fn parse_scaling_config_from_stats(stats: &Value) -> Option<ScalingConfig> {
-        let minimum = stats
-            .get("Min Throttle Target")
-            .or_else(|| stats.get("min"))
-            .and_then(Self::value_as_u32)?;
-        let step = stats
-            .get("Throttle Step")
-            .or_else(|| stats.get("step"))
-            .and_then(Self::value_as_u32)?;
-
-        Some(ScalingConfig::new(step, minimum))
-    }
-
-    fn parse_scaling_config_from_summary(summary: &Value) -> Option<ScalingConfig> {
-        let perpetual = summary.get("PerpetualTune")?;
-        let algorithms = perpetual.get("Algorithm").and_then(Value::as_object)?;
-
-        algorithms
-            .values()
-            .find_map(Self::parse_scaling_config_from_stats)
-    }
 }
 
 #[async_trait]
@@ -1001,9 +976,26 @@ impl SupportsScalingConfig for PowerPlayV1 {
             .send_command("summary", false, None, Method::GET)
             .await?;
 
-        Self::parse_scaling_config_from_summary(&summary).ok_or_else(|| {
-            anyhow::anyhow!("Failed to parse scaling config from summary perpetual tune data")
-        })
+        summary
+            .pointer("/PerpetualTune/Algorithm")
+            .and_then(Value::as_object)
+            .and_then(|algorithms| {
+                algorithms.values().find_map(|stats| {
+                    let minimum = stats
+                        .get("Min Throttle Target")
+                        .or_else(|| stats.get("min"))
+                        .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
+                    let step = stats
+                        .get("Throttle Step")
+                        .or_else(|| stats.get("step"))
+                        .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
+
+                    Some(ScalingConfig::new(step, minimum))
+                })
+            })
+            .ok_or_else(|| {
+                anyhow::anyhow!("Failed to parse scaling config from summary perpetual tune data")
+            })
     }
     fn supports_scaling_config(&self) -> bool {
         true
@@ -1128,10 +1120,26 @@ mod tests {
     }
 
     #[test]
-    fn parse_scaling_config_from_summary_test() -> anyhow::Result<()> {
+    fn parse_scaling_config_test() -> anyhow::Result<()> {
         let summary = Value::from_str(SUMMARY)?;
-        let config = PowerPlayV1::parse_scaling_config_from_summary(&summary)
-            .context("failed to parse scaling config from summary")?;
+        let config = summary
+            .pointer("/PerpetualTune/Algorithm")
+            .and_then(Value::as_object)
+            .and_then(|algorithms| {
+                algorithms.values().find_map(|stats| {
+                    let minimum = stats
+                        .get("Min Throttle Target")
+                        .or_else(|| stats.get("min"))
+                        .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
+                    let step = stats
+                        .get("Throttle Step")
+                        .or_else(|| stats.get("step"))
+                        .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
+
+                    Some(ScalingConfig::new(step, minimum))
+                })
+            })
+            .context("failed to parse scaling config")?;
 
         assert_eq!(config.minimum, 50);
         assert_eq!(config.step, 5);
