@@ -1,7 +1,9 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
+use asic_rs_core::config::collector::{
+    ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation,
+};
 use asic_rs_core::{
     config::{pools::PoolGroupConfig, scaling::ScalingConfig},
     data::{
@@ -74,9 +76,22 @@ impl APIClient for PowerPlayV1 {
 }
 
 impl GetConfigsLocations for PowerPlayV1 {
-    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        vec![]
+        const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
+            command: "summary",
+            parameters: None,
+        };
+        match data_field {
+            ConfigField::Scaling => vec![(
+                WEB_SUMMARY,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/PerpetualTune/Algorithm"),
+                    tag: None,
+                },
+            )],
+            _ => vec![],
+        }
     }
 }
 
@@ -1005,16 +1020,12 @@ impl SupportsPoolsConfig for PowerPlayV1 {
     }
 }
 
-#[async_trait]
 impl SupportsScalingConfig for PowerPlayV1 {
-    async fn get_scaling_config(&self) -> anyhow::Result<ScalingConfig> {
-        let summary = self
-            .web
-            .send_command("summary", false, None, Method::GET)
-            .await?;
-
-        summary
-            .pointer("/PerpetualTune/Algorithm")
+    fn parse_scaling_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<ScalingConfig> {
+        data.get(&ConfigField::Scaling)
             .and_then(Value::as_object)
             .and_then(|algorithms| {
                 algorithms.values().find_map(|stats| {
@@ -1026,7 +1037,6 @@ impl SupportsScalingConfig for PowerPlayV1 {
                         .get("Throttle Step")
                         .or_else(|| stats.get("step"))
                         .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
-
                     Some(ScalingConfig::new(step, minimum))
                 })
             })
@@ -1034,6 +1044,7 @@ impl SupportsScalingConfig for PowerPlayV1 {
                 anyhow::anyhow!("Failed to parse scaling config from summary perpetual tune data")
             })
     }
+
     fn supports_scaling_config(&self) -> bool {
         true
     }
@@ -1159,24 +1170,14 @@ mod tests {
     #[test]
     fn parse_scaling_config_test() -> anyhow::Result<()> {
         let summary = Value::from_str(SUMMARY)?;
-        let config = summary
+        let algorithm = summary
             .pointer("/PerpetualTune/Algorithm")
-            .and_then(Value::as_object)
-            .and_then(|algorithms| {
-                algorithms.values().find_map(|stats| {
-                    let minimum = stats
-                        .get("Min Throttle Target")
-                        .or_else(|| stats.get("min"))
-                        .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
-                    let step = stats
-                        .get("Throttle Step")
-                        .or_else(|| stats.get("step"))
-                        .and_then(|v| u32::try_from(v.as_u64()?).ok())?;
+            .cloned()
+            .context("missing /PerpetualTune/Algorithm")?;
 
-                    Some(ScalingConfig::new(step, minimum))
-                })
-            })
-            .context("failed to parse scaling config")?;
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let data = HashMap::from([(ConfigField::Scaling, algorithm)]);
+        let config = miner.parse_scaling_config(&data)?;
 
         assert_eq!(config.minimum, 50);
         assert_eq!(config.step, 5);
