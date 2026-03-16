@@ -623,6 +623,13 @@ impl GetPools for AvalonAMiner {
     }
 }
 
+#[async_trait]
+impl SupportsScalingConfig for AvalonAMiner {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

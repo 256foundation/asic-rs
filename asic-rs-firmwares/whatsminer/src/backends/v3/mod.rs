@@ -595,3 +595,10 @@ impl Resume for WhatsMinerV3 {
         true
     }
 }
+
+#[async_trait]
+impl SupportsScalingConfig for WhatsMinerV3 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}

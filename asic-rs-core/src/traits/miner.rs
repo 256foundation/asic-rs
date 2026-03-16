@@ -34,9 +34,12 @@ pub trait MinerConstructor {
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner>;
 }
 
-pub trait Miner: GetMinerData + HasMinerControl + SupportsPoolsConfig {}
+pub trait Miner:
+    GetMinerData + HasMinerControl + SupportsPoolsConfig + SupportsScalingConfig
+{
+}
 
-impl<T: GetMinerData + HasMinerControl + SupportsPoolsConfig> Miner for T {}
+impl<T: GetMinerData + HasMinerControl + SupportsPoolsConfig + SupportsScalingConfig> Miner for T {}
 
 pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
 

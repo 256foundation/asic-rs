@@ -655,3 +655,10 @@ impl Resume for WhatsMinerV2 {
         true
     }
 }
+
+#[async_trait]
+impl SupportsScalingConfig for WhatsMinerV2 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}

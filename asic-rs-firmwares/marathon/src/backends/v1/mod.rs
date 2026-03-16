@@ -885,3 +885,10 @@ impl Resume for MaraV1 {
         true
     }
 }
+
+#[async_trait]
+impl SupportsScalingConfig for MaraV1 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}

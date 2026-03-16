@@ -494,3 +494,10 @@ impl Resume for Bitaxe290 {
         false
     }
 }
+
+#[async_trait]
+impl SupportsScalingConfig for Bitaxe290 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}

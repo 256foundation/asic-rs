@@ -506,6 +506,13 @@ impl Resume for Bitaxe200 {
     }
 }
 
+#[async_trait]
+impl SupportsScalingConfig for Bitaxe200 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

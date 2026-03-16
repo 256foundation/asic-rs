@@ -58,19 +58,15 @@ impl PowerPlayV1 {
             })
             .collect()
     }
+
     fn value_as_usize(value: &Value) -> Option<usize> {
-        value
-            .as_u64()
-            .and_then(|v| usize::try_from(v).ok())
-            .or_else(|| {
-                value
-                    .as_i64()
-                    .and_then(|v| u64::try_from(v).ok())
-                    .and_then(|v| usize::try_from(v).ok())
-            })
+        value.as_u64().and_then(|v| usize::try_from(v).ok())
     }
 
-    fn parse_scaling_config_from_stats(stats: &Value) -> Option<ScalingConfig> {
+    fn parse_scaling_config_from_stats(
+        stats: &Value,
+        algorithm: Option<&str>,
+    ) -> Option<ScalingConfig> {
         let minimum = stats
             .get("Min Throttle Target")
             .or_else(|| stats.get("min"))
@@ -80,28 +76,22 @@ impl PowerPlayV1 {
             .or_else(|| stats.get("step"))
             .and_then(Self::value_as_usize)?;
 
-        Some(ScalingConfig::new(step, minimum))
+        let config = ScalingConfig::new(step, minimum);
+
+        let Some(name) = algorithm else {
+            return Some(config);
+        };
+
+        Some(config.with_algorithm(name))
     }
 
     fn parse_scaling_config_from_summary(summary: &Value) -> Option<ScalingConfig> {
         let perpetual = summary.get("PerpetualTune")?;
+        let algorithms = perpetual.get("Algorithm").and_then(Value::as_object)?;
 
-        if let Some(current_algo) = perpetual.get("Current Algorithm").and_then(Value::as_str)
-            && let Some(stats) = perpetual.pointer(&format!("/Algorithm/{current_algo}"))
-            && let Some(config) = Self::parse_scaling_config_from_stats(stats)
-        {
-            return Some(config);
-        }
-
-        if let Some(algorithms) = perpetual.get("Algorithm").and_then(Value::as_object) {
-            for stats in algorithms.values() {
-                if let Some(config) = Self::parse_scaling_config_from_stats(stats) {
-                    return Some(config);
-                }
-            }
-        }
-
-        None
+        algorithms
+            .iter()
+            .find_map(|(name, stats)| Self::parse_scaling_config_from_stats(stats, Some(name)))
     }
 }
 
@@ -1168,10 +1158,10 @@ mod tests {
             serde_json::to_string_pretty(&miner.get_pools_config().await?)?
         );
 
-        // println!(
-        //     "scalingconfig {}",
-        //     serde_json::to_string_pretty(&miner.get_scaling_config().await?)?
-        // );
+        println!(
+            "scalingconfig {}",
+            serde_json::to_string_pretty(&miner.get_scaling_config().await?)?
+        );
 
         assert_eq!(miner_data.ip, ip);
         assert!(miner_data.timestamp > 0);

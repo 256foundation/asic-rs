@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct ScalingConfig {
     pub step: usize,
     pub minimum: usize,
+    pub algorithm: Option<String>,
     pub shutdown: Option<bool>,
     pub shutdown_duration: Option<f32>,
 }
@@ -19,9 +20,15 @@ impl ScalingConfig {
         Self {
             step,
             minimum,
+            algorithm: None,
             shutdown: None,
             shutdown_duration: None,
         }
+    }
+
+    pub fn with_algorithm(mut self, algorithm: impl Into<String>) -> Self {
+        self.algorithm = Some(algorithm.into());
+        self
     }
 
     pub fn with_shutdown(mut self, shutdown: bool) -> Self {

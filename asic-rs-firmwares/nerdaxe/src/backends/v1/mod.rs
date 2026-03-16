@@ -492,3 +492,10 @@ impl Resume for NerdAxeV1 {
         false
     }
 }
+
+#[async_trait]
+impl SupportsScalingConfig for NerdAxeV1 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
