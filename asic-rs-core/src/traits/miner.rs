@@ -34,16 +34,17 @@ pub trait MinerConstructor {
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner>;
 }
 
-pub trait Miner:
-    GetMinerData + HasMinerControl + SupportsPoolsConfig + SupportsScalingConfig
-{
-}
+pub trait Miner: GetMinerData + HasMinerControl + SupportsConfigs {}
 
-impl<T: GetMinerData + HasMinerControl + SupportsPoolsConfig + SupportsScalingConfig> Miner for T {}
+impl<T: GetMinerData + HasMinerControl + SupportsConfigs> Miner for T {}
 
 pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
 
 impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
+
+pub trait SupportsConfigs: SupportsPoolsConfig + SupportsScalingConfig {}
+
+impl<T: SupportsPoolsConfig + SupportsScalingConfig> SupportsConfigs for T {}
 
 /// Trait that every miner backend must implement to provide miner data.
 #[async_trait]
