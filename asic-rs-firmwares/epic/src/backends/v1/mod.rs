@@ -1,6 +1,7 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
+use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use asic_rs_core::{
     config::{pools::PoolGroupConfig, scaling::ScalingConfig},
     data::{
@@ -69,6 +70,18 @@ impl APIClient for PowerPlayV1 {
                 "Unsupported command type for ePIC PowerPlay API"
             )),
         }
+    }
+}
+
+impl GetConfigsLocations for PowerPlayV1 {
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for PowerPlayV1 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -872,6 +885,15 @@ impl SetPowerLimit for PowerPlayV1 {
 
 #[async_trait]
 impl SupportsPoolsConfig for PowerPlayV1 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let response_ok = |v: &Value| v.get("result").and_then(Value::as_bool).unwrap_or(false);
 

@@ -1,6 +1,8 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
+use crate::firmware::WhatsMinerFirmware;
 use anyhow;
+use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use asic_rs_core::{
     config::pools::PoolGroupConfig,
     data::{
@@ -26,8 +28,6 @@ use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::WhatsMinerRPCAPI;
 use serde_json::{Value, json};
 
-use crate::firmware::WhatsMinerFirmware;
-
 mod rpc;
 
 #[derive(Debug)]
@@ -48,6 +48,18 @@ impl WhatsMinerV2 {
                 HashAlgorithm::SHA256,
             ),
         }
+    }
+}
+
+impl GetConfigsLocations for WhatsMinerV2 {
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for WhatsMinerV2 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -583,6 +595,15 @@ impl SetPowerLimit for WhatsMinerV2 {
 
 #[async_trait]
 impl SupportsPoolsConfig for WhatsMinerV2 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let group = config
             .into_iter()

@@ -13,6 +13,7 @@ use reqwest::Method;
 use serde_json::Value;
 use tracing;
 
+use crate::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use crate::{
     config::{pools::PoolGroupConfig, scaling::ScalingConfig},
     data::{
@@ -42,9 +43,24 @@ pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pa
 
 impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
 
-pub trait SupportsConfigs: SupportsPoolsConfig + SupportsScalingConfig {}
+pub trait SupportsConfigs: CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig {}
 
-impl<T: SupportsPoolsConfig + SupportsScalingConfig> SupportsConfigs for T {}
+impl<T: CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig> SupportsConfigs for T {}
+
+pub trait CollectConfigs: GetConfigsLocations {
+    /// Returns a `ConfigCollector` that can be used to collect configs from the miner.
+    ///
+    /// This method is responsible for creating and returning a `ConfigCollector`
+    /// instance that can be used to collect configs from the miner.
+    fn get_config_collector(&self) -> ConfigCollector<'_>;
+}
+pub trait GetConfigsLocations: MinerInterface + Send + Sync + Debug {
+    /// Returns the locations of the specified config field on the miner.
+    ///
+    /// This associates API commands (routes) with `DataExtractor` structs,
+    /// describing how to extract the config for a given `ConfigField`.
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation>;
+}
 
 /// Trait that every miner backend must implement to provide miner data.
 #[async_trait]
@@ -663,30 +679,47 @@ pub trait Resume {
 
 // Config traits
 #[async_trait]
-pub trait SupportsPoolsConfig: GetPools {
+pub trait SupportsPoolsConfig: GetPools + CollectConfigs {
     #[allow(unused_variables)]
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         anyhow::bail!("Setting pools is not supported on this platform");
     }
+    #[tracing::instrument(level = "debug")]
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
-        Ok(self
-            .get_pools()
-            .await
-            .iter()
-            .map(|g| g.clone().into())
-            .collect())
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::Pools]).await;
+        self.parse_pools_config(&data)
     }
+    #[allow(unused_variables)]
+    fn parse_pools_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        anyhow::bail!("Getting pools config is not supported on this platform");
+    }
+
     fn supports_pools_config(&self) -> bool;
 }
 
 #[async_trait]
-pub trait SupportsScalingConfig {
+pub trait SupportsScalingConfig: CollectConfigs {
     #[allow(unused_variables)]
     async fn set_scaling_config(&self, config: ScalingConfig) -> anyhow::Result<bool> {
         anyhow::bail!("Setting scaling config is not supported on this platform");
     }
+    #[tracing::instrument(level = "debug")]
     async fn get_scaling_config(&self) -> anyhow::Result<ScalingConfig> {
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::Scaling]).await;
+        self.parse_scaling_config(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_scaling_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<ScalingConfig> {
         anyhow::bail!("Getting scaling config is not supported on this platform");
     }
+
     fn supports_scaling_config(&self) -> bool;
 }

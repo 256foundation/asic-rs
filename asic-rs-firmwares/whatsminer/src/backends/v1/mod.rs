@@ -1,6 +1,9 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
+use crate::firmware::WhatsMinerFirmware;
 use anyhow;
+use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
+use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
     data::{
         board::{BoardData, MinerControlBoard},
@@ -23,8 +26,6 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::WhatsMinerRPCAPI;
 use serde_json::Value;
-
-use crate::firmware::WhatsMinerFirmware;
 
 mod rpc;
 
@@ -58,6 +59,18 @@ impl APIClient for WhatsMinerV1 {
                 "Unsupported command type for WhatsMiner API"
             )),
         }
+    }
+}
+
+impl GetConfigsLocations for WhatsMinerV1 {
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for WhatsMinerV1 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -531,6 +544,15 @@ impl SetPowerLimit for WhatsMinerV1 {
 
 #[async_trait]
 impl SupportsPoolsConfig for WhatsMinerV1 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
     fn supports_pools_config(&self) -> bool {
         false
     }

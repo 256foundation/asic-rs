@@ -1,6 +1,7 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
+use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use asic_rs_core::{
     config::pools::PoolGroupConfig,
     data::{
@@ -51,6 +52,18 @@ impl APIClient for VnishV120 {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for Vnish API")),
         }
+    }
+}
+
+impl GetConfigsLocations for VnishV120 {
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for VnishV120 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -692,6 +705,15 @@ impl SetPowerLimit for VnishV120 {
 
 #[async_trait]
 impl SupportsPoolsConfig for VnishV120 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let pools: Vec<Value> = config
             .iter()

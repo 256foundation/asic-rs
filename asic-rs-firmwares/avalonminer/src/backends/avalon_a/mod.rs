@@ -5,7 +5,10 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use crate::firmware::AvalonStockFirmware;
 use anyhow;
+use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
+use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
@@ -27,8 +30,6 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
 use rpc::AvalonMinerRPCAPI;
 use serde_json::{Value, json};
-
-use crate::firmware::AvalonStockFirmware;
 
 mod rpc;
 
@@ -203,8 +204,29 @@ impl SetPowerLimit for AvalonAMiner {
 
 #[async_trait]
 impl SupportsPoolsConfig for AvalonAMiner {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
     fn supports_pools_config(&self) -> bool {
         false
+    }
+}
+
+impl GetConfigsLocations for AvalonAMiner {
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for AvalonAMiner {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 

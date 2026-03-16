@@ -1,6 +1,9 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
+use crate::{backends::v1::rpc::LUXMinerRPCAPI, firmware::LuxMinerFirmware};
 use anyhow;
+use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
+use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
@@ -22,8 +25,6 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
-
-use crate::{backends::v1::rpc::LUXMinerRPCAPI, firmware::LuxMinerFirmware};
 
 mod rpc;
 
@@ -66,6 +67,18 @@ impl APIClient for LuxMinerV1 {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for LuxMiner API")),
         }
+    }
+}
+
+impl GetConfigsLocations for LuxMinerV1 {
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for LuxMinerV1 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -933,6 +946,15 @@ impl SetPowerLimit for LuxMinerV1 {
 
 #[async_trait]
 impl SupportsPoolsConfig for LuxMinerV1 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
     fn supports_pools_config(&self) -> bool {
         false
     }

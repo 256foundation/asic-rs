@@ -5,7 +5,10 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use crate::{backends::v1::web::NerdAxeWebAPI, firmware::NerdAxeFirmware};
 use anyhow;
+use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
+use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
@@ -27,8 +30,6 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
-
-use crate::{backends::v1::web::NerdAxeWebAPI, firmware::NerdAxeFirmware};
 
 pub(crate) mod web;
 
@@ -56,6 +57,18 @@ impl APIClient for NerdAxeV1 {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for NerdAxe API")),
         }
+    }
+}
+
+impl GetConfigsLocations for NerdAxeV1 {
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for NerdAxeV1 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -467,6 +480,15 @@ impl SetPowerLimit for NerdAxeV1 {
 
 #[async_trait]
 impl SupportsPoolsConfig for NerdAxeV1 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
     fn supports_pools_config(&self) -> bool {
         false
     }

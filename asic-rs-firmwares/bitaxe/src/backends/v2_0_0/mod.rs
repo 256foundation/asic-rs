@@ -6,6 +6,8 @@ use std::{
 };
 
 use anyhow;
+use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
+use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
@@ -57,6 +59,18 @@ impl APIClient for Bitaxe200 {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for Bitaxe API")),
         }
+    }
+}
+
+impl GetConfigsLocations for Bitaxe200 {
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for Bitaxe200 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
     }
 }
 
@@ -480,6 +494,15 @@ impl SetPowerLimit for Bitaxe200 {
 
 #[async_trait]
 impl SupportsPoolsConfig for Bitaxe200 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
     fn supports_pools_config(&self) -> bool {
         false
     }
