@@ -1136,6 +1136,19 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn parse_scaling_config_from_summary_test() -> anyhow::Result<()> {
+        let summary = Value::from_str(SUMMARY)?;
+        let config = PowerPlayV1::parse_scaling_config_from_summary(&summary)
+            .context("failed to parse scaling config from summary")?;
+
+        assert_eq!(config.algorithm.as_deref(), Some("VoltageOptimizer"));
+        assert_eq!(config.minimum, 50);
+        assert_eq!(config.step, 5);
+
+        Ok(())
+    }
+
     #[tokio::test]
     #[ignore = "requires live miner; set MINER_IP"]
     async fn parse_data_live_test_auto_detect() -> anyhow::Result<()> {
