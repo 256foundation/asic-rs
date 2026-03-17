@@ -24,10 +24,10 @@ pub async fn send_rpc_command(ip: &IpAddr, command: &'static str) -> Option<serd
         .ok()?;
 
     let command = format!("{{\"command\":\"{command}\"}}");
-    stream.write_all(command.as_bytes()).await.unwrap();
+    stream.write_all(command.as_bytes()).await.ok()?;
 
     let mut buffer = Vec::new();
-    stream.read_to_end(&mut buffer).await.unwrap();
+    stream.read_to_end(&mut buffer).await.ok()?;
 
     let response = String::from_utf8_lossy(&buffer)
         .into_owned()
