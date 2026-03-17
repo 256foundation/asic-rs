@@ -2,8 +2,9 @@ from datetime import timedelta
 from enum import IntEnum
 from ipaddress import IPv4Address
 from typing import Annotated, Self
-from pyasic_rs.asic_rs import HashRateUnit as _rs_HashRateUnit
 
+from pyasic_rs.asic_rs import HashRateUnit as _rs_HashRateUnit
+from pyasic_rs.asic_rs import TuningTarget as _rs_TuningTarget
 from pydantic import BaseModel, ConfigDict, BeforeValidator, field_serializer, model_serializer, field_validator
 
 
@@ -198,6 +199,21 @@ class MinerMessage(BaseModel):
     severity: Annotated[str, BeforeValidator(str)]
 
 
+class MinerControlBoard(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    known: bool
+    name: str
+
+    @model_serializer(mode="plain")
+    def serialize_model(self) -> str:
+        return self.name
+
+    def __repr__(self):
+        if self.known:
+            return self.name
+        return f"Unknown: {self.name}"
+
 class MinerData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -206,6 +222,7 @@ class MinerData(BaseModel):
     ip: IPv4Address
     mac: str
     device_info: DeviceInfo
+    control_board_version: MinerControlBoard | None
     serial_number: str | None
     hostname: str | None
     api_version: str | None
@@ -222,7 +239,7 @@ class MinerData(BaseModel):
     average_temperature: float | None
     fluid_temperature: float | None
     wattage: float | None
-    wattage_limit: float | None
+    tuning_target: _rs_TuningTarget | None
     efficiency: float | None
     light_flashing: bool | None
     messages: list[MinerMessage]

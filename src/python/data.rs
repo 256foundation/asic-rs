@@ -1,14 +1,17 @@
-use pyo3::prelude::*;
-
-use crate::data::board::BoardData as BoardData_Base;
-use crate::data::board::ChipData as ChipData_Base;
-pub(crate) use crate::data::device::{HashAlgorithm, MinerFirmware, MinerMake, MinerModel};
-use crate::data::fan::FanData as FanData_Base;
-use crate::data::miner::MinerData as MinerData_Base;
-use crate::data::pool::{PoolGroupData, PoolURL};
-use crate::data::{device::DeviceInfo, hashrate::HashRate, message::MinerMessage};
-use serde::{Deserialize, Serialize};
 use std::{net::IpAddr, time::Duration};
+
+use asic_rs_core::data::{
+    board::{BoardData as BoardData_Base, ChipData as ChipData_Base, MinerControlBoard},
+    device::DeviceInfo,
+    fan::FanData as FanData_Base,
+    hashrate::HashRate,
+    message::MinerMessage,
+    miner::{MinerData as MinerData_Base, TuningTarget as TuningTargetBase},
+    pool::PoolGroupData,
+};
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -83,6 +86,22 @@ pub struct FanData {
     pub rpm: Option<f64>,
 }
 
+#[pyclass(from_py_object, get_all, module = "asic_rs")]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum TuningTarget {
+    Power(f64),
+    HashRate(HashRate),
+}
+
+impl From<&TuningTargetBase> for TuningTarget {
+    fn from(base: &TuningTargetBase) -> Self {
+        match base {
+            TuningTargetBase::Power(power) => TuningTarget::Power(power.as_watts()),
+            TuningTargetBase::HashRate(hashrate) => TuningTarget::HashRate(hashrate.clone()),
+        }
+    }
+}
+
 impl From<&FanData_Base> for FanData {
     fn from(base: &FanData_Base) -> Self {
         Self {
@@ -104,7 +123,7 @@ pub struct MinerData {
     pub hostname: Option<String>,
     pub api_version: Option<String>,
     pub firmware_version: Option<String>,
-    pub control_board_version: Option<String>,
+    pub control_board_version: Option<MinerControlBoard>,
     pub expected_hashboards: Option<u8>,
     pub hashboards: Vec<BoardData>,
     pub hashrate: Option<HashRate>,
@@ -117,7 +136,7 @@ pub struct MinerData {
     pub average_temperature: Option<f64>,
     pub fluid_temperature: Option<f64>,
     pub wattage: Option<f64>,
-    pub wattage_limit: Option<f64>,
+    pub tuning_target: Option<TuningTarget>,
     pub efficiency: Option<f64>,
     pub light_flashing: Option<bool>,
     pub messages: Vec<MinerMessage>,
@@ -138,7 +157,7 @@ impl From<&MinerData_Base> for MinerData {
             hostname: base.hostname.clone(),
             api_version: base.api_version.clone(),
             firmware_version: base.firmware_version.clone(),
-            control_board_version: base.control_board_version.clone().map(|cb| cb.to_string()),
+            control_board_version: base.control_board_version.clone(),
             expected_hashboards: base.expected_hashboards,
             hashboards: base.hashboards.iter().map(BoardData::from).collect(),
             hashrate: base.hashrate.clone(),
@@ -151,7 +170,7 @@ impl From<&MinerData_Base> for MinerData {
             average_temperature: base.average_temperature.map(|t| t.as_celsius()),
             fluid_temperature: base.fluid_temperature.map(|t| t.as_celsius()),
             wattage: base.wattage.map(|w| w.as_watts()),
-            wattage_limit: base.wattage_limit.map(|w| w.as_watts()),
+            tuning_target: base.tuning_target.as_ref().map(TuningTarget::from),
             efficiency: base.efficiency,
             light_flashing: base.light_flashing,
             messages: base.messages.clone(),
@@ -164,42 +183,7 @@ impl From<&MinerData_Base> for MinerData {
 
 #[pymethods]
 impl MinerData {
-    pub fn __repr__<'a>(&self) -> String {
+    pub fn __repr__(&self) -> String {
         serde_json::to_string(self).unwrap()
-    }
-}
-
-#[pymethods]
-impl MinerModel {
-    pub fn __repr__<'a>(&self) -> String {
-        self.to_string()
-    }
-}
-
-#[pymethods]
-impl MinerMake {
-    pub fn __repr__<'a>(&self) -> String {
-        self.to_string()
-    }
-}
-
-#[pymethods]
-impl MinerFirmware {
-    pub fn __repr__<'a>(&self) -> String {
-        self.to_string()
-    }
-}
-
-#[pymethods]
-impl HashAlgorithm {
-    pub fn __repr__<'a>(&self) -> String {
-        self.to_string()
-    }
-}
-
-#[pymethods]
-impl PoolURL {
-    pub fn __repr__<'a>(&self) -> String {
-        self.to_string()
     }
 }

@@ -1,11 +1,61 @@
 [package]
 name = "asic-rs"
-version = "0.2.1"
-edition = "2024"
-license = "Apache-2.0"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 description = "Simple ASIC management in Rust"
 
-[dependencies]
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[workspace]
+members = [
+    "asic-rs-core",
+    "asic-rs-makes/antminer",
+    "asic-rs-makes/avalon",
+    "asic-rs-makes/bitaxe",
+    "asic-rs-makes/braiins",
+    "asic-rs-makes/epic",
+    "asic-rs-makes/nerdaxe",
+    "asic-rs-makes/whatsminer",
+    "asic-rs-makes/marathon",
+    "asic-rs-firmwares/antminer",
+    "asic-rs-firmwares/avalonminer",
+    "asic-rs-firmwares/bitaxe",
+    "asic-rs-firmwares/braiins",
+    "asic-rs-firmwares/epic",
+    "asic-rs-firmwares/luxminer",
+    "asic-rs-firmwares/marathon",
+    "asic-rs-firmwares/nerdaxe",
+    "asic-rs-firmwares/vnish",
+    "asic-rs-firmwares/whatsminer",
+]
+
+[workspace.dependencies]
+asic-rs-core = { path = "asic-rs-core", version = "0.3.0" }
+
+asic-rs-makes-antminer = { path = "asic-rs-makes/antminer", version = "0.3.0" }
+asic-rs-makes-avalon = { path = "asic-rs-makes/avalon", version = "0.3.0" }
+asic-rs-makes-bitaxe = { path = "asic-rs-makes/bitaxe", version = "0.3.0" }
+asic-rs-makes-braiins = { path = "asic-rs-makes/braiins", version = "0.3.0" }
+asic-rs-makes-epic = { path = "asic-rs-makes/epic", version = "0.3.0" }
+asic-rs-makes-nerdaxe = { path = "asic-rs-makes/nerdaxe", version = "0.3.0" }
+asic-rs-makes-whatsminer = { path = "asic-rs-makes/whatsminer", version = "0.3.0" }
+asic-rs-makes-marathon = { path = "asic-rs-makes/marathon", version = "0.3.0" }
+
+asic-rs-firmwares-antminer = { path = "asic-rs-firmwares/antminer", version = "0.3.0" }
+asic-rs-firmwares-avalonminer = { path = "asic-rs-firmwares/avalonminer", version = "0.3.0" }
+asic-rs-firmwares-bitaxe = { path = "asic-rs-firmwares/bitaxe", version = "0.3.0" }
+asic-rs-firmwares-braiins = { path = "asic-rs-firmwares/braiins", version = "0.3.0" }
+asic-rs-firmwares-epic = { path = "asic-rs-firmwares/epic", version = "0.3.0" }
+asic-rs-firmwares-luxminer = { path = "asic-rs-firmwares/luxminer", version = "0.3.0" }
+asic-rs-firmwares-marathon = { path = "asic-rs-firmwares/marathon", version = "0.3.0" }
+asic-rs-firmwares-nerdaxe = { path = "asic-rs-firmwares/nerdaxe", version = "0.3.0" }
+asic-rs-firmwares-vnish = { path = "asic-rs-firmwares/vnish", version = "0.3.0" }
+asic-rs-firmwares-whatsminer = { path = "asic-rs-firmwares/whatsminer", version = "0.3.0" }
+
 diqwest = "3.2"
 futures = "0.3"
 macaddr = { version = "1.0", features = ["serde_std"] }
@@ -13,17 +63,17 @@ measurements = { version = "0.11", features = ["serde"] }
 reqwest = { version = "0.13", features = ["json", "gzip", "rustls"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.47", features = ["full"] }
+tokio = { version = "1.50", features = ["full"] }
 url = "2.5"
 async-trait = "0.1"
-strum = { version = "0.27", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 semver = "1.0"
 anyhow = "1.0"
-ipnet = "2.11"
-rand = "0.9"
-regex = "1.11"
-chrono = "0.4.41"
-tokio-stream = "0.1.17"
+ipnet = "2.12"
+rand = "0.10"
+regex = "1.12"
+chrono = "0.4.44"
+tokio-stream = "0.1.18"
 async-stream = "0.3.6"
 sha2 = "0.10.9"
 base64 = "0.22.1"
@@ -32,7 +82,7 @@ hex = "0.4.3"
 ecb = "0.1.2"
 md5crypt = "1.0.0"
 md5 = "0.8"
-tracing = { version = "0.1.41", features = ["log"] }
+tracing = { version = "0.1.44", features = ["log"] }
 
 pyo3 = { version = "0.28.2", features = [
     "extension-module",
@@ -40,13 +90,100 @@ pyo3 = { version = "0.28.2", features = [
     "experimental-inspect",
     "multiple-pymethods",
     "time",
-], optional = true }
-pyo3-async-runtimes = { version = "0.28.0", optional = true, features = ["tokio-runtime", "unstable-streams"] }
-pyo3-introspection = { version = "0.28.2", optional = true }
-pyo3-log = { version = "0.13.2", optional = true }
+]}
+pyo3-async-runtimes = { version = "0.28.0", features = ["tokio-runtime", "unstable-streams"] }
+pyo3-introspection = { version = "0.28.2" }
+pyo3-log = { version = "0.13.3" }
 
 [features]
-python = ["dep:pyo3", "dep:pyo3-async-runtimes", "dep:pyo3-introspection", "dep:pyo3-log"]
+default = [
+    "antminer",
+    "avalonminer",
+    "bitaxe",
+    "braiins",
+    "epic",
+    "luxminer",
+    "marathon",
+    "nerdaxe",
+    "vnish",
+    "whatsminer",
+]
+
+antminer = ["dep:asic-rs-firmwares-antminer"]
+avalonminer = ["dep:asic-rs-firmwares-avalonminer"]
+bitaxe = ["dep:asic-rs-firmwares-bitaxe"]
+braiins = ["dep:asic-rs-firmwares-braiins"]
+epic = ["dep:asic-rs-firmwares-epic"]
+luxminer = ["dep:asic-rs-firmwares-luxminer"]
+marathon = ["dep:asic-rs-firmwares-marathon"]
+nerdaxe = ["dep:asic-rs-firmwares-nerdaxe"]
+vnish = ["dep:asic-rs-firmwares-vnish"]
+whatsminer = ["dep:asic-rs-firmwares-whatsminer"]
+
+python = [
+    "dep:pyo3",
+    "dep:pyo3-async-runtimes",
+    "dep:pyo3-introspection",
+    "dep:pyo3-log",
+    "asic-rs-makes-antminer/python",
+    "asic-rs-makes-avalon/python",
+    "asic-rs-makes-bitaxe/python",
+    "asic-rs-makes-braiins/python",
+    "asic-rs-makes-epic/python",
+    "asic-rs-makes-nerdaxe/python",
+    "asic-rs-makes-whatsminer/python",
+    "asic-rs-makes-marathon/python",
+    "asic-rs-firmwares-antminer/python",
+    "asic-rs-firmwares-avalonminer/python",
+    "asic-rs-firmwares-bitaxe/python",
+    "asic-rs-firmwares-braiins/python",
+    "asic-rs-firmwares-epic/python",
+    "asic-rs-firmwares-luxminer/python",
+    "asic-rs-firmwares-marathon/python",
+    "asic-rs-firmwares-nerdaxe/python",
+    "asic-rs-firmwares-vnish/python",
+    "asic-rs-firmwares-whatsminer/python",
+]
+
+[dependencies]
+asic-rs-core.workspace = true
+
+asic-rs-makes-antminer.workspace = true
+asic-rs-makes-avalon.workspace = true
+asic-rs-makes-bitaxe.workspace = true
+asic-rs-makes-braiins.workspace = true
+asic-rs-makes-epic.workspace = true
+asic-rs-makes-nerdaxe.workspace = true
+asic-rs-makes-whatsminer.workspace = true
+asic-rs-makes-marathon.workspace = true
+
+asic-rs-firmwares-antminer = { workspace = true, optional = true }
+asic-rs-firmwares-avalonminer = { workspace = true, optional = true }
+asic-rs-firmwares-bitaxe = { workspace = true, optional = true }
+asic-rs-firmwares-braiins = { workspace = true, optional = true }
+asic-rs-firmwares-epic = { workspace = true, optional = true }
+asic-rs-firmwares-luxminer = { workspace = true, optional = true }
+asic-rs-firmwares-marathon = { workspace = true, optional = true }
+asic-rs-firmwares-nerdaxe = { workspace = true, optional = true }
+asic-rs-firmwares-vnish = { workspace = true, optional = true }
+asic-rs-firmwares-whatsminer = { workspace = true, optional = true }
+
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+ipnet.workspace = true
+rand.workspace = true
+tokio-stream.workspace = true
+async-stream.workspace = true
+tracing.workspace = true
+
+pyo3 = {workspace = true, optional = true}
+pyo3-async-runtimes = {workspace = true, optional = true}
+pyo3-introspection = {workspace = true, optional = true}
+pyo3-log = {workspace = true, optional = true}
+
 
 [profile.release]
 opt-level = 3

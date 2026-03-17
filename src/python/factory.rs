@@ -1,23 +1,24 @@
-use crate::miners::backends::traits::Miner as MinerTrait;
-use crate::miners::factory::MinerFactory as MinerFactory_Base;
-use crate::python::miner::Miner;
+use std::{net::IpAddr, pin::Pin, str::FromStr, sync::Arc};
 
+use asic_rs_core::traits::miner::Miner as MinerTrait;
 use futures::{Stream, StreamExt};
-use pyo3::exceptions::{PyConnectionError, PyStopAsyncIteration, PyValueError};
-use pyo3::prelude::*;
-use pyo3::types::PyType;
+use pyo3::{
+    exceptions::{PyConnectionError, PyStopAsyncIteration, PyValueError},
+    prelude::*,
+    types::PyType,
+};
 use pyo3_async_runtimes::tokio::future_into_py;
-use std::net::IpAddr;
-use std::pin::Pin;
-use std::str::FromStr;
-use std::sync::Arc;
+
+use crate::{factory::MinerFactory as MinerFactory_Base, python::miner::Miner};
 
 #[pyclass]
 pub struct PyMinerStream {
+    #[allow(clippy::type_complexity)]
     inner: Arc<tokio::sync::Mutex<Pin<Box<dyn Stream<Item = Box<dyn MinerTrait>> + Send>>>>,
 }
 
 impl PyMinerStream {
+    #[allow(clippy::type_complexity)]
     fn new(inner: Pin<Box<dyn Stream<Item = Box<dyn MinerTrait>> + Send>>) -> Self {
         Self {
             inner: Arc::new(tokio::sync::Mutex::new(inner)),
@@ -45,6 +46,7 @@ impl PyMinerStream {
 
 #[pyclass]
 pub struct PyMinerStreamWithIP {
+    #[allow(clippy::type_complexity)]
     inner: Arc<
         tokio::sync::Mutex<
             Pin<Box<dyn Stream<Item = (IpAddr, Option<Box<dyn MinerTrait>>)> + Send>>,
@@ -53,6 +55,7 @@ pub struct PyMinerStreamWithIP {
 }
 
 impl PyMinerStreamWithIP {
+    #[allow(clippy::type_complexity)]
     fn new(
         inner: Pin<Box<dyn Stream<Item = (IpAddr, Option<Box<dyn MinerTrait>>)> + Send>>,
     ) -> Self {

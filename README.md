@@ -146,11 +146,11 @@ The README is auto generated with `doc2readme`, please do not edit it manually.
 Instead, changes can be made in `lib.rs`.
 
 
- [__cargo_doc2readme_dependencies_info]: ggGkYW0CYXSEG4IljsKm9mCpG6jFazawiHDzG4aznWaXJoNtG2IgF6W9DkLHYXKEGyCzd9ZJji39G1b-RySpLty4GyKQr6Otjxx2G_b5jmdOCB57YWSBg2dhc2ljLXJzZTAuMi4xZ2FzaWNfcnM
- [__link0]: https://docs.rs/asic-rs/0.2.1/asic_rs/?search=miners::factory::MinerFactory
- [__link1]: https://docs.rs/asic-rs/0.2.1/asic_rs/?search=miners::factory::MinerFactory
- [__link2]: https://docs.rs/asic-rs/0.2.1/asic_rs/?search=data::miner::MinerData
- [__link3]: https://docs.rs/asic-rs/0.2.1/asic_rs/?search=miners::backends::traits::GetMinerData
- [__link4]: https://docs.rs/asic-rs/0.2.1/asic_rs/?search=miners::backends::traits::HasMinerControl
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbgiWOwqb2YKkbqMVrNrCIcPMbhrOdZpcmg20bYiAXpb0OQsdhYvRhcoQbILN31kmOLf0bVv5HJKku3LgbIpCvo62PHHYb9vmOZ04IHnthZIODZ2FzaWMtcnNlMC4zLjBnYXNpY19yc4JkZGF0YfaCZm1pbmVyc_Y
+ [__link0]: https://docs.rs/asic-rs/0.3.0/asic_rs/?search=factory::MinerFactory
+ [__link1]: https://docs.rs/asic-rs/0.3.0/asic_rs/?search=factory::MinerFactory
+ [__link2]: https://docs.rs/data/latest/data/?search=miner::MinerData
+ [__link3]: https://docs.rs/miners/latest/miners/?search=backends::traits::GetMinerData
+ [__link4]: https://docs.rs/miners/latest/miners/?search=backends::traits::HasMinerControl
  [__link5]: https://www.conventionalcommits.org/
  [__link6]: https://pre-commit.com/

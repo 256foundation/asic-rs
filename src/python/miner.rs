@@ -1,12 +1,13 @@
-use super::data::{BoardData, FanData, MinerData};
-use crate::data::device::{HashAlgorithm, MinerFirmware, MinerHardware, MinerMake, MinerModel};
-use crate::miners::backends::traits::Miner as MinerTrait;
-use std::net::IpAddr;
+use std::{net::IpAddr, sync::Arc, time::Duration};
 
-use crate::config::pools::PoolGroup;
+use asic_rs_core::{
+    config::pools::PoolGroupConfig,
+    data::device::{HashAlgorithm, MinerHardware},
+    traits::miner::Miner as MinerTrait,
+};
 use pyo3::prelude::*;
-use std::sync::Arc;
-use std::time::Duration;
+
+use super::data::{BoardData, FanData, MinerData, TuningTarget};
 
 #[pyclass(module = "asic_rs")]
 pub(crate) struct Miner {
@@ -45,15 +46,15 @@ impl Miner {
     }
 
     #[getter]
-    fn model(&self) -> MinerModel {
+    fn model(&self) -> String {
         self.inner.get_device_info().model
     }
     #[getter]
-    fn make(&self) -> MinerMake {
+    fn make(&self) -> String {
         self.inner.get_device_info().make
     }
     #[getter]
-    fn firmware(&self) -> MinerFirmware {
+    fn firmware(&self) -> String {
         self.inner.get_device_info().firmware
     }
     #[getter]
@@ -101,8 +102,8 @@ impl Miner {
         self.inner.supports_resume()
     }
     #[getter]
-    fn supports_set_pools(&self) -> bool {
-        self.inner.supports_set_pools()
+    fn supports_pools_config(&self) -> bool {
+        self.inner.supports_pools_config()
     }
 
     // Data functions
@@ -207,11 +208,11 @@ impl Miner {
             Ok(data.map(|w| w.as_watts()))
         })
     }
-    pub fn get_wattage_limit<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
+    pub fn get_tuning_target<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            let data = inner.get_wattage_limit().await;
-            Ok(data.map(|w| w.as_watts()))
+            let data = inner.get_tuning_target().await;
+            Ok(data.as_ref().map(TuningTarget::from))
         })
     }
     pub fn get_light_flashing<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
@@ -247,6 +248,14 @@ impl Miner {
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             let data = inner.get_pools().await;
             Ok(data)
+        })
+    }
+
+    pub fn get_pools_config<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let data = inner.get_pools_config().await;
+            Ok(data.ok())
         })
     }
 
@@ -287,14 +296,14 @@ impl Miner {
             Ok(data.ok())
         })
     }
-    pub fn set_pools<'a>(
+    pub fn set_pools_config<'a>(
         &self,
         py: Python<'a>,
-        groups: Vec<PoolGroup>,
+        groups: Vec<PoolGroupConfig>,
     ) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            let data = inner.set_pools(groups).await;
+            let data = inner.set_pools_config(groups).await;
             Ok(data.ok())
         })
     }

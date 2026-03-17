@@ -1,0 +1,17 @@
+[package]
+name = "asic-rs-makes-marathon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Marathon hardware information for asic-rs"
+
+[dependencies]
+asic-rs-core.workspace = true
+
+serde.workspace = true
+strum.workspace = true
+
+pyo3 = {workspace = true, optional = true}
+
+[features]
+python = ["dep:pyo3", "asic-rs-core/python"]

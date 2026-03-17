@@ -2,9 +2,8 @@ from datetime import timedelta
 
 from pyasic_rs.asic_rs import HashAlgorithm as _rs_HashAlgorithm
 from pyasic_rs.asic_rs import Miner as _rs_Miner
-from pyasic_rs.asic_rs import MinerFirmware as _rs_MinerFirmware
-from pyasic_rs.asic_rs import MinerMake as _rs_MinerMake
-from pyasic_rs.asic_rs import MinerModel as _rs_MinerModel
+from pyasic_rs.asic_rs import TuningTarget as _rs_TuningTarget
+
 from .config import PoolGroup
 from .data import MinerData, BoardData, HashRate, FanData, MinerMessage, PoolGroupData
 
@@ -17,15 +16,15 @@ class Miner:
         return self.__inner.__repr__()
 
     @property
-    def model(self) -> _rs_MinerModel:
+    def model(self) -> str:
         return self.__inner.model
 
     @property
-    def make(self) -> _rs_MinerMake:
+    def make(self) -> str:
         return self.__inner.make
 
     @property
-    def firmware(self) -> _rs_MinerFirmware:
+    def firmware(self) -> str:
         return self.__inner.firmware
 
     @property
@@ -92,8 +91,8 @@ class Miner:
     async def get_wattage(self) -> float | None:
         return await self.__inner.get_wattage()
 
-    async def get_wattage_limit(self) -> float | None:
-        return await self.__inner.get_wattage_limit()
+    async def get_tuning_target(self) -> _rs_TuningTarget | None:
+        return await self.__inner.get_tuning_target()
 
     async def get_light_flashing(self) -> bool | None:
         return await self.__inner.get_light_flashing()
@@ -109,6 +108,12 @@ class Miner:
 
     async def get_pools(self) -> list[PoolGroupData]:
         return [PoolGroupData.model_validate(b) for b in await self.__inner.get_pools()]
+
+    async def get_pools_config(self) -> list[PoolGroup] | None:
+        inner = await self.__inner.get_pools_config()
+        if inner is not None:
+            return [PoolGroup.model_validate(group) for group in inner]
+        return None
 
     async def set_fault_light(self, fault: bool) -> bool | None:
         return await self.__inner.set_fault_light(fault)
@@ -126,8 +131,8 @@ class Miner:
             at_time = timedelta(seconds=at_time)
         return await self.__inner.resume(at_time)
 
-    async def set_pools(self, groups: list[PoolGroup]) -> bool | None:
-        return await self.__inner.set_pools(groups)
+    async def set_pools_config(self, groups: list[PoolGroup]) -> bool | None:
+        return await self.__inner.set_pools_config(groups)
 
     @property
     def supports_set_fault_light(self) -> bool:
@@ -150,5 +155,5 @@ class Miner:
         return self.__inner.supports_resume
 
     @property
-    def supports_set_pools(self) -> bool:
-        return self.__inner.supports_set_pools
+    def supports_pools_config(self) -> bool:
+        return self.__inner.supports_pools_config

@@ -15,8 +15,14 @@ fi
 
 BRANCH="release-v${VERSION}"
 
-# Update Cargo.toml (only the [package] section)
-sed -i '/^\[package\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' Cargo.toml
+# Extract current version from [workspace.package]
+CURRENT_VERSION=$(sed -n '/^\[workspace\.package\]/,/^\[/{s/^version = "\(.*\)"/\1/p}' Cargo.toml)
+
+# Update [workspace.package] version
+sed -i '/^\[workspace\.package\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' Cargo.toml
+
+# Update intra-workspace dep versions in [workspace.dependencies]
+sed -i '/^\[workspace\.dependencies\]/,/^\[/{s/version = "'"$CURRENT_VERSION"'"/version = "'"$VERSION"'"/g}' Cargo.toml
 
 # Update pyproject.toml (only the [project] section)
 sed -i '/^\[project\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' pyproject.toml

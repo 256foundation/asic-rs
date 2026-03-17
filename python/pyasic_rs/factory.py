@@ -2,6 +2,7 @@ from ipaddress import IPv4Address
 from typing import Self, AsyncIterable
 
 from pyasic_rs.asic_rs import MinerFactory as _rs_MinerFactory
+
 from .miner import Miner
 
 

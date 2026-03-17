@@ -1,0 +1,30 @@
+[package]
+name = "asic-rs-firmwares-whatsminer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Whatsminer firmware implementation for asic-rs"
+
+[dependencies]
+asic-rs-core.workspace = true
+asic-rs-makes-whatsminer.workspace = true
+
+async-trait.workspace = true
+serde_json.workspace = true
+semver.workspace = true
+chrono.workspace = true
+anyhow.workspace = true
+macaddr.workspace = true
+measurements.workspace = true
+tokio.workspace = true
+ecb.workspace = true
+aes.workspace = true
+base64.workspace = true
+sha2.workspace = true
+md5crypt.workspace = true
+hex.workspace = true
+md5.workspace = true
+pyo3 = {workspace = true, optional = true}
+
+[features]
+python = ["dep:pyo3", "asic-rs-core/python"]
