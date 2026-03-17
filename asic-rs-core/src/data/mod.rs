@@ -8,6 +8,7 @@ pub mod command;
 pub(crate) mod deserialize;
 pub mod device;
 pub mod fan;
+pub mod firmware;
 pub mod hashrate;
 pub mod message;
 pub mod miner;

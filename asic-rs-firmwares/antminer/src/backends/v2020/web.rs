@@ -1,11 +1,19 @@
 use std::{net::IpAddr, time::Duration};
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow, bail};
+use asic_rs_core::data::firmware::FirmwareImage;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
-use diqwest::WithDigestAuth;
-use reqwest::{Client, Method, Response, header::CONTENT_TYPE};
+use digest_auth::HttpMethod;
+use diqwest::{DigestAuthCredentials, DigestAuthSession, WithDigestAuth};
+use reqwest::{
+    Client, Method, Response,
+    header::{AUTHORIZATION, HeaderMap},
+    multipart::{Form, Part},
+};
 use serde_json::{Value, json};
+
+use super::firmware::AntMinerFirmwareUpgradeResponseExt;
 
 #[derive(Debug)]
 pub struct AntMinerWebAPI {
@@ -19,23 +27,46 @@ pub struct AntMinerWebAPI {
 
 #[allow(dead_code)]
 impl AntMinerWebAPI {
-    fn build_firmware_upload_body(filename: &str, firmware: &[u8]) -> (String, Vec<u8>) {
-        let boundary = format!("----asic-rs-antminer-{}", firmware.len());
-        let mut body = Vec::with_capacity(firmware.len() + 256);
+    fn truncated_firmware_upgrade_response_body(body: &str) -> String {
+        const MAX_BODY_CHARS: usize = 512;
 
-        body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
-        body.extend_from_slice(
-            format!(
-                "Content-Disposition: form-data; name=\"firmware\"; filename=\"{}\"\r\n",
-                filename.replace('"', "")
-            )
-            .as_bytes(),
-        );
-        body.extend_from_slice(b"Content-Type: application/octet-stream\r\n\r\n");
-        body.extend_from_slice(firmware);
-        body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+        let truncated: String = body.chars().take(MAX_BODY_CHARS).collect();
+        if body.chars().count() > MAX_BODY_CHARS {
+            format!("{truncated}...")
+        } else {
+            truncated
+        }
+    }
 
-        (format!("multipart/form-data; boundary={boundary}"), body)
+    fn build_firmware_upload_form(image: FirmwareImage) -> Result<Form> {
+        let part = Part::bytes(image.bytes)
+            .file_name(image.filename)
+            .mime_str("application/octet-stream")
+            .map_err(|e| anyhow!(e.to_string()))?;
+
+        Ok(Form::new().part("firmware", part))
+    }
+
+    async fn build_firmware_upgrade_auth_header(
+        &self,
+        path: &str,
+        method: HttpMethod<'static>,
+    ) -> Result<String> {
+        let session = DigestAuthSession::new(self.username.clone(), self.password.clone());
+
+        self.client
+            .get(format!("http://{}:{}/cgi-bin/get_system_info.cgi", self.ip, self.port))
+            .timeout(self.timeout)
+            .send_digest_auth(&session)
+            .await
+            .with_context(|| "failed to establish digest auth session".to_string())?;
+
+        let auth = (&session)
+            .calculate_authorization(&self.ip.to_string(), path, method, None, &HeaderMap::new())
+            .map_err(|e| anyhow!("{e}"))
+            .with_context(|| format!("failed to calculate digest authorization for {path}"))?;
+
+        Ok(auth.to_header_string())
     }
 
     pub fn new(ip: IpAddr) -> Self {
@@ -146,39 +177,37 @@ impl AntMinerWebAPI {
             .await
     }
 
-    pub async fn upgrade_firmware(&self, filename: String, firmware: Vec<u8>) -> Result<()> {
+    pub async fn upgrade_firmware(&self, image: FirmwareImage) -> Result<()> {
         let url = format!("http://{}:{}/cgi-bin/upgrade.cgi", self.ip, self.port);
-        let (content_type, body) = Self::build_firmware_upload_body(&filename, &firmware);
+        let form = Self::build_firmware_upload_form(image)?;
+        let auth_header = self
+            .build_firmware_upgrade_auth_header("/cgi-bin/upgrade.cgi", HttpMethod::POST)
+            .await?;
 
         let response = self
             .client
             .post(url)
-            .header(CONTENT_TYPE, content_type)
-            .body(body)
+            .header(AUTHORIZATION, auth_header)
+            .multipart(form)
             .timeout(self.timeout.max(Duration::from_secs(60)))
-            .send_digest_auth((self.username.as_str(), self.password.as_str()))
+            .send()
             .await
-            .map_err(|e| anyhow!(e.to_string()))?;
+            .with_context(|| "firmware upload HTTP request failed".to_string())?;
 
         let status = response.status();
-        let body = response.text().await.map_err(|e| anyhow!(e.to_string()))?;
+        let body = response
+            .text()
+            .await
+            .with_context(|| "failed to read firmware upload response body".to_string())?;
         if !status.is_success() {
-            bail!("Firmware upload failed with status code {}", status);
+            bail!(
+                "Firmware upload failed with status code {}: {}",
+                status,
+                Self::truncated_firmware_upgrade_response_body(&body)
+            );
         }
 
-        let parsed: Value = serde_json::from_str(&body)
-            .map_err(|e| anyhow!("Invalid firmware upload response: {}", e))?;
-        let code = parsed.get("code").and_then(|value| value.as_str());
-        let stats = parsed.get("stats").and_then(|value| value.as_str());
-        if code == Some("U000") && stats == Some("success") {
-            return Ok(());
-        }
-
-        let message = parsed
-            .get("msg")
-            .and_then(|value| value.as_str())
-            .unwrap_or("unknown error");
-        bail!("Firmware upload rejected: {}", message);
+        body.validate_firmware_upgrade_response()
     }
 
     pub async fn get_system_info(&self) -> Result<Value> {

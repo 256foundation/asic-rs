@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::Duration};
 
-use anyhow::{self, Context, bail};
+use anyhow;
 use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
@@ -12,6 +12,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
+        firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         pool::{PoolData, PoolGroupData, PoolURL},
@@ -20,7 +21,6 @@ use asic_rs_core::{
 };
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use async_trait::async_trait;
-use crc32fast::hash as crc32_hash;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::AntMinerRPCAPI;
@@ -29,6 +29,7 @@ use web::AntMinerWebAPI;
 
 use crate::firmware::AntMinerStockFirmware;
 
+mod firmware;
 mod rpc;
 mod web;
 
@@ -46,31 +47,6 @@ enum MinerMode {
     Low,
     Normal,
     High,
-}
-
-const BMU_MAGIC: u32 = 0xABABABAB;
-const BMU_HEADER_SIZE: usize = 36;
-const BMU_ITEM_FIXED_SIZE: usize = 172;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct FirmwareImage {
-    filename: String,
-    bytes: Vec<u8>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct MinerTypeInfo {
-    model: String,
-    subtype: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct BmuEntry {
-    filename: String,
-    chip: String,
-    hardware: String,
-    model: String,
-    bytes: Vec<u8>,
 }
 
 impl Display for MinerMode {
@@ -184,238 +160,6 @@ impl AntMinerV2020 {
         } else {
             None
         }
-    }
-
-    fn sanitize_name(value: &str) -> String {
-        value
-            .trim()
-            .chars()
-            .map(|c| {
-                if c.is_ascii_alphanumeric() || matches!(c, ' ' | '.' | '-' | '_') {
-                    c
-                } else {
-                    '_'
-                }
-            })
-            .collect()
-    }
-
-    fn normalized(value: &str) -> String {
-        Self::sanitize_name(value).to_ascii_lowercase()
-    }
-
-    fn compact_normalized(value: &str) -> String {
-        Self::normalized(value)
-            .chars()
-            .filter(|c| c.is_ascii_alphanumeric())
-            .collect()
-    }
-
-    fn wildcard_compatible(left: &str, right: &str) -> bool {
-        let left = Self::compact_normalized(left);
-        let right = Self::compact_normalized(right);
-
-        left.len() == right.len()
-            && left
-                .chars()
-                .zip(right.chars())
-                .all(|(lhs, rhs)| lhs == rhs || lhs == 'x' || rhs == 'x')
-    }
-
-    fn read_u32_le(bytes: &[u8], offset: usize) -> anyhow::Result<u32> {
-        let raw = bytes
-            .get(offset..offset + 4)
-            .context("BMU is truncated while reading u32")?;
-        let array: [u8; 4] = raw.try_into().context("Invalid u32 field length")?;
-        Ok(u32::from_le_bytes(array))
-    }
-
-    fn parse_bmu_entries(bytes: &[u8]) -> anyhow::Result<Option<Vec<BmuEntry>>> {
-        if bytes.len() < BMU_HEADER_SIZE {
-            return Ok(None);
-        }
-
-        let magic = Self::read_u32_le(bytes, 0)?;
-        if magic != BMU_MAGIC {
-            return Ok(None);
-        }
-
-        let header_size = Self::read_u32_le(bytes, 8)? as usize;
-        let item_count = Self::read_u32_le(bytes, 12)? as usize;
-        let item_size = Self::read_u32_le(bytes, 16)? as usize;
-        let crc32 = Self::read_u32_le(bytes, 24)?;
-
-        if header_size != BMU_HEADER_SIZE {
-            bail!("Unsupported BMU header size: {header_size}");
-        }
-        if item_size < BMU_ITEM_FIXED_SIZE {
-            bail!("Unsupported BMU item size: {item_size}");
-        }
-
-        let table_end = BMU_HEADER_SIZE
-            .checked_add(
-                item_count
-                    .checked_mul(item_size)
-                    .context("BMU item table size overflow")?,
-            )
-            .context("BMU table end overflow")?;
-        if table_end > bytes.len() {
-            bail!("BMU item table exceeds file size");
-        }
-
-        let mut crc_buf = bytes.to_vec();
-        crc_buf
-            .get_mut(24..28)
-            .context("BMU missing CRC field")?
-            .fill(0);
-        if crc32_hash(&crc_buf) != crc32 {
-            bail!("BMU CRC mismatch");
-        }
-
-        let mut entries = Vec::with_capacity(item_count);
-        for idx in 0..item_count {
-            let offset = BMU_HEADER_SIZE + idx * item_size;
-            let entry = bytes
-                .get(offset..offset + item_size)
-                .context("BMU entry exceeds file size")?;
-
-            let filename_len = entry[0] as usize;
-            let chip_len = entry[1] as usize;
-            let hardware_len = entry[2] as usize;
-            let model_len = entry[3] as usize;
-
-            let filename = Self::decode_bmu_field(
-                entry.get(4..68).context("BMU missing filename field")?,
-                filename_len,
-            );
-            let chip = Self::decode_bmu_field(
-                entry.get(68..100).context("BMU missing chip field")?,
-                chip_len,
-            );
-            let hardware = Self::decode_bmu_field(
-                entry.get(100..132).context("BMU missing hardware field")?,
-                hardware_len,
-            );
-            let model = Self::decode_bmu_field(
-                entry.get(132..164).context("BMU missing model field")?,
-                model_len,
-            );
-
-            let data_offset = Self::read_u32_le(entry, 164)? as usize;
-            let size = Self::read_u32_le(entry, 168)? as usize;
-            let data = bytes
-                .get(data_offset..data_offset + size)
-                .context("BMU payload exceeds file size")?;
-
-            entries.push(BmuEntry {
-                filename,
-                chip,
-                hardware,
-                model,
-                bytes: data.to_vec(),
-            });
-        }
-
-        Ok(Some(entries))
-    }
-
-    fn decode_bmu_field(field: &[u8], len: usize) -> String {
-        let end = len.min(field.len());
-        String::from_utf8_lossy(&field[..end]).into_owned()
-    }
-
-    fn candidate_score(entry: &BmuEntry, miner: &MinerTypeInfo) -> Option<u8> {
-        let model = Self::normalized(&entry.model);
-        let hardware = Self::normalized(&entry.hardware);
-        let chip = Self::normalized(&entry.chip);
-        let filename = Self::normalized(&entry.filename);
-        let miner_model = Self::normalized(&miner.model);
-        let miner_subtype = Self::normalized(&miner.subtype);
-
-        if model != miner_model {
-            return None;
-        }
-
-        if miner_subtype.is_empty() {
-            return Some(1);
-        }
-        if hardware == miner_subtype || chip == miner_subtype {
-            return Some(4);
-        }
-        if Self::wildcard_compatible(&entry.hardware, &miner.subtype)
-            || Self::wildcard_compatible(&entry.chip, &miner.subtype)
-        {
-            return Some(4);
-        }
-        if hardware.contains(&miner_subtype) || chip.contains(&miner_subtype) {
-            return Some(3);
-        }
-        if filename.contains(&miner_subtype) {
-            return Some(2);
-        }
-        if !hardware.is_empty() || !chip.is_empty() || filename.contains("ctrl") {
-            return None;
-        }
-        Some(1)
-    }
-
-    fn resolve_firmware_image_inner(
-        filename: String,
-        firmware: Vec<u8>,
-        miner: &MinerTypeInfo,
-        depth: usize,
-    ) -> anyhow::Result<FirmwareImage> {
-        if depth > 8 {
-            bail!("BMU nesting depth exceeded");
-        }
-
-        let Some(entries) = Self::parse_bmu_entries(&firmware)? else {
-            return Ok(FirmwareImage {
-                filename,
-                bytes: firmware,
-            });
-        };
-
-        let best = entries
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, entry)| {
-                Self::candidate_score(entry, miner).map(|score| (score, idx))
-            })
-            .max_by_key(|(score, _)| *score)
-            .map(|(_, idx)| entries[idx].clone())
-            .context("No matching firmware image found in BMU bundle")?;
-
-        Self::resolve_firmware_image_inner(best.filename, best.bytes, miner, depth + 1)
-    }
-
-    fn resolve_firmware_image(
-        filename: String,
-        firmware: Vec<u8>,
-        miner: &MinerTypeInfo,
-    ) -> anyhow::Result<FirmwareImage> {
-        Self::resolve_firmware_image_inner(filename, firmware, miner, 0)
-    }
-
-    async fn get_miner_type_info(&self) -> anyhow::Result<MinerTypeInfo> {
-        let info = self.web.miner_type().await?;
-        let model = info
-            .get("miner_type")
-            .and_then(|v| v.as_str())
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .context("Missing miner_type in miner_type.cgi response")?;
-
-        let subtype = info
-            .get("subtype")
-            .and_then(|v| v.as_str())
-            .map(str::trim)
-            .unwrap_or_default();
-
-        Ok(MinerTypeInfo {
-            model: model.to_string(),
-            subtype: subtype.to_string(),
-        })
     }
 }
 
@@ -1123,12 +867,12 @@ impl SupportsScalingConfig for AntMinerV2020 {
 
 #[async_trait]
 impl UpgradeFirmware for AntMinerV2020 {
-    async fn upgrade_firmware(&self, filename: String, firmware: Vec<u8>) -> anyhow::Result<bool> {
+    async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
+        use self::firmware::AntMinerFirmwareImageExt;
+
         let miner = self.get_miner_type_info().await?;
-        let image = Self::resolve_firmware_image(filename, firmware, &miner)?;
-        self.web
-            .upgrade_firmware(image.filename, image.bytes)
-            .await?;
+        let image = image.resolve_for_miner(&miner)?;
+        self.web.upgrade_firmware(image).await?;
         Ok(true)
     }
 

@@ -12,6 +12,7 @@ asic-rs-makes-antminer.workspace = true
 async-trait.workspace = true
 reqwest.workspace = true
 diqwest.workspace = true
+digest_auth.workspace = true
 serde_json.workspace = true
 semver.workspace = true
 chrono.workspace = true
