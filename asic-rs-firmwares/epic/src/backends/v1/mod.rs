@@ -834,28 +834,19 @@ fn parse_tuning_target_from_stats(
     }))
 }
 
-fn parse_summary_tuning_target(summary: &Value) -> Option<TuningTarget> {
-    if !summary
-        .pointer("/PerpetualTune/Running")
-        .and_then(Value::as_bool)?
-    {
-        return None;
-    }
-
-    let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
-    parse_tuning_target_from_stats(summary, algorithm, stats, true)
-}
-
-fn parse_tuning_config(summary: &Value) -> Option<TuningConfig> {
-    let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
-    let tuning_target = parse_tuning_target_from_stats(summary, algorithm, stats, false)?;
-    Some(TuningConfig::new(tuning_target).with_algorithm(algorithm))
-}
-
 impl GetTuningTarget for PowerPlayV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.get(&DataField::TuningTarget)
-            .and_then(parse_summary_tuning_target)
+        data.get(&DataField::TuningTarget).and_then(|summary| {
+            if !summary
+                .pointer("/PerpetualTune/Running")
+                .and_then(Value::as_bool)?
+            {
+                return None;
+            }
+
+            let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
+            parse_tuning_target_from_stats(summary, algorithm, stats, true)
+        })
     }
 }
 
@@ -1147,7 +1138,12 @@ impl SupportsTuningConfig for PowerPlayV1 {
         data: &HashMap<ConfigField, Value>,
     ) -> anyhow::Result<TuningConfig> {
         data.get(&ConfigField::Tuning)
-            .and_then(parse_tuning_config)
+            .and_then(|summary| {
+                let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
+                let tuning_target =
+                    parse_tuning_target_from_stats(summary, algorithm, stats, false)?;
+                Some(TuningConfig::new(tuning_target).with_algorithm(algorithm))
+            })
             .ok_or_else(|| {
                 anyhow::anyhow!("Failed to parse tuning config from summary perpetual tune data")
             })
