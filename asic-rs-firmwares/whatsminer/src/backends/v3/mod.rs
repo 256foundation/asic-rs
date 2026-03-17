@@ -154,7 +154,7 @@ impl GetDataLocations for WhatsMinerV3 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 rpc_get_miner_status_summary,
                 DataExtractor {
                     func: get_by_pointer,
@@ -434,7 +434,7 @@ impl GetWattage for WhatsMinerV3 {
 }
 impl GetTuningTarget for WhatsMinerV3 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -623,6 +623,13 @@ impl Resume for WhatsMinerV3 {
 #[async_trait]
 impl SupportsScalingConfig for WhatsMinerV3 {
     fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for WhatsMinerV3 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

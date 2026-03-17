@@ -865,6 +865,13 @@ impl SupportsScalingConfig for AntMinerV2020 {
     }
 }
 
+#[async_trait]
+impl SupportsTuningConfig for AntMinerV2020 {
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

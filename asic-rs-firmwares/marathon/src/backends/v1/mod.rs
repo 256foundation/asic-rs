@@ -350,7 +350,7 @@ impl GetDataLocations for MaraV1 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 WEB_MINER_CONFIG,
                 DataExtractor {
                     func: get_by_pointer,
@@ -706,7 +706,7 @@ impl GetWattage for MaraV1 {
 
 impl GetTuningTarget for MaraV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract::<f64>(DataField::WattageLimit)
+        data.extract::<f64>(DataField::TuningTarget)
             .map(Power::from_watts)
             .map(TuningTarget::Power)
     }
@@ -915,6 +915,13 @@ impl Resume for MaraV1 {
 #[async_trait]
 impl SupportsScalingConfig for MaraV1 {
     fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for MaraV1 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

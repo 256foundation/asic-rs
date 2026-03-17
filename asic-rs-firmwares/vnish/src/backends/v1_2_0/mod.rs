@@ -786,3 +786,10 @@ impl SupportsScalingConfig for VnishV120 {
         false
     }
 }
+
+#[async_trait]
+impl SupportsTuningConfig for VnishV120 {
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
+}

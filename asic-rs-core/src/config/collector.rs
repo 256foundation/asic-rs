@@ -14,6 +14,7 @@ use crate::{
 pub enum ConfigField {
     Pools,
     Scaling,
+    Tuning,
 }
 
 /// A function pointer type that takes a JSON `Value` and an optional key,

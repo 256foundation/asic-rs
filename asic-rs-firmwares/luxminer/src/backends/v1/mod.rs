@@ -330,7 +330,7 @@ impl GetDataLocations for LuxMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![
+            DataField::TuningTarget => vec![
                 (
                     RPC_CONFIG,
                     DataExtractor {
@@ -885,7 +885,7 @@ impl GetWattage for LuxMinerV1 {
 
 impl GetTuningTarget for LuxMinerV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        let wattage_limit_data = data.get(&DataField::WattageLimit)?;
+        let wattage_limit_data = data.get(&DataField::TuningTarget)?;
         let profile_name = wattage_limit_data.get("Profile")?.as_str()?;
         let profiles = wattage_limit_data.get("Profiles")?.as_array()?;
 
@@ -999,6 +999,13 @@ impl Resume for LuxMinerV1 {
 #[async_trait]
 impl SupportsScalingConfig for LuxMinerV1 {
     fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for LuxMinerV1 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

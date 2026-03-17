@@ -525,3 +525,10 @@ impl SupportsScalingConfig for NerdAxeV1 {
         false
     }
 }
+
+#[async_trait]
+impl SupportsTuningConfig for NerdAxeV1 {
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
+}

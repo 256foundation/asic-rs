@@ -312,7 +312,7 @@ impl GetDataLocations for AvalonQMiner {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -559,7 +559,7 @@ impl GetWattage for AvalonQMiner {
 
 impl GetTuningTarget for AvalonQMiner {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -618,6 +618,13 @@ impl GetPools for AvalonQMiner {
 #[async_trait]
 impl SupportsScalingConfig for AvalonQMiner {
     fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for AvalonQMiner {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

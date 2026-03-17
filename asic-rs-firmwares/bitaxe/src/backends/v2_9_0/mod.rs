@@ -527,3 +527,10 @@ impl SupportsScalingConfig for Bitaxe290 {
         false
     }
 }
+
+#[async_trait]
+impl SupportsTuningConfig for Bitaxe290 {
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
+}

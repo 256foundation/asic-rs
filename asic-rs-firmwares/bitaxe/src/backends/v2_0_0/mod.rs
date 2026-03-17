@@ -539,6 +539,13 @@ impl SupportsScalingConfig for Bitaxe200 {
     }
 }
 
+#[async_trait]
+impl SupportsTuningConfig for Bitaxe200 {
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

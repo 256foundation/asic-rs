@@ -6,6 +6,7 @@ use asic_rs_core::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
         pools::PoolGroupConfig,
         scaling::ScalingConfig,
+        tuning::TuningConfig,
     },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
@@ -16,6 +17,7 @@ use asic_rs_core::{
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
+        miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -62,6 +64,73 @@ impl PowerPlayV1 {
             })
             .collect()
     }
+
+    fn value_as_f64(value: &Value) -> Option<f64> {
+        value
+            .as_f64()
+            .or_else(|| value.as_i64().map(|v| v as f64))
+            .or_else(|| value.as_u64().map(|v| v as f64))
+    }
+
+    fn first_perpetual_tune_algorithm(summary: &Value) -> Option<(&str, &Value)> {
+        summary
+            .pointer("/PerpetualTune/Algorithm")
+            .and_then(Value::as_object)?
+            .iter()
+            .next()
+            .map(|(algorithm, stats)| (algorithm.as_str(), stats))
+    }
+
+    fn parse_tuning_target_from_stats(
+        summary: &Value,
+        algorithm: &str,
+        stats: &Value,
+        algorithm_drives_power: bool,
+    ) -> Option<TuningTarget> {
+        let target = Self::value_as_f64(stats.get("Target")?)?;
+        let unit = stats
+            .get("Unit")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+
+        let unit_is_power = unit.trim().to_ascii_uppercase().contains('W');
+        let algorithm_is_power = algorithm.to_ascii_lowercase().contains("power");
+        if unit_is_power || (algorithm_drives_power && algorithm_is_power) {
+            return Some(TuningTarget::Power(Power::from_watts(target)));
+        }
+
+        let hr_unit = unit.parse::<HashRateUnit>().ok()?;
+        let algo = summary
+            .pointer("/Mining/Algorithm")
+            .and_then(Value::as_str)
+            .unwrap_or("SHA256")
+            .to_string();
+
+        Some(TuningTarget::HashRate(HashRate {
+            value: target,
+            unit: hr_unit,
+            algo,
+        }))
+    }
+
+    fn parse_tuning_config(summary: &Value) -> Option<TuningConfig> {
+        let (algorithm, stats) = Self::first_perpetual_tune_algorithm(summary)?;
+        let tuning_target = Self::parse_tuning_target_from_stats(summary, algorithm, stats, false)?;
+
+        Some(TuningConfig::new(tuning_target).with_algorithm(algorithm))
+    }
+
+    fn parse_summary_tuning_target(summary: &Value) -> Option<TuningTarget> {
+        if !summary
+            .pointer("/PerpetualTune/Running")
+            .and_then(Value::as_bool)?
+        {
+            return None;
+        }
+
+        let (algorithm, stats) = Self::first_perpetual_tune_algorithm(summary)?;
+        Self::parse_tuning_target_from_stats(summary, algorithm, stats, true)
+    }
 }
 
 #[async_trait]
@@ -88,6 +157,14 @@ impl GetConfigsLocations for PowerPlayV1 {
                 ConfigExtractor {
                     func: get_by_pointer,
                     key: Some("/PerpetualTune/Algorithm"),
+                    tag: None,
+                },
+            )],
+            ConfigField::Tuning => vec![(
+                WEB_SUMMARY,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
                     tag: None,
                 },
             )],
@@ -167,6 +244,14 @@ impl GetDataLocations for PowerPlayV1 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/Power Supply Stats/Input Power"),
+                    tag: None,
+                },
+            )],
+            DataField::TuningTarget => vec![(
+                WEB_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
                     tag: None,
                 },
             )],
@@ -768,7 +853,12 @@ impl GetWattage for PowerPlayV1 {
     }
 }
 
-impl GetTuningTarget for PowerPlayV1 {}
+impl GetTuningTarget for PowerPlayV1 {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        data.get(&DataField::TuningTarget)
+            .and_then(Self::parse_summary_tuning_target)
+    }
+}
 
 impl GetLightFlashing for PowerPlayV1 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
@@ -1052,6 +1142,24 @@ impl SupportsScalingConfig for PowerPlayV1 {
 }
 
 #[async_trait]
+impl SupportsTuningConfig for PowerPlayV1 {
+    fn parse_tuning_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TuningConfig> {
+        data.get(&ConfigField::Tuning)
+            .and_then(Self::parse_tuning_config)
+            .ok_or_else(|| {
+                anyhow::anyhow!("Failed to parse tuning config from summary perpetual tune data")
+            })
+    }
+
+    fn supports_tuning_config(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
 impl Restart for PowerPlayV1 {
     async fn restart(&self) -> anyhow::Result<bool> {
         self.web
@@ -1211,6 +1319,11 @@ mod tests {
         println!(
             "scalingconfig {}",
             serde_json::to_string_pretty(&miner.get_scaling_config().await?)?
+        );
+
+        println!(
+            "tuningconfig {}",
+            serde_json::to_string_pretty(&miner.get_tuning_config().await?)?
         );
 
         assert_eq!(miner_data.ip, ip);
