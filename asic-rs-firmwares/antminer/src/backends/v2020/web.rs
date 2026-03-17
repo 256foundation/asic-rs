@@ -55,7 +55,10 @@ impl AntMinerWebAPI {
         let session = DigestAuthSession::new(self.username.clone(), self.password.clone());
 
         self.client
-            .get(format!("http://{}:{}/cgi-bin/get_system_info.cgi", self.ip, self.port))
+            .get(format!(
+                "http://{}:{}/cgi-bin/get_system_info.cgi",
+                self.ip, self.port
+            ))
             .timeout(self.timeout)
             .send_digest_auth(&session)
             .await
