@@ -24,10 +24,16 @@ pub async fn send_rpc_command(ip: &IpAddr, command: &'static str) -> Option<serd
         .ok()?;
 
     let command = format!("{{\"command\":\"{command}\"}}");
-    stream.write_all(command.as_bytes()).await.ok()?;
+    if let Err(err) = stream.write_all(command.as_bytes()).await {
+        tracing::debug!("failed to write command to {ip}: {err:?}");
+        return None;
+    }
 
     let mut buffer = Vec::new();
-    stream.read_to_end(&mut buffer).await.ok()?;
+    if let Err(err) = stream.read_to_end(&mut buffer).await {
+        tracing::debug!("failed to read response from {ip}: {err:?}");
+        return None;
+    }
 
     let response = String::from_utf8_lossy(&buffer)
         .into_owned()
