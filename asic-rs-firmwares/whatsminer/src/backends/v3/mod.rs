@@ -623,3 +623,10 @@ impl SupportsScalingConfig for WhatsMinerV3 {
         false
     }
 }
+
+#[async_trait]
+impl UpgradeFirmware for WhatsMinerV3 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}

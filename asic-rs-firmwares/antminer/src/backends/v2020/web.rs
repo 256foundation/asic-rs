@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow, bail};
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
-use reqwest::{Client, Method, Response};
+use reqwest::{Client, Method, Response, header::CONTENT_TYPE};
 use serde_json::{Value, json};
 
 #[derive(Debug)]
@@ -19,6 +19,25 @@ pub struct AntMinerWebAPI {
 
 #[allow(dead_code)]
 impl AntMinerWebAPI {
+    fn build_firmware_upload_body(filename: &str, firmware: &[u8]) -> (String, Vec<u8>) {
+        let boundary = format!("----asic-rs-antminer-{}", firmware.len());
+        let mut body = Vec::with_capacity(firmware.len() + 256);
+
+        body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
+        body.extend_from_slice(
+            format!(
+                "Content-Disposition: form-data; name=\"firmware\"; filename=\"{}\"\r\n",
+                filename.replace('"', "")
+            )
+            .as_bytes(),
+        );
+        body.extend_from_slice(b"Content-Type: application/octet-stream\r\n\r\n");
+        body.extend_from_slice(firmware);
+        body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+
+        (format!("multipart/form-data; boundary={boundary}"), body)
+    }
+
     pub fn new(ip: IpAddr) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
@@ -127,8 +146,48 @@ impl AntMinerWebAPI {
             .await
     }
 
+    pub async fn upgrade_firmware(&self, filename: String, firmware: Vec<u8>) -> Result<()> {
+        let url = format!("http://{}:{}/cgi-bin/upgrade.cgi", self.ip, self.port);
+        let (content_type, body) = Self::build_firmware_upload_body(&filename, &firmware);
+
+        let response = self
+            .client
+            .post(url)
+            .header(CONTENT_TYPE, content_type)
+            .body(body)
+            .timeout(self.timeout.max(Duration::from_secs(60)))
+            .send_digest_auth((self.username.as_str(), self.password.as_str()))
+            .await
+            .map_err(|e| anyhow!(e.to_string()))?;
+
+        let status = response.status();
+        let body = response.text().await.map_err(|e| anyhow!(e.to_string()))?;
+        if !status.is_success() {
+            bail!("Firmware upload failed with status code {}", status);
+        }
+
+        let parsed: Value = serde_json::from_str(&body)
+            .map_err(|e| anyhow!("Invalid firmware upload response: {}", e))?;
+        let code = parsed.get("code").and_then(|value| value.as_str());
+        let stats = parsed.get("stats").and_then(|value| value.as_str());
+        if code == Some("U000") && stats == Some("success") {
+            return Ok(());
+        }
+
+        let message = parsed
+            .get("msg")
+            .and_then(|value| value.as_str())
+            .unwrap_or("unknown error");
+        bail!("Firmware upload rejected: {}", message);
+    }
+
     pub async fn get_system_info(&self) -> Result<Value> {
         self.send_web_command("get_system_info", false, None, Method::GET)
+            .await
+    }
+
+    pub async fn miner_type(&self) -> Result<Value> {
+        self.send_web_command("miner_type", false, None, Method::GET)
             .await
     }
 

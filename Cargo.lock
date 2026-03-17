@@ -120,6 +120,7 @@ dependencies = [
  "asic-rs-makes-antminer",
  "async-trait",
  "chrono",
+ "crc32fast",
  "diqwest",
  "macaddr",
  "measurements",

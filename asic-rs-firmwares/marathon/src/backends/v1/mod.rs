@@ -916,3 +916,10 @@ impl SupportsScalingConfig for MaraV1 {
         false
     }
 }
+
+#[async_trait]
+impl UpgradeFirmware for MaraV1 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}

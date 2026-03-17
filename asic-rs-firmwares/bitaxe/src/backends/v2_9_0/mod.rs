@@ -525,3 +525,10 @@ impl SupportsScalingConfig for Bitaxe290 {
         false
     }
 }
+
+#[async_trait]
+impl UpgradeFirmware for Bitaxe290 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}

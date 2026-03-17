@@ -35,9 +35,9 @@ pub trait MinerConstructor {
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner>;
 }
 
-pub trait Miner: GetMinerData + HasMinerControl + SupportsConfigs {}
+pub trait Miner: GetMinerData + HasMinerControl + SupportsConfigs + UpgradeFirmware {}
 
-impl<T: GetMinerData + HasMinerControl + SupportsConfigs> Miner for T {}
+impl<T: GetMinerData + HasMinerControl + SupportsConfigs + UpgradeFirmware> Miner for T {}
 
 pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
 
@@ -54,6 +54,7 @@ pub trait CollectConfigs: GetConfigsLocations {
     /// instance that can be used to collect configs from the miner.
     fn get_config_collector(&self) -> ConfigCollector<'_>;
 }
+
 pub trait GetConfigsLocations: MinerInterface + Send + Sync + Debug {
     /// Returns the locations of the specified config field on the miner.
     ///
@@ -676,6 +677,18 @@ pub trait Resume {
         anyhow::bail!("Resuming mining is not supported on this platform");
     }
     fn supports_resume(&self) -> bool;
+}
+
+#[async_trait]
+pub trait UpgradeFirmware {
+    #[allow(unused_variables)]
+    async fn upgrade_firmware(&self, filename: String, firmware: Vec<u8>) -> anyhow::Result<bool> {
+        anyhow::bail!("Upgrading firmware is not supported on this platform");
+    }
+
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
 }
 
 // Config traits

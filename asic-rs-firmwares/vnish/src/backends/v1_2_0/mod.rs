@@ -784,3 +784,10 @@ impl SupportsScalingConfig for VnishV120 {
         false
     }
 }
+
+#[async_trait]
+impl UpgradeFirmware for VnishV120 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}

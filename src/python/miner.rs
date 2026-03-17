@@ -105,6 +105,10 @@ impl Miner {
     fn supports_pools_config(&self) -> bool {
         self.inner.supports_pools_config()
     }
+    #[getter]
+    fn supports_upgrade_firmware(&self) -> bool {
+        self.inner.supports_upgrade_firmware()
+    }
 
     // Data functions
     pub fn get_data<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
@@ -304,6 +308,18 @@ impl Miner {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             let data = inner.set_pools_config(groups).await;
+            Ok(data.ok())
+        })
+    }
+    pub fn upgrade_firmware<'a>(
+        &self,
+        py: Python<'a>,
+        filename: String,
+        firmware: Vec<u8>,
+    ) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let data = inner.upgrade_firmware(filename, firmware).await;
             Ok(data.ok())
         })
     }

@@ -1096,6 +1096,13 @@ impl Resume for PowerPlayV1 {
     }
 }
 
+#[async_trait]
+impl UpgradeFirmware for PowerPlayV1 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

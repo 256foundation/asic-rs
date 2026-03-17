@@ -1000,6 +1000,13 @@ impl SupportsScalingConfig for LuxMinerV1 {
     }
 }
 
+#[async_trait]
+impl UpgradeFirmware for LuxMinerV1 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

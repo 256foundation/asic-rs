@@ -653,6 +653,13 @@ impl SupportsScalingConfig for AvalonAMiner {
     }
 }
 
+#[async_trait]
+impl UpgradeFirmware for AvalonAMiner {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

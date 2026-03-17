@@ -522,3 +522,10 @@ impl SupportsScalingConfig for NerdAxeV1 {
         false
     }
 }
+
+#[async_trait]
+impl UpgradeFirmware for NerdAxeV1 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
