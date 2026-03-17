@@ -47,25 +47,28 @@ impl AntMinerWebAPI {
         Ok(Form::new().part("firmware", part))
     }
 
-    async fn build_firmware_upgrade_auth_header(
-        &self,
-        path: &str,
-        method: HttpMethod<'static>,
-    ) -> Result<String> {
+    async fn build_firmware_upgrade_auth_header(&self, path: &str) -> Result<String> {
         let session = DigestAuthSession::new(self.username.clone(), self.password.clone());
+        let auth_probe_url = format!(
+            "http://{}:{}/cgi-bin/get_system_info.cgi",
+            self.ip, self.port
+        );
 
         self.client
-            .get(format!(
-                "http://{}:{}/cgi-bin/get_system_info.cgi",
-                self.ip, self.port
-            ))
+            .get(&auth_probe_url)
             .timeout(self.timeout)
             .send_digest_auth(&session)
             .await
             .with_context(|| "failed to establish digest auth session".to_string())?;
 
         let auth = (&session)
-            .calculate_authorization(&self.ip.to_string(), path, method, None, &HeaderMap::new())
+            .calculate_authorization(
+                &self.ip.to_string(),
+                path,
+                HttpMethod::POST,
+                None,
+                &HeaderMap::new(),
+            )
             .map_err(|e| anyhow!("{e}"))
             .with_context(|| format!("failed to calculate digest authorization for {path}"))?;
 
@@ -184,7 +187,7 @@ impl AntMinerWebAPI {
         let url = format!("http://{}:{}/cgi-bin/upgrade.cgi", self.ip, self.port);
         let form = Self::build_firmware_upload_form(image)?;
         let auth_header = self
-            .build_firmware_upgrade_auth_header("/cgi-bin/upgrade.cgi", HttpMethod::POST)
+            .build_firmware_upgrade_auth_header("/cgi-bin/upgrade.cgi")
             .await?;
 
         let response = self

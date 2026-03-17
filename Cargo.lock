@@ -130,6 +130,7 @@ dependencies = [
  "semver",
  "serde_json",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
