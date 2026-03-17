@@ -64,73 +64,6 @@ impl PowerPlayV1 {
             })
             .collect()
     }
-
-    fn value_as_f64(value: &Value) -> Option<f64> {
-        value
-            .as_f64()
-            .or_else(|| value.as_i64().map(|v| v as f64))
-            .or_else(|| value.as_u64().map(|v| v as f64))
-    }
-
-    fn first_perpetual_tune_algorithm(summary: &Value) -> Option<(&str, &Value)> {
-        summary
-            .pointer("/PerpetualTune/Algorithm")
-            .and_then(Value::as_object)?
-            .iter()
-            .next()
-            .map(|(algorithm, stats)| (algorithm.as_str(), stats))
-    }
-
-    fn parse_tuning_target_from_stats(
-        summary: &Value,
-        algorithm: &str,
-        stats: &Value,
-        algorithm_drives_power: bool,
-    ) -> Option<TuningTarget> {
-        let target = Self::value_as_f64(stats.get("Target")?)?;
-        let unit = stats
-            .get("Unit")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
-
-        let unit_is_power = unit.trim().to_ascii_uppercase().contains('W');
-        let algorithm_is_power = algorithm.to_ascii_lowercase().contains("power");
-        if unit_is_power || (algorithm_drives_power && algorithm_is_power) {
-            return Some(TuningTarget::Power(Power::from_watts(target)));
-        }
-
-        let hr_unit = unit.parse::<HashRateUnit>().ok()?;
-        let algo = summary
-            .pointer("/Mining/Algorithm")
-            .and_then(Value::as_str)
-            .unwrap_or("SHA256")
-            .to_string();
-
-        Some(TuningTarget::HashRate(HashRate {
-            value: target,
-            unit: hr_unit,
-            algo,
-        }))
-    }
-
-    fn parse_tuning_config(summary: &Value) -> Option<TuningConfig> {
-        let (algorithm, stats) = Self::first_perpetual_tune_algorithm(summary)?;
-        let tuning_target = Self::parse_tuning_target_from_stats(summary, algorithm, stats, false)?;
-
-        Some(TuningConfig::new(tuning_target).with_algorithm(algorithm))
-    }
-
-    fn parse_summary_tuning_target(summary: &Value) -> Option<TuningTarget> {
-        if !summary
-            .pointer("/PerpetualTune/Running")
-            .and_then(Value::as_bool)?
-        {
-            return None;
-        }
-
-        let (algorithm, stats) = Self::first_perpetual_tune_algorithm(summary)?;
-        Self::parse_tuning_target_from_stats(summary, algorithm, stats, true)
-    }
 }
 
 #[async_trait]
@@ -853,10 +786,76 @@ impl GetWattage for PowerPlayV1 {
     }
 }
 
+fn tuning_value_as_f64(value: &Value) -> Option<f64> {
+    value
+        .as_f64()
+        .or_else(|| value.as_i64().map(|v| v as f64))
+        .or_else(|| value.as_u64().map(|v| v as f64))
+}
+
+fn first_perpetual_tune_algorithm(summary: &Value) -> Option<(&str, &Value)> {
+    summary
+        .pointer("/PerpetualTune/Algorithm")
+        .and_then(Value::as_object)?
+        .iter()
+        .next()
+        .map(|(algorithm, stats)| (algorithm.as_str(), stats))
+}
+
+fn parse_tuning_target_from_stats(
+    summary: &Value,
+    algorithm: &str,
+    stats: &Value,
+    algorithm_drives_power: bool,
+) -> Option<TuningTarget> {
+    let target = tuning_value_as_f64(stats.get("Target")?)?;
+    let unit = stats
+        .get("Unit")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+
+    let unit_is_power = unit.trim().to_ascii_uppercase().contains('W');
+    let algorithm_is_power = algorithm.to_ascii_lowercase().contains("power");
+    if unit_is_power || (algorithm_drives_power && algorithm_is_power) {
+        return Some(TuningTarget::Power(Power::from_watts(target)));
+    }
+
+    let hr_unit = unit.parse::<HashRateUnit>().ok()?;
+    let algo = summary
+        .pointer("/Mining/Algorithm")
+        .and_then(Value::as_str)
+        .unwrap_or("SHA256")
+        .to_string();
+
+    Some(TuningTarget::HashRate(HashRate {
+        value: target,
+        unit: hr_unit,
+        algo,
+    }))
+}
+
+fn parse_summary_tuning_target(summary: &Value) -> Option<TuningTarget> {
+    if !summary
+        .pointer("/PerpetualTune/Running")
+        .and_then(Value::as_bool)?
+    {
+        return None;
+    }
+
+    let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
+    parse_tuning_target_from_stats(summary, algorithm, stats, true)
+}
+
+fn parse_tuning_config(summary: &Value) -> Option<TuningConfig> {
+    let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
+    let tuning_target = parse_tuning_target_from_stats(summary, algorithm, stats, false)?;
+    Some(TuningConfig::new(tuning_target).with_algorithm(algorithm))
+}
+
 impl GetTuningTarget for PowerPlayV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.get(&DataField::TuningTarget)
-            .and_then(Self::parse_summary_tuning_target)
+            .and_then(parse_summary_tuning_target)
     }
 }
 
@@ -1148,7 +1147,7 @@ impl SupportsTuningConfig for PowerPlayV1 {
         data: &HashMap<ConfigField, Value>,
     ) -> anyhow::Result<TuningConfig> {
         data.get(&ConfigField::Tuning)
-            .and_then(Self::parse_tuning_config)
+            .and_then(parse_tuning_config)
             .ok_or_else(|| {
                 anyhow::anyhow!("Failed to parse tuning config from summary perpetual tune data")
             })
