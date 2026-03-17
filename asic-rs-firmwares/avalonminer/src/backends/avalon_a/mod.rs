@@ -5,11 +5,12 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use crate::firmware::AvalonStockFirmware;
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -30,6 +31,8 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
 use rpc::AvalonMinerRPCAPI;
 use serde_json::{Value, json};
+
+use crate::firmware::AvalonStockFirmware;
 
 mod rpc;
 

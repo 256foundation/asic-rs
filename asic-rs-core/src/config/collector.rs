@@ -3,10 +3,11 @@ use std::collections::{HashMap, HashSet};
 use serde_json::{Value, json};
 use strum::{EnumIter, IntoEnumIterator};
 
-use crate::{data::command::MinerCommand, traits::miner::APIClient};
-
 pub use crate::data::collector::{get_by_key, get_by_pointer};
-use crate::traits::miner::GetConfigsLocations;
+use crate::{
+    data::command::MinerCommand,
+    traits::miner::{APIClient, GetConfigsLocations},
+};
 
 /// Represents the individual configs that can be queried from a miner device.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Copy, EnumIter)]

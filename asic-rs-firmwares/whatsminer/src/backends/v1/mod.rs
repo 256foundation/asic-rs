@@ -1,10 +1,11 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use crate::firmware::WhatsMinerFirmware;
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -26,6 +27,8 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::WhatsMinerRPCAPI;
 use serde_json::Value;
+
+use crate::firmware::WhatsMinerFirmware;
 
 mod rpc;
 

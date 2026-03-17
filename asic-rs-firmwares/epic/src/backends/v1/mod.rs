@@ -1,11 +1,12 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
-use asic_rs_core::config::collector::{
-    ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation,
-};
 use asic_rs_core::{
-    config::{pools::PoolGroupConfig, scaling::ScalingConfig},
+    config::{
+        collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+        scaling::ScalingConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{

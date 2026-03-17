@@ -13,9 +13,12 @@ use reqwest::Method;
 use serde_json::Value;
 use tracing;
 
-use crate::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use crate::{
-    config::{pools::PoolGroupConfig, scaling::ScalingConfig},
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+        scaling::ScalingConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{DataCollector, DataField, DataLocation},

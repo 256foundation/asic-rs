@@ -1,10 +1,11 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use crate::{backends::v1::rpc::LUXMinerRPCAPI, firmware::LuxMinerFirmware};
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -25,6 +26,8 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
+
+use crate::{backends::v1::rpc::LUXMinerRPCAPI, firmware::LuxMinerFirmware};
 
 mod rpc;
 
