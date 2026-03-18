@@ -244,6 +244,14 @@ impl GetDataLocations for WhatsMinerV3 {
                     tag: None,
                 },
             )],
+            DataField::IsMining => vec![(
+                RPC_GET_DEVICE_INFO,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/msg/miner/working"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
@@ -449,7 +457,13 @@ impl GetUptime for WhatsMinerV3 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
-impl GetIsMining for WhatsMinerV3 {}
+impl GetIsMining for WhatsMinerV3 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        // Raw field is "working": "true" means mining is ON.
+        let working = data.extract::<String>(DataField::IsMining);
+        working.as_deref() != Some("false")
+    }
+}
 impl GetPools for WhatsMinerV3 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let mut pools: Vec<PoolData> = Vec::new();

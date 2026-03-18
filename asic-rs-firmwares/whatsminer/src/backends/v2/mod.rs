@@ -243,14 +243,24 @@ impl GetDataLocations for WhatsMinerV2 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![(
-                RPC_STATUS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/SUMMARY/0/btmineroff"),
-                    tag: None,
-                },
-            )],
+            DataField::IsMining => vec![
+                (
+                    RPC_STATUS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/SUMMARY/0/btmineroff"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_STATUS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/Msg/mineroff"),
+                        tag: None,
+                    },
+                ),
+            ],
             DataField::Messages => vec![(
                 RPC_GET_ERROR_CODE,
                 DataExtractor {
@@ -507,8 +517,9 @@ impl GetUptime for WhatsMinerV2 {
 }
 impl GetIsMining for WhatsMinerV2 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract_map::<String, _>(DataField::IsMining, |l| l != "false")
-            .unwrap_or(true)
+        // Raw field is "mineroff" / "btmineroff": "true" means mining is OFF.
+        let miner_off = data.extract::<String>(DataField::IsMining);
+        miner_off.as_deref() != Some("true")
     }
 }
 impl GetPools for WhatsMinerV2 {
