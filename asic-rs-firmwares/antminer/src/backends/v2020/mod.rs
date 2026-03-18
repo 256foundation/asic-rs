@@ -29,6 +29,7 @@ use rpc::AntMinerRPCAPI;
 use serde_json::{Value, json};
 use web::AntMinerWebAPI;
 
+use self::firmware::AntMinerFirmwareImageExt;
 use crate::firmware::AntMinerStockFirmware;
 
 mod firmware;
@@ -870,8 +871,6 @@ impl SupportsScalingConfig for AntMinerV2020 {
 #[async_trait]
 impl UpgradeFirmware for AntMinerV2020 {
     async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
-        use self::firmware::AntMinerFirmwareImageExt;
-
         let miner = self.get_miner_type_info().await?;
         let image = image.resolve_for_miner(&miner)?;
         self.web.upgrade_firmware(image).await?;

@@ -121,7 +121,6 @@ dependencies = [
  "async-trait",
  "chrono",
  "crc32fast",
- "digest_auth",
  "diqwest",
  "macaddr",
  "measurements",

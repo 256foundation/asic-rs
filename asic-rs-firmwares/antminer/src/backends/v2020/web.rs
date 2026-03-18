@@ -4,12 +4,10 @@ use anyhow::{Context, Result, anyhow, bail};
 use asic_rs_core::data::firmware::FirmwareImage;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
-use digest_auth::HttpMethod;
-use diqwest::{DigestAuthCredentials, DigestAuthSession, WithDigestAuth};
+use diqwest::WithDigestAuth;
 use reqwest::{
     Client, Method, Response,
-    header::{AUTHORIZATION, HeaderMap},
-    multipart::{Form, Part},
+    header::CONTENT_TYPE,
 };
 use serde_json::{Value, json};
 
@@ -27,6 +25,8 @@ pub struct AntMinerWebAPI {
 
 #[allow(dead_code)]
 impl AntMinerWebAPI {
+    const FIRMWARE_UPLOAD_BOUNDARY: &str = "asic-rs-antminer-firmware-boundary";
+
     fn truncated_firmware_upgrade_response_body(body: &str) -> String {
         const MAX_BODY_CHARS: usize = 512;
 
@@ -38,41 +38,28 @@ impl AntMinerWebAPI {
         }
     }
 
-    fn build_firmware_upload_form(image: FirmwareImage) -> Result<Form> {
-        let part = Part::bytes(image.bytes)
-            .file_name(image.filename)
-            .mime_str("application/octet-stream")
-            .map_err(|e| anyhow!(e.to_string()))?;
-
-        Ok(Form::new().part("firmware", part))
-    }
-
-    async fn build_firmware_upgrade_auth_header(&self, path: &str) -> Result<String> {
-        let session = DigestAuthSession::new(self.username.clone(), self.password.clone());
-        let auth_probe_url = format!(
-            "http://{}:{}/cgi-bin/get_system_info.cgi",
-            self.ip, self.port
+    fn build_firmware_upload_request_body(image: FirmwareImage) -> (Vec<u8>, String) {
+        let mut body = Vec::with_capacity(image.bytes.len() + 256);
+        body.extend_from_slice(
+            format!(
+                "--{}\r\nContent-Disposition: form-data; name=\"firmware\"; filename=\"{}\"\r\nContent-Type: application/octet-stream\r\n\r\n",
+                Self::FIRMWARE_UPLOAD_BOUNDARY,
+                image.filename
+            )
+            .as_bytes(),
+        );
+        body.extend_from_slice(&image.bytes);
+        body.extend_from_slice(
+            format!("\r\n--{}--\r\n", Self::FIRMWARE_UPLOAD_BOUNDARY).as_bytes(),
         );
 
-        self.client
-            .get(&auth_probe_url)
-            .timeout(self.timeout)
-            .send_digest_auth(&session)
-            .await
-            .with_context(|| "failed to establish digest auth session".to_string())?;
-
-        let auth = (&session)
-            .calculate_authorization(
-                &self.ip.to_string(),
-                path,
-                HttpMethod::POST,
-                None,
-                &HeaderMap::new(),
-            )
-            .map_err(|e| anyhow!("{e}"))
-            .with_context(|| format!("failed to calculate digest authorization for {path}"))?;
-
-        Ok(auth.to_header_string())
+        (
+            body,
+            format!(
+                "multipart/form-data; boundary={}",
+                Self::FIRMWARE_UPLOAD_BOUNDARY
+            ),
+        )
     }
 
     pub fn new(ip: IpAddr) -> Self {
@@ -185,18 +172,15 @@ impl AntMinerWebAPI {
 
     pub async fn upgrade_firmware(&self, image: FirmwareImage) -> Result<()> {
         let url = format!("http://{}:{}/cgi-bin/upgrade.cgi", self.ip, self.port);
-        let form = Self::build_firmware_upload_form(image)?;
-        let auth_header = self
-            .build_firmware_upgrade_auth_header("/cgi-bin/upgrade.cgi")
-            .await?;
+        let (body, content_type) = Self::build_firmware_upload_request_body(image);
 
         let response = self
             .client
             .post(url)
-            .header(AUTHORIZATION, auth_header)
-            .multipart(form)
+            .header(CONTENT_TYPE, content_type)
+            .body(body)
             .timeout(self.timeout.max(Duration::from_secs(60)))
-            .send()
+            .send_digest_auth((self.username.as_str(), self.password.as_str()))
             .await
             .with_context(|| "firmware upload HTTP request failed".to_string())?;
 
