@@ -698,6 +698,7 @@ mod tests {
             Some(TuningTarget::Power(Power::from_watts(3500f64)))
         );
         assert_eq!(miner_data.uptime, Some(Duration::from_secs(10154)));
+        assert!(miner_data.is_mining);
         assert_eq!(miner_data.fans.len(), 2);
         assert_eq!(miner_data.pools[0].len(), 3);
 

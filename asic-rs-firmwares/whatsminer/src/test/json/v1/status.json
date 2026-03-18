@@ -1,1 +1,1 @@
-{"Code":131,"Description":"whatsminer v1.4.0","Msg":{"Firmware Version":"'20210322.22.REL'","btmineroff":"true"},"STATUS":"S","When":1761061371}
+{"Code":131,"Description":"whatsminer v1.4.0","Msg":{"mineroff":"false","FirmwareVersion":"20210322.22.REL","power_mode":"normal","hash_percent":"0"},"STATUS":"S","When":1761061371}
