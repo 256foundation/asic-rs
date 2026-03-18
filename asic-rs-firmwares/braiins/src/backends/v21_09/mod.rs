@@ -1,9 +1,11 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use asic_rs_core::{
-    config::pools::PoolGroupConfig,
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::BoardData,
         collector::{
@@ -257,7 +259,7 @@ impl GetDataLocations for BraiinsV2109 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 GQL_SYSTEM,
                 DataExtractor {
                     func: get_by_pointer,
@@ -472,7 +474,7 @@ impl GetWattage for BraiinsV2109 {
 
 impl GetTuningTarget for BraiinsV2109 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -828,6 +830,13 @@ impl SupportsScalingConfig for BraiinsV2109 {
 #[async_trait]
 impl UpgradeFirmware for BraiinsV2109 {
     fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for BraiinsV2109 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

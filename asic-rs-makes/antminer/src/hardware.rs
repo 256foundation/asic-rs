@@ -298,7 +298,9 @@ impl AntMinerControlBoard {
         let cb_model = s.trim().replace(" ", "").to_uppercase();
         match cb_model.as_ref() {
             "XILINX" => Some(Self::Xilinx),
-            "BBB" | "BB" | "BEAGLEBONE" | "BEAGLEBONEBLACK" => Some(Self::BeagleBoneBlack),
+            "BBB" | "BBCTRL" | "BB" | "BEAGLEBONE" | "BEAGLEBONEBLACK" => {
+                Some(Self::BeagleBoneBlack)
+            }
             "CVITEK" | "CVCTRL" => Some(Self::CVITek),
             "AMLOGIC" | "AML" => Some(Self::AMLogic),
             "AMCB07" => Some(Self::Xilinx), // Mara FW

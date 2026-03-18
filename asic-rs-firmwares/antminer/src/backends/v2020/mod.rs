@@ -1,9 +1,11 @@
 use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -878,6 +880,13 @@ impl UpgradeFirmware for AntMinerV2020 {
 
     fn supports_upgrade_firmware(&self) -> bool {
         true
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for AntMinerV2020 {
+    fn supports_tuning_config(&self) -> bool {
+        false
     }
 }
 

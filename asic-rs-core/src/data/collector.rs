@@ -47,8 +47,8 @@ pub enum DataField {
     FluidTemperature,
     /// Current power consumption in watts.
     Wattage,
-    /// Configured power limit in watts.
-    WattageLimit,
+    /// Configured tuning target (power or hashrate).
+    TuningTarget,
     /// Efficiency of the miner (e.g., J/TH).
     Efficiency,
     /// Whether the fault or alert light is flashing.

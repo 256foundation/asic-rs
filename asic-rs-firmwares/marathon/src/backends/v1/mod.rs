@@ -1,9 +1,11 @@
 use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -348,7 +350,7 @@ impl GetDataLocations for MaraV1 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 WEB_MINER_CONFIG,
                 DataExtractor {
                     func: get_by_pointer,
@@ -704,7 +706,7 @@ impl GetWattage for MaraV1 {
 
 impl GetTuningTarget for MaraV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract::<f64>(DataField::WattageLimit)
+        data.extract::<f64>(DataField::TuningTarget)
             .map(Power::from_watts)
             .map(TuningTarget::Power)
     }
@@ -920,6 +922,13 @@ impl SupportsScalingConfig for MaraV1 {
 #[async_trait]
 impl UpgradeFirmware for MaraV1 {
     fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for MaraV1 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

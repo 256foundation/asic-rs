@@ -5,11 +5,12 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use crate::firmware::AvalonStockFirmware;
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -30,6 +31,8 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
 use rpc::AvalonMinerRPCAPI;
 use serde_json::{Value, json};
+
+use crate::firmware::AvalonStockFirmware;
 
 mod rpc;
 
@@ -315,7 +318,7 @@ impl GetDataLocations for AvalonAMiner {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -588,7 +591,7 @@ impl GetWattage for AvalonAMiner {
 impl GetTuningTarget for AvalonAMiner {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         let limit = data
-            .get(&DataField::WattageLimit)
+            .get(&DataField::TuningTarget)
             .and_then(|v| v.as_array())?;
         let limit = limit.get(6).and_then(|watts: &Value| watts.as_f64())?;
         Some(TuningTarget::Power(Power::from_watts(limit)))
@@ -656,6 +659,13 @@ impl SupportsScalingConfig for AvalonAMiner {
 #[async_trait]
 impl UpgradeFirmware for AvalonAMiner {
     fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for AvalonAMiner {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

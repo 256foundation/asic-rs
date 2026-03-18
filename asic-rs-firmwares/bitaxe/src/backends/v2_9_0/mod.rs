@@ -6,9 +6,11 @@ use std::{
 };
 
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -529,6 +531,13 @@ impl SupportsScalingConfig for Bitaxe290 {
 #[async_trait]
 impl UpgradeFirmware for Bitaxe290 {
     fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for Bitaxe290 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

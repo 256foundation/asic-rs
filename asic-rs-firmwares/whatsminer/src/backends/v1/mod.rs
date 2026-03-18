@@ -1,10 +1,11 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use crate::firmware::WhatsMinerFirmware;
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -26,6 +27,8 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::WhatsMinerRPCAPI;
 use serde_json::Value;
+
+use crate::firmware::WhatsMinerFirmware;
 
 mod rpc;
 
@@ -135,7 +138,7 @@ impl GetDataLocations for WhatsMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
@@ -429,7 +432,7 @@ impl GetWattage for WhatsMinerV1 {
 }
 impl GetTuningTarget for WhatsMinerV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -590,6 +593,13 @@ impl SupportsScalingConfig for WhatsMinerV1 {
 #[async_trait]
 impl UpgradeFirmware for WhatsMinerV1 {
     fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for WhatsMinerV1 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

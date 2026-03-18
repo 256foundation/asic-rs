@@ -13,9 +13,13 @@ use reqwest::Method;
 use serde_json::Value;
 use tracing;
 
-use crate::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use crate::{
-    config::{pools::PoolGroupConfig, scaling::ScalingConfig},
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+        scaling::ScalingConfig,
+        tuning::TuningConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{DataCollector, DataField, DataLocation},
@@ -44,9 +48,15 @@ pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pa
 
 impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
 
-pub trait SupportsConfigs: CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig {}
+pub trait SupportsConfigs:
+    CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig + SupportsTuningConfig
+{
+}
 
-impl<T: CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig> SupportsConfigs for T {}
+impl<T: CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig + SupportsTuningConfig>
+    SupportsConfigs for T
+{
+}
 
 pub trait CollectConfigs: GetConfigsLocations {
     /// Returns a `ConfigCollector` that can be used to collect configs from the miner.
@@ -551,7 +561,7 @@ pub trait GetTuningTarget: CollectData {
     #[tracing::instrument(level = "debug")]
     async fn get_tuning_target(&self) -> Option<TuningTarget> {
         let mut collector = self.get_collector();
-        let data = collector.collect(&[DataField::WattageLimit]).await;
+        let data = collector.collect(&[DataField::TuningTarget]).await;
         self.parse_tuning_target(&data)
     }
     #[allow(unused_variables)]
@@ -737,4 +747,29 @@ pub trait SupportsScalingConfig: CollectConfigs {
     }
 
     fn supports_scaling_config(&self) -> bool;
+}
+
+#[async_trait]
+pub trait SupportsTuningConfig: CollectConfigs {
+    #[allow(unused_variables)]
+    async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting tuning config is not supported on this platform");
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_tuning_config(&self) -> anyhow::Result<TuningConfig> {
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::Tuning]).await;
+        self.parse_tuning_config(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_tuning_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TuningConfig> {
+        anyhow::bail!("Getting tuning config is not supported on this platform");
+    }
+
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
 }
