@@ -5,10 +5,7 @@ use asic_rs_core::data::firmware::FirmwareImage;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
-use reqwest::{
-    Client, Method, Response,
-    header::CONTENT_TYPE,
-};
+use reqwest::{Client, Method, Response, header::CONTENT_TYPE};
 use serde_json::{Value, json};
 
 use super::firmware::AntMinerFirmwareUpgradeResponseExt;
