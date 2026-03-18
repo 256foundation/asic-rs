@@ -647,3 +647,139 @@ impl SupportsTuningConfig for WhatsMinerV3 {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use asic_rs_core::test::api::MockAPIClient;
+    use asic_rs_makes_whatsminer::models::WhatsMinerModel;
+
+    use super::*;
+    use crate::test::json::v3::{
+        GET_DEVICE_INFO_COMMAND, GET_MINER_STATUS_EDEVS_COMMAND, GET_MINER_STATUS_POOLS_COMMAND,
+        GET_MINER_STATUS_SUMMARY_COMMAND,
+    };
+
+    #[tokio::test]
+    async fn test_whatsminer_v3_data_parsers() -> anyhow::Result<()> {
+        // Arrange
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK40);
+        let mut results = HashMap::new();
+
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.device.info",
+                parameters: None,
+            },
+            Value::from_str(GET_DEVICE_INFO_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.miner.status",
+                parameters: Some(json!("summary")),
+            },
+            Value::from_str(GET_MINER_STATUS_SUMMARY_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.miner.status",
+                parameters: Some(json!("pools")),
+            },
+            Value::from_str(GET_MINER_STATUS_POOLS_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.miner.status",
+                parameters: Some(json!("edevs")),
+            },
+            Value::from_str(GET_MINER_STATUS_EDEVS_COMMAND)?,
+        );
+
+        let mock_api = MockAPIClient::new(results);
+
+        // Act
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect_all().await;
+        let miner_data = miner.parse_data(data);
+
+        // Assert
+        assert_eq!(&miner_data.ip, &miner.ip);
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("CE:02:01:00:8C:36")?)
+        );
+        assert_eq!(miner_data.api_version, Some("3.0.2".to_string()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("20251209.16.Rel2".to_string())
+        );
+        assert_eq!(miner_data.hostname, Some("WhatsMiner".to_string()));
+        assert_eq!(
+            miner_data.hashrate,
+            Some(HashRate {
+                value: 171.259,
+                unit: HashRateUnit::TeraHash,
+                algo: String::from("SHA256"),
+            })
+        );
+        assert_eq!(
+            miner_data.expected_hashrate,
+            Some(HashRate {
+                value: 181.051,
+                unit: HashRateUnit::TeraHash,
+                algo: String::from("SHA256"),
+            })
+        );
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(3156.0)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(3600.0)))
+        );
+        assert_eq!(miner_data.uptime, Some(Duration::from_secs(50000)));
+        assert!(miner_data.is_mining);
+        assert_eq!(miner_data.fans.len(), 2);
+        assert_eq!(miner_data.pools[0].len(), 3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_is_mining_when_working() {
+        // Arrange - working="true" means the miner is actively hashing
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
+        let mut data = HashMap::new();
+        data.insert(DataField::IsMining, Value::String("true".to_string()));
+
+        // Act
+        let is_mining = miner.parse_is_mining(&data);
+
+        // Assert
+        assert!(is_mining);
+    }
+
+    #[test]
+    fn test_parse_is_mining_when_not_working() {
+        // Arrange - working="false" means the miner is paused
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
+        let mut data = HashMap::new();
+        data.insert(DataField::IsMining, Value::String("false".to_string()));
+
+        // Act
+        let is_mining = miner.parse_is_mining(&data);
+
+        // Assert
+        assert!(!is_mining);
+    }
+
+    #[test]
+    fn test_parse_is_mining_missing_defaults_to_mining() {
+        // Arrange - no status data available
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
+        let data = HashMap::new();
+
+        // Act
+        let is_mining = miner.parse_is_mining(&data);
+
+        // Assert
+        assert!(is_mining);
+    }
+}
