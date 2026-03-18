@@ -164,6 +164,61 @@ impl AntMinerV2020 {
             None
         }
     }
+
+    fn parse_rpc_pool(idx: usize, pool_info: &Value) -> PoolData {
+        PoolData {
+            position: Some(idx as u16),
+            url: pool_info
+                .get("URL")
+                .and_then(|v| v.as_str())
+                .map(|s| PoolURL::from(s.to_string())),
+            accepted_shares: pool_info.get("Accepted").and_then(|v| v.as_u64()),
+            rejected_shares: pool_info.get("Rejected").and_then(|v| v.as_u64()),
+            active: pool_info.get("Stratum Active").and_then(|v| v.as_bool()),
+            alive: pool_info
+                .get("Status")
+                .and_then(|v| v.as_str())
+                .map(|s| s == "Alive"),
+            user: pool_info
+                .get("User")
+                .and_then(|v| v.as_str())
+                .map(String::from),
+        }
+    }
+
+    fn parse_conf_pool(idx: usize, pool_info: &Value) -> Option<PoolData> {
+        let url = pool_info
+            .get("url")
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty())
+            .map(|s| PoolURL::from(s.to_string()));
+
+        let user = pool_info
+            .get("user")
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty())
+            .map(String::from);
+
+        let (url, user) = url.zip(user)?;
+
+        Some(PoolData {
+            position: Some(idx as u16),
+            url: Some(url),
+            accepted_shares: None,
+            rejected_shares: None,
+            active: None,
+            alive: None,
+            user: Some(user),
+        })
+    }
+
+    fn as_pool_group(pools: Vec<PoolData>) -> Vec<PoolGroupData> {
+        vec![PoolGroupData {
+            name: String::new(),
+            quota: 1,
+            pools,
+        }]
+    }
 }
 
 #[async_trait]
@@ -617,46 +672,13 @@ impl GetPools for AntMinerV2020 {
                 pools_array
                     .iter()
                     .enumerate()
-                    .map(|(idx, pool_info)| {
-                        let url = pool_info
-                            .get("URL")
-                            .and_then(|v| v.as_str())
-                            .map(|s| PoolURL::from(s.to_string()));
-
-                        let user = pool_info
-                            .get("User")
-                            .and_then(|v| v.as_str())
-                            .map(String::from);
-
-                        let alive = pool_info
-                            .get("Status")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s == "Alive");
-
-                        let active = pool_info.get("Stratum Active").and_then(|v| v.as_bool());
-                        let accepted_shares = pool_info.get("Accepted").and_then(|v| v.as_u64());
-                        let rejected_shares = pool_info.get("Rejected").and_then(|v| v.as_u64());
-
-                        PoolData {
-                            position: Some(idx as u16),
-                            url,
-                            accepted_shares,
-                            rejected_shares,
-                            active,
-                            alive,
-                            user,
-                        }
-                    })
+                    .map(|(idx, pool_info)| Self::parse_rpc_pool(idx, pool_info))
                     .collect()
             })
             .unwrap_or_default();
 
         if !rpc_pools.is_empty() {
-            return vec![PoolGroupData {
-                name: String::new(),
-                quota: 1,
-                pools: rpc_pools,
-            }];
+            return Self::as_pool_group(rpc_pools);
         }
 
         // No RPC data — fall back to conf entirely
@@ -667,43 +689,12 @@ impl GetPools for AntMinerV2020 {
             .map(|arr| {
                 arr.iter()
                     .enumerate()
-                    .filter_map(|(idx, pool_info)| {
-                        let url = pool_info
-                            .get("url")
-                            .and_then(|v| v.as_str())
-                            .filter(|s| !s.is_empty())
-                            .map(|s| PoolURL::from(s.to_string()));
-
-                        let user = pool_info
-                            .get("user")
-                            .and_then(|v| v.as_str())
-                            .filter(|s| !s.is_empty())
-                            .map(String::from);
-
-                        // Only include pools with at least a URL and user
-                        if url.is_some() && user.is_some() {
-                            Some(PoolData {
-                                position: Some(idx as u16),
-                                url,
-                                accepted_shares: None,
-                                rejected_shares: None,
-                                active: None,
-                                alive: None,
-                                user,
-                            })
-                        } else {
-                            None
-                        }
-                    })
+                    .filter_map(|(idx, pool_info)| Self::parse_conf_pool(idx, pool_info))
                     .collect()
             })
             .unwrap_or_default();
 
-        vec![PoolGroupData {
-            name: String::new(),
-            quota: 1,
-            pools: conf_pools,
-        }]
+        Self::as_pool_group(conf_pools)
     }
 }
 
@@ -856,13 +847,13 @@ impl SupportsPoolsConfig for AntMinerV2020 {
 
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let pools: Vec<Value> = config
-            .iter()
-            .flat_map(|group| group.pools.iter())
+            .into_iter()
+            .flat_map(|group| group.pools.into_iter())
             .map(|pool| {
                 json!({
                     "url": pool.url.to_string(),
-                    "user": pool.username.as_str(),
-                    "pass": pool.password.as_str(),
+                    "user": pool.username,
+                    "pass": pool.password,
                 })
             })
             .collect();
