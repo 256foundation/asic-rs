@@ -210,9 +210,9 @@ fn candidate_score(entry: &BmuEntry, miner: &MinerTypeInfo) -> Option<u8> {
 
     if miner_subtype.is_empty() {
         Some(1)
-    } else if hardware == miner_subtype || chip == miner_subtype {
-        Some(4)
-    } else if wildcard_compatible(&entry.hardware, &miner.subtype)
+    } else if hardware == miner_subtype
+        || chip == miner_subtype
+        || wildcard_compatible(&entry.hardware, &miner.subtype)
         || wildcard_compatible(&entry.chip, &miner.subtype)
     {
         Some(4)
