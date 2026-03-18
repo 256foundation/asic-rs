@@ -650,6 +650,54 @@ impl SupportsTuningConfig for WhatsMinerV3 {
 
 #[cfg(test)]
 mod tests {
+    use asic_rs_makes_whatsminer::models::WhatsMinerModel;
+
+    use super::*;
+
+    #[test]
+    fn test_parse_is_mining_when_working() {
+        // Arrange - working="true" means the miner is actively hashing
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
+        let mut data = HashMap::new();
+        data.insert(DataField::IsMining, Value::String("true".to_string()));
+
+        // Act
+        let is_mining = miner.parse_is_mining(&data);
+
+        // Assert
+        assert!(is_mining);
+    }
+
+    #[test]
+    fn test_parse_is_mining_when_not_working() {
+        // Arrange - working="false" means the miner is paused
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
+        let mut data = HashMap::new();
+        data.insert(DataField::IsMining, Value::String("false".to_string()));
+
+        // Act
+        let is_mining = miner.parse_is_mining(&data);
+
+        // Assert
+        assert!(!is_mining);
+    }
+
+    #[test]
+    fn test_parse_is_mining_missing_defaults_to_mining() {
+        // Arrange - no status data available
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
+        let data = HashMap::new();
+
+        // Act
+        let is_mining = miner.parse_is_mining(&data);
+
+        // Assert
+        assert!(is_mining);
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
     use asic_rs_core::test::api::MockAPIClient;
     use asic_rs_makes_whatsminer::models::WhatsMinerModel;
 
@@ -740,46 +788,5 @@ mod tests {
         assert_eq!(miner_data.pools[0].len(), 3);
 
         Ok(())
-    }
-
-    #[test]
-    fn test_parse_is_mining_when_working() {
-        // Arrange - working="true" means the miner is actively hashing
-        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
-        let mut data = HashMap::new();
-        data.insert(DataField::IsMining, Value::String("true".to_string()));
-
-        // Act
-        let is_mining = miner.parse_is_mining(&data);
-
-        // Assert
-        assert!(is_mining);
-    }
-
-    #[test]
-    fn test_parse_is_mining_when_not_working() {
-        // Arrange - working="false" means the miner is paused
-        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
-        let mut data = HashMap::new();
-        data.insert(DataField::IsMining, Value::String("false".to_string()));
-
-        // Act
-        let is_mining = miner.parse_is_mining(&data);
-
-        // Assert
-        assert!(!is_mining);
-    }
-
-    #[test]
-    fn test_parse_is_mining_missing_defaults_to_mining() {
-        // Arrange - no status data available
-        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
-        let data = HashMap::new();
-
-        // Act
-        let is_mining = miner.parse_is_mining(&data);
-
-        // Assert
-        assert!(is_mining);
     }
 }
