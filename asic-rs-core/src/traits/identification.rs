@@ -1,4 +1,5 @@
 /// Structured web response data for firmware identification.
+#[derive(Debug)]
 pub struct WebResponse<'a> {
     pub body: &'a str,
     pub auth_header: &'a str,

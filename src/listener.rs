@@ -107,7 +107,7 @@ impl AntMinerListener {
         &self,
     ) -> impl Stream<Item = anyhow::Result<Option<IpAddr>>> {
         stream! {
-            let factory = MinerFactory::new();
+            let _factory = MinerFactory::new();
             let sock = UdpSocket::bind("0.0.0.0:14235").await.expect("Failed to bind to port 14235 to listen for AntMiners.");
             let mut buf = Vec::with_capacity(256);
 
@@ -156,7 +156,7 @@ impl WhatsMinerListener {
         &self,
     ) -> impl Stream<Item = anyhow::Result<Option<IpAddr>>> {
         stream! {
-            let factory = MinerFactory::new();
+            let _factory = MinerFactory::new();
             let sock = UdpSocket::bind("0.0.0.0:8888").await.expect("Failed to bind to port 8888 to listen for WhatsMiners.");
             let mut buf = Vec::with_capacity(256);
 
