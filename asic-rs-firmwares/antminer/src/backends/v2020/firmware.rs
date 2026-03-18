@@ -274,3 +274,149 @@ impl AntMinerV2020 {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_u32_le(bytes: &mut [u8], offset: usize, value: u32) {
+        bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn encode_field(target: &mut [u8], value: &str) {
+        let bytes = value.as_bytes();
+        let len = bytes.len().min(target.len());
+        target[..len].copy_from_slice(&bytes[..len]);
+    }
+
+    fn build_bmu_entry(
+        filename: &str,
+        chip: &str,
+        hardware: &str,
+        model: &str,
+        payload: &[u8],
+        data_offset: usize,
+    ) -> Vec<u8> {
+        let mut entry = vec![0_u8; BMU_ITEM_FIXED_SIZE];
+        entry[0] = filename.len().min(64) as u8;
+        entry[1] = chip.len().min(32) as u8;
+        entry[2] = hardware.len().min(32) as u8;
+        entry[3] = model.len().min(32) as u8;
+        encode_field(&mut entry[4..68], filename);
+        encode_field(&mut entry[68..100], chip);
+        encode_field(&mut entry[100..132], hardware);
+        encode_field(&mut entry[132..164], model);
+        write_u32_le(&mut entry, 164, data_offset as u32);
+        write_u32_le(&mut entry, 168, payload.len() as u32);
+        entry
+    }
+
+    fn build_bmu(entries: &[(&str, &str, &str, &str, &[u8])]) -> Vec<u8> {
+        let item_size = BMU_ITEM_FIXED_SIZE;
+        let table_size = BMU_HEADER_SIZE + entries.len() * item_size;
+        let payload_size: usize = entries
+            .iter()
+            .map(|(_, _, _, _, payload)| payload.len())
+            .sum();
+        let mut bytes = vec![0_u8; table_size + payload_size];
+
+        write_u32_le(&mut bytes, 0, BMU_MAGIC);
+        write_u32_le(&mut bytes, 8, BMU_HEADER_SIZE as u32);
+        write_u32_le(&mut bytes, 12, entries.len() as u32);
+        write_u32_le(&mut bytes, 16, item_size as u32);
+
+        let mut next_payload_offset = table_size;
+        for (idx, (filename, chip, hardware, model, payload)) in entries.iter().enumerate() {
+            let entry = build_bmu_entry(
+                filename,
+                chip,
+                hardware,
+                model,
+                payload,
+                next_payload_offset,
+            );
+            let start = BMU_HEADER_SIZE + idx * item_size;
+            bytes[start..start + item_size].copy_from_slice(&entry);
+            bytes[next_payload_offset..next_payload_offset + payload.len()]
+                .copy_from_slice(payload);
+            next_payload_offset += payload.len();
+        }
+
+        let mut hasher = Hasher::new();
+        hasher.update(&bytes[..24]);
+        hasher.update(&[0, 0, 0, 0]);
+        hasher.update(&bytes[28..]);
+        let crc32 = hasher.finalize();
+        write_u32_le(&mut bytes, 24, crc32);
+
+        bytes
+    }
+
+    #[test]
+    fn raw_firmware_is_passed_through_when_file_is_not_bmu() {
+        let firmware = vec![1, 2, 3, 4, 5];
+        let miner = MinerTypeInfo {
+            model: "S21".to_string(),
+            subtype: "X21".to_string(),
+        };
+
+        let resolved =
+            resolve_firmware_image_inner("stock.bin".to_string(), firmware.clone(), &miner, 0)
+                .unwrap();
+
+        assert_eq!(resolved.filename, "stock.bin");
+        assert_eq!(resolved.bytes, firmware);
+    }
+
+    #[test]
+    fn bmu_selects_matching_entry_for_model_and_subtype() {
+        let bmu = build_bmu(&[
+            ("s21-xp.bin", "X21", "X21", "S21", b"wrong"),
+            ("s21-hyd.bin", "X22", "X22", "S21", b"right"),
+        ]);
+        let miner = MinerTypeInfo {
+            model: "S21".to_string(),
+            subtype: "X22".to_string(),
+        };
+
+        let resolved =
+            resolve_firmware_image_inner("bundle.bmu".to_string(), bmu, &miner, 0).unwrap();
+
+        assert_eq!(resolved.filename, "s21-hyd.bin");
+        assert_eq!(resolved.bytes, b"right");
+    }
+
+    #[test]
+    fn bmu_crc_mismatch_returns_error() {
+        let mut bmu = build_bmu(&[("s21.bin", "X21", "X21", "S21", b"payload")]);
+        bmu[24] ^= 0xFF;
+
+        let err = parse_bmu_entries(&bmu).unwrap_err();
+
+        assert!(err.to_string().contains("BMU CRC mismatch"));
+    }
+
+    #[test]
+    fn bmu_truncated_payload_returns_error() {
+        let mut bmu = build_bmu(&[("s21.bin", "X21", "X21", "S21", b"payload")]);
+        bmu.truncate(bmu.len() - 2);
+
+        let err = parse_bmu_entries(&bmu).unwrap_err();
+
+        assert!(err.to_string().contains("BMU CRC mismatch"));
+
+        let mut bmu = build_bmu(&[("s21.bin", "X21", "X21", "S21", b"payload")]);
+        let payload_offset = BMU_HEADER_SIZE + BMU_ITEM_FIXED_SIZE;
+        bmu.truncate(payload_offset + 3);
+
+        let mut hasher = Hasher::new();
+        hasher.update(&bmu[..24]);
+        hasher.update(&[0, 0, 0, 0]);
+        hasher.update(&bmu[28..]);
+        write_u32_le(&mut bmu, 24, hasher.finalize());
+
+        let err = parse_bmu_entries(&bmu).unwrap_err();
+
+        assert!(err.to_string().contains("BMU payload exceeds file size"));
+    }
+}
