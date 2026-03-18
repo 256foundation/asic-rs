@@ -19,6 +19,7 @@ use async_trait::async_trait;
 use chrono::{Datelike, NaiveDateTime};
 use diqwest::WithDigestAuth;
 use reqwest::{Client, Response};
+use serde_json::Value;
 
 #[derive(Default)]
 pub struct AntMinerStockFirmware {}
@@ -39,19 +40,22 @@ impl DiscoveryCommands for AntMinerStockFirmware {
 impl MinerFirmware for AntMinerStockFirmware {
     async fn get_model(ip: IpAddr) -> Result<impl MinerModel, ModelSelectionError> {
         let response: Option<Response> = Client::new()
-            .get(format!("http://{ip}/cgi-bin/get_system_info.cgi"))
+            .get(format!("http://{ip}/cgi-bin/miner_type.cgi"))
             .send_digest_auth(("root", "root"))
             .await
             .ok();
         match response {
             Some(data) => {
-                let json_data = data.json::<serde_json::Value>().await.ok();
+                let json_data = data.json::<Value>().await.ok();
                 if json_data.is_none() {
                     return Err(ModelSelectionError::UnexpectedModelResponse);
                 }
                 let json_data = json_data.unwrap();
 
-                let model = json_data["minertype"].as_str().unwrap_or("").to_uppercase();
+                let model = json_data["miner_type"]
+                    .as_str()
+                    .unwrap_or("")
+                    .to_uppercase();
 
                 AntMinerMake::parse_model(model)
             }

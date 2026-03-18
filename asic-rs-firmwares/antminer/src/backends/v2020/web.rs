@@ -36,20 +36,21 @@ impl AntMinerWebAPI {
     }
 
     fn build_firmware_upload_request_body(image: FirmwareImage) -> (Vec<u8>, String) {
-        let mut body = Vec::with_capacity(image.bytes.len() + 256);
+        let FirmwareImage { filename, bytes } = image;
+        let payload_len = bytes.len();
+        let mut body = Vec::with_capacity(payload_len + 256);
         body.extend_from_slice(
             format!(
                 "--{}\r\nContent-Disposition: form-data; name=\"firmware\"; filename=\"{}\"\r\nContent-Type: application/octet-stream\r\n\r\n",
                 Self::FIRMWARE_UPLOAD_BOUNDARY,
-                image.filename
+                filename
             )
             .as_bytes(),
         );
-        body.extend_from_slice(&image.bytes);
+        body.extend_from_slice(&bytes);
         body.extend_from_slice(
             format!("\r\n--{}--\r\n", Self::FIRMWARE_UPLOAD_BOUNDARY).as_bytes(),
         );
-
         (
             body,
             format!(

@@ -20,7 +20,6 @@ macaddr.workspace = true
 measurements.workspace = true
 tokio.workspace = true
 crc32fast.workspace = true
-tracing.workspace = true
 
 pyo3 = {workspace = true, optional = true}
 
