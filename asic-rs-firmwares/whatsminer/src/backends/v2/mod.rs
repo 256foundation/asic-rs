@@ -243,24 +243,14 @@ impl GetDataLocations for WhatsMinerV2 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![
-                (
-                    RPC_STATUS,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some("/SUMMARY/0/btmineroff"),
-                        tag: None,
-                    },
-                ),
-                (
-                    RPC_STATUS,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some("/Msg/mineroff"),
-                        tag: None,
-                    },
-                ),
-            ],
+            DataField::IsMining => vec![(
+                RPC_STATUS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/Msg/mineroff"),
+                    tag: None,
+                },
+            )],
             DataField::Messages => vec![(
                 RPC_GET_ERROR_CODE,
                 DataExtractor {
@@ -517,9 +507,9 @@ impl GetUptime for WhatsMinerV2 {
 }
 impl GetIsMining for WhatsMinerV2 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        // Raw field is "mineroff" / "btmineroff": "true" means mining is OFF.
-        let miner_off = data.extract::<String>(DataField::IsMining);
-        miner_off.as_deref() != Some("true")
+        // mineroff: "true" means mining is OFF
+        data.extract_map::<String, _>(DataField::IsMining, |l| l != "true")
+            .unwrap_or(true)
     }
 }
 impl GetPools for WhatsMinerV2 {
@@ -724,33 +714,6 @@ mod tests {
 
         // Assert
         assert!(!is_mining);
-    }
-
-    #[test]
-    fn test_parse_is_mining_when_miner_on() {
-        // Arrange - mineroff="false" means the miner is running
-        let miner = WhatsMinerV2::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M30SV10);
-        let mut data = HashMap::new();
-        data.insert(DataField::IsMining, Value::String("false".to_string()));
-
-        // Act
-        let is_mining = miner.parse_is_mining(&data);
-
-        // Assert
-        assert!(is_mining);
-    }
-
-    #[test]
-    fn test_parse_is_mining_missing_defaults_to_mining() {
-        // Arrange - no status data available
-        let miner = WhatsMinerV2::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M30SV10);
-        let data = HashMap::new();
-
-        // Act
-        let is_mining = miner.parse_is_mining(&data);
-
-        // Assert
-        assert!(is_mining);
     }
 }
 

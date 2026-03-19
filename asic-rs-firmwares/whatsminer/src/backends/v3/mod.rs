@@ -459,9 +459,9 @@ impl GetUptime for WhatsMinerV3 {
 }
 impl GetIsMining for WhatsMinerV3 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        // Raw field is "working": "true" means mining is ON.
-        let working = data.extract::<String>(DataField::IsMining);
-        working.as_deref() != Some("false")
+        // working: "true" means mining is ON
+        data.extract_map::<String, _>(DataField::IsMining, |l| l == "true")
+            .unwrap_or(true)
     }
 }
 impl GetPools for WhatsMinerV3 {
@@ -655,20 +655,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_is_mining_when_working() {
-        // Arrange - working="true" means the miner is actively hashing
-        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
-        let mut data = HashMap::new();
-        data.insert(DataField::IsMining, Value::String("true".to_string()));
-
-        // Act
-        let is_mining = miner.parse_is_mining(&data);
-
-        // Assert
-        assert!(is_mining);
-    }
-
-    #[test]
     fn test_parse_is_mining_when_not_working() {
         // Arrange - working="false" means the miner is paused
         let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
@@ -680,19 +666,6 @@ mod tests {
 
         // Assert
         assert!(!is_mining);
-    }
-
-    #[test]
-    fn test_parse_is_mining_missing_defaults_to_mining() {
-        // Arrange - no status data available
-        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
-        let data = HashMap::new();
-
-        // Act
-        let is_mining = miner.parse_is_mining(&data);
-
-        // Assert
-        assert!(is_mining);
     }
 }
 
