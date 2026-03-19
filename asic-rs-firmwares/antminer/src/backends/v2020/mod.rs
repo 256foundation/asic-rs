@@ -1,9 +1,11 @@
 use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
+        pools::{PoolConfig, PoolGroupConfig},
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -12,6 +14,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
+        firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         pool::{PoolData, PoolGroupData, PoolURL},
@@ -26,8 +29,10 @@ use rpc::AntMinerRPCAPI;
 use serde_json::{Value, json};
 use web::AntMinerWebAPI;
 
+use self::firmware::AntMinerFirmwareImageExt;
 use crate::firmware::AntMinerStockFirmware;
 
+mod firmware;
 mod rpc;
 mod web;
 
@@ -173,9 +178,22 @@ impl APIClient for AntMinerV2020 {
 }
 
 impl GetConfigsLocations for AntMinerV2020 {
-    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        vec![]
+        const WEB_GET_MINER_CONF: MinerCommand = MinerCommand::WebAPI {
+            command: "get_miner_conf",
+            parameters: None,
+        };
+        match data_field {
+            ConfigField::Pools => vec![(
+                WEB_GET_MINER_CONF,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/pools"),
+                    tag: None,
+                },
+            )],
+            _ => vec![],
+        }
     }
 }
 
@@ -589,49 +607,56 @@ impl GetIsMining for AntMinerV2020 {
 
 impl GetPools for AntMinerV2020 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
-        let mut pools: Vec<PoolData> = Vec::new();
+        let Some(pools_data) = data.get(&DataField::Pools) else {
+            return vec![];
+        };
 
-        if let Some(pools_data) = data.get(&DataField::Pools)
-            && let Some(pools_array) = pools_data.as_array()
-        {
-            for (idx, pool_info) in pools_array.iter().enumerate() {
-                let url = pool_info
-                    .get("URL")
-                    .and_then(|v| v.as_str())
-                    .map(|s| PoolURL::from(s.to_string()));
+        let Some(pools_array) = pools_data.as_array() else {
+            return vec![PoolGroupData {
+                name: String::new(),
+                quota: 1,
+                pools: vec![],
+            }];
+        };
 
-                let user = pool_info
-                    .get("User")
-                    .and_then(|v| v.as_str())
-                    .map(String::from);
+        let mut rpc_pools: Vec<PoolData> = Vec::with_capacity(pools_array.len());
+        for (idx, pool_info) in pools_array.iter().enumerate() {
+            let url = pool_info
+                .get("URL")
+                .and_then(|v| v.as_str())
+                .map(|s| PoolURL::from(s.to_string()));
 
-                let alive = pool_info
-                    .get("Status")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s == "Alive");
+            let accepted_shares = pool_info.get("Accepted").and_then(|v| v.as_u64());
 
-                let active = pool_info.get("Stratum Active").and_then(|v| v.as_bool());
+            let rejected_shares = pool_info.get("Rejected").and_then(|v| v.as_u64());
 
-                let accepted_shares = pool_info.get("Accepted").and_then(|v| v.as_u64());
+            let active = pool_info.get("Stratum Active").and_then(|v| v.as_bool());
 
-                let rejected_shares = pool_info.get("Rejected").and_then(|v| v.as_u64());
+            let alive = pool_info
+                .get("Status")
+                .and_then(|v| v.as_str())
+                .map(|s| s == "Alive");
 
-                pools.push(PoolData {
-                    position: Some(idx as u16),
-                    url,
-                    accepted_shares,
-                    rejected_shares,
-                    active,
-                    alive,
-                    user,
-                });
-            }
+            let user = pool_info
+                .get("User")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+
+            rpc_pools.push(PoolData {
+                position: Some(idx as u16),
+                url,
+                accepted_shares,
+                rejected_shares,
+                active,
+                alive,
+                user,
+            });
         }
 
         vec![PoolGroupData {
             name: String::new(),
             quota: 1,
-            pools,
+            pools: rpc_pools,
         }]
     }
 }
@@ -774,17 +799,82 @@ impl SetPowerLimit for AntMinerV2020 {
 
 #[async_trait]
 impl SupportsPoolsConfig for AntMinerV2020 {
-    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+    fn parse_pools_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        let Some(pools_data) = data.get(&ConfigField::Pools) else {
+            return Ok(vec![]);
+        };
+
+        let Some(pools_array) = pools_data.as_array() else {
+            return Ok(vec![PoolGroupConfig {
+                name: String::new(),
+                quota: 1,
+                pools: vec![],
+            }]);
+        };
+
+        let mut pools: Vec<PoolConfig> = Vec::with_capacity(pools_array.len());
+        for pool in pools_array {
+            let Some(url) = pool.get("url").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            if url.is_empty() {
+                continue;
+            }
+
+            let username = pool
+                .get("user")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+                .unwrap_or_default();
+            let password = pool
+                .get("pass")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+                .unwrap_or_default();
+
+            pools.push(PoolConfig {
+                url: PoolURL::from(url.to_string()),
+                username,
+                password,
+            });
+        }
+
+        pools.truncate(3);
+
+        Ok(vec![PoolGroupConfig {
+            name: String::new(),
+            quota: 1,
+            pools,
+        }])
+    }
+
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
+        let mut pools: Vec<Value> = config
+            .into_iter()
+            .flat_map(|group| group.pools.into_iter())
+            .map(|pool| {
+                json!({
+                    "url": pool.url.to_string(),
+                    "user": pool.username,
+                    "pass": pool.password,
+                })
+            })
+            .collect();
+
+        pools.truncate(3);
+
         Ok(self
-            .get_pools()
+            .web
+            .set_miner_conf(json!({ "pools": pools }))
             .await
-            .iter()
-            .map(|g| g.clone().into())
-            .collect())
+            .is_ok())
     }
 
     fn supports_pools_config(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -863,9 +953,33 @@ impl SupportsScalingConfig for AntMinerV2020 {
     }
 }
 
+#[async_trait]
+impl UpgradeFirmware for AntMinerV2020 {
+    async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
+        let miner = self.get_miner_type_info().await?;
+        let image = image.resolve_for_miner(&miner)?;
+        self.web.upgrade_firmware(image).await?;
+        Ok(true)
+    }
+
+    fn supports_upgrade_firmware(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for AntMinerV2020 {
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use asic_rs_core::test::api::MockAPIClient;
+    use std::sync::Arc;
+
+    use anyhow::{self, Context};
+    use asic_rs_core::test::{api::MockAPIClient, util::get_miner};
     use asic_rs_makes_antminer::models::AntMinerModel;
 
     use super::*;
@@ -935,5 +1049,34 @@ mod tests {
                 algo: "SHA256".to_string(),
             }
         );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires live miner; set MINER_IP"]
+    async fn parse_data_live_test_auto_detect() -> anyhow::Result<()> {
+        let ip_str = std::env::var("MINER_IP").context("MINER_IP is not set")?;
+        let ip =
+            IpAddr::from_str(&ip_str).with_context(|| format!("invalid MINER_IP: {ip_str}"))?;
+
+        let miner = get_miner(ip, Arc::new(AntMinerStockFirmware::default()))
+            .await?
+            .context("no miner detected at MINER_IP")?;
+        let miner_data = miner.get_data().await;
+        let mut miner_data_print = miner_data.clone();
+        for hashboard in &mut miner_data_print.hashboards {
+            hashboard.chips.clear();
+        }
+        println!("data {}", serde_json::to_string_pretty(&miner_data_print)?);
+
+        println!(
+            "pools {}",
+            serde_json::to_string_pretty(&miner.get_pools_config().await?)?
+        );
+
+        assert_eq!(miner_data.ip, ip);
+        assert!(miner_data.timestamp > 0);
+        assert!(!miner_data.schema_version.is_empty());
+
+        Ok(())
     }
 }

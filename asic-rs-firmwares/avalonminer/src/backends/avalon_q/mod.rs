@@ -5,11 +5,12 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use crate::firmware::AvalonStockFirmware;
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData},
         collector::{
@@ -29,6 +30,8 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature, Voltage};
 use rpc::AvalonMinerRPCAPI;
 use serde_json::{Value, json};
+
+use crate::firmware::AvalonStockFirmware;
 
 mod rpc;
 
@@ -309,7 +312,7 @@ impl GetDataLocations for AvalonQMiner {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -556,7 +559,7 @@ impl GetWattage for AvalonQMiner {
 
 impl GetTuningTarget for AvalonQMiner {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -615,6 +618,20 @@ impl GetPools for AvalonQMiner {
 #[async_trait]
 impl SupportsScalingConfig for AvalonQMiner {
     fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl UpgradeFirmware for AvalonQMiner {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for AvalonQMiner {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

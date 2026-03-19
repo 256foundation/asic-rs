@@ -1,10 +1,11 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use crate::{backends::v1::rpc::LUXMinerRPCAPI, firmware::LuxMinerFirmware};
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -25,6 +26,8 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
+
+use crate::{backends::v1::rpc::LUXMinerRPCAPI, firmware::LuxMinerFirmware};
 
 mod rpc;
 
@@ -327,7 +330,7 @@ impl GetDataLocations for LuxMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![
+            DataField::TuningTarget => vec![
                 (
                     RPC_CONFIG,
                     DataExtractor {
@@ -882,7 +885,7 @@ impl GetWattage for LuxMinerV1 {
 
 impl GetTuningTarget for LuxMinerV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        let wattage_limit_data = data.get(&DataField::WattageLimit)?;
+        let wattage_limit_data = data.get(&DataField::TuningTarget)?;
         let profile_name = wattage_limit_data.get("Profile")?.as_str()?;
         let profiles = wattage_limit_data.get("Profiles")?.as_array()?;
 
@@ -996,6 +999,20 @@ impl Resume for LuxMinerV1 {
 #[async_trait]
 impl SupportsScalingConfig for LuxMinerV1 {
     fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl UpgradeFirmware for LuxMinerV1 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for LuxMinerV1 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

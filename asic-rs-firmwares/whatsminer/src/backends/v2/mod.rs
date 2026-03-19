@@ -1,10 +1,11 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use crate::firmware::WhatsMinerFirmware;
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use asic_rs_core::{
-    config::pools::PoolGroupConfig,
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -27,6 +28,8 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::WhatsMinerRPCAPI;
 use serde_json::{Value, json};
+
+use crate::firmware::WhatsMinerFirmware;
 
 mod rpc;
 
@@ -160,7 +163,7 @@ impl GetDataLocations for WhatsMinerV2 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 RPC_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
@@ -244,7 +247,7 @@ impl GetDataLocations for WhatsMinerV2 {
                 RPC_STATUS,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/SUMMARY/0/btmineroff"),
+                    key: Some("/Msg/mineroff"),
                     tag: None,
                 },
             )],
@@ -454,7 +457,7 @@ impl GetWattage for WhatsMinerV2 {
 }
 impl GetTuningTarget for WhatsMinerV2 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -504,7 +507,8 @@ impl GetUptime for WhatsMinerV2 {
 }
 impl GetIsMining for WhatsMinerV2 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract_map::<String, _>(DataField::IsMining, |l| l != "false")
+        // mineroff: "true" means mining is OFF
+        data.extract_map::<String, _>(DataField::IsMining, |l| l != "true")
             .unwrap_or(true)
     }
 }
@@ -682,5 +686,163 @@ impl Resume for WhatsMinerV2 {
 impl SupportsScalingConfig for WhatsMinerV2 {
     fn supports_scaling_config(&self) -> bool {
         false
+    }
+}
+
+#[async_trait]
+impl UpgradeFirmware for WhatsMinerV2 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for WhatsMinerV2 {
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use asic_rs_makes_whatsminer::models::WhatsMinerModel;
+
+    use super::*;
+
+    #[test]
+    fn test_parse_is_mining_when_miner_off() {
+        // Arrange - mineroff="true" means the miner is off
+        let miner = WhatsMinerV2::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M30SV10);
+        let mut data = HashMap::new();
+        data.insert(DataField::IsMining, Value::String("true".to_string()));
+
+        // Act
+        let is_mining = miner.parse_is_mining(&data);
+
+        // Assert
+        assert!(!is_mining);
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use asic_rs_core::test::api::MockAPIClient;
+    use asic_rs_makes_whatsminer::models::WhatsMinerModel;
+
+    use super::*;
+    use crate::test::json::v2::{
+        DEVS_COMMAND, GET_ERROR_CODE_COMMAND, GET_MINER_INFO_COMMAND, GET_PSU_COMMAND,
+        GET_VERSION_COMMAND, POOLS_COMMAND, STATUS_COMMAND, SUMMARY_COMMAND,
+    };
+
+    #[tokio::test]
+    async fn test_whatsminer_v2_data_parsers() -> anyhow::Result<()> {
+        // Arrange
+        let miner = WhatsMinerV2::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M50SVH50);
+        let mut results = HashMap::new();
+
+        results.insert(
+            MinerCommand::RPC {
+                command: "summary",
+                parameters: None,
+            },
+            Value::from_str(SUMMARY_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "status",
+                parameters: None,
+            },
+            Value::from_str(STATUS_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "pools",
+                parameters: None,
+            },
+            Value::from_str(POOLS_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "devs",
+                parameters: None,
+            },
+            Value::from_str(DEVS_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get_version",
+                parameters: None,
+            },
+            Value::from_str(GET_VERSION_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get_psu",
+                parameters: None,
+            },
+            Value::from_str(GET_PSU_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get_miner_info",
+                parameters: None,
+            },
+            Value::from_str(GET_MINER_INFO_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get_error_code",
+                parameters: None,
+            },
+            Value::from_str(GET_ERROR_CODE_COMMAND)?,
+        );
+
+        let mock_api = MockAPIClient::new(results);
+
+        // Act
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect_all().await;
+        let miner_data = miner.parse_data(data);
+
+        // Assert
+        assert_eq!(&miner_data.ip, &miner.ip);
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("D4:01:02:03:04:05")?)
+        );
+        assert_eq!(miner_data.api_version, Some("2.0.5".to_string()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("20230803.11.REL".to_string())
+        );
+        assert_eq!(miner_data.hostname, Some("WhatsMiner".to_string()));
+        assert_eq!(
+            miner_data.hashrate,
+            Some(HashRate {
+                value: 124.5,
+                unit: HashRateUnit::TeraHash,
+                algo: String::from("SHA256"),
+            })
+        );
+        assert_eq!(
+            miner_data.expected_hashrate,
+            Some(HashRate {
+                value: 126.0,
+                unit: HashRateUnit::TeraHash,
+                algo: String::from("SHA256"),
+            })
+        );
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(3200.0)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(3300.0)))
+        );
+        assert_eq!(miner_data.uptime, Some(Duration::from_secs(25000)));
+        assert!(miner_data.is_mining);
+        assert_eq!(miner_data.fans.len(), 2);
+        assert_eq!(miner_data.pools[0].len(), 3);
+
+        Ok(())
     }
 }

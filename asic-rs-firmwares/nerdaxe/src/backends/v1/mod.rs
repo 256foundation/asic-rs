@@ -5,11 +5,12 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use crate::{backends::v1::web::NerdAxeWebAPI, firmware::NerdAxeFirmware};
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
-use asic_rs_core::config::pools::PoolGroupConfig;
 use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -30,6 +31,8 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
+
+use crate::{backends::v1::web::NerdAxeWebAPI, firmware::NerdAxeFirmware};
 
 pub(crate) mod web;
 
@@ -519,6 +522,20 @@ impl Resume for NerdAxeV1 {
 #[async_trait]
 impl SupportsScalingConfig for NerdAxeV1 {
     fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl UpgradeFirmware for NerdAxeV1 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for NerdAxeV1 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

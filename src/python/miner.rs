@@ -2,10 +2,16 @@ use std::{net::IpAddr, sync::Arc, time::Duration};
 
 use asic_rs_core::{
     config::pools::PoolGroupConfig,
-    data::device::{HashAlgorithm, MinerHardware},
+    data::{
+        device::{HashAlgorithm, MinerHardware},
+        firmware::FirmwareImage,
+    },
     traits::miner::Miner as MinerTrait,
 };
-use pyo3::prelude::*;
+use pyo3::{
+    exceptions::{PyRuntimeError, PyValueError},
+    prelude::*,
+};
 
 use super::data::{BoardData, FanData, MinerData, TuningTarget};
 
@@ -104,6 +110,10 @@ impl Miner {
     #[getter]
     fn supports_pools_config(&self) -> bool {
         self.inner.supports_pools_config()
+    }
+    #[getter]
+    fn supports_upgrade_firmware(&self) -> bool {
+        self.inner.supports_upgrade_firmware()
     }
 
     // Data functions
@@ -305,6 +315,18 @@ impl Miner {
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             let data = inner.set_pools_config(groups).await;
             Ok(data.ok())
+        })
+    }
+    pub fn upgrade_firmware<'a>(&self, py: Python<'a>, path: String) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            let image = FirmwareImage::from_file_async(&path)
+                .await
+                .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            inner
+                .upgrade_firmware(image)
+                .await
+                .map_err(|e| PyRuntimeError::new_err(e.to_string()))
         })
     }
 }

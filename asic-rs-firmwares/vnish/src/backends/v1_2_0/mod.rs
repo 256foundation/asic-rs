@@ -1,9 +1,11 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use asic_rs_core::{
-    config::pools::PoolGroupConfig,
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
         collector::{
@@ -781,6 +783,20 @@ impl Resume for VnishV120 {
 #[async_trait]
 impl SupportsScalingConfig for VnishV120 {
     fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl UpgradeFirmware for VnishV120 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for VnishV120 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

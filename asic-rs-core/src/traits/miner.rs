@@ -13,15 +13,20 @@ use reqwest::Method;
 use serde_json::Value;
 use tracing;
 
-use crate::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use crate::{
-    config::{pools::PoolGroupConfig, scaling::ScalingConfig},
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+        scaling::ScalingConfig,
+        tuning::TuningConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{DataCollector, DataField, DataLocation},
         command::MinerCommand,
         device::DeviceInfo,
         fan::FanData,
+        firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
         message::MinerMessage,
         miner::{MinerData, TuningTarget},
@@ -35,17 +40,23 @@ pub trait MinerConstructor {
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner>;
 }
 
-pub trait Miner: GetMinerData + HasMinerControl + SupportsConfigs {}
+pub trait Miner: GetMinerData + HasMinerControl + SupportsConfigs + UpgradeFirmware {}
 
-impl<T: GetMinerData + HasMinerControl + SupportsConfigs> Miner for T {}
+impl<T: GetMinerData + HasMinerControl + SupportsConfigs + UpgradeFirmware> Miner for T {}
 
 pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
 
 impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
 
-pub trait SupportsConfigs: CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig {}
+pub trait SupportsConfigs:
+    CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig + SupportsTuningConfig
+{
+}
 
-impl<T: CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig> SupportsConfigs for T {}
+impl<T: CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig + SupportsTuningConfig>
+    SupportsConfigs for T
+{
+}
 
 pub trait CollectConfigs: GetConfigsLocations {
     /// Returns a `ConfigCollector` that can be used to collect configs from the miner.
@@ -54,6 +65,7 @@ pub trait CollectConfigs: GetConfigsLocations {
     /// instance that can be used to collect configs from the miner.
     fn get_config_collector(&self) -> ConfigCollector<'_>;
 }
+
 pub trait GetConfigsLocations: MinerInterface + Send + Sync + Debug {
     /// Returns the locations of the specified config field on the miner.
     ///
@@ -549,7 +561,7 @@ pub trait GetTuningTarget: CollectData {
     #[tracing::instrument(level = "debug")]
     async fn get_tuning_target(&self) -> Option<TuningTarget> {
         let mut collector = self.get_collector();
-        let data = collector.collect(&[DataField::WattageLimit]).await;
+        let data = collector.collect(&[DataField::TuningTarget]).await;
         self.parse_tuning_target(&data)
     }
     #[allow(unused_variables)]
@@ -678,6 +690,18 @@ pub trait Resume {
     fn supports_resume(&self) -> bool;
 }
 
+#[async_trait]
+pub trait UpgradeFirmware {
+    #[allow(unused_variables)]
+    async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
+        anyhow::bail!("Upgrading firmware is not supported on this platform");
+    }
+
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
 // Config traits
 #[async_trait]
 pub trait SupportsPoolsConfig: GetPools + CollectConfigs {
@@ -723,4 +747,29 @@ pub trait SupportsScalingConfig: CollectConfigs {
     }
 
     fn supports_scaling_config(&self) -> bool;
+}
+
+#[async_trait]
+pub trait SupportsTuningConfig: CollectConfigs {
+    #[allow(unused_variables)]
+    async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting tuning config is not supported on this platform");
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_tuning_config(&self) -> anyhow::Result<TuningConfig> {
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::Tuning]).await;
+        self.parse_tuning_config(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_tuning_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TuningConfig> {
+        anyhow::bail!("Getting tuning config is not supported on this platform");
+    }
+
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
 }

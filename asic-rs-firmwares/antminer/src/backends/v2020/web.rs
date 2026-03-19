@@ -1,11 +1,14 @@
 use std::{net::IpAddr, time::Duration};
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow, bail};
+use asic_rs_core::data::firmware::FirmwareImage;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
-use reqwest::{Client, Method, Response};
+use reqwest::{Client, Method, Response, header::CONTENT_TYPE};
 use serde_json::{Value, json};
+
+use super::firmware::AntMinerFirmwareUpgradeResponseExt;
 
 #[derive(Debug)]
 pub struct AntMinerWebAPI {
@@ -19,6 +22,44 @@ pub struct AntMinerWebAPI {
 
 #[allow(dead_code)]
 impl AntMinerWebAPI {
+    const FIRMWARE_UPLOAD_BOUNDARY: &str = "asic-rs-antminer-firmware-boundary";
+
+    fn truncated_firmware_upgrade_response_body(body: &str) -> String {
+        const MAX_BODY_CHARS: usize = 512;
+
+        let truncated: String = body.chars().take(MAX_BODY_CHARS).collect();
+        if body.chars().count() > MAX_BODY_CHARS {
+            format!("{truncated}...")
+        } else {
+            truncated
+        }
+    }
+
+    fn build_firmware_upload_request_body(image: FirmwareImage) -> (Vec<u8>, String) {
+        let FirmwareImage { filename, bytes } = image;
+        let payload_len = bytes.len();
+        let mut body = Vec::with_capacity(payload_len + 256);
+        body.extend_from_slice(
+            format!(
+                "--{}\r\nContent-Disposition: form-data; name=\"firmware\"; filename=\"{}\"\r\nContent-Type: application/octet-stream\r\n\r\n",
+                Self::FIRMWARE_UPLOAD_BOUNDARY,
+                filename
+            )
+            .as_bytes(),
+        );
+        body.extend_from_slice(&bytes);
+        body.extend_from_slice(
+            format!("\r\n--{}--\r\n", Self::FIRMWARE_UPLOAD_BOUNDARY).as_bytes(),
+        );
+        (
+            body,
+            format!(
+                "multipart/form-data; boundary={}",
+                Self::FIRMWARE_UPLOAD_BOUNDARY
+            ),
+        )
+    }
+
     pub fn new(ip: IpAddr) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
@@ -127,8 +168,43 @@ impl AntMinerWebAPI {
             .await
     }
 
+    pub async fn upgrade_firmware(&self, image: FirmwareImage) -> Result<()> {
+        let url = format!("http://{}:{}/cgi-bin/upgrade.cgi", self.ip, self.port);
+        let (body, content_type) = Self::build_firmware_upload_request_body(image);
+
+        let response = self
+            .client
+            .post(url)
+            .header(CONTENT_TYPE, content_type)
+            .body(body)
+            .timeout(self.timeout.max(Duration::from_secs(60)))
+            .send_digest_auth((self.username.as_str(), self.password.as_str()))
+            .await
+            .with_context(|| "firmware upload HTTP request failed".to_string())?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .with_context(|| "failed to read firmware upload response body".to_string())?;
+        if !status.is_success() {
+            bail!(
+                "Firmware upload failed with status code {}: {}",
+                status,
+                Self::truncated_firmware_upgrade_response_body(&body)
+            );
+        }
+
+        body.validate_firmware_upgrade_response()
+    }
+
     pub async fn get_system_info(&self) -> Result<Value> {
         self.send_web_command("get_system_info", false, None, Method::GET)
+            .await
+    }
+
+    pub async fn miner_type(&self) -> Result<Value> {
+        self.send_web_command("miner_type", false, None, Method::GET)
             .await
     }
 

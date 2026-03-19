@@ -1,9 +1,11 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use asic_rs_core::{
-    config::pools::PoolGroupConfig,
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -229,7 +231,7 @@ impl GetDataLocations for BraiinsV2507 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 WEB_PERFORMANCE_TUNER_STATE,
                 DataExtractor {
                     func: get_by_pointer,
@@ -531,7 +533,7 @@ impl GetWattage for BraiinsV2507 {
 
 impl GetTuningTarget for BraiinsV2507 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<i64, _>(DataField::WattageLimit, |w| Power::from_watts(w as f64))
+        data.extract_map::<i64, _>(DataField::TuningTarget, |w| Power::from_watts(w as f64))
             .map(TuningTarget::Power)
     }
 }
@@ -697,6 +699,20 @@ impl Resume for BraiinsV2507 {
 #[async_trait]
 impl SupportsScalingConfig for BraiinsV2507 {
     fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl UpgradeFirmware for BraiinsV2507 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for BraiinsV2507 {
+    fn supports_tuning_config(&self) -> bool {
         false
     }
 }

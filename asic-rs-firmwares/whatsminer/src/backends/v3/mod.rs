@@ -1,10 +1,11 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use crate::firmware::WhatsMinerFirmware;
 use anyhow;
-use asic_rs_core::config::collector::{ConfigCollector, ConfigField, ConfigLocation};
 use asic_rs_core::{
-    config::pools::PoolGroupConfig,
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
     data::{
         board::{BoardData, MinerControlBoard},
         collector::{
@@ -26,6 +27,8 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 pub(crate) use rpc::WhatsMinerRPCAPI;
 use serde_json::{Value, json};
+
+use crate::firmware::WhatsMinerFirmware;
 
 mod rpc;
 
@@ -151,7 +154,7 @@ impl GetDataLocations for WhatsMinerV3 {
                     tag: None,
                 },
             )],
-            DataField::WattageLimit => vec![(
+            DataField::TuningTarget => vec![(
                 rpc_get_miner_status_summary,
                 DataExtractor {
                     func: get_by_pointer,
@@ -238,6 +241,14 @@ impl GetDataLocations for WhatsMinerV3 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/msg/summary/environment-temperature"),
+                    tag: None,
+                },
+            )],
+            DataField::IsMining => vec![(
+                RPC_GET_DEVICE_INFO,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/msg/miner/working"),
                     tag: None,
                 },
             )],
@@ -431,7 +442,7 @@ impl GetWattage for WhatsMinerV3 {
 }
 impl GetTuningTarget for WhatsMinerV3 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract_map::<f64, _>(DataField::WattageLimit, Power::from_watts)
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
@@ -446,7 +457,13 @@ impl GetUptime for WhatsMinerV3 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
-impl GetIsMining for WhatsMinerV3 {}
+impl GetIsMining for WhatsMinerV3 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        // working: "true" means mining is ON
+        data.extract_map::<String, _>(DataField::IsMining, |l| l == "true")
+            .unwrap_or(true)
+    }
+}
 impl GetPools for WhatsMinerV3 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let mut pools: Vec<PoolData> = Vec::new();
@@ -621,5 +638,135 @@ impl Resume for WhatsMinerV3 {
 impl SupportsScalingConfig for WhatsMinerV3 {
     fn supports_scaling_config(&self) -> bool {
         false
+    }
+}
+
+#[async_trait]
+impl UpgradeFirmware for WhatsMinerV3 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for WhatsMinerV3 {
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use asic_rs_makes_whatsminer::models::WhatsMinerModel;
+
+    use super::*;
+
+    #[test]
+    fn test_parse_is_mining_when_not_working() {
+        // Arrange - working="false" means the miner is paused
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
+        let mut data = HashMap::new();
+        data.insert(DataField::IsMining, Value::String("false".to_string()));
+
+        // Act
+        let is_mining = miner.parse_is_mining(&data);
+
+        // Assert
+        assert!(!is_mining);
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use asic_rs_core::test::api::MockAPIClient;
+    use asic_rs_makes_whatsminer::models::WhatsMinerModel;
+
+    use super::*;
+    use crate::test::json::v3::{
+        GET_DEVICE_INFO_COMMAND, GET_MINER_STATUS_EDEVS_COMMAND, GET_MINER_STATUS_POOLS_COMMAND,
+        GET_MINER_STATUS_SUMMARY_COMMAND,
+    };
+
+    #[tokio::test]
+    async fn test_whatsminer_v3_data_parsers() -> anyhow::Result<()> {
+        // Arrange
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK40);
+        let mut results = HashMap::new();
+
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.device.info",
+                parameters: None,
+            },
+            Value::from_str(GET_DEVICE_INFO_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.miner.status",
+                parameters: Some(json!("summary")),
+            },
+            Value::from_str(GET_MINER_STATUS_SUMMARY_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.miner.status",
+                parameters: Some(json!("pools")),
+            },
+            Value::from_str(GET_MINER_STATUS_POOLS_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.miner.status",
+                parameters: Some(json!("edevs")),
+            },
+            Value::from_str(GET_MINER_STATUS_EDEVS_COMMAND)?,
+        );
+
+        let mock_api = MockAPIClient::new(results);
+
+        // Act
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect_all().await;
+        let miner_data = miner.parse_data(data);
+
+        // Assert
+        assert_eq!(&miner_data.ip, &miner.ip);
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("CE:02:01:00:8C:36")?)
+        );
+        assert_eq!(miner_data.api_version, Some("3.0.2".to_string()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("20251209.16.Rel2".to_string())
+        );
+        assert_eq!(miner_data.hostname, Some("WhatsMiner".to_string()));
+        assert_eq!(
+            miner_data.hashrate,
+            Some(HashRate {
+                value: 171.259,
+                unit: HashRateUnit::TeraHash,
+                algo: String::from("SHA256"),
+            })
+        );
+        assert_eq!(
+            miner_data.expected_hashrate,
+            Some(HashRate {
+                value: 181.051,
+                unit: HashRateUnit::TeraHash,
+                algo: String::from("SHA256"),
+            })
+        );
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(3156.0)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(3600.0)))
+        );
+        assert_eq!(miner_data.uptime, Some(Duration::from_secs(50000)));
+        assert!(miner_data.is_mining);
+        assert_eq!(miner_data.fans.len(), 2);
+        assert_eq!(miner_data.pools[0].len(), 3);
+
+        Ok(())
     }
 }

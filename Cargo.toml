@@ -60,7 +60,7 @@ diqwest = "3.2"
 futures = "0.3"
 macaddr = { version = "1.0", features = ["serde_std"] }
 measurements = { version = "0.11", features = ["serde"] }
-reqwest = { version = "0.13", features = ["json", "gzip", "rustls"], default-features = false }
+reqwest = { version = "0.13", features = ["json", "gzip", "rustls", "multipart"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.50", features = ["full"] }
@@ -83,6 +83,7 @@ ecb = "0.1.2"
 md5crypt = "1.0.0"
 md5 = "0.8"
 tracing = { version = "0.1.44", features = ["log"] }
+crc32fast = "1.5"
 
 pyo3 = { version = "0.28.2", features = [
     "extension-module",
