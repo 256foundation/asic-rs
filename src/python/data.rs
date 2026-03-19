@@ -6,7 +6,7 @@ use asic_rs_core::data::{
     fan::FanData as FanData_Base,
     hashrate::HashRate,
     message::MinerMessage,
-    miner::{MinerData as MinerData_Base, TuningTarget as TuningTargetBase},
+    miner::{MinerData as MinerData_Base, MiningMode, TuningTarget as TuningTargetBase},
     pool::PoolGroupData,
 };
 #[cfg(feature = "python")]
@@ -91,6 +91,7 @@ pub struct FanData {
 pub enum TuningTarget {
     Power(f64),
     HashRate(HashRate),
+    MiningMode(MiningMode),
 }
 
 impl From<&TuningTargetBase> for TuningTarget {
@@ -98,6 +99,7 @@ impl From<&TuningTargetBase> for TuningTarget {
         match base {
             TuningTargetBase::Power(power) => TuningTarget::Power(power.as_watts()),
             TuningTargetBase::HashRate(hashrate) => TuningTarget::HashRate(hashrate.clone()),
+            TuningTargetBase::MiningMode(mode) => TuningTarget::MiningMode(*mode),
         }
     }
 }

@@ -3,8 +3,9 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 use anyhow;
 use asic_rs_core::{
     config::{
-        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
         pools::PoolGroupConfig,
+        tuning::TuningConfig,
     },
     data::{
         board::{BoardData, MinerControlBoard},
@@ -16,7 +17,7 @@ use asic_rs_core::{
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
-        miner::TuningTarget,
+        miner::{MiningMode, TuningTarget},
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -66,9 +67,22 @@ impl APIClient for WhatsMinerV3 {
 }
 
 impl GetConfigsLocations for WhatsMinerV3 {
-    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        vec![]
+        let rpc_get_miner_status_summary: MinerCommand = MinerCommand::RPC {
+            command: "get.miner.status",
+            parameters: Some(json!("summary")),
+        };
+        match data_field {
+            ConfigField::Tuning => vec![(
+                rpc_get_miner_status_summary,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/msg/summary"),
+                    tag: None,
+                },
+            )],
+            _ => vec![],
+        }
     }
 }
 
@@ -648,10 +662,61 @@ impl UpgradeFirmware for WhatsMinerV3 {
     }
 }
 
+/// Maps a TuningConfig to the WhatsMiner RPC command name and parameter.
+fn tuning_config_to_rpc(config: &TuningConfig) -> anyhow::Result<(&'static str, Value)> {
+    match &config.target {
+        TuningTarget::MiningMode(mode) => {
+            let mode_str = match mode {
+                MiningMode::Low => "low",
+                MiningMode::Normal => "normal",
+                MiningMode::High => "high",
+            };
+            Ok(("set.miner.mode", json!(mode_str)))
+        }
+        TuningTarget::Power(limit) => Ok(("set.miner.power_limit", json!(limit.as_watts()))),
+        TuningTarget::HashRate(_) => {
+            anyhow::bail!("HashRate tuning target is not supported on WhatsMiner")
+        }
+    }
+}
+
 #[async_trait]
 impl SupportsTuningConfig for WhatsMinerV3 {
+    async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
+        let (command, param) = tuning_config_to_rpc(&config)?;
+        let data = self.rpc.send_command(command, true, Some(param)).await;
+        Ok(data.is_ok())
+    }
+
+    fn parse_tuning_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TuningConfig> {
+        let summary = data
+            .get(&ConfigField::Tuning)
+            .ok_or_else(|| anyhow::anyhow!("No tuning data in status summary"))?;
+
+        if let Some(mode_str) = summary.get("power-mode").and_then(Value::as_str) {
+            let mode = match mode_str {
+                "low" => MiningMode::Low,
+                "normal" => MiningMode::Normal,
+                "high" => MiningMode::High,
+                _ => anyhow::bail!("Unknown power mode: {mode_str}"),
+            };
+            return Ok(TuningConfig::new(TuningTarget::MiningMode(mode)));
+        }
+
+        if let Some(limit) = summary.get("power-limit").and_then(Value::as_f64) {
+            return Ok(TuningConfig::new(TuningTarget::Power(
+                Power::from_watts(limit),
+            )));
+        }
+
+        anyhow::bail!("No power-mode or power-limit found in status summary")
+    }
+
     fn supports_tuning_config(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -673,6 +738,101 @@ mod tests {
 
         // Assert
         assert!(!is_mining);
+    }
+
+    #[test]
+    fn test_tuning_config_to_rpc_mining_mode_low() {
+        // Act
+        let config = TuningConfig::new(TuningTarget::MiningMode(MiningMode::Low));
+        let (cmd, param) = tuning_config_to_rpc(&config).unwrap();
+
+        // Assert
+        assert_eq!(cmd, "set.miner.mode");
+        assert_eq!(param, json!("low"));
+    }
+
+    #[test]
+    fn test_tuning_config_to_rpc_mining_mode_normal() {
+        // Act
+        let config = TuningConfig::new(TuningTarget::MiningMode(MiningMode::Normal));
+        let (cmd, param) = tuning_config_to_rpc(&config).unwrap();
+
+        // Assert
+        assert_eq!(cmd, "set.miner.mode");
+        assert_eq!(param, json!("normal"));
+    }
+
+    #[test]
+    fn test_tuning_config_to_rpc_mining_mode_high() {
+        // Act
+        let config = TuningConfig::new(TuningTarget::MiningMode(MiningMode::High));
+        let (cmd, param) = tuning_config_to_rpc(&config).unwrap();
+
+        // Assert
+        assert_eq!(cmd, "set.miner.mode");
+        assert_eq!(param, json!("high"));
+    }
+
+    #[test]
+    fn test_tuning_config_to_rpc_power_limit() {
+        // Act
+        let config = TuningConfig::new(TuningTarget::Power(Power::from_watts(3000.0)));
+        let (cmd, param) = tuning_config_to_rpc(&config).unwrap();
+
+        // Assert
+        assert_eq!(cmd, "set.miner.power_limit");
+        assert_eq!(param, json!(3000.0));
+    }
+
+    #[test]
+    fn test_tuning_config_to_rpc_hashrate_rejected() {
+        // Act
+        let config = TuningConfig::new(TuningTarget::HashRate(HashRate {
+            value: 200.0,
+            unit: HashRateUnit::TeraHash,
+            algo: "SHA256".to_string(),
+        }));
+        let result = tuning_config_to_rpc(&config);
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_tuning_config_power_mode() {
+        // Arrange
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
+        let mut data = HashMap::new();
+        data.insert(
+            ConfigField::Tuning,
+            json!({"power-mode": "low", "power-limit": 3600}),
+        );
+
+        // Act
+        let config = miner.parse_tuning_config(&data).unwrap();
+
+        // Assert
+        assert_eq!(
+            config.target,
+            TuningTarget::MiningMode(MiningMode::Low)
+        );
+    }
+
+    #[test]
+    fn test_parse_tuning_config_power_limit_fallback() {
+        // Arrange
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
+        let mut data = HashMap::new();
+        data.insert(ConfigField::Tuning, json!({"power-limit": 3600}));
+
+        // Act
+        let config = miner.parse_tuning_config(&data).unwrap();
+
+        // Assert
+        assert_eq!(
+            config.target,
+            TuningTarget::Power(Power::from_watts(3600.0))
+        );
     }
 }
 

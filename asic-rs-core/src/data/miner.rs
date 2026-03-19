@@ -1,6 +1,8 @@
 use std::{net::IpAddr, time::Duration};
 
 use macaddr::MacAddr;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 use measurements::{Power, Temperature};
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +23,15 @@ use crate::data::{
 pub enum TuningTarget {
     Power(Power),
     HashRate(HashRate),
+    MiningMode(MiningMode),
+}
+
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, strum::Display)]
+pub enum MiningMode {
+    Low,
+    Normal,
+    High,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
