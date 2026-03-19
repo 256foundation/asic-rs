@@ -747,16 +747,16 @@ impl SupportsTuningConfig for WhatsMinerV2 {
             .get(&ConfigField::Tuning)
             .ok_or_else(|| anyhow::anyhow!("No tuning data in summary response"))?;
 
-        if let Some(mode_str) = summary.get("Power Mode").and_then(Value::as_str) {
-            if !mode_str.is_empty() {
-                let mode = match mode_str.to_lowercase().as_str() {
-                    "low" => MiningMode::Low,
-                    "normal" => MiningMode::Normal,
-                    "high" => MiningMode::High,
-                    _ => anyhow::bail!("Unknown power mode: {mode_str}"),
-                };
-                return Ok(TuningConfig::new(TuningTarget::MiningMode(mode)));
-            }
+        if let Some(mode_str) = summary.get("Power Mode").and_then(Value::as_str)
+            && !mode_str.is_empty()
+        {
+            let mode = match mode_str.to_lowercase().as_str() {
+                "low" => MiningMode::Low,
+                "normal" => MiningMode::Normal,
+                "high" => MiningMode::High,
+                _ => anyhow::bail!("Unknown power mode: {mode_str}"),
+            };
+            return Ok(TuningConfig::new(TuningTarget::MiningMode(mode)));
         }
 
         if let Some(limit) = summary.get("Power Limit").and_then(Value::as_f64) {
