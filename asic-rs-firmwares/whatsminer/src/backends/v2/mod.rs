@@ -736,6 +736,9 @@ impl SupportsTuningConfig for WhatsMinerV2 {
     async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
         let (command, param) = tuning_config_to_rpc(&config)?;
         let data = self.rpc.send_command(command, true, param).await;
+        if let Err(ref e) = data {
+            tracing::warn!("set_tuning_config RPC failed: {e}");
+        }
         Ok(data.is_ok())
     }
 

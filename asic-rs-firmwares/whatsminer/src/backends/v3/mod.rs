@@ -685,6 +685,9 @@ impl SupportsTuningConfig for WhatsMinerV3 {
     async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
         let (command, param) = tuning_config_to_rpc(&config)?;
         let data = self.rpc.send_command(command, true, Some(param)).await;
+        if let Err(ref e) = data {
+            tracing::warn!("set_tuning_config RPC failed: {e}");
+        }
         Ok(data.is_ok())
     }
 
@@ -697,7 +700,7 @@ impl SupportsTuningConfig for WhatsMinerV3 {
             .ok_or_else(|| anyhow::anyhow!("No tuning data in status summary"))?;
 
         if let Some(mode_str) = summary.get("power-mode").and_then(Value::as_str) {
-            let mode = match mode_str {
+            let mode = match mode_str.to_lowercase().as_str() {
                 "low" => MiningMode::Low,
                 "normal" => MiningMode::Normal,
                 "high" => MiningMode::High,
