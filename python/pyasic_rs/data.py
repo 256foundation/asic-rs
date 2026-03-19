@@ -4,7 +4,14 @@ from ipaddress import IPv4Address
 from typing import Annotated, Self
 
 from pyasic_rs.asic_rs import HashRateUnit as _rs_HashRateUnit
-from pydantic import BaseModel, ConfigDict, BeforeValidator, field_serializer, model_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    BeforeValidator,
+    field_serializer,
+    model_serializer,
+    field_validator,
+)
 
 
 class MinerHardware(BaseModel):
@@ -125,9 +132,7 @@ class HashRate(BaseModel):
 
     def into_unit(self, unit: HashRateUnit) -> Self:
         return HashRate(
-            value=(self.value / int(self.unit)) * int(unit),
-            unit=unit,
-            algo=self.algo
+            value=(self.value / int(self.unit)) * int(unit), unit=unit, algo=self.algo
         )
 
 
@@ -188,6 +193,7 @@ class PoolGroupData(BaseModel):
     quota: int
     pools: list[PoolData]
 
+
 class TuningTargetPower(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -247,6 +253,7 @@ TuningTarget = Annotated[
     BeforeValidator(_parse_tuning_target),
 ]
 
+
 class MinerMessage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -270,6 +277,7 @@ class MinerControlBoard(BaseModel):
         if self.known:
             return self.name
         return f"Unknown: {self.name}"
+
 
 class MinerData(BaseModel):
     model_config = ConfigDict(from_attributes=True)

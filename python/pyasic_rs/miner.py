@@ -4,8 +4,16 @@ from pyasic_rs.asic_rs import HashAlgorithm as _rs_HashAlgorithm
 from pyasic_rs.asic_rs import Miner as _rs_Miner
 
 from .config import PoolGroup
-from .data import MinerData, BoardData, HashRate, FanData, MinerMessage, PoolGroupData, TuningTarget, \
-    _parse_tuning_target
+from .data import (
+    MinerData,
+    BoardData,
+    HashRate,
+    FanData,
+    MinerMessage,
+    PoolGroupData,
+    TuningTarget,
+    _parse_tuning_target,
+)
 
 
 class Miner:
@@ -65,7 +73,9 @@ class Miner:
         return await self.__inner.get_control_board_version()
 
     async def get_hashboards(self) -> list[BoardData]:
-        return [BoardData.model_validate(b) for b in await self.__inner.get_hashboards()]
+        return [
+            BoardData.model_validate(b) for b in await self.__inner.get_hashboards()
+        ]
 
     async def get_hashrate(self) -> HashRate | None:
         inner = await self.__inner.get_hashrate()
@@ -102,12 +112,13 @@ class Miner:
             f"Unexpected tuning target type from _parse_tuning_target: {type(parsed)!r}"
         )
 
-
     async def get_light_flashing(self) -> bool | None:
         return await self.__inner.get_light_flashing()
 
     async def get_messages(self) -> list[MinerMessage]:
-        return [MinerMessage.model_validate(m) for m in await self.__inner.get_messages()]
+        return [
+            MinerMessage.model_validate(m) for m in await self.__inner.get_messages()
+        ]
 
     async def get_uptime(self) -> timedelta | None:
         return await self.__inner.get_uptime()
