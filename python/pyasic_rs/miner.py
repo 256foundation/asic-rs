@@ -2,10 +2,10 @@ from datetime import timedelta
 
 from pyasic_rs.asic_rs import HashAlgorithm as _rs_HashAlgorithm
 from pyasic_rs.asic_rs import Miner as _rs_Miner
-from pyasic_rs.asic_rs import TuningTarget as _rs_TuningTarget
 
 from .config import PoolGroup
-from .data import MinerData, BoardData, HashRate, FanData, MinerMessage, PoolGroupData
+from .data import MinerData, BoardData, HashRate, FanData, MinerMessage, PoolGroupData, TuningTarget, \
+    _parse_tuning_target
 
 
 class Miner:
@@ -91,8 +91,17 @@ class Miner:
     async def get_wattage(self) -> float | None:
         return await self.__inner.get_wattage()
 
-    async def get_tuning_target(self) -> _rs_TuningTarget | None:
-        return await self.__inner.get_tuning_target()
+    async def get_tuning_target(self) -> TuningTarget | None:
+        inner = await self.__inner.get_tuning_target()
+        if inner is None:
+            return None
+        parsed = _parse_tuning_target(inner)
+        if isinstance(parsed, TuningTarget):
+            return parsed
+        raise TypeError(
+            f"Unexpected tuning target type from _parse_tuning_target: {type(parsed)!r}"
+        )
+
 
     async def get_light_flashing(self) -> bool | None:
         return await self.__inner.get_light_flashing()
