@@ -268,10 +268,10 @@ impl GetDataLocations for AntMinerV2020 {
                 },
             )],
             DataField::FirmwareVersion => vec![(
-                RPC_VERSION,
+                WEB_SYSTEM_INFO,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/VERSION/0/CompileTime"),
+                    key: Some("/system_filesystem_version"),
                     tag: None,
                 },
             )],
@@ -983,7 +983,9 @@ mod tests {
     use asic_rs_makes_antminer::models::AntMinerModel;
 
     use super::*;
-    use crate::test::json::v2020::{AM_DEVS, AM_POOLS, AM_STATS, AM_SUMMARY, AM_VERSION};
+    use crate::test::json::v2020::{
+        AM_DEVS, AM_POOLS, AM_STATS, AM_SUMMARY, AM_SYSTEM_INFO, AM_VERSION,
+    };
 
     #[tokio::test]
     async fn test_antminer() {
@@ -1006,6 +1008,11 @@ mod tests {
             parameters: None,
         };
 
+        let system_info_cmd = MinerCommand::WebAPI {
+            command: "get_system_info",
+            parameters: None,
+        };
+
         let devs_cmd = MinerCommand::RPC {
             command: "devs",
             parameters: None,
@@ -1019,6 +1026,7 @@ mod tests {
         results.insert(stats_cmd, Value::from_str(AM_STATS).unwrap());
         results.insert(version_cmd, Value::from_str(AM_VERSION).unwrap());
         results.insert(summary_cmd, Value::from_str(AM_SUMMARY).unwrap());
+        results.insert(system_info_cmd, Value::from_str(AM_SYSTEM_INFO).unwrap());
         results.insert(devs_cmd, Value::from_str(AM_DEVS).unwrap());
         results.insert(pools_cmd, Value::from_str(AM_POOLS).unwrap());
 
@@ -1030,6 +1038,10 @@ mod tests {
         let miner_data = miner.parse_data(data);
 
         assert_eq!(miner_data.ip.to_string(), "127.0.0.1".to_owned());
+        assert_eq!(
+            miner_data.firmware_version.as_deref(),
+            Some("FR-1.12(251009-S21)")
+        );
         assert_eq!(miner_data.hashboards.len(), 3);
         assert_eq!(miner_data.light_flashing, None);
         assert_eq!(miner_data.fans.len(), 4);
