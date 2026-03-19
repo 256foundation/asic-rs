@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::D
 use anyhow;
 use asic_rs_core::{
     config::{
-        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
         pools::{PoolConfig, PoolGroupConfig},
     },
     data::{
@@ -178,9 +178,22 @@ impl APIClient for AntMinerV2020 {
 }
 
 impl GetConfigsLocations for AntMinerV2020 {
-    #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        vec![]
+        const WEB_GET_MINER_CONF: MinerCommand = MinerCommand::WebAPI {
+            command: "get_miner_conf",
+            parameters: None,
+        };
+        match data_field {
+            ConfigField::Pools => vec![(
+                WEB_GET_MINER_CONF,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/pools"),
+                    tag: None,
+                },
+            )],
+            _ => vec![],
+        }
     }
 }
 
@@ -786,9 +799,15 @@ impl SetPowerLimit for AntMinerV2020 {
 
 #[async_trait]
 impl SupportsPoolsConfig for AntMinerV2020 {
-    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
-        let pre = self.web.get_miner_conf().await?;
-        let Some(pools_array) = pre.get("pools").and_then(|v| v.as_array()) else {
+    fn parse_pools_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        let Some(pools_data) = data.get(&ConfigField::Pools) else {
+            return Ok(vec![]);
+        };
+
+        let Some(pools_array) = pools_data.as_array() else {
             return Ok(vec![PoolGroupConfig {
                 name: String::new(),
                 quota: 1,
