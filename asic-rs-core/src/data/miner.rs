@@ -1,9 +1,9 @@
 use std::{net::IpAddr, time::Duration};
 
 use macaddr::MacAddr;
+use measurements::{Power, Temperature};
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
-use measurements::{Power, Temperature};
 use serde::{Deserialize, Serialize};
 
 use super::{

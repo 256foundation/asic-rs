@@ -707,9 +707,9 @@ impl SupportsTuningConfig for WhatsMinerV3 {
         }
 
         if let Some(limit) = summary.get("power-limit").and_then(Value::as_f64) {
-            return Ok(TuningConfig::new(TuningTarget::Power(
-                Power::from_watts(limit),
-            )));
+            return Ok(TuningConfig::new(TuningTarget::Power(Power::from_watts(
+                limit,
+            ))));
         }
 
         anyhow::bail!("No power-mode or power-limit found in status summary")
@@ -812,10 +812,7 @@ mod tests {
         let config = miner.parse_tuning_config(&data).unwrap();
 
         // Assert
-        assert_eq!(
-            config.target,
-            TuningTarget::MiningMode(MiningMode::Low)
-        );
+        assert_eq!(config.target, TuningTarget::MiningMode(MiningMode::Low));
     }
 
     #[test]
