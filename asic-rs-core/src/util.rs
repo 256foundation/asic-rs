@@ -167,7 +167,9 @@ mod tests {
         });
 
         // Act
-        let result = read_stream_response(&mut reader, Duration::from_secs(5)).await.unwrap();
+        let result = read_stream_response(&mut reader, Duration::from_secs(5))
+            .await
+            .unwrap();
 
         // Assert
         assert_eq!(result, "{\"STATUS\":\"S\"}");
@@ -182,7 +184,9 @@ mod tests {
         });
 
         // Act
-        let result = read_stream_response(&mut reader, Duration::from_secs(5)).await.unwrap();
+        let result = read_stream_response(&mut reader, Duration::from_secs(5))
+            .await
+            .unwrap();
 
         // Assert
         assert_eq!(result, "{\"STATUS\":\"S\"}");
@@ -198,7 +202,9 @@ mod tests {
         });
 
         // Act
-        let result = read_stream_response(&mut reader, Duration::from_secs(5)).await.unwrap();
+        let result = read_stream_response(&mut reader, Duration::from_secs(5))
+            .await
+            .unwrap();
 
         // Assert
         assert_eq!(result, "{\"STATUS\":\"S\"}");
@@ -211,7 +217,9 @@ mod tests {
         drop(writer);
 
         // Act
-        let result = read_stream_response(&mut reader, Duration::from_secs(5)).await.unwrap();
+        let result = read_stream_response(&mut reader, Duration::from_secs(5))
+            .await
+            .unwrap();
 
         // Assert
         assert_eq!(result, "");
@@ -226,7 +234,9 @@ mod tests {
         });
 
         // Act
-        let result = read_stream_response(&mut reader, Duration::from_secs(5)).await.unwrap();
+        let result = read_stream_response(&mut reader, Duration::from_secs(5))
+            .await
+            .unwrap();
 
         // Assert
         assert_eq!(result, "{\"STATUS\":\"S\"}");

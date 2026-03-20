@@ -760,10 +760,19 @@ impl SupportsTuningConfig for WhatsMinerV2 {
     async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
         let is_power_target = matches!(&config.target, TuningTarget::Power(_));
         let (command, param) = tuning_config_to_rpc(&config)?;
+
+        // Mining mode commands (set_low/normal/high_power) are fire-and-forget:
+        // the miner applies the change but never responds, causing a read timeout.
+        // Power limit commands (adjust_power_limit) respond normally.
+        let is_mining_mode = matches!(&config.target, TuningTarget::MiningMode(_));
         let data = self.rpc.send_command(command, true, param).await;
-        if let Err(e) = data {
-            tracing::warn!("set_tuning_config RPC failed: {e}");
-            return Err(e);
+        if let Err(ref e) = data {
+            if is_mining_mode {
+                tracing::debug!("set_tuning_config mining mode RPC timed out (expected): {e}");
+            } else {
+                tracing::warn!("set_tuning_config RPC failed: {e}");
+                return Err(anyhow::anyhow!("{e}"));
+            }
         }
 
         // Reset mode to Normal after setting a power limit so that

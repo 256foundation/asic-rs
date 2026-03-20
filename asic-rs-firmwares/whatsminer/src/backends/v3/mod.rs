@@ -771,6 +771,8 @@ impl SupportsTuningConfig for WhatsMinerV3 {
 
         // Fall back to V2 for MiningMode on any V3 error — set.miner.mode is
         // not universally supported and may return an error or timeout.
+        // Mining mode commands are fire-and-forget: the miner applies the
+        // change but never responds, causing a read timeout.
         if let TuningTarget::MiningMode(mode) = &config.target {
             let v2_cmd = MinerCommand::RPC {
                 command: match mode {
@@ -780,14 +782,8 @@ impl SupportsTuningConfig for WhatsMinerV3 {
                 },
                 parameters: None,
             };
-            let v2_result = self.get_api_result(&v2_cmd).await;
-            match v2_result {
-                Ok(_) => return Ok(true),
-                Err(e) => {
-                    tracing::warn!("set_tuning_config V2 fallback RPC failed: {e}");
-                    return Err(e);
-                }
-            }
+            let _ = self.get_api_result(&v2_cmd).await;
+            return Ok(true);
         }
 
         Err(err)
