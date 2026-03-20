@@ -49,10 +49,7 @@ impl APIClient for WhatsMinerRPCAPI {
             MinerCommand::RPC {
                 command,
                 parameters,
-            } => self
-                .send_command(command, false, parameters.clone())
-                .await
-                .map_err(|e| anyhow::anyhow!(e.to_string())),
+            } => self.send_command(command, false, parameters.clone()).await,
             _ => Err(anyhow::anyhow!("Cannot send non RPC command to RPC API")),
         }
     }
