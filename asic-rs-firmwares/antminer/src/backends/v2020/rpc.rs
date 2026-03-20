@@ -5,7 +5,7 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
-    util::read_stream_response,
+    util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
 };
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -49,7 +49,7 @@ impl AntMinerRPCAPI {
 
         stream.write_all(message.as_bytes()).await?;
 
-        let response = read_stream_response(&mut stream).await?;
+        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?;
         self.parse_rpc_result(&response)
     }
 

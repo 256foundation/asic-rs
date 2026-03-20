@@ -9,7 +9,7 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::{RPCError, RPCError::StatusCheckFailed},
     traits::miner::*,
-    util::read_stream_response,
+    util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
 };
 use async_trait::async_trait;
 use base64::prelude::*;
@@ -197,7 +197,7 @@ impl WhatsMinerRPCAPI {
 
         stream.write_all(json_bytes).await?;
 
-        let response = read_stream_response(&mut stream).await?;
+        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?;
 
         self.parse_rpc_result(&response)
     }
@@ -346,7 +346,7 @@ impl WhatsMinerRPCAPI {
 
         stream.write_all(json_bytes).await?;
 
-        let response = read_stream_response(&mut stream).await?;
+        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?;
 
         self.parse_privileged_rpc_result(&token_data.host_password_md5, &response)
     }

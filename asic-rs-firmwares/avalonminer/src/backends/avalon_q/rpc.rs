@@ -5,7 +5,7 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::{APIClient, RPCAPIClient},
-    util::read_stream_response,
+    util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
 };
 use async_trait::async_trait;
 use regex::Regex;
@@ -167,7 +167,7 @@ impl RPCAPIClient for AvalonMinerRPCAPI {
         let json_str = cmd.to_string();
         stream.write_all(json_str.as_bytes()).await?;
 
-        let response = read_stream_response(&mut stream).await?;
+        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?;
 
         if response.is_empty() {
             anyhow::bail!("No data received from miner");

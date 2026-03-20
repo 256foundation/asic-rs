@@ -1,8 +1,11 @@
-use std::{net::IpAddr, sync::LazyLock};
+use std::{net::IpAddr, sync::LazyLock, time::Duration};
 
 use reqwest::{StatusCode, header::HeaderMap};
 use serde_json::json;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
+
+/// Default read timeout for RPC stream responses.
+pub const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Shared HTTP client for discovery and utility requests.
 /// Reused across all calls to avoid per-request client construction overhead.
@@ -20,28 +23,34 @@ static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
 ///
 /// Miners typically terminate responses with `\0` or `\n` but keep the TCP
 /// connection open, so `read_to_end` would block forever. This reads in
-/// chunks and stops when a terminator is found or the stream closes.
+/// chunks and stops when a terminator is found, the stream closes, or the
+/// timeout expires (e.g. when a miner reboots mid-response).
 pub async fn read_stream_response(
     stream: &mut (impl AsyncRead + Unpin),
+    timeout: Duration,
 ) -> anyhow::Result<String> {
-    let mut response = String::new();
-    let mut buffer = [0u8; 8192];
+    tokio::time::timeout(timeout, async {
+        let mut response = String::new();
+        let mut buffer = [0u8; 8192];
 
-    loop {
-        let bytes_read = stream.read(&mut buffer).await?;
-        if bytes_read == 0 {
-            break;
+        loop {
+            let bytes_read = stream.read(&mut buffer).await?;
+            if bytes_read == 0 {
+                break;
+            }
+
+            let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
+            response.push_str(&chunk);
+
+            if response.contains('\0') || response.ends_with('\n') {
+                break;
+            }
         }
 
-        let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
-        response.push_str(&chunk);
-
-        if response.contains('\0') || response.ends_with('\n') {
-            break;
-        }
-    }
-
-    Ok(response.trim_end_matches(['\0', '\n']).to_owned())
+        Ok(response.trim_end_matches(['\0', '\n']).to_owned())
+    })
+    .await
+    .map_err(|_| anyhow::anyhow!("read timed out"))?
 }
 
 #[tracing::instrument(level = "debug")]
@@ -57,7 +66,7 @@ pub async fn send_rpc_command(ip: &IpAddr, command: &'static str) -> Option<serd
         return None;
     }
 
-    let response = match read_stream_response(&mut stream).await {
+    let response = match read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await {
         Ok(r) => r,
         Err(err) => {
             tracing::debug!("failed to read response from {ip}: {err:?}");
@@ -158,7 +167,7 @@ mod tests {
         });
 
         // Act
-        let result = read_stream_response(&mut reader).await.unwrap();
+        let result = read_stream_response(&mut reader, Duration::from_secs(5)).await.unwrap();
 
         // Assert
         assert_eq!(result, "{\"STATUS\":\"S\"}");
@@ -173,7 +182,7 @@ mod tests {
         });
 
         // Act
-        let result = read_stream_response(&mut reader).await.unwrap();
+        let result = read_stream_response(&mut reader, Duration::from_secs(5)).await.unwrap();
 
         // Assert
         assert_eq!(result, "{\"STATUS\":\"S\"}");
@@ -189,7 +198,7 @@ mod tests {
         });
 
         // Act
-        let result = read_stream_response(&mut reader).await.unwrap();
+        let result = read_stream_response(&mut reader, Duration::from_secs(5)).await.unwrap();
 
         // Assert
         assert_eq!(result, "{\"STATUS\":\"S\"}");
@@ -202,7 +211,7 @@ mod tests {
         drop(writer);
 
         // Act
-        let result = read_stream_response(&mut reader).await.unwrap();
+        let result = read_stream_response(&mut reader, Duration::from_secs(5)).await.unwrap();
 
         // Assert
         assert_eq!(result, "");
@@ -217,9 +226,22 @@ mod tests {
         });
 
         // Act
-        let result = read_stream_response(&mut reader).await.unwrap();
+        let result = read_stream_response(&mut reader, Duration::from_secs(5)).await.unwrap();
 
         // Assert
         assert_eq!(result, "{\"STATUS\":\"S\"}");
+    }
+
+    #[tokio::test]
+    async fn read_timeout_fires() {
+        // Arrange — duplex with no data written, simulating a miner that rebooted
+        let (_writer, mut reader) = tokio::io::duplex(8192);
+
+        // Act
+        let result = read_stream_response(&mut reader, Duration::from_millis(100)).await;
+
+        // Assert
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("timed out"));
     }
 }

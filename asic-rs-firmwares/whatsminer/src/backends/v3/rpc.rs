@@ -9,6 +9,7 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
+    util::DEFAULT_RPC_TIMEOUT,
 };
 use async_trait::async_trait;
 use base64::prelude::*;
@@ -129,11 +130,15 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         stream.write_all(json_bytes).await?;
 
         let mut len_buf = [0u8; 4];
-        stream.read_exact(&mut len_buf).await?;
+        tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read_exact(&mut len_buf))
+            .await
+            .map_err(|_| anyhow::anyhow!("read timed out"))??;
         let response_len = u32::from_le_bytes(len_buf) as usize;
 
         let mut resp_buf = vec![0u8; response_len];
-        stream.read_exact(&mut resp_buf).await?;
+        tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read_exact(&mut resp_buf))
+            .await
+            .map_err(|_| anyhow::anyhow!("read timed out"))??;
 
         let response_str = String::from_utf8_lossy(&resp_buf).into_owned();
 
@@ -222,11 +227,15 @@ impl WhatsMinerRPCAPI {
         stream.write_all(json_bytes).await?;
 
         let mut len_buf = [0u8; 4];
-        stream.read_exact(&mut len_buf).await?;
+        tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read_exact(&mut len_buf))
+            .await
+            .map_err(|_| anyhow::anyhow!("read timed out"))??;
         let response_len = u32::from_le_bytes(len_buf) as usize;
 
         let mut resp_buf = vec![0u8; response_len];
-        stream.read_exact(&mut resp_buf).await?;
+        tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read_exact(&mut resp_buf))
+            .await
+            .map_err(|_| anyhow::anyhow!("read timed out"))??;
 
         let response_str = String::from_utf8_lossy(&resp_buf).into_owned();
 

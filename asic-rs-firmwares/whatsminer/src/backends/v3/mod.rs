@@ -662,9 +662,12 @@ impl SupportsPoolsConfig for WhatsMinerV3 {
 #[async_trait]
 impl Restart for WhatsMinerV3 {
     async fn restart(&self) -> anyhow::Result<bool> {
-        let data = self.rpc.send_command("set.system.reboot", true, None).await;
-
-        Ok(data.is_ok())
+        // Miners often reboot before responding, so a read timeout is expected
+        match self.rpc.send_command("set.system.reboot", true, None).await {
+            Ok(_) => Ok(true),
+            Err(e) if e.to_string().contains("timed out") => Ok(true),
+            Err(_) => Ok(false),
+        }
     }
     fn supports_restart(&self) -> bool {
         true
