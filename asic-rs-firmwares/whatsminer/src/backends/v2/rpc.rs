@@ -9,6 +9,7 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::{RPCError, RPCError::StatusCheckFailed},
     traits::miner::*,
+    util::read_stream_response,
 };
 use async_trait::async_trait;
 use base64::prelude::*;
@@ -196,12 +197,7 @@ impl WhatsMinerRPCAPI {
 
         stream.write_all(json_bytes).await?;
 
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).await?;
-
-        let response = String::from_utf8_lossy(&buffer)
-            .into_owned()
-            .replace('\0', "");
+        let response = read_stream_response(&mut stream).await?;
 
         self.parse_rpc_result(&response)
     }
@@ -350,12 +346,7 @@ impl WhatsMinerRPCAPI {
 
         stream.write_all(json_bytes).await?;
 
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).await?;
-
-        let response = String::from_utf8_lossy(&buffer)
-            .into_owned()
-            .replace('\0', "");
+        let response = read_stream_response(&mut stream).await?;
 
         self.parse_privileged_rpc_result(&token_data.host_password_md5, &response)
     }

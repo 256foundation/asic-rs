@@ -5,10 +5,11 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
+    util::read_stream_response,
 };
 use async_trait::async_trait;
 use serde_json::{Value, json};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 #[derive(Debug)]
 pub struct LUXMinerRPCAPI {
@@ -410,25 +411,8 @@ impl RPCAPIClient for LUXMinerRPCAPI {
 
         stream.write_all(message.as_bytes()).await?;
 
-        let mut response = String::new();
-        let mut buffer = [0; 8192];
-
-        loop {
-            let bytes_read = stream.read(&mut buffer).await?;
-            if bytes_read == 0 {
-                break;
-            }
-
-            let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
-            response.push_str(&chunk);
-
-            if response.contains('\0') || response.ends_with('\n') {
-                break;
-            }
-        }
-
-        let clean_response = response.trim_end_matches('\0').trim_end_matches('\n');
-        self.parse_rpc_result(clean_response)
+        let response = read_stream_response(&mut stream).await?;
+        self.parse_rpc_result(&response)
     }
 }
 

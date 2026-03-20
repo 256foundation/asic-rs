@@ -5,11 +5,12 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::{APIClient, RPCAPIClient},
+    util::read_stream_response,
 };
 use async_trait::async_trait;
 use regex::Regex;
 use serde_json::{Value, json};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 static STATS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\w+)\[([^]]+)]").unwrap());
 static NESTED_STATS_RE: LazyLock<Regex> =
@@ -166,18 +167,13 @@ impl RPCAPIClient for AvalonMinerRPCAPI {
         let json_str = cmd.to_string();
         stream.write_all(json_str.as_bytes()).await?;
 
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).await?;
+        let response = read_stream_response(&mut stream).await?;
 
-        if buffer.is_empty() {
+        if response.is_empty() {
             anyhow::bail!("No data received from miner");
         }
 
-        let response = String::from_utf8_lossy(&buffer)
-            .into_owned()
-            .replace('\0', "");
-
-        if response == "Socket connect failed: Connection refused\n" {
+        if response == "Socket connect failed: Connection refused" {
             anyhow::bail!("Miner connection refused");
         }
 

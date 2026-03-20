@@ -5,10 +5,11 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
+    util::read_stream_response,
 };
 use async_trait::async_trait;
 use serde_json::{Value, json};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 #[derive(Debug)]
 pub struct WhatsMinerRPCAPI {
@@ -99,14 +100,10 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         let json_str = request.to_string();
         let json_bytes = json_str.as_bytes();
 
-        stream.write_all(json_bytes).await.unwrap();
+        stream.write_all(json_bytes).await?;
 
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer).await.unwrap();
-
-        let response = String::from_utf8_lossy(&buffer)
-            .into_owned()
-            .replace('\0', "")
+        let response = read_stream_response(&mut stream).await?;
+        let response = response
             .replace("\n", "") // Fix for WM V1, can have newlines in version which breaks the json parser
             .replace(",}", "}"); // Fix for WM V1, can have trailing commas which breaks the json parser
 
