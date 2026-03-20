@@ -66,7 +66,9 @@ pub async fn send_rpc_command(ip: &IpAddr, command: &'static str) -> Option<serd
         return None;
     }
 
-    let response = match read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await {
+    let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
+    let _ = stream.shutdown().await;
+    let response = match response {
         Ok(r) => r,
         Err(err) => {
             tracing::debug!("failed to read response from {ip}: {err:?}");

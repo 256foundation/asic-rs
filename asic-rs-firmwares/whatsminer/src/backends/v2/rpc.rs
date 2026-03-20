@@ -198,7 +198,9 @@ impl WhatsMinerRPCAPI {
 
         stream.write_all(json_bytes).await?;
 
-        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?;
+        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
+        let _ = stream.shutdown().await;
+        let response = response?;
 
         self.parse_rpc_result(&response)
     }
@@ -252,6 +254,7 @@ impl WhatsMinerRPCAPI {
             .await
             .map_err(|_| anyhow::anyhow!("read timed out"))??;
 
+        let _ = stream.shutdown().await;
         Ok(())
     }
 
@@ -351,7 +354,9 @@ impl WhatsMinerRPCAPI {
 
         stream.write_all(json_bytes).await?;
 
-        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?;
+        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
+        let _ = stream.shutdown().await;
+        let response = response?;
 
         self.parse_privileged_rpc_result(&token_data.host_password_md5, &response)
     }
