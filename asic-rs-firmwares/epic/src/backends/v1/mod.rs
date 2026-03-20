@@ -1066,12 +1066,8 @@ impl SupportsPoolsConfig for PowerPlayV1 {
                 .and_then(|v| v.get("hashrate_splits"))
                 .and_then(Value::as_array)
             {
-                for split in splits {
-                    let name = split
-                        .get("coin")
-                        .and_then(Value::as_str)
-                        .map(String::from)
-                        .unwrap_or_default();
+                for (idx, split) in splits.iter().enumerate() {
+                    let name = format!("group{}", idx + 1);
                     let quota = split
                         .get("ratio")
                         .and_then(Value::as_u64)
