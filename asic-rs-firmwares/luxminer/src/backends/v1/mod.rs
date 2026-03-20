@@ -967,12 +967,10 @@ impl SupportsPoolsConfig for LuxMinerV1 {
 #[async_trait]
 impl Restart for LuxMinerV1 {
     async fn restart(&self) -> anyhow::Result<bool> {
-        // Miners often reboot before responding, so a read timeout is expected
-        match self.rpc.reboot_device().await {
-            Ok(_) => Ok(true),
-            Err(e) if e.to_string().contains("timed out") => Ok(true),
-            Err(_) => Ok(false),
-        }
+        // Miners often reboot before responding — any error (timeout,
+        // connection reset, broken pipe) likely means the miner is rebooting.
+        let _ = self.rpc.reboot_device().await;
+        Ok(true)
     }
     fn supports_restart(&self) -> bool {
         true
