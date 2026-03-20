@@ -4,7 +4,7 @@ use anyhow;
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
-        pools::PoolGroupConfig,
+        pools::{PoolConfig, PoolGroupConfig},
         scaling::ScalingConfig,
         tuning::TuningConfig,
     },
@@ -51,6 +51,39 @@ impl PowerPlayV1 {
         }
     }
 
+    // this gets used twice
+    fn parse_stratum_configs(configs: &Value) -> Vec<PoolConfig> {
+        let mut pools: Vec<PoolConfig> = configs
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|pool| {
+                let url = pool.get("pool").and_then(Value::as_str)?;
+                if url.is_empty() {
+                    return None;
+                }
+
+                Some(PoolConfig {
+                    url: PoolURL::from(url.to_string()),
+                    username: pool
+                        .get("login")
+                        .and_then(Value::as_str)
+                        .map(String::from)
+                        .unwrap_or_default(),
+                    password: pool
+                        .get("password")
+                        .and_then(Value::as_str)
+                        .map(String::from)
+                        .unwrap_or_default(),
+                })
+            })
+            .collect();
+
+        pools.truncate(3);
+
+        pools
+    }
+
     fn to_stratum_configs(group: &PoolGroupConfig) -> Vec<Value> {
         group
             .pools
@@ -84,7 +117,29 @@ impl GetConfigsLocations for PowerPlayV1 {
             command: "summary",
             parameters: None,
         };
+        const WEB_HASHRATESPLIT_CONFIG: MinerCommand = MinerCommand::WebAPI {
+            command: "hashratesplit/config",
+            parameters: None,
+        };
         match data_field {
+            ConfigField::Pools => vec![
+                (
+                    WEB_SUMMARY,
+                    ConfigExtractor {
+                        func: get_by_pointer,
+                        key: Some("/StratumConfigs"),
+                        tag: Some("summary"),
+                    },
+                ),
+                (
+                    WEB_HASHRATESPLIT_CONFIG,
+                    ConfigExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: Some("hashratesplit"),
+                    },
+                ),
+            ],
             ConfigField::Scaling => vec![(
                 WEB_SUMMARY,
                 ConfigExtractor {
@@ -101,7 +156,6 @@ impl GetConfigsLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
-            _ => vec![],
         }
     }
 }
@@ -982,13 +1036,71 @@ impl SetPowerLimit for PowerPlayV1 {
 
 #[async_trait]
 impl SupportsPoolsConfig for PowerPlayV1 {
-    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
-        Ok(self
-            .get_pools()
-            .await
-            .iter()
-            .map(|g| g.clone().into())
-            .collect())
+    fn parse_pools_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        let Some(pools_data) = data.get(&ConfigField::Pools) else {
+            return Ok(vec![]);
+        };
+
+        if pools_data.is_array() {
+            return Ok(vec![]);
+        }
+
+        let Some(pools_object) = pools_data.as_object() else {
+            return Ok(vec![]);
+        };
+
+        let split_enabled = pools_object
+            .get("hashratesplit")
+            .and_then(|v| v.get("enabled"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+
+        if split_enabled {
+            let mut groups: Vec<PoolGroupConfig> = Vec::new();
+
+            if let Some(splits) = pools_object
+                .get("hashratesplit")
+                .and_then(|v| v.get("hashrate_splits"))
+                .and_then(Value::as_array)
+            {
+                for split in splits {
+                    let name = split
+                        .get("coin")
+                        .and_then(Value::as_str)
+                        .map(String::from)
+                        .unwrap_or_default();
+                    let quota = split
+                        .get("ratio")
+                        .and_then(Value::as_u64)
+                        .and_then(|ratio| u32::try_from(ratio).ok())
+                        .unwrap_or(1);
+                    let pools = split
+                        .get("stratum_configs")
+                        .map(Self::parse_stratum_configs)
+                        .unwrap_or_default();
+
+                    groups.push(PoolGroupConfig { name, quota, pools });
+                }
+            }
+
+            groups.truncate(3);
+
+            Ok(groups)
+        } else {
+            let groups = vec![PoolGroupConfig {
+                name: String::new(),
+                quota: 1,
+                pools: pools_object
+                    .get("summary")
+                    .map(Self::parse_stratum_configs)
+                    .unwrap_or_default(),
+            }];
+
+            Ok(groups)
+        }
     }
 
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
@@ -1292,6 +1404,180 @@ mod tests {
 
         assert_eq!(config.minimum, 50);
         assert_eq!(config.step, 5);
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_pools_config_uses_summary_when_split_disabled() -> anyhow::Result<()> {
+        let summary = Value::from_str(SUMMARY)?;
+        let summary_configs = summary
+            .pointer("/StratumConfigs")
+            .cloned()
+            .context("missing /StratumConfigs")?;
+
+        let pools_data = json!({
+            "summary": summary_configs,
+            "hashratesplit": {
+                "enabled": false,
+                "hashrate_splits": [
+                    {
+                        "coin": "BTC",
+                        "ratio": 100,
+                        "stratum_configs": [
+                            {
+                                "pool": "stratum+tcp://split.pool:3333",
+                                "login": "split.user",
+                                "password": "split.pass"
+                            }
+                        ],
+                        "unique_worker_id_variant": "MacAddress"
+                    }
+                ]
+            }
+        });
+
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let data = HashMap::from([(ConfigField::Pools, pools_data)]);
+        let config = miner.parse_pools_config(&data)?;
+
+        assert_eq!(config.len(), 1);
+        assert_eq!(config[0].quota, 1);
+        assert_eq!(config[0].pools.len(), 1);
+        assert_eq!(config[0].pools[0].username, "randomuser.randomworker");
+        assert_eq!(config[0].pools[0].password, "password");
+        assert_eq!(
+            config[0].pools[0].url.to_string(),
+            "stratum+tcp://mine.ocean.xyz:3334"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_pools_config_uses_hashrate_split_when_enabled() -> anyhow::Result<()> {
+        let pools_data = json!({
+            "summary": [
+                {
+                    "pool": "stratum+tcp://summary.pool:3333",
+                    "login": "summary.user",
+                    "password": "summary.pass"
+                }
+            ],
+            "hashratesplit": {
+                "enabled": true,
+                "hashrate_splits": [
+                    {
+                        "coin": "BTC",
+                        "ratio": 70,
+                        "stratum_configs": [
+                            {
+                                "pool": "stratum+tcp://btc.pool:3333",
+                                "login": "btc.user",
+                                "password": "btc.pass"
+                            }
+                        ],
+                        "unique_worker_id_variant": "MacAddress"
+                    },
+                    {
+                        "coin": "LTC",
+                        "ratio": 30,
+                        "stratum_configs": [
+                            {
+                                "pool": "stratum+tcp://ltc.pool:4444",
+                                "login": "ltc.user",
+                                "password": "ltc.pass"
+                            }
+                        ],
+                        "unique_worker_id_variant": "MacAddress"
+                    }
+                ]
+            }
+        });
+
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let data = HashMap::from([(ConfigField::Pools, pools_data)]);
+        let config = miner.parse_pools_config(&data)?;
+
+        assert_eq!(config.len(), 2);
+        assert_eq!(config[0].name, "BTC");
+        assert_eq!(config[0].quota, 70);
+        assert_eq!(config[0].pools.len(), 1);
+        assert_eq!(config[0].pools[0].username, "btc.user");
+        assert_eq!(config[0].pools[0].password, "btc.pass");
+        assert_eq!(
+            config[0].pools[0].url.to_string(),
+            "stratum+tcp://btc.pool:3333"
+        );
+
+        assert_eq!(config[1].name, "LTC");
+        assert_eq!(config[1].quota, 30);
+        assert_eq!(config[1].pools.len(), 1);
+        assert_eq!(config[1].pools[0].username, "ltc.user");
+        assert_eq!(config[1].pools[0].password, "ltc.pass");
+        assert_eq!(
+            config[1].pools[0].url.to_string(),
+            "stratum+tcp://ltc.pool:4444"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_pools_config_33_33_34_keeps_percentage_quota() -> anyhow::Result<()> {
+        let pools_data = json!({
+            "summary": [],
+            "hashratesplit": {
+                "enabled": true,
+                "hashrate_splits": [
+                    {
+                        "coin": "BTC",
+                        "ratio": 33,
+                        "stratum_configs": [
+                            {
+                                "pool": "stratum+tcp://pool-a:3333",
+                                "login": "a.user",
+                                "password": "a.pass"
+                            }
+                        ],
+                        "unique_worker_id_variant": "MacAddress"
+                    },
+                    {
+                        "coin": "BTC",
+                        "ratio": 33,
+                        "stratum_configs": [
+                            {
+                                "pool": "stratum+tcp://pool-b:3333",
+                                "login": "b.user",
+                                "password": "b.pass"
+                            }
+                        ],
+                        "unique_worker_id_variant": "MacAddress"
+                    },
+                    {
+                        "coin": "BTC",
+                        "ratio": 34,
+                        "stratum_configs": [
+                            {
+                                "pool": "stratum+tcp://pool-c:3333",
+                                "login": "c.user",
+                                "password": "c.pass"
+                            }
+                        ],
+                        "unique_worker_id_variant": "MacAddress"
+                    }
+                ]
+            }
+        });
+
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let data = HashMap::from([(ConfigField::Pools, pools_data)]);
+        let config = miner.parse_pools_config(&data)?;
+
+        assert_eq!(config.len(), 3);
+        assert_eq!(config[0].quota, 33);
+        assert_eq!(config[1].quota, 33);
+        assert_eq!(config[2].quota, 34);
 
         Ok(())
     }
