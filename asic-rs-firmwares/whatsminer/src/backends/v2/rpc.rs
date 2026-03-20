@@ -149,10 +149,11 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         let result = self
             .send_command_once(command, _privileged, parameters.clone())
             .await;
-        let _needs_unlock_result =
-            anyhow::Error::from(StatusCheckFailed("can't access write cmd".to_string()));
-        match result {
-            Err(_needs_unlock_result) => {
+        match &result {
+            Err(e)
+                if e.downcast_ref::<RPCError>()
+                    .is_some_and(|rpc| matches!(rpc, StatusCheckFailed(_))) =>
+            {
                 self.unlock_write_commands().await?;
                 self.send_command_once(command, _privileged, parameters)
                     .await
@@ -215,7 +216,9 @@ impl WhatsMinerRPCAPI {
         stream.write_all(open_cmd.to_string().as_bytes()).await?;
 
         let mut buf = vec![0u8; 4096];
-        let n = stream.read(&mut buf).await?;
+        let n = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut buf))
+            .await
+            .map_err(|_| anyhow::anyhow!("read timed out"))??;
         let response: Value = serde_json::from_str(String::from_utf8_lossy(&buf[..n]).trim())?;
 
         let msg = response
@@ -245,7 +248,9 @@ impl WhatsMinerRPCAPI {
         stream.write_all(token_json.to_string().as_bytes()).await?;
 
         let mut final_buf = vec![0u8; 4096];
-        let _ = stream.read(&mut final_buf).await?;
+        let _ = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut final_buf))
+            .await
+            .map_err(|_| anyhow::anyhow!("read timed out"))??;
 
         Ok(())
     }
