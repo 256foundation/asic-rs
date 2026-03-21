@@ -1292,6 +1292,36 @@ impl SupportsFanConfig for PowerPlayV1 {
         }
     }
 
+    async fn set_fan_config(&self, config: FanConfig) -> anyhow::Result<bool> {
+        let payload = match config {
+            FanConfig::Auto {
+                target_temp,
+                idle_speed,
+            } => {
+                let idle_speed = idle_speed.unwrap_or(20);
+
+                json!({
+                    "param": {
+                        "Auto": {
+                            "Target Temperature": target_temp,
+                            "Idle Speed": idle_speed,
+                        }
+                    }
+                })
+            }
+            FanConfig::Manual { fan_speed } => json!({
+                "param": {
+                    "Manual": fan_speed,
+                }
+            }),
+        };
+
+        self.web
+            .send_command("fanspeed", false, Some(payload), Method::POST)
+            .await
+            .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
+    }
+
     fn supports_fan_config(&self) -> bool {
         true
     }
