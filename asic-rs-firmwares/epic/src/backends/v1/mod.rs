@@ -1279,10 +1279,7 @@ impl SupportsFanConfig for PowerPlayV1 {
             .ok_or_else(|| anyhow::anyhow!("No fan mode data in summary response"))?;
 
         if let Some(auto) = fan_mode.get("Auto") {
-            let Some(target_temp) = auto
-                .get("Target Temperature")
-                .and_then(Value::as_f64)
-            else {
+            let Some(target_temp) = auto.get("Target Temperature").and_then(Value::as_f64) else {
                 anyhow::bail!("Missing Auto/Target Temperature in fan mode data");
             };
             let idle_speed = auto.get("Idle Speed").and_then(Value::as_u64);
