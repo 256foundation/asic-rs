@@ -9,11 +9,11 @@ pub enum FanMode {
     Manual,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "mode", rename_all = "PascalCase")]
 pub enum FanConfig {
     Auto {
-        target_temp: u64,
+        target_temp: f64,
         idle_speed: Option<u64>,
     },
     Manual {
@@ -22,7 +22,7 @@ pub enum FanConfig {
 }
 
 impl FanConfig {
-    pub fn auto(target_temp: u64, idle_speed: Option<u64>) -> Self {
+    pub fn auto(target_temp: f64, idle_speed: Option<u64>) -> Self {
         Self::Auto {
             target_temp,
             idle_speed,
@@ -40,7 +40,7 @@ impl FanConfig {
         }
     }
 
-    pub fn target_temp(&self) -> Option<u64> {
+    pub fn target_temp(&self) -> Option<f64> {
         match self {
             Self::Auto { target_temp, .. } => Some(*target_temp),
             Self::Manual { .. } => None,
@@ -68,20 +68,20 @@ mod tests {
 
     #[test]
     fn auto_mode_has_required_fields() {
-        let config = FanConfig::auto(60, Some(35));
+        let config = FanConfig::auto(60.0, Some(35));
 
         assert_eq!(config.mode(), FanMode::Auto);
-        assert_eq!(config.target_temp(), Some(60));
+        assert_eq!(config.target_temp(), Some(60.0));
         assert_eq!(config.idle_speed(), Some(35));
         assert_eq!(config.fan_speed(), None);
     }
 
     #[test]
     fn auto_mode_allows_none_idle_speed() {
-        let config = FanConfig::auto(60, None);
+        let config = FanConfig::auto(60.0, None);
 
         assert_eq!(config.mode(), FanMode::Auto);
-        assert_eq!(config.target_temp(), Some(60));
+        assert_eq!(config.target_temp(), Some(60.0));
         assert_eq!(config.idle_speed(), None);
         assert_eq!(config.fan_speed(), None);
     }

@@ -1279,7 +1279,10 @@ impl SupportsFanConfig for PowerPlayV1 {
             .ok_or_else(|| anyhow::anyhow!("No fan mode data in summary response"))?;
 
         if let Some(auto) = fan_mode.get("Auto") {
-            let Some(target_temp) = auto.get("Target Temperature").and_then(Value::as_u64) else {
+            let Some(target_temp) = auto
+                .get("Target Temperature")
+                .and_then(Value::as_f64)
+            else {
                 anyhow::bail!("Missing Auto/Target Temperature in fan mode data");
             };
             let idle_speed = auto.get("Idle Speed").and_then(Value::as_u64);
@@ -1299,6 +1302,7 @@ impl SupportsFanConfig for PowerPlayV1 {
                 idle_speed,
             } => {
                 let idle_speed = idle_speed.unwrap_or(20);
+                let target_temp = target_temp.round().max(0.0) as u64;
 
                 json!({
                     "param": {
@@ -1482,7 +1486,7 @@ mod tests {
         let config = miner.parse_fan_config(&data)?;
 
         assert_eq!(config.mode(), asic_rs_core::config::fan::FanMode::Auto);
-        assert_eq!(config.target_temp(), Some(60));
+        assert_eq!(config.target_temp(), Some(60.0));
         assert_eq!(config.idle_speed(), Some(20));
         assert_eq!(config.fan_speed(), None);
 
