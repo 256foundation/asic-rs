@@ -670,6 +670,13 @@ impl SupportsTuningConfig for AvalonAMiner {
     }
 }
 
+#[async_trait]
+impl SupportsFanConfig for AvalonAMiner {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

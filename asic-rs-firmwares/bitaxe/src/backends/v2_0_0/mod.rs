@@ -553,6 +553,13 @@ impl SupportsTuningConfig for Bitaxe200 {
     }
 }
 
+#[async_trait]
+impl SupportsFanConfig for Bitaxe200 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

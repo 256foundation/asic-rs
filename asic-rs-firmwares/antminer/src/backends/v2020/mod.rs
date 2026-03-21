@@ -974,6 +974,13 @@ impl SupportsTuningConfig for AntMinerV2020 {
     }
 }
 
+#[async_trait]
+impl SupportsFanConfig for AntMinerV2020 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

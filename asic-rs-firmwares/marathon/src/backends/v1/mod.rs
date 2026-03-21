@@ -932,3 +932,10 @@ impl SupportsTuningConfig for MaraV1 {
         false
     }
 }
+
+#[async_trait]
+impl SupportsFanConfig for MaraV1 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}

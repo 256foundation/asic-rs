@@ -716,3 +716,10 @@ impl SupportsTuningConfig for BraiinsV2507 {
         false
     }
 }
+
+#[async_trait]
+impl SupportsFanConfig for BraiinsV2507 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}

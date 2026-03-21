@@ -541,3 +541,10 @@ impl SupportsTuningConfig for Bitaxe290 {
         false
     }
 }
+
+#[async_trait]
+impl SupportsFanConfig for Bitaxe290 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}

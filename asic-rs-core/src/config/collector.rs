@@ -15,6 +15,7 @@ pub enum ConfigField {
     Pools,
     Scaling,
     Tuning,
+    Fan,
 }
 
 /// A function pointer type that takes a JSON `Value` and an optional key,

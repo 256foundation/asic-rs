@@ -841,6 +841,13 @@ impl SupportsTuningConfig for BraiinsV2109 {
     }
 }
 
+#[async_trait]
+impl SupportsFanConfig for BraiinsV2109 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

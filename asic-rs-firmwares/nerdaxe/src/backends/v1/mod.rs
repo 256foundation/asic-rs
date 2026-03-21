@@ -539,3 +539,10 @@ impl SupportsTuningConfig for NerdAxeV1 {
         false
     }
 }
+
+#[async_trait]
+impl SupportsFanConfig for NerdAxeV1 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}

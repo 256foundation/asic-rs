@@ -1017,6 +1017,13 @@ impl SupportsTuningConfig for LuxMinerV1 {
     }
 }
 
+#[async_trait]
+impl SupportsFanConfig for LuxMinerV1 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

@@ -800,3 +800,10 @@ impl SupportsTuningConfig for VnishV120 {
         false
     }
 }
+
+#[async_trait]
+impl SupportsFanConfig for VnishV120 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}

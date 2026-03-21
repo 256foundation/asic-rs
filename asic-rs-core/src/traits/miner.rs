@@ -16,6 +16,7 @@ use tracing;
 use crate::{
     config::{
         collector::{ConfigCollector, ConfigField, ConfigLocation},
+        fan::FanConfig,
         pools::PoolGroupConfig,
         scaling::ScalingConfig,
         tuning::TuningConfig,
@@ -49,12 +50,21 @@ pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pa
 impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
 
 pub trait SupportsConfigs:
-    CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig + SupportsTuningConfig
+    CollectConfigs
+    + SupportsPoolsConfig
+    + SupportsScalingConfig
+    + SupportsTuningConfig
+    + SupportsFanConfig
 {
 }
 
-impl<T: CollectConfigs + SupportsPoolsConfig + SupportsScalingConfig + SupportsTuningConfig>
-    SupportsConfigs for T
+impl<
+    T: CollectConfigs
+        + SupportsPoolsConfig
+        + SupportsScalingConfig
+        + SupportsTuningConfig
+        + SupportsFanConfig,
+> SupportsConfigs for T
 {
 }
 
@@ -770,6 +780,28 @@ pub trait SupportsTuningConfig: CollectConfigs {
     }
 
     fn supports_tuning_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+pub trait SupportsFanConfig: CollectConfigs {
+    #[allow(unused_variables)]
+    async fn set_fan_config(&self, config: FanConfig) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting fan config is not supported on this platform");
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_fan_config(&self) -> anyhow::Result<FanConfig> {
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::Fan]).await;
+        self.parse_fan_config(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_fan_config(&self, data: &HashMap<ConfigField, Value>) -> anyhow::Result<FanConfig> {
+        anyhow::bail!("Getting fan config is not supported on this platform");
+    }
+
+    fn supports_fan_config(&self) -> bool {
         false
     }
 }

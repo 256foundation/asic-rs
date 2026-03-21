@@ -810,6 +810,13 @@ impl SupportsTuningConfig for WhatsMinerV3 {
     }
 }
 
+#[async_trait]
+impl SupportsFanConfig for WhatsMinerV3 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_makes_whatsminer::models::WhatsMinerModel;
