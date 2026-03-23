@@ -469,6 +469,26 @@ impl GetWattage for WhatsMinerV2 {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
+/// Returns true if the error is an expected transient failure from a V2
+/// privileged write - timeout or connection drop. These indicate the miner
+/// received and applied the command but didn't respond in time.
+fn is_expected_write_error(err: &anyhow::Error) -> bool {
+    // Read timeout from read_stream_response (tokio::time::timeout elapsed)
+    if err.to_string().contains("timed out") {
+        return true;
+    }
+    // IO errors: connection reset, broken pipe, etc.
+    if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
+        return matches!(
+            io_err.kind(),
+            std::io::ErrorKind::ConnectionReset
+                | std::io::ErrorKind::BrokenPipe
+                | std::io::ErrorKind::ConnectionAborted
+        );
+    }
+    false
+}
+
 /// Parses tuning target from V2 summary data.
 /// Low/High → MiningMode, Normal/unknown/empty → Power(limit).
 fn parse_v2_tuning(summary: &Value) -> Option<TuningTarget> {
@@ -695,11 +715,12 @@ impl Restart for WhatsMinerV2 {
 impl Pause for WhatsMinerV2 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        let data = self
+        // Fire-and-forget: miner may power off before responding.
+        let _ = self
             .rpc
-            .send_command("power_off", true, Some(json!({"respbefore": "true"}))) // Has to be string for some reason
+            .send_command("power_off", true, Some(json!({"respbefore": "true"})))
             .await;
-        Ok(data.is_ok())
+        Ok(true)
     }
     fn supports_pause(&self) -> bool {
         true
@@ -757,20 +778,20 @@ fn tuning_config_to_rpc(config: &TuningConfig) -> anyhow::Result<(&'static str, 
 impl SupportsTuningConfig for WhatsMinerV2 {
     async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
         let is_power_target = matches!(&config.target, TuningTarget::Power(_));
+        let is_mining_mode = matches!(&config.target, TuningTarget::MiningMode(_));
         let (command, param) = tuning_config_to_rpc(&config)?;
 
         // Mining mode commands (set_low/normal/high_power) are fire-and-forget:
-        // the miner applies the change but never responds, causing a read timeout.
-        // Power limit commands (adjust_power_limit) respond normally.
-        let is_mining_mode = matches!(&config.target, TuningTarget::MiningMode(_));
-        let data = self.rpc.send_command(command, true, param).await;
-        if let Err(ref e) = data {
-            if is_mining_mode {
-                tracing::debug!("set_tuning_config mining mode RPC timed out (expected): {e}");
-            } else {
-                tracing::warn!("set_tuning_config RPC failed: {e}");
-                return Err(anyhow::anyhow!("{e}"));
+        // the miner applies the change but doesn't respond, causing a timeout.
+        // Power limit commands need confirmation — some miners don't support them.
+        match self.rpc.send_command(command, true, param).await {
+            Ok(_) => {}
+            Err(e) if is_mining_mode && is_expected_write_error(&e) => {
+                tracing::debug!(
+                    "set_tuning_config: mining mode didn't respond ({e}), assuming applied"
+                );
             }
+            Err(e) => return Err(e),
         }
 
         // Reset mode to Normal after setting a power limit so that
