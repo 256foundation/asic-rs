@@ -718,7 +718,7 @@ impl Pause for WhatsMinerV2 {
         // Fire-and-forget: miner may power off before responding.
         let _ = self
             .rpc
-            .send_command("power_off", true, Some(json!({"respbefore": "true"})))
+            .send_command("power_off", true, Some(json!({"respbefore": "true"}))) // Has to be string for some reason
             .await;
         Ok(true)
     }
