@@ -4,6 +4,8 @@ use reqwest::{StatusCode, header::HeaderMap};
 use serde_json::json;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 
+use crate::errors::RPCError;
+
 /// Default read timeout for RPC stream responses.
 pub const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -11,20 +13,8 @@ pub const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(5);
 /// privileged write — timeout or connection drop. These indicate the miner
 /// received and applied the command but didn't respond in time.
 pub fn is_expected_write_error(err: &anyhow::Error) -> bool {
-    // Read timeout from read_stream_response (tokio::time::timeout elapsed)
-    if err.to_string().contains("timed out") {
-        return true;
-    }
-    // IO errors: connection reset, broken pipe, etc.
-    if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
-        return matches!(
-            io_err.kind(),
-            std::io::ErrorKind::ConnectionReset
-                | std::io::ErrorKind::BrokenPipe
-                | std::io::ErrorKind::ConnectionAborted
-        );
-    }
-    false
+    err.downcast_ref::<RPCError>()
+        .is_some_and(|e| e.is_transient())
 }
 
 /// Shared HTTP client for discovery and utility requests.
@@ -54,7 +44,7 @@ pub async fn read_stream_response(
         let mut buffer = [0u8; 8192];
 
         loop {
-            let bytes_read = stream.read(&mut buffer).await?;
+            let bytes_read = stream.read(&mut buffer).await.map_err(RPCError::from)?;
             if bytes_read == 0 {
                 break;
             }
@@ -70,7 +60,7 @@ pub async fn read_stream_response(
         Ok(response.trim_end_matches(['\0', '\n']).to_owned())
     })
     .await
-    .map_err(|_| anyhow::anyhow!("read timed out"))?
+    .map_err(|_| RPCError::ReadTimeout)?
 }
 
 /// Read exactly `buf.len()` bytes from a stream with a timeout.
@@ -81,7 +71,8 @@ pub async fn read_exact_with_timeout(
 ) -> anyhow::Result<()> {
     tokio::time::timeout(timeout, stream.read_exact(buf))
         .await
-        .map_err(|_| anyhow::anyhow!("read timed out"))??;
+        .map_err(|_| RPCError::ReadTimeout)?
+        .map_err(RPCError::from)?;
     Ok(())
 }
 
@@ -190,6 +181,7 @@ fn parse_rpc_result(response: &str) -> Option<serde_json::Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::RPCError;
     use tokio::io::AsyncWriteExt;
 
     #[tokio::test]
@@ -285,7 +277,10 @@ mod tests {
         let result = read_stream_response(&mut reader, Duration::from_millis(100)).await;
 
         // Assert
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("timed out"));
+        let err = result.unwrap_err();
+        assert!(
+            err.downcast_ref::<RPCError>()
+                .is_some_and(|e| matches!(e, RPCError::ReadTimeout))
+        );
     }
 }

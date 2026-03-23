@@ -196,7 +196,7 @@ impl WhatsMinerRPCAPI {
         let json_str = request.to_string();
         let json_bytes = json_str.as_bytes();
 
-        stream.write_all(json_bytes).await?;
+        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
 
         let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
         let _ = stream.shutdown().await;
@@ -215,12 +215,16 @@ impl WhatsMinerRPCAPI {
             "client": UNLOCK_CLIENT,
             "enable": true,
         });
-        stream.write_all(open_cmd.to_string().as_bytes()).await?;
+        stream
+            .write_all(open_cmd.to_string().as_bytes())
+            .await
+            .map_err(RPCError::from)?;
 
         let mut buf = vec![0u8; 4096];
         let n = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut buf))
             .await
-            .map_err(|_| anyhow::anyhow!("read timed out"))??;
+            .map_err(|_| RPCError::ReadTimeout)?
+            .map_err(RPCError::from)?;
         let response: Value = serde_json::from_str(String::from_utf8_lossy(&buf[..n]).trim())?;
 
         let msg = response
@@ -247,12 +251,16 @@ impl WhatsMinerRPCAPI {
         let token_md5 = format!("{:x}", md5::compute(token_data.as_bytes()));
 
         let token_json = json!({ "token": token_md5 });
-        stream.write_all(token_json.to_string().as_bytes()).await?;
+        stream
+            .write_all(token_json.to_string().as_bytes())
+            .await
+            .map_err(RPCError::from)?;
 
         let mut final_buf = vec![0u8; 4096];
         let _ = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut final_buf))
             .await
-            .map_err(|_| anyhow::anyhow!("read timed out"))??;
+            .map_err(|_| RPCError::ReadTimeout)?
+            .map_err(RPCError::from)?;
 
         let _ = stream.shutdown().await;
         Ok(())
@@ -352,7 +360,7 @@ impl WhatsMinerRPCAPI {
         let json_str = command.to_string();
         let json_bytes = json_str.as_bytes();
 
-        stream.write_all(json_bytes).await?;
+        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
 
         let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
         let _ = stream.shutdown().await;

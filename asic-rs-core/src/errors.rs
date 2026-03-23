@@ -26,6 +26,20 @@ pub enum RPCError {
     StatusCheckFailed(String),
     DeserializationFailed(serde_json::Error),
     ConnectionFailed,
+    ReadTimeout,
+    ConnectionReset,
+    BrokenPipe,
+}
+
+impl RPCError {
+    /// Returns true if this error represents an expected transient failure
+    /// from a privileged write command (timeout or connection drop).
+    pub fn is_transient(&self) -> bool {
+        matches!(
+            self,
+            Self::ReadTimeout | Self::ConnectionReset | Self::BrokenPipe
+        )
+    }
 }
 
 impl Display for RPCError {
@@ -40,6 +54,15 @@ impl Display for RPCError {
             RPCError::ConnectionFailed => {
                 write!(f, "Failed to connect to RPC API")
             }
+            RPCError::ReadTimeout => {
+                write!(f, "RPC read timed out")
+            }
+            RPCError::ConnectionReset => {
+                write!(f, "Connection reset by miner")
+            }
+            RPCError::BrokenPipe => {
+                write!(f, "Broken pipe (miner closed connection)")
+            }
         }
     }
 }
@@ -51,8 +74,13 @@ impl From<serde_json::Error> for RPCError {
         Self::DeserializationFailed(value)
     }
 }
+
 impl From<std::io::Error> for RPCError {
-    fn from(_: std::io::Error) -> Self {
-        Self::ConnectionFailed
+    fn from(err: std::io::Error) -> Self {
+        match err.kind() {
+            std::io::ErrorKind::ConnectionReset => Self::ConnectionReset,
+            std::io::ErrorKind::BrokenPipe => Self::BrokenPipe,
+            _ => Self::ConnectionFailed,
+        }
     }
 }

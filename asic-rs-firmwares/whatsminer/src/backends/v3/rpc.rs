@@ -126,8 +126,11 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         let json_bytes = json_str.as_bytes();
         let length = json_bytes.len() as u32;
 
-        stream.write_all(&length.to_le_bytes()).await?;
-        stream.write_all(json_bytes).await?;
+        stream
+            .write_all(&length.to_le_bytes())
+            .await
+            .map_err(RPCError::from)?;
+        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
 
         let mut len_buf = [0u8; 4];
         read_exact_with_timeout(&mut stream, &mut len_buf, DEFAULT_RPC_TIMEOUT).await?;
@@ -219,8 +222,11 @@ impl WhatsMinerRPCAPI {
         let json_bytes = json_str.as_bytes();
         let length = json_bytes.len() as u32;
 
-        stream.write_all(&length.to_le_bytes()).await?;
-        stream.write_all(json_bytes).await?;
+        stream
+            .write_all(&length.to_le_bytes())
+            .await
+            .map_err(RPCError::from)?;
+        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
 
         let mut len_buf = [0u8; 4];
         read_exact_with_timeout(&mut stream, &mut len_buf, DEFAULT_RPC_TIMEOUT).await?;
