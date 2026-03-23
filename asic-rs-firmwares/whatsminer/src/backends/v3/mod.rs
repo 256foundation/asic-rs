@@ -21,6 +21,7 @@ use asic_rs_core::{
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
+    util::is_expected_write_error,
 };
 use asic_rs_makes_whatsminer::hardware::WhatsMinerControlBoard;
 use async_trait::async_trait;
@@ -782,8 +783,19 @@ impl SupportsTuningConfig for WhatsMinerV3 {
                 },
                 parameters: None,
             };
-            let _ = self.get_api_result(&v2_cmd).await;
-            return Ok(true);
+            match self.get_api_result(&v2_cmd).await {
+                Ok(_) => return Ok(true),
+                Err(e) if is_expected_write_error(&e) => {
+                    tracing::debug!(
+                        "set_tuning_config: V2 mining mode fallback didn't respond ({e}), assuming applied"
+                    );
+                    return Ok(true);
+                }
+                Err(e) => {
+                    tracing::warn!("set_tuning_config V2 fallback RPC failed: {e}");
+                    return Err(e);
+                }
+            }
         }
 
         Err(err)

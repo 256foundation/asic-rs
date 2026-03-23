@@ -21,6 +21,7 @@ use asic_rs_core::{
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
+    util::is_expected_write_error,
 };
 use asic_rs_makes_whatsminer::hardware::WhatsMinerControlBoard;
 use async_trait::async_trait;
@@ -469,26 +470,6 @@ impl GetWattage for WhatsMinerV2 {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
-/// Returns true if the error is an expected transient failure from a V2
-/// privileged write - timeout or connection drop. These indicate the miner
-/// received and applied the command but didn't respond in time.
-fn is_expected_write_error(err: &anyhow::Error) -> bool {
-    // Read timeout from read_stream_response (tokio::time::timeout elapsed)
-    if err.to_string().contains("timed out") {
-        return true;
-    }
-    // IO errors: connection reset, broken pipe, etc.
-    if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
-        return matches!(
-            io_err.kind(),
-            std::io::ErrorKind::ConnectionReset
-                | std::io::ErrorKind::BrokenPipe
-                | std::io::ErrorKind::ConnectionAborted
-        );
-    }
-    false
-}
-
 /// Parses tuning target from V2 summary data.
 /// Low/High → MiningMode, Normal/unknown/empty → Power(limit).
 fn parse_v2_tuning(summary: &Value) -> Option<TuningTarget> {
@@ -720,7 +701,7 @@ impl Pause for WhatsMinerV2 {
         // Fire-and-forget: miner may power off before responding.
         let _ = self
             .rpc
-            .send_command("power_off", true, Some(json!({"respbefore": "true"})))
+            .send_command("power_off", true, Some(json!({"respbefore": "true"}))) // Has to be string for some reason
             .await;
         Ok(true)
     }

@@ -9,7 +9,7 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
-    util::DEFAULT_RPC_TIMEOUT,
+    util::{DEFAULT_RPC_TIMEOUT, read_exact_with_timeout},
 };
 use async_trait::async_trait;
 use base64::prelude::*;
@@ -17,7 +17,7 @@ use chrono::Utc;
 use ecb::cipher::block_padding::ZeroPadding;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 type Aes256EcbEnc = ecb::Encryptor<Aes256>;
 
@@ -130,15 +130,11 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         stream.write_all(json_bytes).await?;
 
         let mut len_buf = [0u8; 4];
-        tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read_exact(&mut len_buf))
-            .await
-            .map_err(|_| anyhow::anyhow!("read timed out"))??;
+        read_exact_with_timeout(&mut stream, &mut len_buf, DEFAULT_RPC_TIMEOUT).await?;
         let response_len = u32::from_le_bytes(len_buf) as usize;
 
         let mut resp_buf = vec![0u8; response_len];
-        tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read_exact(&mut resp_buf))
-            .await
-            .map_err(|_| anyhow::anyhow!("read timed out"))??;
+        read_exact_with_timeout(&mut stream, &mut resp_buf, DEFAULT_RPC_TIMEOUT).await?;
 
         let response_str = String::from_utf8_lossy(&resp_buf).into_owned();
 
@@ -227,15 +223,11 @@ impl WhatsMinerRPCAPI {
         stream.write_all(json_bytes).await?;
 
         let mut len_buf = [0u8; 4];
-        tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read_exact(&mut len_buf))
-            .await
-            .map_err(|_| anyhow::anyhow!("read timed out"))??;
+        read_exact_with_timeout(&mut stream, &mut len_buf, DEFAULT_RPC_TIMEOUT).await?;
         let response_len = u32::from_le_bytes(len_buf) as usize;
 
         let mut resp_buf = vec![0u8; response_len];
-        tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read_exact(&mut resp_buf))
-            .await
-            .map_err(|_| anyhow::anyhow!("read timed out"))??;
+        read_exact_with_timeout(&mut stream, &mut resp_buf, DEFAULT_RPC_TIMEOUT).await?;
 
         let response_str = String::from_utf8_lossy(&resp_buf).into_owned();
 

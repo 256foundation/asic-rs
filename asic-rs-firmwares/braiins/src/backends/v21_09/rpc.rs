@@ -48,7 +48,9 @@ impl BraiinsRPCAPI {
 
         stream.write_all(message.as_bytes()).await?;
 
-        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?;
+        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
+        let _ = stream.shutdown().await;
+        let response = response?;
         self.parse_rpc_result(&response)
     }
 
