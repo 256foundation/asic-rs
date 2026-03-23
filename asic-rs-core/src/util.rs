@@ -4,6 +4,26 @@ use reqwest::{StatusCode, header::HeaderMap};
 use serde_json::json;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+/// Returns true if the error is an expected transient failure from a
+/// privileged write — timeout or connection drop. These indicate the miner
+/// received and applied the command but didn't respond in time.
+pub fn is_expected_write_error(err: &anyhow::Error) -> bool {
+    // Read timeout from read_stream_response (tokio::time::timeout elapsed)
+    if err.to_string().contains("timed out") {
+        return true;
+    }
+    // IO errors: connection reset, broken pipe, etc.
+    if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
+        return matches!(
+            io_err.kind(),
+            std::io::ErrorKind::ConnectionReset
+                | std::io::ErrorKind::BrokenPipe
+                | std::io::ErrorKind::ConnectionAborted
+        );
+    }
+    false
+}
+
 /// Shared HTTP client for discovery and utility requests.
 /// Reused across all calls to avoid per-request client construction overhead.
 static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
