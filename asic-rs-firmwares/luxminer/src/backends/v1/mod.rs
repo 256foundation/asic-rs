@@ -26,18 +26,15 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::Value;
-use web::LuxMinerWebAPI;
 
 use crate::{backends::v1::rpc::LUXMinerRPCAPI, firmware::LuxMinerFirmware};
 
 mod rpc;
-mod web;
 
 #[derive(Debug)]
 pub struct LuxMinerV1 {
     pub ip: IpAddr,
     pub rpc: LUXMinerRPCAPI,
-    pub web: LuxMinerWebAPI,
     pub device_info: DeviceInfo,
 }
 
@@ -46,7 +43,6 @@ impl LuxMinerV1 {
         LuxMinerV1 {
             ip,
             rpc: LUXMinerRPCAPI::new(ip),
-            web: LuxMinerWebAPI::new(ip),
             device_info: DeviceInfo::new(model, LuxMinerFirmware::default(), HashAlgorithm::SHA256),
         }
     }
@@ -182,7 +178,6 @@ impl APIClient for LuxMinerV1 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
-            MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for LuxMiner API")),
         }
     }
@@ -190,20 +185,35 @@ impl APIClient for LuxMinerV1 {
 
 impl GetConfigsLocations for LuxMinerV1 {
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        const WEB_POOLS_GROUPS_POOLOPTS: MinerCommand = MinerCommand::WebAPI {
-            command: "pools+groups+poolopts",
+        const RPC_GROUPS: MinerCommand = MinerCommand::RPC {
+            command: "groups",
+            parameters: None,
+        };
+
+        const RPC_POOLS: MinerCommand = MinerCommand::RPC {
+            command: "pools",
             parameters: None,
         };
 
         match data_field {
-            ConfigField::Pools => vec![(
-                WEB_POOLS_GROUPS_POOLOPTS,
-                ConfigExtractor {
-                    func: get_by_pointer,
-                    key: Some(""),
-                    tag: None,
-                },
-            )],
+            ConfigField::Pools => vec![
+                (
+                    RPC_GROUPS,
+                    ConfigExtractor {
+                        func: get_by_pointer,
+                        key: Some("/GROUPS"),
+                        tag: Some("groups"),
+                    },
+                ),
+                (
+                    RPC_POOLS,
+                    ConfigExtractor {
+                        func: get_by_pointer,
+                        key: Some("/POOLS"),
+                        tag: Some("pools"),
+                    },
+                ),
+            ],
             _ => vec![],
         }
     }
@@ -1121,7 +1131,7 @@ impl SupportsPoolsConfig for LuxMinerV1 {
         }
 
         for group in config.iter().skip(current_groups.len()) {
-            self.web.add_group(&group.name, group.quota).await?;
+            self.rpc.addgroup(&group.name, group.quota).await?;
         }
 
         let current_pools = self.get_pools().await;
@@ -1133,7 +1143,7 @@ impl SupportsPoolsConfig for LuxMinerV1 {
         pool_ids.sort_unstable_by(|a, b| b.cmp(a));
 
         for pool_id in pool_ids {
-            self.web.remove_pool(pool_id).await?;
+            self.rpc.removepool(pool_id).await?;
         }
 
         if current_groups.len() > config.len() {
@@ -1142,24 +1152,22 @@ impl SupportsPoolsConfig for LuxMinerV1 {
             group_ids.sort_unstable_by(|a, b| b.cmp(a));
 
             for group_id in group_ids {
-                self.web.remove_group(group_id).await?;
+                self.rpc.removegroup(group_id).await?;
             }
         }
 
         for (group_id, group) in config.iter().enumerate().take(current_groups.len()) {
-            self.web
-                .set_group_quota(group_id as u32, group.quota)
-                .await?;
+            self.rpc.groupquota(group_id as u32, group.quota).await?;
         }
 
         for (group_id, group) in config.iter().enumerate() {
             for pool in &group.pools {
-                self.web
-                    .add_pool(
+                self.rpc
+                    .addpool(
                         &pool.url.to_string(),
                         &pool.username,
                         &pool.password,
-                        group_id as u32,
+                        Some(&group_id.to_string()),
                     )
                     .await?;
             }

@@ -233,6 +233,33 @@ impl LUXMinerRPCAPI {
     }
 
     // Pool management
+    pub async fn addgroup(&self, name: &str, quota: u32) -> anyhow::Result<Value> {
+        self.send_command(
+            "addgroup",
+            false,
+            Some(Value::String(format!("{name},{quota}"))),
+        )
+        .await
+    }
+
+    pub async fn groupquota(&self, group_id: u32, quota: u32) -> anyhow::Result<Value> {
+        self.send_command(
+            "groupquota",
+            false,
+            Some(Value::String(format!("{group_id},{quota}"))),
+        )
+        .await
+    }
+
+    pub async fn removegroup(&self, group_id: u32) -> anyhow::Result<Value> {
+        self.send_command(
+            "removegroup",
+            false,
+            Some(Value::String(group_id.to_string())),
+        )
+        .await
+    }
+
     pub async fn addpool(
         &self,
         url: &str,
