@@ -533,6 +533,9 @@ impl UpgradeFirmware for NerdAxeV1 {
     }
 }
 
+impl HasAuth for NerdAxeV1 {}
+impl HasDefaultAuth for NerdAxeV1 {}
+
 #[async_trait]
 impl SupportsTuningConfig for NerdAxeV1 {
     fn supports_tuning_config(&self) -> bool {

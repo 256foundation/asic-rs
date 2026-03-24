@@ -78,9 +78,10 @@ impl FromStr for MaraWorkMode {
 
 impl MaraV1 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
+        let auth = Self::default_auth();
         MaraV1 {
             ip,
-            web: MaraWebAPI::new(ip, 80),
+            web: MaraWebAPI::new(ip, 80, auth),
             device_info: DeviceInfo::new(model, MarathonFirmware::default(), HashAlgorithm::SHA256),
         }
     }
@@ -1109,6 +1110,18 @@ impl SupportsScalingConfig for MaraV1 {
 impl UpgradeFirmware for MaraV1 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
+    }
+}
+
+impl HasDefaultAuth for MaraV1 {
+    fn default_auth() -> MinerAuth {
+        MinerAuth::new("root", "root")
+    }
+}
+
+impl HasAuth for MaraV1 {
+    fn set_auth(&mut self, auth: MinerAuth) {
+        self.web.set_auth(auth);
     }
 }
 

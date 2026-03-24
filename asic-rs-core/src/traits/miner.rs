@@ -36,14 +36,23 @@ use crate::{
     traits::model::MinerModel,
 };
 
+pub use crate::traits::auth::{ExposeSecret, HasAuth, HasDefaultAuth, MinerAuth, SecretString};
+
 pub trait MinerConstructor {
     #[allow(clippy::new_ret_no_self)]
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner>;
 }
 
-pub trait Miner: GetMinerData + HasMinerControl + SupportsConfigs + UpgradeFirmware {}
+pub trait Miner:
+    GetMinerData + HasMinerControl + SupportsConfigs + UpgradeFirmware + HasAuth + HasDefaultAuth
+{
+}
 
-impl<T: GetMinerData + HasMinerControl + SupportsConfigs + UpgradeFirmware> Miner for T {}
+impl<
+    T: GetMinerData + HasMinerControl + SupportsConfigs + UpgradeFirmware + HasAuth + HasDefaultAuth,
+> Miner for T
+{
+}
 
 pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
 

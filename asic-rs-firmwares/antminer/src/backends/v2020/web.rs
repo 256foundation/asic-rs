@@ -16,8 +16,7 @@ pub struct AntMinerWebAPI {
     port: u16,
     client: Client,
     timeout: Duration,
-    username: String,
-    password: String,
+    auth: MinerAuth,
 }
 
 #[allow(dead_code)]
@@ -60,7 +59,7 @@ impl AntMinerWebAPI {
         )
     }
 
-    pub fn new(ip: IpAddr) -> Self {
+    pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
@@ -71,21 +70,16 @@ impl AntMinerWebAPI {
             port: 80,
             client,
             timeout: Duration::from_secs(5),
-            username: "root".to_string(),
-            password: "root".to_string(),
+            auth,
         }
     }
 
-    pub fn with_auth(ip: IpAddr, username: String, password: String) -> Self {
-        let mut client = Self::new(ip);
-        client.port = 80;
-        client.username = username;
-        client.password = password;
-        client
+    pub fn set_auth(&mut self, auth: MinerAuth) {
+        self.auth = auth;
     }
 
-    pub fn with_timeout(ip: IpAddr, timeout: Duration) -> Self {
-        let mut client = Self::new(ip);
+    pub fn with_timeout(ip: IpAddr, timeout: Duration, auth: MinerAuth) -> Self {
+        let mut client = Self::new(ip, auth);
         client.port = 80;
         client.timeout = timeout;
         client
@@ -124,7 +118,10 @@ impl AntMinerWebAPI {
                 .client
                 .get(url)
                 .timeout(self.timeout)
-                .send_digest_auth((self.username.as_str(), self.password.as_str()))
+                .send_digest_auth((
+                    self.auth.username.as_str(),
+                    self.auth.password.expose_secret(),
+                ))
                 .await
                 .map_err(|e| anyhow!(e.to_string()))?,
             Method::POST => {
@@ -133,7 +130,10 @@ impl AntMinerWebAPI {
                     .post(url)
                     .json(&data)
                     .timeout(self.timeout)
-                    .send_digest_auth((self.username.as_str(), self.password.as_str()))
+                    .send_digest_auth((
+                        self.auth.username.as_str(),
+                        self.auth.password.expose_secret(),
+                    ))
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?
             }
@@ -178,7 +178,10 @@ impl AntMinerWebAPI {
             .header(CONTENT_TYPE, content_type)
             .body(body)
             .timeout(self.timeout.max(Duration::from_secs(60)))
-            .send_digest_auth((self.username.as_str(), self.password.as_str()))
+            .send_digest_auth((
+                self.auth.username.as_str(),
+                self.auth.password.expose_secret(),
+            ))
             .await
             .with_context(|| "firmware upload HTTP request failed".to_string())?;
 

@@ -85,6 +85,7 @@ md5 = "0.8"
 tracing = { version = "0.1.44", features = ["log"] }
 crc32fast = "1.5"
 rlimit = "0.10"
+secrecy = "0.10"
 
 pyo3 = { version = "0.28.2", features = [
     "extension-module",

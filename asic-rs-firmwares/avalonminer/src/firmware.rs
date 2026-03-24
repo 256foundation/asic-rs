@@ -10,7 +10,7 @@ use asic_rs_core::{
         firmware::MinerFirmware,
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
-        miner::{Miner, MinerConstructor},
+        miner::{Miner, MinerAuth, MinerConstructor},
         model::MinerModel,
     },
     util,
@@ -72,9 +72,17 @@ impl FirmwareIdentification for AvalonStockFirmware {
 
 #[async_trait]
 impl FirmwareEntry for AvalonStockFirmware {
-    async fn build_miner(&self, ip: IpAddr) -> Result<Box<dyn Miner>, ModelSelectionError> {
+    async fn build_miner(
+        &self,
+        ip: IpAddr,
+        auth: Option<&MinerAuth>,
+    ) -> Result<Box<dyn Miner>, ModelSelectionError> {
         let model = AvalonStockFirmware::get_model(ip).await?;
         let version = AvalonStockFirmware::get_version(ip).await;
-        Ok(crate::backends::AvalonMiner::new(ip, model, version))
+        let mut miner = crate::backends::AvalonMiner::new(ip, model, version);
+        if let Some(auth) = auth {
+            miner.set_auth(auth.clone());
+        }
+        Ok(miner)
     }
 }

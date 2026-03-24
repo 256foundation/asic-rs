@@ -83,7 +83,7 @@ pub async fn get_miner(
     while discovery_tasks.join_next().await.is_some() {}
 
     match found {
-        Some(fw) => match fw.build_miner(ip).await {
+        Some(fw) => match fw.build_miner(ip, None).await {
             Ok(miner) => Ok(Some(miner)),
             Err(e) => {
                 tracing::debug!("failed to build miner for {ip}: {e}");

@@ -629,6 +629,9 @@ impl UpgradeFirmware for AvalonQMiner {
     }
 }
 
+impl HasAuth for AvalonQMiner {}
+impl HasDefaultAuth for AvalonQMiner {}
+
 #[async_trait]
 impl SupportsTuningConfig for AvalonQMiner {
     fn supports_tuning_config(&self) -> bool {

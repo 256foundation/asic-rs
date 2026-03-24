@@ -19,6 +19,7 @@ serde_json.workspace  = true
 tracing.workspace  = true
 tokio.workspace = true
 futures.workspace = true
+secrecy.workspace = true
 
 pyo3 = {workspace = true, optional = true}
 

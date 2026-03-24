@@ -10,7 +10,7 @@ use asic_rs_core::{
         firmware::MinerFirmware,
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
-        miner::{Miner, MinerConstructor},
+        miner::{Miner, MinerAuth, MinerConstructor},
         model::{MinerModel, UnknownMinerModel},
     },
 };
@@ -151,9 +151,17 @@ impl FirmwareIdentification for EPicFirmware {
 
 #[async_trait]
 impl FirmwareEntry for EPicFirmware {
-    async fn build_miner(&self, ip: IpAddr) -> Result<Box<dyn Miner>, ModelSelectionError> {
+    async fn build_miner(
+        &self,
+        ip: IpAddr,
+        auth: Option<&MinerAuth>,
+    ) -> Result<Box<dyn Miner>, ModelSelectionError> {
         let model = EPicFirmware::get_model(ip).await?;
         let version = EPicFirmware::get_version(ip).await;
-        Ok(crate::backends::PowerPlay::new(ip, model, version))
+        let mut miner = crate::backends::PowerPlay::new(ip, model, version);
+        if let Some(auth) = auth {
+            miner.set_auth(auth.clone());
+        }
+        Ok(miner)
     }
 }

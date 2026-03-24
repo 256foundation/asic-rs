@@ -34,7 +34,7 @@ use crate::firmware::AntMinerStockFirmware;
 
 mod firmware;
 mod rpc;
-mod web;
+pub(crate) mod web;
 
 #[derive(Debug)]
 pub struct AntMinerV2020 {
@@ -66,10 +66,11 @@ impl Display for MinerMode {
 
 impl AntMinerV2020 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
+        let auth = Self::default_auth();
         AntMinerV2020 {
             ip,
             rpc: AntMinerRPCAPI::new(ip),
-            web: AntMinerWebAPI::new(ip),
+            web: AntMinerWebAPI::new(ip, auth),
             device_info: DeviceInfo::new(
                 model,
                 AntMinerStockFirmware::default(),
@@ -964,6 +965,18 @@ impl UpgradeFirmware for AntMinerV2020 {
 
     fn supports_upgrade_firmware(&self) -> bool {
         true
+    }
+}
+
+impl HasDefaultAuth for AntMinerV2020 {
+    fn default_auth() -> MinerAuth {
+        MinerAuth::new("root", "root")
+    }
+}
+
+impl HasAuth for AntMinerV2020 {
+    fn set_auth(&mut self, auth: MinerAuth) {
+        self.web.set_auth(auth);
     }
 }
 

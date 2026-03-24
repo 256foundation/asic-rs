@@ -45,10 +45,12 @@ pub struct WhatsMinerV3 {
 
 impl WhatsMinerV3 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
+        let auth = Self::default_auth();
+        let v2_auth = crate::backends::v2::WhatsMinerV2::default_auth();
         WhatsMinerV3 {
             ip,
-            rpc: WhatsMinerRPCAPI::new(ip, None),
-            v2_rpc: WhatsMinerV2RPC::new(ip, None),
+            rpc: WhatsMinerRPCAPI::new(ip, None, auth),
+            v2_rpc: WhatsMinerV2RPC::new(ip, None, v2_auth),
             device_info: DeviceInfo::new(
                 model,
                 WhatsMinerFirmware::default(),
@@ -716,6 +718,22 @@ impl SupportsScalingConfig for WhatsMinerV3 {
 impl UpgradeFirmware for WhatsMinerV3 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
+    }
+}
+
+impl HasDefaultAuth for WhatsMinerV3 {
+    fn default_auth() -> MinerAuth {
+        MinerAuth::new("super", "super")
+    }
+}
+
+impl HasAuth for WhatsMinerV3 {
+    fn set_auth(&mut self, auth: MinerAuth) {
+        // WhatsMiner V3 username is always "super", V2 is always "admin"
+        self.rpc
+            .set_auth(MinerAuth::new("super", auth.password.expose_secret()));
+        self.v2_rpc
+            .set_auth(MinerAuth::new("admin", auth.password.expose_secret()));
     }
 }
 

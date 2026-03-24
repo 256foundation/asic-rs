@@ -39,8 +39,7 @@ fn encrypt_param(aes_key: &[u8], data: &str) -> String {
 pub struct WhatsMinerRPCAPI {
     ip: IpAddr,
     port: u16,
-    user: String,
-    password: String,
+    auth: MinerAuth,
 }
 
 #[async_trait]
@@ -146,13 +145,16 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
 }
 
 impl WhatsMinerRPCAPI {
-    pub fn new(ip: IpAddr, port: Option<u16>) -> Self {
+    pub fn new(ip: IpAddr, port: Option<u16>, auth: MinerAuth) -> Self {
         Self {
             ip,
             port: port.unwrap_or(4433),
-            user: "super".to_string(),
-            password: "super".to_string(),
+            auth,
         }
+    }
+
+    pub fn set_auth(&mut self, auth: MinerAuth) {
+        self.auth = auth;
     }
 
     fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
@@ -168,10 +170,10 @@ impl WhatsMinerRPCAPI {
         command: &str,
         parameters: Option<Value>,
     ) -> anyhow::Result<Value> {
-        let salt = self.get_salt().await;
-        if salt.is_none() {
-            anyhow::bail!("Could not get salt for privileged command.");
-        };
+        let salt = self
+            .get_salt()
+            .await
+            .ok_or_else(|| anyhow::anyhow!("Could not get salt for privileged command"))?;
 
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
             .await
@@ -179,8 +181,13 @@ impl WhatsMinerRPCAPI {
 
         let timestamp = Utc::now().timestamp();
 
-        let tokenized_command =
-            format!("{}{}{}{}", command, self.password, salt.unwrap(), timestamp);
+        let tokenized_command = format!(
+            "{}{}{}{}",
+            command,
+            self.auth.password.expose_secret(),
+            salt,
+            timestamp
+        );
 
         let hashed_command = Sha256::digest(tokenized_command.as_bytes());
         let encoded_command = BASE64_STANDARD.encode(hashed_command);
@@ -204,7 +211,7 @@ impl WhatsMinerRPCAPI {
                     "cmd": command,
                     "param": param,
                     "token": token,
-                    "account": self.user.clone(),
+                    "account": self.auth.username.clone(),
                     "ts": timestamp,
                 })
             }
@@ -213,7 +220,7 @@ impl WhatsMinerRPCAPI {
                 json!({
                     "cmd": command,
                     "token": token,
-                    "account": self.user.clone(),
+                    "account": self.auth.username.clone(),
                     "ts": timestamp,
                 })
             }

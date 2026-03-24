@@ -156,6 +156,32 @@
 //! }
 //! ```
 //!
+//! ### Authentication
+//! By default, each backend uses its built-in default credentials (e.g. `root/root` for AntMiner,
+//! `admin/admin` for WhatsMiner). To use custom credentials, call `set_auth` on the miner:
+//! ```no_run
+//! use asic_rs::MinerFactory;
+//! use asic_rs_core::traits::auth::MinerAuth;
+//! use std::str::FromStr;
+//! use std::net::IpAddr;
+//! use tokio;
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     let factory = MinerFactory::new();
+//!     let ip = IpAddr::from_str("192.168.1.10").unwrap();
+//!     let miner_opt = factory.get_miner(ip).await.unwrap();
+//!     if let Some(mut miner) = miner_opt {
+//!         miner.set_auth(MinerAuth::new("myuser", "mypassword"));
+//!         // All subsequent operations use the custom credentials
+//!         let data = miner.get_data().await;
+//!     }
+//! }
+//! ```
+//!
+//! Credentials can also be passed during discovery via `build_miner`, which applies them
+//! to both discovery (e.g. AntMiner digest auth) and runtime operations.
+//!
 //! # Contributing
 //!
 //! Contributions are welcome! This project uses the [Conventional Commits](https://www.conventionalcommits.org/) specification for commit messages.

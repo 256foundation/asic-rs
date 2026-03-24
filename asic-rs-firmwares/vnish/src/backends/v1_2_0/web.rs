@@ -15,7 +15,7 @@ pub struct VnishWebAPI {
     port: u16,
     timeout: Duration,
     bearer_token: RwLock<Option<String>>,
-    password: Option<String>,
+    auth: MinerAuth,
 }
 
 #[async_trait]
@@ -68,7 +68,7 @@ impl WebAPIClient for VnishWebAPI {
 
 impl VnishWebAPI {
     /// Create a new Vnish WebAPI client
-    pub fn new(ip: IpAddr, port: u16) -> Self {
+    pub fn new(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
@@ -80,27 +80,27 @@ impl VnishWebAPI {
             port,
             timeout: Duration::from_secs(5),
             bearer_token: RwLock::new(None),
-            password: Some("admin".to_string()), // Default password
+            auth,
         }
+    }
+
+    pub fn set_auth(&mut self, auth: MinerAuth) {
+        self.auth = auth;
+        // Clear cached bearer token to force re-authentication with new creds
+        *self.bearer_token.get_mut() = None;
     }
 
     /// Ensure authentication token is present, authenticate if needed
     async fn ensure_authenticated(&self) -> anyhow::Result<(), VnishError> {
-        if self.bearer_token.read().await.is_none() && self.password.is_some() {
-            if let Some(ref password) = self.password {
-                match self.authenticate(password).await {
-                    Ok(token) => {
-                        *self.bearer_token.write().await = Some(token);
-                        Ok(())
-                    }
-                    Err(e) => Err(e),
-                }
-            } else {
-                Err(VnishError::AuthenticationFailed)
-            }
-        } else {
-            Ok(())
+        if self.bearer_token.read().await.is_some() {
+            return Ok(());
         }
+
+        let token = self
+            .authenticate(self.auth.password.expose_secret())
+            .await?;
+        *self.bearer_token.write().await = Some(token);
+        Ok(())
     }
 
     async fn authenticate(&self, password: &str) -> anyhow::Result<String, VnishError> {

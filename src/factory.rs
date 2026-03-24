@@ -215,6 +215,11 @@ impl MinerFactory {
         Ok(None)
     }
 
+    /// Discover and construct a miner at the given IP.
+    ///
+    /// Uses default credentials during discovery. For miners that require
+    /// non-default credentials during discovery (e.g. AntMiner digest auth),
+    /// use [`FirmwareEntry::build_miner`] directly with the `auth` parameter.
     #[tracing::instrument(level = "debug", skip(self))]
     pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         let registry: Arc<[Arc<dyn FirmwareEntry>]> = Arc::from(
@@ -292,7 +297,7 @@ impl MinerFactory {
         while discovery_tasks.join_next().await.is_some() {}
 
         match found {
-            Some(fw) => match fw.build_miner(ip).await {
+            Some(fw) => match fw.build_miner(ip, None).await {
                 Ok(miner) => Ok(Some(miner)),
                 Err(e) => {
                     tracing::debug!("failed to build miner for {ip}: {e}");

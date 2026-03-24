@@ -10,7 +10,7 @@ use asic_rs_core::{
         firmware::MinerFirmware,
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
-        miner::{Miner, MinerConstructor},
+        miner::{Miner, MinerAuth, MinerConstructor},
         model::MinerModel,
     },
     util,
@@ -65,9 +65,17 @@ impl FirmwareIdentification for MarathonFirmware {
 
 #[async_trait]
 impl FirmwareEntry for MarathonFirmware {
-    async fn build_miner(&self, ip: IpAddr) -> Result<Box<dyn Miner>, ModelSelectionError> {
+    async fn build_miner(
+        &self,
+        ip: IpAddr,
+        auth: Option<&MinerAuth>,
+    ) -> Result<Box<dyn Miner>, ModelSelectionError> {
         let model = MarathonFirmware::get_model(ip).await?;
         let version = MarathonFirmware::get_version(ip).await;
-        Ok(crate::backends::Marathon::new(ip, model, version))
+        let mut miner = crate::backends::Marathon::new(ip, model, version);
+        if let Some(auth) = auth {
+            miner.set_auth(auth.clone());
+        }
+        Ok(miner)
     }
 }

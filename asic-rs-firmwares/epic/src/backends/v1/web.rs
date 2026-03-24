@@ -13,7 +13,7 @@ pub struct PowerPlayWebAPI {
     pub ip: IpAddr,
     port: u16,
     timeout: Duration,
-    password: Option<String>,
+    auth: MinerAuth,
 }
 
 #[async_trait]
@@ -63,7 +63,7 @@ impl WebAPIClient for PowerPlayWebAPI {
 
 impl PowerPlayWebAPI {
     /// Create a new EPic WebAPI client
-    pub fn new(ip: IpAddr, port: u16) -> Self {
+    pub fn new(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
@@ -74,8 +74,12 @@ impl PowerPlayWebAPI {
             ip,
             port,
             timeout: Duration::from_secs(5),
-            password: Some("letmein".to_string()), // Default password
+            auth,
         }
+    }
+
+    pub fn set_auth(&mut self, auth: MinerAuth) {
+        self.auth = auth;
     }
 
     /// Execute the actual HTTP request
@@ -92,7 +96,7 @@ impl PowerPlayWebAPI {
                 p.as_object_mut().map(|m| {
                     m.insert(
                         "password".into(),
-                        Value::String(self.password.clone().unwrap_or_else(|| "letmein".into())),
+                        Value::String(self.auth.password.expose_secret().to_string()),
                     )
                 });
                 p

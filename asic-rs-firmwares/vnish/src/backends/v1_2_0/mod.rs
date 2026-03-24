@@ -39,9 +39,10 @@ pub struct VnishV120 {
 
 impl VnishV120 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
+        let auth = Self::default_auth();
         VnishV120 {
             ip,
-            web: VnishWebAPI::new(ip, 80),
+            web: VnishWebAPI::new(ip, 80, auth),
             device_info: DeviceInfo::new(model, VnishFirmware::default(), HashAlgorithm::SHA256),
         }
     }
@@ -791,6 +792,18 @@ impl SupportsScalingConfig for VnishV120 {
 impl UpgradeFirmware for VnishV120 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
+    }
+}
+
+impl HasDefaultAuth for VnishV120 {
+    fn default_auth() -> MinerAuth {
+        MinerAuth::new("", "admin")
+    }
+}
+
+impl HasAuth for VnishV120 {
+    fn set_auth(&mut self, auth: MinerAuth) {
+        self.web.set_auth(auth);
     }
 }
 

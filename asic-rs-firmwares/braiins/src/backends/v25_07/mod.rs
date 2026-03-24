@@ -44,9 +44,10 @@ pub struct BraiinsV2507 {
 
 impl BraiinsV2507 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
+        let auth = Self::default_auth();
         BraiinsV2507 {
             ip,
-            web: BraiinsWebAPI::new(ip),
+            web: BraiinsWebAPI::new(ip, auth),
             device_info: DeviceInfo::new(model, BraiinsFirmware::default(), HashAlgorithm::SHA256),
         }
     }
@@ -707,6 +708,18 @@ impl SupportsScalingConfig for BraiinsV2507 {
 impl UpgradeFirmware for BraiinsV2507 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
+    }
+}
+
+impl HasDefaultAuth for BraiinsV2507 {
+    fn default_auth() -> MinerAuth {
+        MinerAuth::new("root", "root")
+    }
+}
+
+impl HasAuth for BraiinsV2507 {
+    fn set_auth(&mut self, auth: MinerAuth) {
+        self.web.set_auth(auth);
     }
 }
 
