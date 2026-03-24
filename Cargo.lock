@@ -214,9 +214,11 @@ dependencies = [
  "macaddr",
  "measurements",
  "pyo3",
+ "reqwest",
  "semver",
  "serde_json",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

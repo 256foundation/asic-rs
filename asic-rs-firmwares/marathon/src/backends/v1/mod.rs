@@ -177,15 +177,9 @@ impl MaraV1 {
         ordered_groups.into_iter().map(|(_, group)| group).collect()
     }
 
-    fn to_pool_config(
-        config: &[PoolGroupConfig],
-    ) -> anyhow::Result<(Vec<Value>, Vec<Value>)> {
+    fn build_pool_config(config: &[PoolGroupConfig]) -> anyhow::Result<(Vec<Value>, Vec<Value>)> {
         anyhow::ensure!(!config.is_empty(), "At least one pool group is required");
         let config = &config[..config.len().min(3)];
-        anyhow::ensure!(
-            config.iter().all(|group| !group.pools.is_empty()),
-            "Each MaraFW pool group must contain at least one pool"
-        );
         anyhow::ensure!(
             config.iter().all(|group| group.quota > 0),
             "Each MaraFW pool group must have a quota greater than 0"
@@ -244,11 +238,31 @@ impl MaraV1 {
         Ok((pool_groups, pools))
     }
 
-    async fn get_work_mode(&self) -> anyhow::Result<Option<MaraWorkMode>> {
-        let cfg = self
-            .web
+    async fn get_miner_config(&self) -> anyhow::Result<Value> {
+        self.web
             .send_command("miner_config", true, None, Method::GET)
+            .await
+    }
+
+    async fn set_miner_config(&self, config: Value) -> anyhow::Result<bool> {
+        let resp = self
+            .web
+            .send_command("miner_config", true, Some(config), Method::POST)
             .await?;
+
+        if resp.get("error").and_then(Value::as_bool) == Some(true) {
+            let msg = resp
+                .get("msg")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown error");
+            anyhow::bail!("MaraFW miner_config POST failed: {msg}");
+        }
+
+        Ok(true)
+    }
+
+    async fn get_work_mode(&self) -> anyhow::Result<Option<MaraWorkMode>> {
+        let cfg = self.get_miner_config().await?;
 
         let Some(s) = cfg
             .pointer("/mode/work-mode-selector")
@@ -261,34 +275,15 @@ impl MaraV1 {
     }
 
     async fn set_work_mode(&self, mode: MaraWorkMode) -> anyhow::Result<bool> {
-        // 1) GET current full config
-        let mut cfg = self
-            .web
-            .send_command("miner_config", true, None, Method::GET)
-            .await?;
+        let mut cfg = self.get_miner_config().await?;
 
-        // 2) Update only the selector
         if let Some(v) = cfg.pointer_mut("/mode/work-mode-selector") {
             *v = Value::String(mode.to_string());
         } else {
             anyhow::bail!("MaraFW miner_config missing /mode/work-mode-selector");
         }
 
-        // 3) POST full updated config back
-        let resp = self
-            .web
-            .send_command("miner_config", true, Some(cfg), Method::POST)
-            .await?;
-
-        if resp.get("error").and_then(|v| v.as_bool()) == Some(true) {
-            let msg = resp
-                .get("msg")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown error");
-            anyhow::bail!("MaraFW miner_config POST failed: {msg}");
-        }
-
-        Ok(true)
+        self.set_miner_config(cfg).await
     }
 
     async fn last_mode_before_sleep_from_history(&self) -> anyhow::Result<Option<MaraWorkMode>> {
@@ -1041,12 +1036,8 @@ impl SupportsPoolsConfig for MaraV1 {
     }
 
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
-        let (pool_groups, pools) = Self::to_pool_config(&config)?;
-
-        let mut miner_config = self
-            .web
-            .send_command("miner_config", true, None, Method::GET)
-            .await?;
+        let (pool_groups, pools) = Self::build_pool_config(&config)?;
+        let mut miner_config = self.get_miner_config().await?;
 
         let Some(config_object) = miner_config.as_object_mut() else {
             anyhow::bail!("MaraFW miner_config response was not a JSON object");
@@ -1055,20 +1046,7 @@ impl SupportsPoolsConfig for MaraV1 {
         config_object.insert("pool-group".to_string(), Value::Array(pool_groups));
         config_object.insert("pools".to_string(), Value::Array(pools));
 
-        let response = self
-            .web
-            .send_command("miner_config", true, Some(miner_config), Method::POST)
-            .await?;
-
-        if response.get("error").and_then(Value::as_bool) == Some(true) {
-            let msg = response
-                .get("msg")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown error");
-            anyhow::bail!("MaraFW miner_config POST failed: {msg}");
-        }
-
-        Ok(true)
+        self.set_miner_config(miner_config).await
     }
 
     fn supports_pools_config(&self) -> bool {
@@ -1143,5 +1121,37 @@ impl SupportsTuningConfig for MaraV1 {
 impl SupportsFanConfig for MaraV1 {
     fn supports_fan_config(&self) -> bool {
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_to_pool_config_allows_empty_pools() -> anyhow::Result<()> {
+        let config = vec![
+            PoolGroupConfig {
+                name: "primary".to_string(),
+                quota: 80,
+                pools: vec![],
+            },
+            PoolGroupConfig {
+                name: "backup".to_string(),
+                quota: 20,
+                pools: vec![],
+            },
+        ];
+
+        let (pool_groups, pools) = MaraV1::build_pool_config(&config)?;
+
+        assert_eq!(pool_groups.len(), 2);
+        assert_eq!(pools.len(), 0);
+        assert_eq!(pool_groups[0]["alias"], "primary");
+        assert_eq!(pool_groups[0]["percent"], 80);
+        assert_eq!(pool_groups[1]["alias"], "backup");
+        assert_eq!(pool_groups[1]["percent"], 20);
+
+        Ok(())
     }
 }
