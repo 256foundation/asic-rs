@@ -1564,5 +1564,4 @@ mod tests {
 
         assert_eq!(LuxMinerV1::group_ids_desc(&groups), vec![2, 1, 0]);
     }
-
 }
