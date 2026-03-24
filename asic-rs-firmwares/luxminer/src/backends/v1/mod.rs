@@ -171,6 +171,22 @@ impl LuxMinerV1 {
         );
         Ok(())
     }
+
+    fn pool_ids_desc(groups: &[PoolGroupData]) -> Vec<i32> {
+        let mut pool_ids: Vec<i32> = groups
+            .iter()
+            .flat_map(|group| group.pools.iter())
+            .filter_map(|pool| pool.position.map(i32::from))
+            .collect();
+        pool_ids.sort_unstable_by(|a, b| b.cmp(a));
+        pool_ids
+    }
+
+    fn group_ids_desc(groups: &[PoolGroupConfig]) -> Vec<u32> {
+        let mut group_ids: Vec<u32> = (0..groups.len() as u32).collect();
+        group_ids.sort_unstable_by(|a, b| b.cmp(a));
+        group_ids
+    }
 }
 
 #[async_trait]
@@ -1118,46 +1134,18 @@ impl SupportsPoolsConfig for LuxMinerV1 {
         Self::validate_pools_config(&config)?;
 
         let current_groups = self.get_pools_config().await?;
-
-        for (idx, current_group) in current_groups.iter().enumerate() {
-            if idx >= config.len() {
-                break;
-            }
-            let desired_group = &config[idx];
-            anyhow::ensure!(
-                desired_group.name == current_group.name,
-                "LuxOS group renaming is not supported by the current API integration"
-            );
-        }
-
-        for group in config.iter().skip(current_groups.len()) {
-            self.rpc.addgroup(&group.name, group.quota).await?;
-        }
-
         let current_pools = self.get_pools().await;
-        let mut pool_ids: Vec<i32> = current_pools
-            .iter()
-            .flat_map(|group| group.pools.iter())
-            .filter_map(|pool| pool.position.map(|position| position as i32))
-            .collect();
-        pool_ids.sort_unstable_by(|a, b| b.cmp(a));
 
-        for pool_id in pool_ids {
+        for pool_id in Self::pool_ids_desc(&current_pools) {
             self.rpc.removepool(pool_id).await?;
         }
 
-        if current_groups.len() > config.len() {
-            let mut group_ids: Vec<u32> =
-                (config.len() as u32..current_groups.len() as u32).collect();
-            group_ids.sort_unstable_by(|a, b| b.cmp(a));
-
-            for group_id in group_ids {
-                self.rpc.removegroup(group_id).await?;
-            }
+        for group_id in Self::group_ids_desc(&current_groups) {
+            self.rpc.removegroup(group_id).await?;
         }
 
-        for (group_id, group) in config.iter().enumerate().take(current_groups.len()) {
-            self.rpc.groupquota(group_id as u32, group.quota).await?;
+        for group in &config {
+            self.rpc.addgroup(&group.name, group.quota).await?;
         }
 
         for (group_id, group) in config.iter().enumerate() {
@@ -1497,4 +1485,84 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_lux_pool_ids_desc_sorts_descending() {
+        let groups = vec![
+            PoolGroupData {
+                name: "g0".to_string(),
+                quota: 1,
+                pools: vec![
+                    PoolData {
+                        position: Some(1),
+                        url: None,
+                        user: None,
+                        alive: None,
+                        active: None,
+                        accepted_shares: None,
+                        rejected_shares: None,
+                    },
+                    PoolData {
+                        position: Some(4),
+                        url: None,
+                        user: None,
+                        alive: None,
+                        active: None,
+                        accepted_shares: None,
+                        rejected_shares: None,
+                    },
+                ],
+            },
+            PoolGroupData {
+                name: "g1".to_string(),
+                quota: 1,
+                pools: vec![
+                    PoolData {
+                        position: None,
+                        url: None,
+                        user: None,
+                        alive: None,
+                        active: None,
+                        accepted_shares: None,
+                        rejected_shares: None,
+                    },
+                    PoolData {
+                        position: Some(2),
+                        url: None,
+                        user: None,
+                        alive: None,
+                        active: None,
+                        accepted_shares: None,
+                        rejected_shares: None,
+                    },
+                ],
+            },
+        ];
+
+        assert_eq!(LuxMinerV1::pool_ids_desc(&groups), vec![4, 2, 1]);
+    }
+
+    #[test]
+    fn test_lux_group_ids_desc_sorts_descending() {
+        let groups = vec![
+            PoolGroupConfig {
+                name: "default".to_string(),
+                quota: 1,
+                pools: vec![],
+            },
+            PoolGroupConfig {
+                name: "failover".to_string(),
+                quota: 2,
+                pools: vec![],
+            },
+            PoolGroupConfig {
+                name: "backup".to_string(),
+                quota: 3,
+                pools: vec![],
+            },
+        ];
+
+        assert_eq!(LuxMinerV1::group_ids_desc(&groups), vec![2, 1, 0]);
+    }
+
 }
