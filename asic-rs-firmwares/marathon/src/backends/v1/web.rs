@@ -3,7 +3,7 @@ use std::{net::IpAddr, time::Duration};
 use anyhow;
 use asic_rs_core::{
     data::command::MinerCommand,
-    traits::miner::{APIClient, WebAPIClient},
+    traits::miner::{APIClient, ExposeSecret, MinerAuth, WebAPIClient},
 };
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
@@ -15,12 +15,11 @@ pub struct MaraWebAPI {
     ip: IpAddr,
     port: u16,
     client: Client,
-    username: String,
-    password: String,
+    auth: MinerAuth,
 }
 
 impl MaraWebAPI {
-    pub fn new(ip: IpAddr, port: u16) -> Self {
+    pub fn new(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
@@ -30,9 +29,12 @@ impl MaraWebAPI {
             ip,
             port,
             client,
-            username: "root".to_string(),
-            password: "root".to_string(),
+            auth,
         }
+    }
+
+    pub fn set_auth(&mut self, auth: MinerAuth) {
+        self.auth = auth;
     }
 
     async fn make_request(
@@ -56,7 +58,10 @@ impl MaraWebAPI {
         }
 
         let response = request_builder
-            .send_digest_auth((self.username.as_str(), self.password.as_str()))
+            .send_digest_auth((
+                self.auth.username.as_str(),
+                self.auth.password.expose_secret(),
+            ))
             .await
             .map_err(|e| anyhow::anyhow!("HTTP request failed: {}", e))?;
 

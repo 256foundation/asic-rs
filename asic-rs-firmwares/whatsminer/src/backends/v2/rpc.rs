@@ -40,12 +40,10 @@ impl TokenData {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct WhatsMinerRPCAPI {
     ip: IpAddr,
     port: u16,
-    user: String,
-    password: String,
+    auth: MinerAuth,
 }
 
 #[async_trait]
@@ -240,7 +238,10 @@ impl WhatsMinerRPCAPI {
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("Missing time"))?;
 
-        let crypted = md5crypt(self.password.as_bytes(), salt.as_bytes());
+        let crypted = md5crypt(
+            self.auth.password.expose_secret().as_bytes(),
+            salt.as_bytes(),
+        );
         let full_password = String::from_utf8_lossy(&crypted);
         let pwd_md5 = full_password
             .split('$')
@@ -266,13 +267,16 @@ impl WhatsMinerRPCAPI {
         Ok(())
     }
 
-    pub fn new(ip: IpAddr, port: Option<u16>) -> Self {
+    pub fn new(ip: IpAddr, port: Option<u16>, auth: MinerAuth) -> Self {
         Self {
             ip,
             port: port.unwrap_or(4028),
-            user: "admin".to_string(),
-            password: "admin".to_string(),
+            auth,
         }
+    }
+
+    pub fn set_auth(&mut self, auth: MinerAuth) {
+        self.auth = auth;
     }
 
     fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
@@ -285,7 +289,11 @@ impl WhatsMinerRPCAPI {
 
     fn parse_privileged_rpc_result(&self, key: &str, response: &str) -> anyhow::Result<Value> {
         let enc_result = serde_json::from_str::<Value>(response)?;
-        let result = aes_ecb_dec(key, enc_result.get("enc").unwrap().as_str().unwrap());
+        let enc_data = enc_result
+            .get("enc")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("Missing 'enc' field in privileged RPC response"))?;
+        let result = aes_ecb_dec(key, enc_data);
 
         self.parse_rpc_result(&result)
     }
@@ -295,32 +303,38 @@ impl WhatsMinerRPCAPI {
         let salt = api_token
             .get("Msg")
             .and_then(|json| json.get("salt"))
-            .ok_or(anyhow::anyhow!("Could not get salt"))?
-            .as_str()
-            .unwrap();
+            .and_then(|v| v.as_str())
+            .ok_or(anyhow::anyhow!("Could not get salt"))?;
         let new_salt = api_token
             .get("Msg")
             .and_then(|json| json.get("newsalt"))
-            .ok_or(anyhow::anyhow!("Could not get newsalt"))?
-            .as_str()
-            .unwrap();
+            .and_then(|v| v.as_str())
+            .ok_or(anyhow::anyhow!("Could not get newsalt"))?;
         let api_time = api_token
             .get("Msg")
             .and_then(|json| json.get("time"))
-            .ok_or(anyhow::anyhow!("Could not get time"))?
-            .as_str()
-            .unwrap();
+            .and_then(|v| v.as_str())
+            .ok_or(anyhow::anyhow!("Could not get time"))?;
 
-        let crypted = md5crypt(self.password.as_bytes(), salt.as_bytes());
+        let crypted = md5crypt(
+            self.auth.password.expose_secret().as_bytes(),
+            salt.as_bytes(),
+        );
         let full_password = String::from_utf8_lossy(&crypted);
-        let host_password_md5 = full_password.split("$").nth(3).unwrap();
+        let host_password_md5 = full_password
+            .split("$")
+            .nth(3)
+            .ok_or(anyhow::anyhow!("Failed to extract md5crypt hash"))?;
 
         let new_crypted = md5crypt(
             format!("{}{}", host_password_md5, api_time).as_bytes(),
             new_salt.as_bytes(),
         );
         let full_host_sign = String::from_utf8_lossy(&new_crypted);
-        let host_sign = full_host_sign.split("$").nth(3).unwrap();
+        let host_sign = full_host_sign
+            .split("$")
+            .nth(3)
+            .ok_or(anyhow::anyhow!("Failed to extract host sign"))?;
 
         Ok(TokenData::new(
             host_password_md5.to_owned(),

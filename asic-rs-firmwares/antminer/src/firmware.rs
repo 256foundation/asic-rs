@@ -12,7 +12,7 @@ use asic_rs_core::{
         firmware::MinerFirmware,
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
-        miner::{Miner, MinerConstructor},
+        miner::{ExposeSecret, HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
         model::MinerModel,
     },
 };
@@ -72,65 +72,84 @@ impl DiscoveryCommands for AntMinerStockFirmware {
     }
 }
 
+/// Fetch the model from a miner using digest auth.
+async fn get_model_with_auth(
+    ip: IpAddr,
+    auth: &MinerAuth,
+) -> Result<AntMinerCompatibleModel, ModelSelectionError> {
+    let response: Option<Response> = Client::new()
+        .get(format!("http://{ip}/cgi-bin/miner_type.cgi"))
+        .send_digest_auth((auth.username.as_str(), auth.password.expose_secret()))
+        .await
+        .ok();
+    match response {
+        Some(data) => {
+            let json_data = data.json::<Value>().await.ok();
+            if json_data.is_none() {
+                return Err(ModelSelectionError::UnexpectedModelResponse);
+            }
+            let json_data = json_data.unwrap();
+
+            let model = json_data["miner_type"]
+                .as_str()
+                .unwrap_or("")
+                .to_uppercase();
+
+            if model == "ANTMINER BHB42XXX" {
+                Ok(AntMinerCompatibleModel::Unknown(UnknownMinerModel {
+                    name: model,
+                }))
+            } else {
+                AntMinerMake::parse_model(model).map(AntMinerCompatibleModel::AntMiner)
+            }
+        }
+        None => Err(ModelSelectionError::NoModelResponse),
+    }
+}
+
+/// Fetch the firmware version from a miner using digest auth.
+async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::Version> {
+    let response: Option<Response> = Client::new()
+        .get(format!("http://{ip}/cgi-bin/summary.cgi"))
+        .send_digest_auth((auth.username.as_str(), auth.password.expose_secret()))
+        .await
+        .ok();
+    match response {
+        Some(data) => {
+            let json_data = data.json::<serde_json::Value>().await.ok()?;
+            let fw_version = json_data["INFO"]["CompileTime"].as_str().unwrap_or("");
+
+            let cleaned: String = {
+                let mut parts: Vec<&str> = fw_version.split_whitespace().collect();
+                if parts.len() > 4 {
+                    parts.remove(4); // remove time zone
+                }
+                parts.join(" ")
+            };
+
+            let dt = NaiveDateTime::parse_from_str(&cleaned, "%a %b %e %H:%M:%S %Y").ok()?;
+
+            let version =
+                semver::Version::new(dt.year() as u64, dt.month() as u64, dt.day() as u64);
+
+            Some(version)
+        }
+        None => None,
+    }
+}
+
 #[async_trait]
 impl MinerFirmware for AntMinerStockFirmware {
+    /// Uses default credentials. For custom credentials, use `build_miner`
+    /// which passes auth through to the underlying digest-auth requests.
     async fn get_model(ip: IpAddr) -> Result<impl MinerModel, ModelSelectionError> {
-        let response: Option<Response> = Client::new()
-            .get(format!("http://{ip}/cgi-bin/miner_type.cgi"))
-            .send_digest_auth(("root", "root"))
-            .await
-            .ok();
-        match response {
-            Some(data) => {
-                let json_data = data.json::<Value>().await.ok();
-                if json_data.is_none() {
-                    return Err(ModelSelectionError::UnexpectedModelResponse);
-                }
-                let json_data = json_data.unwrap();
-
-                let model = json_data["miner_type"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_uppercase();
-
-                if model == "ANTMINER BHB42XXX" {
-                    Ok(AntMinerCompatibleModel::Unknown(UnknownMinerModel {
-                        name: model,
-                    }))
-                } else {
-                    AntMinerMake::parse_model(model).map(AntMinerCompatibleModel::AntMiner)
-                }
-            }
-            None => Err(ModelSelectionError::NoModelResponse),
-        }
+        let default = crate::backends::v2020::AntMinerV2020::default_auth();
+        get_model_with_auth(ip, &default).await
     }
 
     async fn get_version(ip: IpAddr) -> Option<semver::Version> {
-        let response: Option<Response> = Client::new()
-            .get(format!("http://{ip}/cgi-bin/summary.cgi"))
-            .send_digest_auth(("root", "root"))
-            .await
-            .ok();
-        match response {
-            Some(data) => {
-                let json_data = data.json::<serde_json::Value>().await.ok()?;
-                let fw_version = json_data["INFO"]["CompileTime"].as_str().unwrap_or("");
-
-                let cleaned: String = {
-                    let mut parts: Vec<&str> = fw_version.split_whitespace().collect();
-                    parts.remove(4); // remove time zone
-                    parts.join(" ")
-                };
-
-                let dt = NaiveDateTime::parse_from_str(&cleaned, "%a %b %e %H:%M:%S %Y").ok()?;
-
-                let version =
-                    semver::Version::new(dt.year() as u64, dt.month() as u64, dt.day() as u64);
-
-                Some(version)
-            }
-            None => None,
-        }
+        let default = crate::backends::v2020::AntMinerV2020::default_auth();
+        get_version_with_auth(ip, &default).await
     }
 }
 
@@ -150,9 +169,19 @@ impl FirmwareIdentification for AntMinerStockFirmware {
 
 #[async_trait]
 impl FirmwareEntry for AntMinerStockFirmware {
-    async fn build_miner(&self, ip: IpAddr) -> Result<Box<dyn Miner>, ModelSelectionError> {
-        let model = AntMinerStockFirmware::get_model(ip).await?;
-        let version = AntMinerStockFirmware::get_version(ip).await;
-        Ok(crate::backends::AntMiner::new(ip, model, version))
+    async fn build_miner(
+        &self,
+        ip: IpAddr,
+        auth: Option<&MinerAuth>,
+    ) -> Result<Box<dyn Miner>, ModelSelectionError> {
+        let default = crate::backends::v2020::AntMinerV2020::default_auth();
+        let resolved = auth.unwrap_or(&default);
+        let model = get_model_with_auth(ip, resolved).await?;
+        let version = get_version_with_auth(ip, resolved).await;
+        let mut miner = crate::backends::AntMiner::new(ip, model, version);
+        if let Some(auth) = auth {
+            miner.set_auth(auth.clone());
+        }
+        Ok(miner)
     }
 }

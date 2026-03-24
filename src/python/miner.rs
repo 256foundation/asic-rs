@@ -6,7 +6,7 @@ use asic_rs_core::{
         device::{HashAlgorithm, MinerHardware},
         firmware::FirmwareImage,
     },
-    traits::miner::Miner as MinerTrait,
+    traits::{auth::MinerAuth, miner::Miner as MinerTrait},
 };
 use pyo3::{
     exceptions::{PyRuntimeError, PyValueError},
@@ -114,6 +114,12 @@ impl Miner {
     #[getter]
     fn supports_upgrade_firmware(&self) -> bool {
         self.inner.supports_upgrade_firmware()
+    }
+    pub fn set_auth(&mut self, username: String, password: String) -> PyResult<()> {
+        Arc::get_mut(&mut self.inner)
+            .ok_or_else(|| PyRuntimeError::new_err("cannot set auth while miner is in use"))?
+            .set_auth(MinerAuth::new(username, password));
+        Ok(())
     }
 
     // Data functions

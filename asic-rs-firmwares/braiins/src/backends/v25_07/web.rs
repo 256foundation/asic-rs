@@ -16,8 +16,7 @@ pub struct BraiinsWebAPI {
     port: u16,
     timeout: Duration,
     bearer_token: RwLock<Option<String>>,
-    username: Option<String>,
-    password: Option<String>,
+    auth: MinerAuth,
 }
 
 #[async_trait]
@@ -70,7 +69,7 @@ impl WebAPIClient for BraiinsWebAPI {
 
 impl BraiinsWebAPI {
     /// Create a new Braiins WebAPI client
-    pub fn new(ip: IpAddr) -> Self {
+    pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
@@ -82,9 +81,13 @@ impl BraiinsWebAPI {
             port: 80,
             timeout: Duration::from_secs(5),
             bearer_token: RwLock::new(None),
-            username: Some("root".to_string()), // Default user
-            password: Some("root".to_string()), // Default password
+            auth,
         }
+    }
+
+    pub fn set_auth(&mut self, auth: MinerAuth) {
+        self.auth = auth;
+        *self.bearer_token.get_mut() = None;
     }
 
     /// Ensure authentication token is present, authenticate if needed
@@ -93,18 +96,16 @@ impl BraiinsWebAPI {
             return Ok(());
         }
 
-        let password = self
-            .password
-            .as_ref()
-            .ok_or(BraiinsError::AuthenticationFailed)?;
-
-        let token = self.authenticate(password).await?;
+        let token = self
+            .authenticate(self.auth.password.expose_secret())
+            .await?;
         *self.bearer_token.write().await = Some(token);
 
         Ok(())
     }
     async fn authenticate(&self, password: &str) -> anyhow::Result<String, BraiinsError> {
-        let unlock_payload = serde_json::json!({ "password": password, "username": "root" });
+        let username = &self.auth.username;
+        let unlock_payload = serde_json::json!({ "password": password, "username": username });
         let url = format!("http://{}:{}/api/v1/auth/login", self.ip, self.port);
 
         let response = self

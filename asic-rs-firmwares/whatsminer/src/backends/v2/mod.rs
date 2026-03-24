@@ -44,9 +44,10 @@ pub struct WhatsMinerV2 {
 
 impl WhatsMinerV2 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
+        let auth = Self::default_auth();
         WhatsMinerV2 {
             ip,
-            rpc: WhatsMinerRPCAPI::new(ip, None),
+            rpc: WhatsMinerRPCAPI::new(ip, None, auth),
             device_info: DeviceInfo::new(
                 model,
                 WhatsMinerFirmware::default(),
@@ -733,6 +734,20 @@ impl SupportsScalingConfig for WhatsMinerV2 {
 impl UpgradeFirmware for WhatsMinerV2 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
+    }
+}
+
+impl HasDefaultAuth for WhatsMinerV2 {
+    fn default_auth() -> MinerAuth {
+        MinerAuth::new("admin", "admin")
+    }
+}
+
+impl HasAuth for WhatsMinerV2 {
+    fn set_auth(&mut self, auth: MinerAuth) {
+        // WhatsMiner V2 username is always "admin"
+        self.rpc
+            .set_auth(MinerAuth::new("admin", auth.password.expose_secret()));
     }
 }
 

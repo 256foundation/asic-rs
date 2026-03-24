@@ -1013,6 +1013,9 @@ impl UpgradeFirmware for LuxMinerV1 {
     }
 }
 
+impl HasAuth for LuxMinerV1 {}
+impl HasDefaultAuth for LuxMinerV1 {}
+
 #[async_trait]
 impl SupportsTuningConfig for LuxMinerV1 {
     fn supports_tuning_config(&self) -> bool {

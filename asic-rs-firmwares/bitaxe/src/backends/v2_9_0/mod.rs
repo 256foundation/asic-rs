@@ -535,6 +535,9 @@ impl UpgradeFirmware for Bitaxe290 {
     }
 }
 
+impl HasAuth for Bitaxe290 {}
+impl HasDefaultAuth for Bitaxe290 {}
+
 #[async_trait]
 impl SupportsTuningConfig for Bitaxe290 {
     fn supports_tuning_config(&self) -> bool {
