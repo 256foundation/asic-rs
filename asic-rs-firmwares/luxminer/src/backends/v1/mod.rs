@@ -78,24 +78,19 @@ impl LuxMinerV1 {
             .unwrap_or_default()
     }
 
-    fn extract_nested_array(config: &Value, key: &str, nested_key: &str) -> Vec<Value> {
-        config
-            .get(key)
-            .and_then(|value| {
-                value
-                    .as_array()
-                    .and_then(|items| items.first())
-                    .and_then(|entry| entry.get(nested_key))
-                    .and_then(Value::as_array)
-                    .cloned()
-                    .or_else(|| value.as_array().cloned())
-            })
-            .unwrap_or_default()
-    }
-
     fn parse_pool_config(config: &Value) -> Vec<PoolGroupConfig> {
-        let groups = Self::extract_nested_array(config, "groups", "GROUPS");
-        let pools = Self::extract_nested_array(config, "pools", "POOLS");
+        let groups = config
+            .pointer("/groups/0/GROUPS")
+            .or_else(|| config.pointer("/groups"))
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let pools = config
+            .pointer("/pools/0/POOLS")
+            .or_else(|| config.pointer("/pools"))
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
 
         let mut ordered_groups: Vec<(u64, PoolGroupConfig)> = groups
             .iter()
@@ -162,34 +157,6 @@ impl LuxMinerV1 {
 
         ordered_groups.sort_by_key(|(group_id, _)| *group_id);
         ordered_groups.into_iter().map(|(_, group)| group).collect()
-    }
-
-    fn validate_pools_config(config: &[PoolGroupConfig]) -> anyhow::Result<()> {
-        anyhow::ensure!(
-            !config.is_empty(),
-            "At least one LuxOS pool group is required"
-        );
-        Ok(())
-    }
-
-    fn pool_ids_desc(groups: &[PoolGroupData]) -> Vec<i32> {
-        let mut pool_ids: Vec<i32> = groups
-            .iter()
-            .flat_map(|group| group.pools.iter())
-            .filter_map(|pool| pool.position.map(i32::from))
-            .collect();
-        pool_ids.sort_unstable_by(|a, b| b.cmp(a));
-        pool_ids
-    }
-
-    fn group_ids_descending(groups: &[Value]) -> Vec<u32> {
-        let mut group_ids: Vec<u32> = groups
-            .iter()
-            .filter_map(|group| group.get("GROUP").and_then(Value::as_u64))
-            .map(|id| id as u32)
-            .collect();
-        group_ids.sort_unstable_by(|a, b| b.cmp(a));
-        group_ids
     }
 }
 
@@ -1135,21 +1102,26 @@ impl SupportsPoolsConfig for LuxMinerV1 {
     }
 
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
-        Self::validate_pools_config(&config)?;
-
         let mut collector = self.get_config_collector();
         let current_pool_config_data = collector.collect(&[ConfigField::Pools]).await;
         let current_groups = current_pool_config_data
             .get(&ConfigField::Pools)
-            .map(|config| Self::extract_nested_array(config, "groups", "GROUPS"))
+            .and_then(|config| {
+                config
+                    .pointer("/groups/0/GROUPS")
+                    .or_else(|| config.pointer("/groups"))
+                    .and_then(Value::as_array)
+                    .cloned()
+            })
             .unwrap_or_default();
-        let current_pools = self.get_pools().await;
+        let mut group_ids: Vec<u32> = current_groups
+            .iter()
+            .filter_map(|group| group.get("GROUP").and_then(Value::as_u64))
+            .map(|id| id as u32)
+            .collect();
+        group_ids.sort_unstable_by(|a, b| b.cmp(a));
 
-        for pool_id in Self::pool_ids_desc(&current_pools) {
-            self.rpc.removepool(pool_id).await?;
-        }
-
-        for group_id in Self::group_ids_descending(&current_groups) {
+        for group_id in group_ids {
             self.rpc.removegroup(group_id).await?;
         }
 
@@ -1241,7 +1213,13 @@ impl SupportsFanConfig for LuxMinerV1 {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{Arc, Mutex};
+
     use serde_json::json;
+    use tokio::{
+        io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+        net::TcpListener,
+    };
 
     use asic_rs_core::test::api::MockAPIClient;
     use asic_rs_makes_antminer::models::AntMinerModel;
@@ -1484,104 +1462,79 @@ mod tests {
         assert_eq!(groups[1].pools[0].password, "secret1");
     }
 
-    #[test]
-    fn test_validate_lux_pools_config_allows_empty_pools() -> anyhow::Result<()> {
-        LuxMinerV1::validate_pools_config(&[PoolGroupConfig {
-            name: "default".to_string(),
-            quota: 1,
-            pools: vec![],
-        }])?;
+    #[tokio::test]
+    async fn test_set_lux_pools_config_allows_empty_groups() -> anyhow::Result<()> {
+        let requests = Arc::new(Mutex::new(Vec::<(String, Option<String>)>::new()));
+        let server_requests = Arc::clone(&requests);
+
+        let server = tokio::spawn(async move {
+            let listener = TcpListener::bind("127.0.0.1:4028").await?;
+
+            for _ in 0..4 {
+                let (socket, _) = listener.accept().await?;
+                let (reader, mut writer) = socket.into_split();
+                let mut reader = BufReader::new(reader);
+                let mut line = String::new();
+                reader.read_line(&mut line).await?;
+
+                let request: Value = serde_json::from_str(line.trim_end())?;
+                let command = request
+                    .get("command")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                let parameter = request
+                    .get("parameter")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+
+                server_requests
+                    .lock()
+                    .unwrap()
+                    .push((command.clone(), parameter));
+
+                let response = match command.as_str() {
+                    "groups" => json!({
+                        "GROUPS": [
+                            { "GROUP": 0, "Name": "default", "Quota": 1.0 },
+                            { "GROUP": 1, "Name": "backup", "Quota": 1.0 }
+                        ],
+                        "STATUS": [{ "STATUS": "S", "Msg": "ok" }]
+                    }),
+                    "pools" => json!({
+                        "POOLS": [],
+                        "STATUS": [{ "STATUS": "S", "Msg": "ok" }]
+                    }),
+                    "removegroup" => json!({
+                        "STATUS": [{ "STATUS": "S", "Msg": "ok" }]
+                    }),
+                    other => anyhow::bail!("unexpected command: {other}"),
+                };
+
+                writer
+                    .write_all(format!("{}\n", response).as_bytes())
+                    .await?;
+            }
+
+            anyhow::Ok(())
+        });
+
+        let miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19KPro);
+        assert!(miner.set_pools_config(vec![]).await?);
+
+        server.await??;
+
+        let requests = requests.lock().unwrap();
+        assert_eq!(
+            *requests,
+            vec![
+                ("groups".to_string(), None),
+                ("pools".to_string(), None),
+                ("removegroup".to_string(), Some("1".to_string())),
+                ("removegroup".to_string(), Some("0".to_string())),
+            ]
+        );
 
         Ok(())
-    }
-
-    #[test]
-    fn test_lux_pool_ids_desc_sorts_descending() {
-        let groups = vec![
-            PoolGroupData {
-                name: "g0".to_string(),
-                quota: 1,
-                pools: vec![
-                    PoolData {
-                        position: Some(1),
-                        url: None,
-                        user: None,
-                        alive: None,
-                        active: None,
-                        accepted_shares: None,
-                        rejected_shares: None,
-                    },
-                    PoolData {
-                        position: Some(4),
-                        url: None,
-                        user: None,
-                        alive: None,
-                        active: None,
-                        accepted_shares: None,
-                        rejected_shares: None,
-                    },
-                ],
-            },
-            PoolGroupData {
-                name: "g1".to_string(),
-                quota: 1,
-                pools: vec![
-                    PoolData {
-                        position: None,
-                        url: None,
-                        user: None,
-                        alive: None,
-                        active: None,
-                        accepted_shares: None,
-                        rejected_shares: None,
-                    },
-                    PoolData {
-                        position: Some(2),
-                        url: None,
-                        user: None,
-                        alive: None,
-                        active: None,
-                        accepted_shares: None,
-                        rejected_shares: None,
-                    },
-                ],
-            },
-        ];
-
-        assert_eq!(LuxMinerV1::pool_ids_desc(&groups), vec![4, 2, 1]);
-    }
-
-    #[test]
-    fn test_lux_group_ids_descending_sorts_descending() {
-        let groups = vec![
-            serde_json::json!({ "GROUP": 0, "Name": "default", "Quota": 1 }),
-            serde_json::json!({ "GROUP": 1, "Name": "failover", "Quota": 2 }),
-            serde_json::json!({ "GROUP": 2, "Name": "backup", "Quota": 3 }),
-        ];
-
-        assert_eq!(LuxMinerV1::group_ids_descending(&groups), vec![2, 1, 0]);
-    }
-
-    #[test]
-    fn test_lux_group_ids_descending_uses_actual_group_ids() {
-        let groups = vec![
-            serde_json::json!({ "GROUP": 7, "Name": "primary", "Quota": 1 }),
-            serde_json::json!({ "GROUP": 42, "Name": "backup", "Quota": 1 }),
-            serde_json::json!({ "GROUP": 3, "Name": "overflow", "Quota": 1 }),
-        ];
-
-        assert_eq!(LuxMinerV1::group_ids_descending(&groups), vec![42, 7, 3]);
-    }
-
-    #[test]
-    fn test_lux_group_ids_descending_allows_more_than_three_groups() {
-        let groups = vec![
-            serde_json::json!({ "GROUP": 0, "Name": "g0", "Quota": 1 }),
-            serde_json::json!({ "GROUP": 1, "Name": "g1", "Quota": 1 }),
-            serde_json::json!({ "GROUP": 2, "Name": "g2", "Quota": 1 }),
-            serde_json::json!({ "GROUP": 3, "Name": "g3", "Quota": 1 }),
-        ];
-
-        assert_eq!(LuxMinerV1::group_ids_descending(&groups), vec![3, 2, 1, 0]);
     }
 }

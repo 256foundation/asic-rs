@@ -276,15 +276,6 @@ impl LUXMinerRPCAPI {
             .await
     }
 
-    pub async fn removepool(&self, pool_id: i32) -> anyhow::Result<Value> {
-        self.send_command(
-            "removepool",
-            false,
-            Some(Value::String(pool_id.to_string())),
-        )
-        .await
-    }
-
     pub async fn switchpool(&self, pool_id: i32) -> anyhow::Result<Value> {
         self.send_command(
             "switchpool",

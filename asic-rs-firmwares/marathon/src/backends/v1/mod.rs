@@ -178,8 +178,10 @@ impl MaraV1 {
     }
 
     fn build_pool_config(config: &[PoolGroupConfig]) -> anyhow::Result<(Vec<Value>, Vec<Value>)> {
-        anyhow::ensure!(!config.is_empty(), "At least one pool group is required");
         let config = &config[..config.len().min(3)];
+        if config.is_empty() {
+            return Ok((vec![], vec![]));
+        }
         anyhow::ensure!(
             config.iter().all(|group| group.quota > 0),
             "Each MaraFW pool group must have a quota greater than 0"
@@ -1127,6 +1129,16 @@ impl SupportsFanConfig for MaraV1 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_build_pool_config_allows_empty_groups() -> anyhow::Result<()> {
+        let (pool_groups, pools) = MaraV1::build_pool_config(&[])?;
+
+        assert!(pool_groups.is_empty());
+        assert!(pools.is_empty());
+
+        Ok(())
+    }
 
     #[test]
     fn test_to_pool_config_allows_empty_pools() -> anyhow::Result<()> {
