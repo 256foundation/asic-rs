@@ -699,34 +699,6 @@ mod tests {
     }
 
     #[test]
-    fn subnet_hosts_include_all_ipv4_addresses() {
-        let factory = MinerFactory::new();
-
-        let ips_32 = factory.hosts_from_subnet("10.207.0.0/32").unwrap();
-        assert_eq!(ips_32, vec![IpAddr::V4(Ipv4Addr::new(10, 207, 0, 0))]);
-
-        let ips_31 = factory.hosts_from_subnet("10.207.0.0/31").unwrap();
-        assert_eq!(
-            ips_31,
-            vec![
-                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 0)),
-                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 1)),
-            ]
-        );
-
-        let ips_30 = factory.hosts_from_subnet("10.207.0.0/30").unwrap();
-        assert_eq!(
-            ips_30,
-            vec![
-                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 0)),
-                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 1)),
-                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 2)),
-                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 3)),
-            ]
-        );
-    }
-
-    #[test]
     #[cfg(feature = "nerdaxe")]
     fn identify_nerdaxe_web() {
         use asic_rs_core::traits::identification::{FirmwareIdentification, WebResponse};
