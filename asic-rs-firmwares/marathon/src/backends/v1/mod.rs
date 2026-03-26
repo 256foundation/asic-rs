@@ -1155,6 +1155,7 @@ mod tests {
         Ok(())
     }
 
+
     #[test]
     fn test_build_pool_config_ignores_groups_past_three() -> anyhow::Result<()> {
         let config = vec![
