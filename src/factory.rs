@@ -379,7 +379,20 @@ impl MinerFactory {
 
     fn hosts_from_subnet(&self, subnet: &str) -> Result<Vec<IpAddr>> {
         let network = IpNet::from_str(subnet)?;
-        Ok(network.hosts().collect())
+        let hosts = match network {
+            IpNet::V4(network_v4) => {
+                let start = u32::from(network_v4.network());
+                let end = u32::from(network_v4.broadcast());
+
+                (start..=end)
+                    .map(Ipv4Addr::from)
+                    .map(IpAddr::V4)
+                    .collect::<Vec<IpAddr>>()
+            }
+            IpNet::V6(network_v6) => network_v6.hosts().map(IpAddr::V6).collect(),
+        };
+
+        Ok(hosts)
     }
 
     fn shuffle_ips(&mut self) {
@@ -683,6 +696,34 @@ mod tests {
         assert_eq!(ips.len(), 2);
         assert!(ips.contains(&IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))));
         assert!(ips.contains(&IpAddr::V4(Ipv4Addr::new(192, 168, 1, 2))));
+    }
+
+    #[test]
+    fn subnet_hosts_include_all_ipv4_addresses() {
+        let factory = MinerFactory::new();
+
+        let ips_32 = factory.hosts_from_subnet("10.207.0.0/32").unwrap();
+        assert_eq!(ips_32, vec![IpAddr::V4(Ipv4Addr::new(10, 207, 0, 0))]);
+
+        let ips_31 = factory.hosts_from_subnet("10.207.0.0/31").unwrap();
+        assert_eq!(
+            ips_31,
+            vec![
+                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 0)),
+                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 1)),
+            ]
+        );
+
+        let ips_30 = factory.hosts_from_subnet("10.207.0.0/30").unwrap();
+        assert_eq!(
+            ips_30,
+            vec![
+                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 0)),
+                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 1)),
+                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 2)),
+                IpAddr::V4(Ipv4Addr::new(10, 207, 0, 3)),
+            ]
+        );
     }
 
     #[test]
