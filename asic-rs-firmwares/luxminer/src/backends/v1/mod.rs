@@ -182,8 +182,12 @@ impl LuxMinerV1 {
         pool_ids
     }
 
-    fn group_ids_desc(groups: &[PoolGroupConfig]) -> Vec<u32> {
-        let mut group_ids: Vec<u32> = (0..groups.len() as u32).collect();
+    fn group_ids_descending(groups: &[Value]) -> Vec<u32> {
+        let mut group_ids: Vec<u32> = groups
+            .iter()
+            .filter_map(|group| group.get("GROUP").and_then(Value::as_u64))
+            .map(|id| id as u32)
+            .collect();
         group_ids.sort_unstable_by(|a, b| b.cmp(a));
         group_ids
     }
@@ -1133,14 +1137,19 @@ impl SupportsPoolsConfig for LuxMinerV1 {
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         Self::validate_pools_config(&config)?;
 
-        let current_groups = self.get_pools_config().await?;
+        let mut collector = self.get_config_collector();
+        let current_pool_config_data = collector.collect(&[ConfigField::Pools]).await;
+        let current_groups = current_pool_config_data
+            .get(&ConfigField::Pools)
+            .map(|config| Self::extract_nested_array(config, "groups", "GROUPS"))
+            .unwrap_or_default();
         let current_pools = self.get_pools().await;
 
         for pool_id in Self::pool_ids_desc(&current_pools) {
             self.rpc.removepool(pool_id).await?;
         }
 
-        for group_id in Self::group_ids_desc(&current_groups) {
+        for group_id in Self::group_ids_descending(&current_groups) {
             self.rpc.removegroup(group_id).await?;
         }
 
@@ -1543,25 +1552,36 @@ mod tests {
     }
 
     #[test]
-    fn test_lux_group_ids_desc_sorts_descending() {
+    fn test_lux_group_ids_descending_sorts_descending() {
         let groups = vec![
-            PoolGroupConfig {
-                name: "default".to_string(),
-                quota: 1,
-                pools: vec![],
-            },
-            PoolGroupConfig {
-                name: "failover".to_string(),
-                quota: 2,
-                pools: vec![],
-            },
-            PoolGroupConfig {
-                name: "backup".to_string(),
-                quota: 3,
-                pools: vec![],
-            },
+            serde_json::json!({ "GROUP": 0, "Name": "default", "Quota": 1 }),
+            serde_json::json!({ "GROUP": 1, "Name": "failover", "Quota": 2 }),
+            serde_json::json!({ "GROUP": 2, "Name": "backup", "Quota": 3 }),
         ];
 
-        assert_eq!(LuxMinerV1::group_ids_desc(&groups), vec![2, 1, 0]);
+        assert_eq!(LuxMinerV1::group_ids_descending(&groups), vec![2, 1, 0]);
+    }
+
+    #[test]
+    fn test_lux_group_ids_descending_uses_actual_group_ids() {
+        let groups = vec![
+            serde_json::json!({ "GROUP": 7, "Name": "primary", "Quota": 1 }),
+            serde_json::json!({ "GROUP": 42, "Name": "backup", "Quota": 1 }),
+            serde_json::json!({ "GROUP": 3, "Name": "overflow", "Quota": 1 }),
+        ];
+
+        assert_eq!(LuxMinerV1::group_ids_descending(&groups), vec![42, 7, 3]);
+    }
+
+    #[test]
+    fn test_lux_group_ids_descending_allows_more_than_three_groups() {
+        let groups = vec![
+            serde_json::json!({ "GROUP": 0, "Name": "g0", "Quota": 1 }),
+            serde_json::json!({ "GROUP": 1, "Name": "g1", "Quota": 1 }),
+            serde_json::json!({ "GROUP": 2, "Name": "g2", "Quota": 1 }),
+            serde_json::json!({ "GROUP": 3, "Name": "g3", "Quota": 1 }),
+        ];
+
+        assert_eq!(LuxMinerV1::group_ids_descending(&groups), vec![3, 2, 1, 0]);
     }
 }

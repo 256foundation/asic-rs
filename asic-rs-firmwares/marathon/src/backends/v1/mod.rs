@@ -1154,4 +1154,58 @@ mod tests {
 
         Ok(())
     }
+
+
+    #[test]
+    fn test_build_pool_config_ignores_groups_past_three() -> anyhow::Result<()> {
+        let config = vec![
+            PoolGroupConfig {
+                name: "primary".to_string(),
+                quota: 40,
+                pools: vec![PoolConfig {
+                    url: PoolURL::from("stratum+tcp://pool0.invalid:3333".to_string()),
+                    username: "user0".to_string(),
+                    password: "pass0".to_string(),
+                }],
+            },
+            PoolGroupConfig {
+                name: "secondary".to_string(),
+                quota: 30,
+                pools: vec![PoolConfig {
+                    url: PoolURL::from("stratum+tcp://pool1.invalid:3333".to_string()),
+                    username: "user1".to_string(),
+                    password: "pass1".to_string(),
+                }],
+            },
+            PoolGroupConfig {
+                name: "tertiary".to_string(),
+                quota: 20,
+                pools: vec![PoolConfig {
+                    url: PoolURL::from("stratum+tcp://pool2.invalid:3333".to_string()),
+                    username: "user2".to_string(),
+                    password: "pass2".to_string(),
+                }],
+            },
+            PoolGroupConfig {
+                name: "ignored".to_string(),
+                quota: 10,
+                pools: vec![PoolConfig {
+                    url: PoolURL::from("stratum+tcp://pool3.invalid:3333".to_string()),
+                    username: "user3".to_string(),
+                    password: "pass3".to_string(),
+                }],
+            },
+        ];
+
+        let (pool_groups, pools) = MaraV1::build_pool_config(&config)?;
+
+        assert_eq!(pool_groups.len(), 3);
+        assert_eq!(pools.len(), 3);
+        assert_eq!(pool_groups[0]["alias"], "primary");
+        assert_eq!(pool_groups[1]["alias"], "secondary");
+        assert_eq!(pool_groups[2]["alias"], "tertiary");
+        assert!(pools.iter().all(|pool| pool["user"] != "user3"));
+
+        Ok(())
+    }
 }
