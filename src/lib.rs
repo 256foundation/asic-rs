@@ -64,6 +64,28 @@
 //! These also have corresponding methods for appending to an existing factory, or overwriting existing ranges.
 //! See [`MinerFactory`] for more details.
 //!
+//! ### Discovery tuning
+//! For large scans, `MinerFactory` automatically tries to raise process file descriptor limits when needed.
+//! On Unix this uses `RLIMIT_NOFILE`, and on Windows it uses stdio max-file limits.
+//! This is fail-open: if the OS does not allow raising the limit, scanning still runs.
+//! ```no_run
+//! # use asic_rs::MinerFactory;
+//! # use tokio;
+//! # #[tokio::main]
+//! # async fn main() {
+//! let factory = MinerFactory::from_subnet("192.168.1.0/24")
+//!     .unwrap()
+//!     .with_concurrent_limit(2500)
+//!     .with_nofile_limit(20000);
+//! let miners = factory.scan().await.unwrap();
+//! # }
+//! ```
+//! Disable automatic nofile adjustment if needed:
+//! ```no_run
+//! # use asic_rs::MinerFactory;
+//! let factory = MinerFactory::new().with_nofile_adjustment(false);
+//! ```
+//!
 //! ### Data gathering
 //! Getting data is very simple with asic-rs, everything you need can be gathered with a single call.
 //! Extending the "Getting a miner" example:

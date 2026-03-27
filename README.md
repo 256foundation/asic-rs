@@ -59,6 +59,26 @@ There are other ways to define a discovery range to be scanned, such as:
 These also have corresponding methods for appending to an existing factory, or overwriting existing ranges.
 See [`MinerFactory`][__link1] for more details.
 
+#### Discovery tuning
+
+For large scans, `MinerFactory` automatically tries to raise process file descriptor limits when needed.
+On Unix this uses `RLIMIT_NOFILE`, and on Windows it uses stdio max-file limits.
+This is fail-open: if the OS does not allow raising the limit, scanning still runs.
+
+```rust
+let factory = MinerFactory::from_subnet("192.168.1.0/24")
+    .unwrap()
+    .with_concurrent_limit(2500)
+    .with_nofile_limit(20000);
+let miners = factory.scan().await.unwrap();
+```
+
+Disable automatic nofile adjustment if needed:
+
+```rust
+let factory = MinerFactory::new().with_nofile_adjustment(false);
+```
+
 #### Data gathering
 
 Getting data is very simple with asic-rs, everything you need can be gathered with a single call.
@@ -146,7 +166,7 @@ The README is auto generated with `doc2readme`, please do not edit it manually.
 Instead, changes can be made in `lib.rs`.
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbgiWOwqb2YKkbqMVrNrCIcPMbhrOdZpcmg20bYiAXpb0OQsdhYvRhcoQbILN31kmOLf0bVv5HJKku3LgbIpCvo62PHHYb9vmOZ04IHnthZIODZ2FzaWMtcnNlMC4zLjBnYXNpY19yc4JkZGF0YfaCZm1pbmVyc_Y
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbgiWOwqb2YKkbqMVrNrCIcPMbhrOdZpcmg20bYiAXpb0OQsdhYvRhcoQbJfIGvKjr7F4bt8UpQFKOjIMbPupR_xEtI7Ub0xMpmb2P-FJhZIODZ2FzaWMtcnNlMC4zLjBnYXNpY19yc4JkZGF0YfaCZm1pbmVyc_Y
  [__link0]: https://docs.rs/asic-rs/0.3.0/asic_rs/?search=factory::MinerFactory
  [__link1]: https://docs.rs/asic-rs/0.3.0/asic_rs/?search=factory::MinerFactory
  [__link2]: https://docs.rs/data/latest/data/?search=miner::MinerData

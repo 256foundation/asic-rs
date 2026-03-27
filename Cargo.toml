@@ -84,6 +84,7 @@ md5crypt = "1.0.0"
 md5 = "0.8"
 tracing = { version = "0.1.44", features = ["log"] }
 crc32fast = "1.5"
+rlimit = "0.10"
 
 pyo3 = { version = "0.28.2", features = [
     "extension-module",
@@ -179,6 +180,7 @@ rand.workspace = true
 tokio-stream.workspace = true
 async-stream.workspace = true
 tracing.workspace = true
+rlimit.workspace = true
 
 pyo3 = {workspace = true, optional = true}
 pyo3-async-runtimes = {workspace = true, optional = true}

@@ -21,6 +21,8 @@ use tokio::{net::TcpStream, task::JoinSet, time::timeout};
 const IDENTIFICATION_TIMEOUT: Duration = Duration::from_secs(10);
 const CONNECTIVITY_TIMEOUT: Duration = Duration::from_secs(1);
 const CONNECTIVITY_RETRIES: u32 = 3;
+const NOFILE_PER_CONCURRENCY: u64 = 8;
+const MIN_NOFILE_LIMIT: u64 = 2048;
 
 fn calculate_optimal_concurrency(ip_count: usize) -> usize {
     match ip_count {
@@ -29,6 +31,12 @@ fn calculate_optimal_concurrency(ip_count: usize) -> usize {
         5001..=10000 => 5000,
         _ => 10000,
     }
+}
+
+fn calculate_desired_nofile_limit(concurrency: usize) -> u64 {
+    (concurrency as u64)
+        .saturating_mul(NOFILE_PER_CONCURRENCY)
+        .max(MIN_NOFILE_LIMIT)
 }
 
 async fn check_port_open(ip: IpAddr, port: u16, connectivity_timeout: Duration) -> bool {
@@ -153,6 +161,8 @@ pub struct MinerFactory {
     connectivity_timeout: Duration,
     connectivity_retries: u32,
     concurrent: Option<usize>,
+    nofile_limit: Option<u64>,
+    nofile_adjustment: bool,
     check_port: bool,
 }
 
@@ -168,6 +178,8 @@ impl std::fmt::Debug for MinerFactory {
             .field("connectivity_timeout", &self.connectivity_timeout)
             .field("connectivity_retries", &self.connectivity_retries)
             .field("concurrent", &self.concurrent)
+            .field("nofile_limit", &self.nofile_limit)
+            .field("nofile_adjustment", &self.nofile_adjustment)
             .field("check_port", &self.check_port)
             .finish()
     }
@@ -302,6 +314,8 @@ impl MinerFactory {
             connectivity_timeout: CONNECTIVITY_TIMEOUT,
             connectivity_retries: CONNECTIVITY_RETRIES,
             concurrent: None,
+            nofile_limit: None,
+            nofile_adjustment: true,
             check_port: true,
         }
     }
@@ -313,6 +327,16 @@ impl MinerFactory {
 
     pub fn with_concurrent_limit(mut self, limit: usize) -> Self {
         self.concurrent = Some(limit);
+        self
+    }
+
+    pub fn with_nofile_limit(mut self, limit: u64) -> Self {
+        self.nofile_limit = Some(limit);
+        self
+    }
+
+    pub fn with_nofile_adjustment(mut self, enabled: bool) -> Self {
+        self.nofile_adjustment = enabled;
         self
     }
 
@@ -514,6 +538,13 @@ impl MinerFactory {
             .concurrent
             .unwrap_or(calculate_optimal_concurrency(self.ips.len()));
 
+        if let Some(desired_nofile) = self.nofile_limit.or_else(|| {
+            self.nofile_adjustment
+                .then(|| calculate_desired_nofile_limit(concurrency))
+        }) {
+            maybe_adjust_nofile_limit(desired_nofile);
+        }
+
         let miners: Vec<Box<dyn Miner>> = stream::iter(self.ips.iter().copied())
             .map(|ip| async move { self.scan_miner(ip).await.ok().flatten() })
             .buffer_unordered(concurrency)
@@ -528,6 +559,13 @@ impl MinerFactory {
         let concurrency = self
             .concurrent
             .unwrap_or(calculate_optimal_concurrency(self.ips.len()));
+
+        if let Some(desired_nofile) = self.nofile_limit.or_else(|| {
+            self.nofile_adjustment
+                .then(|| calculate_desired_nofile_limit(concurrency))
+        }) {
+            maybe_adjust_nofile_limit(desired_nofile);
+        }
 
         let factory = Arc::new(self.clone());
         let ips: Arc<[IpAddr]> = Arc::from(self.ips.as_slice());
@@ -552,6 +590,13 @@ impl MinerFactory {
         let concurrency = self
             .concurrent
             .unwrap_or(calculate_optimal_concurrency(self.ips.len()));
+
+        if let Some(desired_nofile) = self.nofile_limit.or_else(|| {
+            self.nofile_adjustment
+                .then(|| calculate_desired_nofile_limit(concurrency))
+        }) {
+            maybe_adjust_nofile_limit(desired_nofile);
+        }
 
         let factory = Arc::new(self.clone());
         let ips: Arc<[IpAddr]> = Arc::from(self.ips.as_slice());
@@ -584,6 +629,29 @@ impl MinerFactory {
         self.with_range(range_str)?.scan().await
     }
 }
+
+#[cfg(unix)]
+fn maybe_adjust_nofile_limit(desired: u64) {
+    if let Err(err) = rlimit::increase_nofile_limit(desired) {
+        tracing::warn!("failed to raise RLIMIT_NOFILE to {desired}: {err}");
+    }
+}
+
+#[cfg(windows)]
+fn maybe_adjust_nofile_limit(desired: u64) {
+    let current = rlimit::getmaxstdio() as u64;
+    if current >= desired {
+        return;
+    }
+
+    let target = desired.min(u32::MAX as u64) as u32;
+    if let Err(err) = rlimit::setmaxstdio(target) {
+        tracing::warn!("failed to raise maxstdio from {current} to {target}: {err}");
+    }
+}
+
+#[cfg(not(any(unix, windows)))]
+fn maybe_adjust_nofile_limit(_desired: u64) {}
 
 fn parse_octet_range(range_str: &str) -> Result<Vec<u8>> {
     if range_str.contains('-') {
