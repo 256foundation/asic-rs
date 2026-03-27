@@ -47,11 +47,12 @@ pub struct BraiinsV2109 {
 
 impl BraiinsV2109 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
+        let auth = Self::default_auth();
         BraiinsV2109 {
             ip,
             rpc: BraiinsRPCAPI::new(ip),
-            graphql: BraiinsGraphQLAPI::new(ip),
-            web: BraiinsWebAPI::new(ip),
+            graphql: BraiinsGraphQLAPI::new(ip, auth.clone()),
+            web: BraiinsWebAPI::new(ip, auth),
             device_info: DeviceInfo::new(model, BraiinsFirmware::default(), HashAlgorithm::SHA256),
         }
     }
@@ -831,6 +832,19 @@ impl SupportsScalingConfig for BraiinsV2109 {
 impl UpgradeFirmware for BraiinsV2109 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
+    }
+}
+
+impl HasDefaultAuth for BraiinsV2109 {
+    fn default_auth() -> MinerAuth {
+        MinerAuth::new("root", "")
+    }
+}
+
+impl HasAuth for BraiinsV2109 {
+    fn set_auth(&mut self, auth: MinerAuth) {
+        self.web.set_auth(auth.clone());
+        self.graphql.set_auth(auth);
     }
 }
 

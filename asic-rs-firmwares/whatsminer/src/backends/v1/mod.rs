@@ -598,6 +598,9 @@ impl UpgradeFirmware for WhatsMinerV1 {
     }
 }
 
+impl HasAuth for WhatsMinerV1 {}
+impl HasDefaultAuth for WhatsMinerV1 {}
+
 #[async_trait]
 impl SupportsTuningConfig for WhatsMinerV1 {
     fn supports_tuning_config(&self) -> bool {

@@ -45,9 +45,10 @@ pub struct PowerPlayV1 {
 
 impl PowerPlayV1 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
+        let auth = Self::default_auth();
         PowerPlayV1 {
             ip,
-            web: PowerPlayWebAPI::new(ip, 4028),
+            web: PowerPlayWebAPI::new(ip, 4028, auth),
             device_info: DeviceInfo::new(model, EPicFirmware::default(), HashAlgorithm::SHA256),
         }
     }
@@ -1381,6 +1382,18 @@ impl Resume for PowerPlayV1 {
 impl UpgradeFirmware for PowerPlayV1 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
+    }
+}
+
+impl HasDefaultAuth for PowerPlayV1 {
+    fn default_auth() -> MinerAuth {
+        MinerAuth::new("", "letmein")
+    }
+}
+
+impl HasAuth for PowerPlayV1 {
+    fn set_auth(&mut self, auth: MinerAuth) {
+        self.web.set_auth(auth);
     }
 }
 

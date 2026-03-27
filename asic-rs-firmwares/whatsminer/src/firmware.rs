@@ -10,7 +10,7 @@ use asic_rs_core::{
         firmware::MinerFirmware,
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
-        miner::{APIClient, Miner, MinerConstructor},
+        miner::{APIClient, HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
         model::MinerModel,
     },
     util,
@@ -40,7 +40,8 @@ fn normalize_whatsminer_model(model: &str) -> String {
 }
 
 async fn send_v3_get_device_info(ip: &IpAddr) -> Option<serde_json::Value> {
-    let rpc = v3::WhatsMinerRPCAPI::new(*ip, None);
+    let auth = crate::backends::WhatsMinerV3::default_auth();
+    let rpc = v3::WhatsMinerRPCAPI::new(*ip, None, auth);
     let response = rpc
         .get_api_result(&MinerCommand::RPC {
             command: "get.device.info",
@@ -120,9 +121,17 @@ impl FirmwareIdentification for WhatsMinerFirmware {
 
 #[async_trait]
 impl FirmwareEntry for WhatsMinerFirmware {
-    async fn build_miner(&self, ip: IpAddr) -> Result<Box<dyn Miner>, ModelSelectionError> {
+    async fn build_miner(
+        &self,
+        ip: IpAddr,
+        auth: Option<&MinerAuth>,
+    ) -> Result<Box<dyn Miner>, ModelSelectionError> {
         let model = WhatsMinerFirmware::get_model(ip).await?;
         let version = WhatsMinerFirmware::get_version(ip).await;
-        Ok(crate::backends::WhatsMiner::new(ip, model, version))
+        let mut miner = crate::backends::WhatsMiner::new(ip, model, version);
+        if let Some(auth) = auth {
+            miner.set_auth(auth.clone());
+        }
+        Ok(miner)
     }
 }

@@ -13,12 +13,11 @@ pub struct BraiinsWebAPI {
     port: u16,
     timeout: Duration,
     session_id: RwLock<Option<String>>,
-    username: String,
-    password: String,
+    auth: MinerAuth,
 }
 
 impl BraiinsWebAPI {
-    pub fn new(ip: IpAddr) -> Self {
+    pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
@@ -30,16 +29,21 @@ impl BraiinsWebAPI {
             port: 80,
             timeout: Duration::from_secs(5),
             session_id: RwLock::new(None),
-            username: "root".to_string(),
-            password: String::new(),
+            auth,
         }
+    }
+
+    pub fn set_auth(&mut self, auth: MinerAuth) {
+        self.auth = auth;
+        *self.session_id.get_mut() = None;
     }
 
     async fn authenticate(&self) -> anyhow::Result<String> {
         let url = format!("http://{}:{}/cgi-bin/luci", self.ip, self.port);
         let body = format!(
             "luci_username={}&luci_password={}",
-            self.username, self.password
+            self.auth.username,
+            self.auth.password.expose_secret()
         );
 
         let response = self

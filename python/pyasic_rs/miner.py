@@ -157,3 +157,6 @@ class Miner:
     @property
     def supports_pools_config(self) -> bool:
         return self.__inner.supports_pools_config
+
+    def set_auth(self, username: str, password: str) -> None:
+        self.__inner.set_auth(username, password)
