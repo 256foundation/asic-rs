@@ -18,13 +18,29 @@ class MinerFactory:
     def from_subnet(cls, subnet: str) -> Self:
         return cls(inner=_rs_MinerFactory.from_subnet(subnet))
 
-    def with_octets(self, octet_1: int | str, octet_2: int | str, octet_3: int | str, octet_4: int | str) -> Self:
+    def with_octets(
+        self,
+        octet_1: int | str,
+        octet_2: int | str,
+        octet_3: int | str,
+        octet_4: int | str,
+    ) -> Self:
         self.__inner.with_octets(octet_1, octet_2, octet_3, octet_4)
         return self
 
     @classmethod
-    def from_octets(cls, octet_1: int | str, octet_2: int | str, octet_3: int | str, octet_4: int | str) -> Self:
-        return cls(inner=_rs_MinerFactory.from_octets(str(octet_1), str(octet_2), str(octet_3), str(octet_4)))
+    def from_octets(
+        cls,
+        octet_1: int | str,
+        octet_2: int | str,
+        octet_3: int | str,
+        octet_4: int | str,
+    ) -> Self:
+        return cls(
+            inner=_rs_MinerFactory.from_octets(
+                str(octet_1), str(octet_2), str(octet_3), str(octet_4)
+            )
+        )
 
     def with_range(self, ip_range: str) -> Self:
         self.__inner.with_range(ip_range)
@@ -48,6 +64,8 @@ class MinerFactory:
         async for m in self.__inner.scan_stream():
             yield Miner(inner=m)
 
-    async def scan_stream_with_ip(self) -> AsyncIterable[tuple[IPv4Address, Miner | None]]:
-        async for (ip, m) in self.__inner.scan_stream_with_ip():
+    async def scan_stream_with_ip(
+        self,
+    ) -> AsyncIterable[tuple[IPv4Address, Miner | None]]:
+        async for ip, m in self.__inner.scan_stream_with_ip():
             yield ip, None if m is None else Miner(inner=m)

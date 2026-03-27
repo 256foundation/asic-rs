@@ -4,8 +4,14 @@ from ipaddress import IPv4Address
 from typing import Annotated, Self
 
 from pyasic_rs.asic_rs import HashRateUnit as _rs_HashRateUnit
-from pyasic_rs.asic_rs import TuningTarget as _rs_TuningTarget
-from pydantic import BaseModel, ConfigDict, BeforeValidator, field_serializer, model_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    BeforeValidator,
+    field_serializer,
+    model_serializer,
+    field_validator,
+)
 
 
 class MinerHardware(BaseModel):
@@ -126,9 +132,7 @@ class HashRate(BaseModel):
 
     def into_unit(self, unit: HashRateUnit) -> Self:
         return HashRate(
-            value=(self.value / int(self.unit)) * int(unit),
-            unit=unit,
-            algo=self.algo
+            value=(self.value / int(self.unit)) * int(unit), unit=unit, algo=self.algo
         )
 
 
@@ -190,6 +194,66 @@ class PoolGroupData(BaseModel):
     pools: list[PoolData]
 
 
+class TuningTargetPower(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    watts: float
+
+    @model_serializer
+    def serialize_tuning_target(self):
+        return {"type": "power", "value": self.watts}
+
+
+class TuningTargetHashRate(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    hashrate: HashRate
+
+    @model_serializer
+    def serialize_tuning_target(self):
+        # Serialize the full HashRate structure so it can be validated back
+        return {"type": "hashrate", "value": self.hashrate}
+
+
+def _parse_tuning_target(v):
+    # Handle already-correct model instances
+    if isinstance(v, (TuningTargetPower, TuningTargetHashRate)):
+        return v
+
+    # Handle dictionary inputs (e.g. serializer output or plain dicts)
+    if isinstance(v, dict):
+        # If the dict already matches the model field names, validate directly
+        if "watts" in v:
+            return TuningTargetPower.model_validate(v)
+        if "hashrate" in v:
+            return TuningTargetHashRate.model_validate(v)
+
+        # Handle serializer-shaped dicts: {"type": ..., "value": ...}
+        target_type = v.get("type")
+        value = v.get("value")
+        if target_type == "power" and value is not None:
+            return TuningTargetPower(watts=float(value))
+        if target_type == "hashrate" and value is not None:
+            return TuningTargetHashRate(hashrate=HashRate.model_validate(value))
+
+        # Fallback: return dict unchanged
+        return v
+
+    # Handle Rust-style enum variants coming from bindings
+    variant = type(v).__name__
+    if variant == "Power" and hasattr(v, "_0"):
+        return TuningTargetPower(watts=float(v._0))
+    if variant == "HashRate" and hasattr(v, "_0"):
+        return TuningTargetHashRate(hashrate=HashRate.model_validate(v._0))
+    return v
+
+
+TuningTarget = Annotated[
+    TuningTargetPower | TuningTargetHashRate,
+    BeforeValidator(_parse_tuning_target),
+]
+
+
 class MinerMessage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -214,13 +278,14 @@ class MinerControlBoard(BaseModel):
             return self.name
         return f"Unknown: {self.name}"
 
+
 class MinerData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     schema_version: str
     timestamp: int
     ip: IPv4Address
-    mac: str
+    mac: str | None
     device_info: DeviceInfo
     control_board_version: MinerControlBoard | None
     serial_number: str | None
@@ -239,7 +304,7 @@ class MinerData(BaseModel):
     average_temperature: float | None
     fluid_temperature: float | None
     wattage: float | None
-    tuning_target: _rs_TuningTarget | None
+    tuning_target: TuningTarget | None
     efficiency: float | None
     light_flashing: bool | None
     messages: list[MinerMessage]
