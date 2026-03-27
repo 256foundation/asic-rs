@@ -66,6 +66,7 @@ dependencies = [
  "asic-rs-firmwares-luxminer",
  "asic-rs-firmwares-marathon",
  "asic-rs-firmwares-nerdaxe",
+ "asic-rs-firmwares-sealminer",
  "asic-rs-firmwares-vnish",
  "asic-rs-firmwares-whatsminer",
  "asic-rs-makes-antminer",
@@ -75,6 +76,7 @@ dependencies = [
  "asic-rs-makes-epic",
  "asic-rs-makes-marathon",
  "asic-rs-makes-nerdaxe",
+ "asic-rs-makes-sealminer",
  "asic-rs-makes-whatsminer",
  "async-stream",
  "futures",
@@ -255,6 +257,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "asic-rs-firmwares-sealminer"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "asic-rs-core",
+ "asic-rs-makes-sealminer",
+ "async-trait",
+ "macaddr",
+ "measurements",
+ "pyo3",
+ "reqwest",
+ "semver",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "asic-rs-firmwares-vnish"
 version = "0.3.0"
 dependencies = [
@@ -363,6 +382,17 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-nerdaxe"
+version = "0.3.0"
+dependencies = [
+ "asic-rs-core",
+ "pyo3",
+ "serde",
+ "serde_json",
+ "strum",
+]
+
+[[package]]
+name = "asic-rs-makes-sealminer"
 version = "0.3.0"
 dependencies = [
  "asic-rs-core",

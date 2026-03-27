@@ -126,6 +126,11 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
         asic_rs_firmwares_antminer::firmware::AntMinerStockFirmware::default(),
     ));
 
+    #[cfg(feature = "sealminer")]
+    registry.push(Arc::new(
+        asic_rs_firmwares_sealminer::firmware::SealMinerStockFirmware::default(),
+    ));
+
     #[cfg(feature = "avalonminer")]
     registry.push(Arc::new(
         asic_rs_firmwares_avalonminer::firmware::AvalonStockFirmware::default(),
