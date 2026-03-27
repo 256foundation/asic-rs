@@ -454,6 +454,9 @@ impl GetControlBoardVersion for PowerPlayV1 {
             s if s.to_uppercase().contains("AMLOGIC") => {
                 Some(AntMinerControlBoard::AMLogic).map(|cb| cb.into())
             }
+            s if s.to_uppercase().contains("GENERIC AM33XX") => {
+                Some(AntMinerControlBoard::BeagleBoneBlack).map(|cb| cb.into())
+            }
             _ => Some(EPicControlBoard::EPicUMC).map(|cb| cb.into()),
         }
     }
