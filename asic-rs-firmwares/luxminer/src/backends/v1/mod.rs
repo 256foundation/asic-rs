@@ -1210,7 +1210,6 @@ impl SupportsFanConfig for LuxMinerV1 {
         false
     }
 }
-
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
@@ -1466,12 +1465,18 @@ mod tests {
     async fn test_set_lux_pools_config_allows_empty_groups() -> anyhow::Result<()> {
         let requests = Arc::new(Mutex::new(Vec::<(String, Option<String>)>::new()));
         let server_requests = Arc::clone(&requests);
+        let listener = TcpListener::bind("127.0.0.1:4028").await?;
 
         let server = tokio::spawn(async move {
-            let listener = TcpListener::bind("127.0.0.1:4028").await?;
-
-            for _ in 0..4 {
-                let (socket, _) = listener.accept().await?;
+            for request_idx in 0..4 {
+                let (socket, _) = tokio::time::timeout(
+                    std::time::Duration::from_secs(2),
+                    listener.accept(),
+                )
+                .await
+                .map_err(|_| {
+                    anyhow::anyhow!("timed out waiting for request {}", request_idx + 1)
+                })??;
                 let (reader, mut writer) = socket.into_split();
                 let mut reader = BufReader::new(reader);
                 let mut line = String::new();
@@ -1522,17 +1527,30 @@ mod tests {
         let miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19KPro);
         assert!(miner.set_pools_config(vec![]).await?);
 
-        server.await??;
+        let server_result = tokio::time::timeout(std::time::Duration::from_secs(5), server)
+            .await
+            .map_err(|_| anyhow::anyhow!("mock rpc server did not finish in time"))?;
+        server_result??;
 
         let requests = requests.lock().unwrap();
+        assert_eq!(requests.len(), 4);
+
+        let mut initial_requests = requests[..2].to_vec();
+        initial_requests.sort();
         assert_eq!(
-            *requests,
+            initial_requests,
             vec![
                 ("groups".to_string(), None),
                 ("pools".to_string(), None),
-                ("removegroup".to_string(), Some("1".to_string())),
-                ("removegroup".to_string(), Some("0".to_string())),
             ]
+        );
+        assert_eq!(
+            requests[2],
+            ("removegroup".to_string(), Some("1".to_string()))
+        );
+        assert_eq!(
+            requests[3],
+            ("removegroup".to_string(), Some("0".to_string()))
         );
 
         Ok(())
