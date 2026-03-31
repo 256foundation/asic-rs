@@ -1469,14 +1469,12 @@ mod tests {
 
         let server = tokio::spawn(async move {
             for request_idx in 0..4 {
-                let (socket, _) = tokio::time::timeout(
-                    std::time::Duration::from_secs(2),
-                    listener.accept(),
-                )
-                .await
-                .map_err(|_| {
-                    anyhow::anyhow!("timed out waiting for request {}", request_idx + 1)
-                })??;
+                let (socket, _) =
+                    tokio::time::timeout(std::time::Duration::from_secs(2), listener.accept())
+                        .await
+                        .map_err(|_| {
+                            anyhow::anyhow!("timed out waiting for request {}", request_idx + 1)
+                        })??;
                 let (reader, mut writer) = socket.into_split();
                 let mut reader = BufReader::new(reader);
                 let mut line = String::new();
@@ -1539,10 +1537,7 @@ mod tests {
         initial_requests.sort();
         assert_eq!(
             initial_requests,
-            vec![
-                ("groups".to_string(), None),
-                ("pools".to_string(), None),
-            ]
+            vec![("groups".to_string(), None), ("pools".to_string(), None),]
         );
         assert_eq!(
             requests[2],
