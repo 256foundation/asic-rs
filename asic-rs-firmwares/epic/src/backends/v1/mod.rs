@@ -1272,42 +1272,42 @@ impl SupportsTuningConfig for PowerPlayV1 {
         config: TuningConfig,
         scaling_config: Option<ScalingConfig>,
     ) -> anyhow::Result<bool> {
-        let algorithm_input = config.algorithm.as_deref().ok_or_else(|| {
-            anyhow::anyhow!("TuningConfig.algorithm is required for ePIC PowerPlay")
-        })?;
-        let normalized_algorithm = algorithm_input
-            .trim()
-            .to_ascii_lowercase()
-            .replace([' ', '_', '-'], "");
-        let algorithm = match normalized_algorithm.as_str() {
-            "chiptune" => "ChipTune",
-            "voltageoptimizer" => "VoltageOptimizer",
-            "power" | "powertune" => "PowerTune",
-            "boardtune" => "BoardTune",
-            _ => {
-                anyhow::bail!(
+        let parse_algorithm = |algorithm_input: &str| -> anyhow::Result<&'static str> {
+            let normalized_algorithm = algorithm_input
+                .trim()
+                .to_ascii_lowercase()
+                .replace([' ', '_', '-'], "");
+
+            match normalized_algorithm.as_str() {
+                "chiptune" => Ok("ChipTune"),
+                "voltageoptimizer" => Ok("VoltageOptimizer"),
+                "power" | "powertune" => Ok("PowerTune"),
+                "boardtune" => Ok("BoardTune"),
+                _ => anyhow::bail!(
                     "Unsupported perpetual tune algorithm '{algorithm_input}' for ePIC PowerPlay"
-                )
+                ),
             }
         };
 
-        let target = match &config.target {
-            TuningTarget::Power(power) => {
-                anyhow::ensure!(
-                    algorithm == "PowerTune",
-                    "Power tuning target requires PowerTune algorithm, got {algorithm}"
-                );
-                to_non_negative_u32_target(power.as_watts(), "power")?
-            }
+        let (algorithm, target) = match &config.target {
+            TuningTarget::Power(power) => (
+                "PowerTune",
+                to_non_negative_u32_target(power.as_watts(), "power")?,
+            ),
             TuningTarget::HashRate(hashrate) => {
+                let algorithm_input = config.algorithm.as_deref().ok_or_else(|| {
+                    anyhow::anyhow!("TuningConfig.algorithm is required for hashrate tuning")
+                })?;
+                let algorithm = parse_algorithm(algorithm_input)?;
                 anyhow::ensure!(
                     algorithm != "PowerTune",
                     "Hashrate tuning target cannot be used with PowerTune algorithm"
                 );
-                to_non_negative_u32_target(
+                let target = to_non_negative_u32_target(
                     hashrate.clone().as_unit(HashRateUnit::TeraHash).value,
                     "hashrate",
-                )?
+                )?;
+                (algorithm, target)
             }
             TuningTarget::MiningMode(_) => {
                 anyhow::bail!("MiningMode tuning target is not supported on ePIC PowerPlay")
