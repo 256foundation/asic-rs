@@ -289,13 +289,13 @@ impl WhatsMinerRPCAPI {
 
     fn parse_privileged_rpc_result(&self, key: &str, response: &str) -> anyhow::Result<Value> {
         let enc_result = serde_json::from_str::<Value>(response)?;
-        let enc_data = enc_result
-            .get("enc")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing 'enc' field in privileged RPC response"))?;
-        let result = aes_ecb_dec(key, enc_data);
-
-        self.parse_rpc_result(&result)
+        match enc_result.get("enc").and_then(|v| v.as_str()) {
+            Some(enc_data) => {
+                let result = aes_ecb_dec(key, enc_data);
+                self.parse_rpc_result(&result)
+            }
+            None => self.parse_rpc_result(response),
+        }
     }
 
     async fn get_token_data(&self) -> anyhow::Result<TokenData> {
