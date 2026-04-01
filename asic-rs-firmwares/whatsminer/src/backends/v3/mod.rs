@@ -17,6 +17,7 @@ use asic_rs_core::{
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
+        message::{MessageSeverity, MinerMessage},
         miner::{MiningMode, TuningTarget},
         pool::{PoolData, PoolGroupData, PoolURL},
     },
@@ -305,6 +306,14 @@ impl GetDataLocations for WhatsMinerV3 {
                     tag: None,
                 },
             )],
+            DataField::Messages => vec![(
+                RPC_GET_DEVICE_INFO,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/msg/error-code"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
@@ -523,7 +532,30 @@ impl GetLightFlashing for WhatsMinerV3 {
         data.extract_map::<String, _>(DataField::LightFlashing, |l| l != "auto")
     }
 }
-impl GetMessages for WhatsMinerV3 {}
+impl GetMessages for WhatsMinerV3 {
+    fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
+        let mut messages = Vec::new();
+        if let Some(errors) = data.get(&DataField::Messages) {
+            for item in errors.as_array().into_iter().flatten() {
+                if let Some(obj) = item.as_object() {
+                    for (key, _val) in obj.iter() {
+                        if key == "reason" {
+                            continue;
+                        }
+                        let code = key.parse::<u64>().unwrap_or(0);
+                        messages.push(MinerMessage::new(
+                            0,
+                            code,
+                            crate::error_codes::error_message(code),
+                            MessageSeverity::Error,
+                        ));
+                    }
+                }
+            }
+        }
+        messages
+    }
+}
 impl GetUptime for WhatsMinerV3 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
@@ -975,7 +1007,8 @@ mod integration_tests {
 
     use super::*;
     use crate::test::json::v3::{
-        GET_DEVICE_INFO_COMMAND, GET_MINER_STATUS_EDEVS_COMMAND, GET_MINER_STATUS_POOLS_COMMAND,
+        GET_DEVICE_INFO_COMMAND, GET_DEVICE_INFO_WITH_ERRORS_COMMAND,
+        GET_MINER_STATUS_EDEVS_COMMAND, GET_MINER_STATUS_POOLS_COMMAND,
         GET_MINER_STATUS_SUMMARY_COMMAND,
     };
 
@@ -1058,6 +1091,64 @@ mod integration_tests {
         assert!(miner_data.is_mining);
         assert_eq!(miner_data.fans.len(), 2);
         assert_eq!(miner_data.pools[0].len(), 3);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_whatsminer_v3_parse_messages() -> anyhow::Result<()> {
+        // Arrange
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK40);
+        let mut results = HashMap::new();
+
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.device.info",
+                parameters: None,
+            },
+            Value::from_str(GET_DEVICE_INFO_WITH_ERRORS_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.miner.status",
+                parameters: Some(json!("summary")),
+            },
+            Value::from_str(GET_MINER_STATUS_SUMMARY_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.miner.status",
+                parameters: Some(json!("pools")),
+            },
+            Value::from_str(GET_MINER_STATUS_POOLS_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get.miner.status",
+                parameters: Some(json!("edevs")),
+            },
+            Value::from_str(GET_MINER_STATUS_EDEVS_COMMAND)?,
+        );
+
+        let mock_api = MockAPIClient::new(results);
+
+        // Act
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect_all().await;
+        let miner_data = miner.parse_data(data);
+
+        // Assert
+        assert_eq!(miner_data.messages.len(), 2);
+        assert_eq!(miner_data.messages[0].code, 218);
+        assert_eq!(
+            miner_data.messages[0].message,
+            "Power input voltage is lower than 230V for high power mode."
+        );
+        assert_eq!(miner_data.messages[1].code, 541);
+        assert_eq!(
+            miner_data.messages[1].message,
+            "Slot 1 error reading chip id."
+        );
 
         Ok(())
     }

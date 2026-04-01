@@ -8,3 +8,5 @@ pub(crate) const GET_VERSION_COMMAND: &str = include_str!("get_version.json");
 pub(crate) const GET_PSU_COMMAND: &str = include_str!("get_psu.json");
 pub(crate) const GET_MINER_INFO_COMMAND: &str = include_str!("get_miner_info.json");
 pub(crate) const GET_ERROR_CODE_COMMAND: &str = include_str!("get_error_code.json");
+pub(crate) const GET_ERROR_CODE_WITH_ERRORS_COMMAND: &str =
+    include_str!("get_error_code_with_errors.json");

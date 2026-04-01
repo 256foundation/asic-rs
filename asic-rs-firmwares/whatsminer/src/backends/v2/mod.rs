@@ -515,20 +515,22 @@ impl GetMessages for WhatsMinerV2 {
                 let object = obj.as_object();
                 if let Some(obj) = object {
                     for (code, time) in obj.iter() {
-                        let timestamp = NaiveDateTime::parse_from_str(
-                            time.as_str().unwrap(),
-                            "%Y-%m-%d %H:%M:%S",
-                        )
-                        .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc))
-                        .map(|dt| dt.timestamp_millis() as u32);
+                        let Some(time_str) = time.as_str() else {
+                            continue;
+                        };
+                        let timestamp =
+                            NaiveDateTime::parse_from_str(time_str, "%Y-%m-%d %H:%M:%S")
+                                .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc))
+                                .map(|dt| dt.timestamp_millis() as u32);
 
                         if let Ok(ts) = timestamp {
-                            messages.push(MinerMessage {
-                                timestamp: ts,
-                                code: code.parse::<u64>().unwrap_or(0),
-                                message: "".to_string(),
-                                severity: MessageSeverity::Error,
-                            })
+                            let parsed_code = code.parse::<u64>().unwrap_or(0);
+                            messages.push(MinerMessage::new(
+                                ts,
+                                parsed_code,
+                                crate::error_codes::error_message(parsed_code),
+                                MessageSeverity::Error,
+                            ))
                         }
                     }
                 }
@@ -971,8 +973,9 @@ mod integration_tests {
 
     use super::*;
     use crate::test::json::v2::{
-        DEVS_COMMAND, GET_ERROR_CODE_COMMAND, GET_MINER_INFO_COMMAND, GET_PSU_COMMAND,
-        GET_VERSION_COMMAND, POOLS_COMMAND, STATUS_COMMAND, SUMMARY_COMMAND,
+        DEVS_COMMAND, GET_ERROR_CODE_COMMAND, GET_ERROR_CODE_WITH_ERRORS_COMMAND,
+        GET_MINER_INFO_COMMAND, GET_PSU_COMMAND, GET_VERSION_COMMAND, POOLS_COMMAND,
+        STATUS_COMMAND, SUMMARY_COMMAND,
     };
 
     #[tokio::test]
@@ -1082,6 +1085,89 @@ mod integration_tests {
         assert!(miner_data.is_mining);
         assert_eq!(miner_data.fans.len(), 2);
         assert_eq!(miner_data.pools[0].len(), 3);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_whatsminer_v2_parse_messages() -> anyhow::Result<()> {
+        // Arrange
+        let miner = WhatsMinerV2::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M50SVH50);
+        let mut results = HashMap::new();
+
+        results.insert(
+            MinerCommand::RPC {
+                command: "summary",
+                parameters: None,
+            },
+            Value::from_str(SUMMARY_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "status",
+                parameters: None,
+            },
+            Value::from_str(STATUS_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "pools",
+                parameters: None,
+            },
+            Value::from_str(POOLS_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "devs",
+                parameters: None,
+            },
+            Value::from_str(DEVS_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get_version",
+                parameters: None,
+            },
+            Value::from_str(GET_VERSION_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get_psu",
+                parameters: None,
+            },
+            Value::from_str(GET_PSU_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get_miner_info",
+                parameters: None,
+            },
+            Value::from_str(GET_MINER_INFO_COMMAND)?,
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "get_error_code",
+                parameters: None,
+            },
+            Value::from_str(GET_ERROR_CODE_WITH_ERRORS_COMMAND)?,
+        );
+
+        let mock_api = MockAPIClient::new(results);
+
+        // Act
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect_all().await;
+        let miner_data = miner.parse_data(data);
+
+        // Assert
+        assert_eq!(miner_data.messages.len(), 2);
+        assert_eq!(miner_data.messages[0].code, 218);
+        assert_eq!(
+            miner_data.messages[0].message,
+            "Power input voltage is lower than 230V for high power mode."
+        );
+        assert_eq!(miner_data.messages[1].code, 110);
+        assert_eq!(miner_data.messages[1].message, "Intake fan speed error.");
 
         Ok(())
     }
