@@ -771,7 +771,11 @@ pub trait SupportsScalingConfig: CollectConfigs {
 #[async_trait]
 pub trait SupportsTuningConfig: CollectConfigs {
     #[allow(unused_variables)]
-    async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
+    async fn set_tuning_config(
+        &self,
+        config: TuningConfig,
+        scaling_config: Option<ScalingConfig>,
+    ) -> anyhow::Result<bool> {
         anyhow::bail!("Setting tuning config is not supported on this platform");
     }
     #[tracing::instrument(level = "debug")]

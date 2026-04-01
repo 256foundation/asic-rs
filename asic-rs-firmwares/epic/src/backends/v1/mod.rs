@@ -901,6 +901,19 @@ fn parse_tuning_target_from_stats(
     }))
 }
 
+fn to_non_negative_u32_target(value: f64, label: &str) -> anyhow::Result<u32> {
+    anyhow::ensure!(value.is_finite(), "{label} target is not finite");
+    anyhow::ensure!(value >= 0.0, "{label} target must be non-negative");
+
+    let rounded = value.round();
+    anyhow::ensure!(
+        rounded <= u32::MAX as f64,
+        "{label} target exceeds maximum supported value"
+    );
+
+    Ok(rounded as u32)
+}
+
 impl GetTuningTarget for PowerPlayV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.get(&DataField::TuningTarget).and_then(|summary| {
@@ -1254,6 +1267,72 @@ impl SupportsScalingConfig for PowerPlayV1 {
 
 #[async_trait]
 impl SupportsTuningConfig for PowerPlayV1 {
+    async fn set_tuning_config(
+        &self,
+        config: TuningConfig,
+        scaling_config: Option<ScalingConfig>,
+    ) -> anyhow::Result<bool> {
+        let parse_algorithm = |algorithm_input: &str| -> anyhow::Result<&'static str> {
+            let normalized_algorithm = algorithm_input
+                .trim()
+                .to_ascii_lowercase()
+                .replace([' ', '_', '-'], "");
+
+            match normalized_algorithm.as_str() {
+                "chiptune" => Ok("ChipTune"),
+                "voltageoptimizer" => Ok("VoltageOptimizer"),
+                "power" | "powertune" => Ok("PowerTune"),
+                "boardtune" => Ok("BoardTune"),
+                _ => anyhow::bail!(
+                    "Unsupported perpetual tune algorithm '{algorithm_input}' for ePIC PowerPlay"
+                ),
+            }
+        };
+
+        let (algorithm, target) = match &config.target {
+            TuningTarget::Power(power) => (
+                "PowerTune",
+                to_non_negative_u32_target(power.as_watts(), "power")?,
+            ),
+            TuningTarget::HashRate(hashrate) => {
+                let algorithm_input = config.algorithm.as_deref().ok_or_else(|| {
+                    anyhow::anyhow!("TuningConfig.algorithm is required for hashrate tuning")
+                })?;
+                let algorithm = parse_algorithm(algorithm_input)?;
+                anyhow::ensure!(
+                    algorithm != "PowerTune",
+                    "Hashrate tuning target cannot be used with PowerTune algorithm"
+                );
+                let target = to_non_negative_u32_target(
+                    hashrate.clone().as_unit(HashRateUnit::TeraHash).value,
+                    "hashrate",
+                )?;
+                (algorithm, target)
+            }
+            TuningTarget::MiningMode(_) => {
+                anyhow::bail!("MiningMode tuning target is not supported on ePIC PowerPlay")
+            }
+        };
+
+        let Some(scaling) = scaling_config else {
+            anyhow::bail!("ScalingConfig is required for ePIC PowerPlay")
+        };
+
+        let payload = json!({
+            "param": {
+                "algo": algorithm,
+                "target": target,
+                "min_throttle": scaling.minimum,
+                "throttle_step": scaling.step,
+            }
+        });
+
+        self.web
+            .send_command("perpetualtune/algo", false, Some(payload), Method::POST)
+            .await
+            .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
+    }
+
     fn parse_tuning_config(
         &self,
         data: &HashMap<ConfigField, Value>,
@@ -1528,14 +1607,23 @@ mod tests {
             serde_json::to_string_pretty(&miner.get_pools_config().await?)?
         );
 
+        let scaling_config = miner.get_scaling_config().await?;
         println!(
             "scalingconfig {}",
-            serde_json::to_string_pretty(&miner.get_scaling_config().await?)?
+            serde_json::to_string_pretty(&scaling_config)?
+        );
+
+        let tuning_config = miner.get_tuning_config().await?;
+        println!(
+            "tuningconfig {}",
+            serde_json::to_string_pretty(&tuning_config)?
         );
 
         println!(
-            "tuningconfig {}",
-            serde_json::to_string_pretty(&miner.get_tuning_config().await?)?
+            "set_tuning_config {}",
+            miner
+                .set_tuning_config(tuning_config, Some(scaling_config))
+                .await?
         );
 
         println!(

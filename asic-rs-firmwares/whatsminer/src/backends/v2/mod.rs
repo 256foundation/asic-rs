@@ -5,6 +5,7 @@ use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
         pools::PoolGroupConfig,
+        scaling::ScalingConfig,
         tuning::TuningConfig,
     },
     data::{
@@ -774,7 +775,11 @@ fn tuning_config_to_rpc(config: &TuningConfig) -> anyhow::Result<(&'static str, 
 
 #[async_trait]
 impl SupportsTuningConfig for WhatsMinerV2 {
-    async fn set_tuning_config(&self, config: TuningConfig) -> anyhow::Result<bool> {
+    async fn set_tuning_config(
+        &self,
+        config: TuningConfig,
+        _scaling_config: Option<ScalingConfig>,
+    ) -> anyhow::Result<bool> {
         let is_power_target = matches!(&config.target, TuningTarget::Power(_));
         let is_mining_mode = matches!(&config.target, TuningTarget::MiningMode(_));
         let (command, param) = tuning_config_to_rpc(&config)?;
