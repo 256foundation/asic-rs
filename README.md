@@ -140,6 +140,34 @@ async fn main() {
 }
 ```
 
+#### Authentication
+
+By default, each backend uses its built-in default credentials (e.g. `root/root` for AntMiner,
+`admin/admin` for WhatsMiner). To use custom credentials, call `set_auth` on the miner:
+
+```rust
+use asic_rs::MinerFactory;
+use asic_rs_core::traits::auth::MinerAuth;
+use std::str::FromStr;
+use std::net::IpAddr;
+use tokio;
+
+#[tokio::main]
+async fn main() {
+    let factory = MinerFactory::new();
+    let ip = IpAddr::from_str("192.168.1.10").unwrap();
+    let miner_opt = factory.get_miner(ip).await.unwrap();
+    if let Some(mut miner) = miner_opt {
+        miner.set_auth(MinerAuth::new("myuser", "mypassword"));
+        // All subsequent operations use the custom credentials
+        let data = miner.get_data().await;
+    }
+}
+```
+
+Credentials can also be passed during discovery via `build_miner`, which applies them
+to both discovery (e.g. AntMiner digest auth) and runtime operations.
+
 ## Contributing
 
 Contributions are welcome! This project uses the [Conventional Commits][__link5] specification for commit messages.
@@ -166,9 +194,9 @@ The README is auto generated with `doc2readme`, please do not edit it manually.
 Instead, changes can be made in `lib.rs`.
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbgiWOwqb2YKkbqMVrNrCIcPMbhrOdZpcmg20bYiAXpb0OQsdhYvRhcoQbJfIGvKjr7F4bt8UpQFKOjIMbPupR_xEtI7Ub0xMpmb2P-FJhZIODZ2FzaWMtcnNlMC4zLjBnYXNpY19yc4JkZGF0YfaCZm1pbmVyc_Y
- [__link0]: https://docs.rs/asic-rs/0.3.0/asic_rs/?search=factory::MinerFactory
- [__link1]: https://docs.rs/asic-rs/0.3.0/asic_rs/?search=factory::MinerFactory
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbgiWOwqb2YKkbqMVrNrCIcPMbhrOdZpcmg20bYiAXpb0OQsdhYvRhcoQbP95UYbyOOXcbymyiOygram8b_FTtvQwrMaQbwag7P0pfc8RhZIODZ2FzaWMtcnNlMC40LjBnYXNpY19yc4JkZGF0YfaCZm1pbmVyc_Y
+ [__link0]: https://docs.rs/asic-rs/0.4.0/asic_rs/?search=factory::MinerFactory
+ [__link1]: https://docs.rs/asic-rs/0.4.0/asic_rs/?search=factory::MinerFactory
  [__link2]: https://docs.rs/data/latest/data/?search=miner::MinerData
  [__link3]: https://docs.rs/miners/latest/miners/?search=backends::traits::GetMinerData
  [__link4]: https://docs.rs/miners/latest/miners/?search=backends::traits::HasMinerControl
