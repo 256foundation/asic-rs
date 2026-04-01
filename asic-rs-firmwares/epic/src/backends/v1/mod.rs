@@ -1607,14 +1607,23 @@ mod tests {
             serde_json::to_string_pretty(&miner.get_pools_config().await?)?
         );
 
+        let scaling_config = miner.get_scaling_config().await?;
         println!(
             "scalingconfig {}",
-            serde_json::to_string_pretty(&miner.get_scaling_config().await?)?
+            serde_json::to_string_pretty(&scaling_config)?
+        );
+
+        let tuning_config = miner.get_tuning_config().await?;
+        println!(
+            "tuningconfig {}",
+            serde_json::to_string_pretty(&tuning_config)?
         );
 
         println!(
-            "tuningconfig {}",
-            serde_json::to_string_pretty(&miner.get_tuning_config().await?)?
+            "set_tuning_config {}",
+            miner
+                .set_tuning_config(tuning_config, Some(scaling_config))
+                .await?
         );
 
         println!(
