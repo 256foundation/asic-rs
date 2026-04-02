@@ -454,7 +454,7 @@ impl GetPsuFans for WhatsMinerV2 {
 
         let psu_fan = data.extract_map::<String, _>(DataField::PsuFans, |rpm| FanData {
             position: 0i16,
-            rpm: Some(AngularVelocity::from_rpm(rpm.parse().unwrap())),
+            rpm: rpm.parse().ok().map(AngularVelocity::from_rpm),
         });
         if let Some(f) = psu_fan {
             psu_fans.push(f)
@@ -522,7 +522,7 @@ impl GetMessages for WhatsMinerV2 {
                         let timestamp =
                             NaiveDateTime::parse_from_str(time_str, "%Y-%m-%d %H:%M:%S")
                                 .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc))
-                                .map(|dt| dt.timestamp_millis() as u32);
+                                .map(|dt| dt.timestamp() as u32);
 
                         if let Ok(ts) = timestamp {
                             let parsed_code = code.parse::<u64>().unwrap_or(0);

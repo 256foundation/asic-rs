@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 description = "Core library for asic-rs, asic-rs-firmware, and asic-rs-makes."
 
+[lints]
+workspace = true
+
 [dependencies]
 measurements.workspace = true
 macaddr.workspace = true

@@ -6,6 +6,9 @@ license.workspace = true
 description = "ePIC firmware implementation for asic-rs"
 
 
+[lints]
+workspace = true
+
 [dependencies]
 asic-rs-core.workspace = true
 asic-rs-makes-antminer.workspace = true

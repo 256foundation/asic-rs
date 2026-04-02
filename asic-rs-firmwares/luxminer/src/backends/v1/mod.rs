@@ -804,7 +804,7 @@ impl GetHashboards for LuxMinerV1 {
                         .iter()
                         .filter_map(|v| v.as_object())
                         .map(|o| ChipData {
-                            position: o.get("Chip").and_then(|v| v.as_u64()).unwrap() as u16,
+                            position: o.get("Chip").and_then(|v| v.as_u64()).unwrap_or(0) as u16,
                             temperature: None,
                             hashrate: o.get("GHS 1m").and_then(|v| v.as_f64()).map(|hr| HashRate {
                                 value: hr,

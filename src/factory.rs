@@ -1,6 +1,7 @@
 use std::{
     collections::HashSet,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    panic::AssertUnwindSafe,
     pin::Pin,
     str::FromStr,
     sync::Arc,
@@ -222,6 +223,28 @@ impl MinerFactory {
     /// use [`FirmwareEntry::build_miner`] directly with the `auth` parameter.
     #[tracing::instrument(level = "debug", skip(self))]
     pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
+        match AssertUnwindSafe(self.get_miner_inner(ip))
+            .catch_unwind()
+            .await
+        {
+            Ok(result) => result,
+            Err(panic_info) => {
+                let msg = if let Some(s) = panic_info.downcast_ref::<&str>() {
+                    s.to_string()
+                } else if let Some(s) = panic_info.downcast_ref::<String>() {
+                    s.clone()
+                } else {
+                    "unknown panic".to_string()
+                };
+                tracing::error!("panic during miner discovery for {ip}: {msg}");
+                Err(anyhow::anyhow!(
+                    "internal panic during miner discovery: {msg}"
+                ))
+            }
+        }
+    }
+
+    async fn get_miner_inner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         let registry: Arc<[Arc<dyn FirmwareEntry>]> = Arc::from(
             self.search_firmwares
                 .clone()
@@ -254,12 +277,20 @@ impl MinerFactory {
             tokio::select! {
                 _ = &mut id_timeout => break,
                 r = discovery_tasks.join_next() => {
-                    match r.unwrap_or(Ok(None)) {
-                        Ok(Some(fw)) if !fw.is_stock() => {
+                    let fw = match r {
+                        Some(Ok(v)) => v,
+                        Some(Err(e)) => {
+                            tracing::warn!("discovery task failed for {ip}: {e}");
+                            continue;
+                        }
+                        None => continue,
+                    };
+                    match fw {
+                        Some(fw) if !fw.is_stock() => {
                             found = Some(fw);
                             break;
                         }
-                        Ok(Some(fw)) => {
+                        Some(fw) => {
                             found = Some(fw);
                             break;
                         }
@@ -282,7 +313,7 @@ impl MinerFactory {
                     _ = &mut id_timeout => break,
                     _ = &mut upgrade_window => break,
                     r = discovery_tasks.join_next() => {
-                        if let Ok(Some(fw)) = r.unwrap_or(Ok(None))
+                        if let Some(Ok(Some(fw))) = r
                             && !fw.is_stock()
                         {
                             found = Some(fw);

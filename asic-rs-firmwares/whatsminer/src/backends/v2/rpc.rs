@@ -66,37 +66,37 @@ fn add_to_16(input: &str) -> Vec<u8> {
     bytes
 }
 
-fn aes_ecb_enc(key: &str, data: &str) -> String {
+fn aes_ecb_enc(key: &str, data: &str) -> anyhow::Result<String> {
     let original_message = data.as_bytes(); // no manual padding
     let mut hasher = Sha256::new();
     hasher.update(key.as_bytes());
     let hashed_key = format!("{:x}", hasher.finalize());
-    let aes_key = hex::decode(hashed_key).unwrap();
+    let aes_key = hex::decode(hashed_key).expect("SHA256 hex output is always valid hex");
 
     let mut buffer = add_to_16(data).to_vec();
 
     let enc = Aes256EcbEnc::new_from_slice(&aes_key)
-        .unwrap()
+        .expect("SHA256 always produces 32 bytes, valid for AES-256")
         .encrypt_padded_mut::<ZeroPadding>(&mut buffer, original_message.len())
-        .unwrap();
+        .map_err(|e| anyhow::anyhow!("AES encryption failed: {e:?}"))?;
 
-    BASE64_STANDARD.encode(enc).replace('\n', "")
+    Ok(BASE64_STANDARD.encode(enc).replace('\n', ""))
 }
 
-fn aes_ecb_dec(key: &str, data: &str) -> String {
+fn aes_ecb_dec(key: &str, data: &str) -> anyhow::Result<String> {
     let mut hasher = Sha256::new();
     hasher.update(key.as_bytes());
     let hashed_key = format!("{:x}", hasher.finalize());
-    let aes_key = hex::decode(hashed_key).unwrap();
+    let aes_key = hex::decode(hashed_key).expect("SHA256 hex output is always valid hex");
 
-    let b64_dec = &mut BASE64_STANDARD.decode(data).unwrap()[..];
+    let b64_dec = &mut BASE64_STANDARD.decode(data)?[..];
 
     let dec = Aes256EcbDec::new_from_slice(aes_key.as_slice())
-        .unwrap()
+        .expect("SHA256 always produces 32 bytes, valid for AES-256")
         .decrypt_padded_mut::<ZeroPadding>(b64_dec)
-        .unwrap();
+        .map_err(|e| anyhow::anyhow!("AES decryption failed: {e:?}"))?;
 
-    String::from_utf8_lossy(dec).into_owned()
+    Ok(String::from_utf8_lossy(dec).into_owned())
 }
 
 trait StatusFromBTMinerV2 {
@@ -291,7 +291,7 @@ impl WhatsMinerRPCAPI {
         let enc_result = serde_json::from_str::<Value>(response)?;
         match enc_result.get("enc").and_then(|v| v.as_str()) {
             Some(enc_data) => {
-                let result = aes_ecb_dec(key, enc_data);
+                let result = aes_ecb_dec(key, enc_data)?;
                 self.parse_rpc_result(&result)
             }
             None => self.parse_rpc_result(response),
@@ -369,7 +369,7 @@ impl WhatsMinerRPCAPI {
                 json!({ "command": command, "token": token_data.host_sign })
             }
         };
-        let enc = aes_ecb_enc(&token_data.host_password_md5, &request.to_string());
+        let enc = aes_ecb_enc(&token_data.host_password_md5, &request.to_string())?;
         let command = json!({"enc": 1, "data": enc});
         let json_str = command.to_string();
         let json_bytes = json_str.as_bytes();

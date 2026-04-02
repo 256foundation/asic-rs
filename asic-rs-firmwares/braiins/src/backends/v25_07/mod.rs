@@ -555,7 +555,7 @@ impl GetMessages for BraiinsV2507 {
                     .get("timestamp")
                     .and_then(|v| v.as_str())
                     .and_then(|dt| dt.parse::<DateTime<Utc>>().ok())
-                    .map(|dt| dt.timestamp_millis() as u32);
+                    .map(|dt| dt.timestamp() as u32);
                 let message = error.get("message").and_then(|v| v.as_str());
                 if let Some(ts) = timestamp {
                     messages.push(MinerMessage::new(

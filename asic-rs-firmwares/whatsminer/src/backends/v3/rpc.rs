@@ -21,18 +21,18 @@ use tokio::io::AsyncWriteExt;
 
 type Aes256EcbEnc = ecb::Encryptor<Aes256>;
 
-fn encrypt_param(aes_key: &[u8], data: &str) -> String {
+fn encrypt_param(aes_key: &[u8], data: &str) -> anyhow::Result<String> {
     let original_len = data.len();
     let padded_len = (original_len + 15) & !15;
     let mut buffer = data.as_bytes().to_vec();
     buffer.resize(padded_len, 0);
 
     let enc = Aes256EcbEnc::new_from_slice(aes_key)
-        .unwrap()
+        .map_err(|e| anyhow::anyhow!("Invalid AES key length: {e:?}"))?
         .encrypt_padded_mut::<ZeroPadding>(&mut buffer, original_len)
-        .unwrap();
+        .map_err(|e| anyhow::anyhow!("AES encryption failed: {e:?}"))?;
 
-    BASE64_STANDARD.encode(enc).replace('\n', "")
+    Ok(BASE64_STANDARD.encode(enc).replace('\n', ""))
 }
 
 #[derive(Debug)]
@@ -203,7 +203,7 @@ impl WhatsMinerRPCAPI {
         let request = match parameters {
             Some(other) => {
                 let param = if command == "set.miner.pools" {
-                    json!(encrypt_param(&hashed_command, &other.to_string()))
+                    json!(encrypt_param(&hashed_command, &other.to_string())?)
                 } else {
                     other
                 };

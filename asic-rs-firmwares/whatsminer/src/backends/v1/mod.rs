@@ -412,7 +412,7 @@ impl GetPsuFans for WhatsMinerV1 {
 
         let psu_fan = data.extract_map::<String, _>(DataField::PsuFans, |rpm| FanData {
             position: 0i16,
-            rpm: Some(AngularVelocity::from_rpm(rpm.parse().unwrap())),
+            rpm: rpm.parse().ok().map(AngularVelocity::from_rpm),
         });
         if let Some(f) = psu_fan {
             psu_fans.push(f)

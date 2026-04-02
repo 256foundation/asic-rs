@@ -98,6 +98,11 @@ pyo3-async-runtimes = { version = "0.28.0", features = ["tokio-runtime", "unstab
 pyo3-introspection = { version = "0.28.2" }
 pyo3-log = { version = "0.13.3" }
 
+[workspace.lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+
 [features]
 default = [
     "antminer",
@@ -189,11 +194,14 @@ pyo3-introspection = {workspace = true, optional = true}
 pyo3-log = {workspace = true, optional = true}
 
 
+[lints]
+workspace = true
+
 [profile.release]
 opt-level = 3
 lto = "fat"
 codegen-units = 1
-panic = "abort"
+panic = "unwind"
 incremental = false
 strip = true
 

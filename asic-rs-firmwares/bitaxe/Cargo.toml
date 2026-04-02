@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 description = "Bitaxe/ESPMiner firmware implementation for asic-rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 asic-rs-core.workspace = true
 asic-rs-makes-bitaxe.workspace = true

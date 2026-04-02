@@ -12,9 +12,10 @@ use regex::Regex;
 use serde_json::{Value, json};
 use tokio::io::AsyncWriteExt;
 
-static STATS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\w+)\[([^]]+)]").unwrap());
+static STATS_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\w+)\[([^]]+)]").expect("valid hardcoded regex"));
 static NESTED_STATS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"'([^']+)':\{([^}]*)}").unwrap());
+    LazyLock::new(|| Regex::new(r"'([^']+)':\{([^}]*)}").expect("valid hardcoded regex"));
 
 #[derive(Debug)]
 pub struct AvalonMinerRPCAPI {

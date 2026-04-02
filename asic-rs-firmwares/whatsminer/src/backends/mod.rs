@@ -19,12 +19,12 @@ impl MinerConstructor for WhatsMiner {
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner> {
         if let Some(v) = version {
             if semver::VersionReq::parse(">=2024.11.0")
-                .unwrap()
+                .expect("valid hardcoded semver")
                 .matches(&v)
             {
                 Box::new(WhatsMinerV3::new(ip, model))
             } else if semver::VersionReq::parse(">= 2022.7.29")
-                .unwrap()
+                .expect("valid hardcoded semver")
                 .matches(&v)
             {
                 Box::new(WhatsMinerV2::new(ip, model))

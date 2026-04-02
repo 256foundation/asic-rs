@@ -18,11 +18,14 @@ impl MinerConstructor for Bitaxe {
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner> {
         if let Some(v) = version {
             if semver::VersionReq::parse(">=2.0.0, <2.9.0")
-                .unwrap()
+                .expect("valid hardcoded semver")
                 .matches(&v)
             {
                 Box::new(Bitaxe200::new(ip, model))
-            } else if semver::VersionReq::parse(">=2.9.0").unwrap().matches(&v) {
+            } else if semver::VersionReq::parse(">=2.9.0")
+                .expect("valid hardcoded semver")
+                .matches(&v)
+            {
                 Box::new(Bitaxe290::new(ip, model))
             } else {
                 Box::new(Bitaxe290::new(ip, model))
