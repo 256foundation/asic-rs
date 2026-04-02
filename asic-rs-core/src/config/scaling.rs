@@ -34,3 +34,23 @@ impl ScalingConfig {
         self
     }
 }
+
+#[cfg(feature = "python")]
+mod python_impls {
+    use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
+
+    use super::ScalingConfig;
+
+    impl FromPyObject<'_, '_> for ScalingConfig {
+        type Error = PyErr;
+
+        fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
+            Ok(ScalingConfig {
+                step: obj.getattr("step")?.extract()?,
+                minimum: obj.getattr("minimum")?.extract()?,
+                shutdown: obj.getattr("shutdown")?.extract()?,
+                shutdown_duration: obj.getattr("shutdown_duration")?.extract()?,
+            })
+        }
+    }
+}

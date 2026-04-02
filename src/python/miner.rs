@@ -1,13 +1,16 @@
-use std::{net::IpAddr, sync::Arc, time::Duration};
+use std::{net::IpAddr, path::PathBuf, sync::Arc, time::Duration};
 
 use asic_rs_core::{
-    config::pools::PoolGroupConfig,
+    config::{
+        fan::FanConfig, pools::PoolGroupConfig, scaling::ScalingConfig, tuning::TuningConfig,
+    },
     data::{
         device::{HashAlgorithm, MinerHardware},
         firmware::FirmwareImage,
     },
     traits::{auth::MinerAuth, miner::Miner as MinerTrait},
 };
+use measurements::Power;
 use pyo3::{
     exceptions::{PyRuntimeError, PyValueError},
     prelude::*,
@@ -114,6 +117,18 @@ impl Miner {
     #[getter]
     fn supports_upgrade_firmware(&self) -> bool {
         self.inner.supports_upgrade_firmware()
+    }
+    #[getter]
+    fn supports_scaling_config(&self) -> bool {
+        self.inner.supports_scaling_config()
+    }
+    #[getter]
+    fn supports_tuning_config(&self) -> bool {
+        self.inner.supports_tuning_config()
+    }
+    #[getter]
+    fn supports_fan_config(&self) -> bool {
+        self.inner.supports_fan_config()
     }
     pub fn set_auth(&mut self, username: String, password: String) -> PyResult<()> {
         Arc::get_mut(&mut self.inner)
@@ -270,8 +285,25 @@ impl Miner {
     pub fn get_pools_config<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            let data = inner.get_pools_config().await;
-            Ok(data.ok())
+            Ok(inner.get_pools_config().await.ok())
+        })
+    }
+    pub fn get_scaling_config<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            Ok(inner.get_scaling_config().await.ok())
+        })
+    }
+    pub fn get_tuning_config<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            Ok(inner.get_tuning_config().await.ok())
+        })
+    }
+    pub fn get_fan_config<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            Ok(inner.get_fan_config().await.ok())
         })
     }
 
@@ -312,6 +344,12 @@ impl Miner {
             Ok(data.ok())
         })
     }
+    pub fn set_power_limit<'a>(&self, py: Python<'a>, watts: f64) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            Ok(inner.set_power_limit(Power::from_watts(watts)).await.ok())
+        })
+    }
     pub fn set_pools_config<'a>(
         &self,
         py: Python<'a>,
@@ -319,11 +357,45 @@ impl Miner {
     ) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
-            let data = inner.set_pools_config(groups).await;
-            Ok(data.ok())
+            Ok(inner.set_pools_config(groups).await.ok())
         })
     }
-    pub fn upgrade_firmware<'a>(&self, py: Python<'a>, path: String) -> PyResult<Bound<'a, PyAny>> {
+    pub fn set_scaling_config<'a>(
+        &self,
+        py: Python<'a>,
+        config: ScalingConfig,
+    ) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            Ok(inner.set_scaling_config(config).await.ok())
+        })
+    }
+    pub fn set_tuning_config<'a>(
+        &self,
+        py: Python<'a>,
+        config: TuningConfig,
+        scaling_config: Option<ScalingConfig>,
+    ) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            Ok(inner.set_tuning_config(config, scaling_config).await.ok())
+        })
+    }
+    pub fn set_fan_config<'a>(
+        &self,
+        py: Python<'a>,
+        config: FanConfig,
+    ) -> PyResult<Bound<'a, PyAny>> {
+        let inner = Arc::clone(&self.inner);
+        pyo3_async_runtimes::tokio::future_into_py(py, async move {
+            Ok(inner.set_fan_config(config).await.ok())
+        })
+    }
+    pub fn upgrade_firmware<'a>(
+        &self,
+        py: Python<'a>,
+        path: PathBuf,
+    ) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             let image = FirmwareImage::from_file_async(&path)

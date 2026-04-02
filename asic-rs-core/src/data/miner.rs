@@ -26,6 +26,12 @@ pub enum TuningTarget {
     MiningMode(MiningMode),
 }
 
+impl TuningTarget {
+    pub fn from_watts(watts: f64) -> Self {
+        TuningTarget::Power(Power::from_watts(watts))
+    }
+}
+
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, strum::Display)]
 pub enum MiningMode {
