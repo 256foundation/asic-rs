@@ -295,8 +295,13 @@ pub enum AntMinerControlBoard {
 
 impl AntMinerControlBoard {
     pub fn parse(s: &str) -> Option<Self> {
-        let cb_model = s.trim().replace(" ", "").to_uppercase();
-        match cb_model.as_ref() {
+        let cb_model = s.trim().to_uppercase();
+        let compact = cb_model
+            .chars()
+            .filter(|ch| ch.is_ascii_alphanumeric())
+            .collect::<String>();
+
+        match compact.as_str() {
             "XILINX" => Some(Self::Xilinx),
             "BBB" | "BBCTRL" | "BB" | "BEAGLEBONE" | "BEAGLEBONEBLACK" => {
                 Some(Self::BeagleBoneBlack)
@@ -304,6 +309,7 @@ impl AntMinerControlBoard {
             "CVITEK" | "CVCTRL" => Some(Self::CVITek),
             "AMLOGIC" | "AML" => Some(Self::AMLogic),
             "AMCB07" => Some(Self::Xilinx), // Mara FW
+            "ZYNQ7007" => Some(Self::Xilinx),
             _ => None,
         }
     }
