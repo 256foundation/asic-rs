@@ -313,5 +313,7 @@ class MinerData(BaseModel):
     pools: list[PoolGroupData]
 
     @field_serializer("uptime")
-    def serialize_uptime(self, uptime: timedelta, _info) -> float:
-        return uptime.total_seconds()
+    def serialize_uptime(self, uptime: timedelta, _info) -> float | None:
+        if uptime is not None:
+            return uptime.total_seconds()
+        return None
