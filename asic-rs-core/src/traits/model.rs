@@ -23,11 +23,7 @@ impl Display for UnknownMinerModel {
 
 impl From<UnknownMinerModel> for MinerHardware {
     fn from(_: UnknownMinerModel) -> Self {
-        MinerHardware {
-            chips: None,
-            fans: None,
-            boards: None,
-        }
+        Default::default()
     }
 }
 

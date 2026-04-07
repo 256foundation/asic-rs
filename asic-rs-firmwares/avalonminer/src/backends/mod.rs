@@ -18,7 +18,7 @@ impl MinerConstructor for AvalonMiner {
     fn new(ip: IpAddr, model: impl MinerModel, _: Option<semver::Version>) -> Box<dyn Miner> {
         let avalon_model = (&model as &dyn Any)
             .downcast_ref::<AvalonMinerModel>()
-            .copied();
+            .cloned();
         match avalon_model {
             Some(AvalonMinerModel::AvalonHomeQ) => Box::new(AvalonQMiner::new(ip, model)),
             _ => Box::new(AvalonAMiner::new(ip, model)),

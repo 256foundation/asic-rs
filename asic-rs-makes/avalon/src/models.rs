@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
-#[derive(Debug, Display, Clone, PartialEq, Eq, Serialize, Deserialize, Copy, Hash)]
+#[derive(Debug, Display, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum AvalonMinerModel {
     #[serde(alias = "721")]
     Avalon721,
@@ -35,6 +35,8 @@ pub enum AvalonMinerModel {
     Avalon1126Pro,
     #[serde(alias = "1246")]
     Avalon1246,
+    #[serde(alias = "1466")]
+    Avalon1466,
     #[serde(alias = "1566")]
     Avalon1566,
     #[serde(alias = "NANO3")]
@@ -43,6 +45,8 @@ pub enum AvalonMinerModel {
     AvalonNano3s,
     #[serde(alias = "Q")]
     AvalonHomeQ,
+    #[strum(to_string = "{0}")]
+    Unknown(String),
 }
 
 impl FromStr for AvalonMinerModel {
@@ -50,12 +54,37 @@ impl FromStr for AvalonMinerModel {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_value(serde_json::Value::String(s.to_string()))
-            .map_err(|_| ModelSelectionError::UnknownModel(s.to_string()))
+            .or_else(|_| Ok(Self::Unknown(s.to_string())))
     }
 }
 
 impl asic_rs_core::traits::model::MinerModel for AvalonMinerModel {
     fn make_name(&self) -> String {
         "Avalonminer".to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn known_model_parses() {
+        // Act
+        let result = AvalonMinerModel::from_str("1466").unwrap();
+
+        // Assert
+        assert_eq!(result, AvalonMinerModel::Avalon1466);
+    }
+
+    #[test]
+    fn unknown_model_falls_back() {
+        // Act
+        let result = AvalonMinerModel::from_str("9999").unwrap();
+
+        // Assert
+        assert_eq!(result, AvalonMinerModel::Unknown("9999".to_string()));
     }
 }

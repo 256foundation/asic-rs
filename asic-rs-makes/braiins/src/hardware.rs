@@ -17,6 +17,7 @@ impl From<BraiinsModel> for MinerHardware {
                 fans: Some(1),
                 boards: Some(1),
             },
+            BraiinsModel::Unknown(_) => Default::default(),
         }
     }
 }

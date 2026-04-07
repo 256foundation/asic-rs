@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display)]
 pub enum NerdAxeModel {
     #[serde(alias = "BM1368")]
     NerdAxe,
@@ -17,6 +17,8 @@ pub enum NerdAxeModel {
     NerdMiner,
     #[serde(alias = "BM1366")]
     NerdAxeUltra,
+    #[strum(to_string = "{0}")]
+    Unknown(String),
 }
 
 impl FromStr for NerdAxeModel {
@@ -24,7 +26,7 @@ impl FromStr for NerdAxeModel {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_value(serde_json::Value::String(s.to_string()))
-            .map_err(|_| ModelSelectionError::UnknownModel(s.to_string()))
+            .or_else(|_| Ok(Self::Unknown(s.to_string())))
     }
 }
 
@@ -51,5 +53,14 @@ mod tests {
         case("NerdQAxe", NerdAxeModel::NerdQAxe);
         case("NerdMiner", NerdAxeModel::NerdMiner);
         case("NerdAxeUltra", NerdAxeModel::NerdAxeUltra);
+    }
+
+    #[test]
+    fn unknown_model_falls_back() {
+        // Act
+        let result = NerdAxeModel::from_str("NerdAxeXXX").unwrap();
+
+        // Assert
+        assert_eq!(result, NerdAxeModel::Unknown("NerdAxeXXX".to_string()));
     }
 }

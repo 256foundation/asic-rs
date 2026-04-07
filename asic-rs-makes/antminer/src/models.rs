@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display)]
 pub enum AntMinerModel {
     #[serde(alias = "ANTMINER D3")]
     D3,
@@ -119,6 +119,8 @@ pub enum AntMinerModel {
     S21eXPHydro,
     #[serde(alias = "ANTMINER T21")]
     T21,
+    #[strum(to_string = "{0}")]
+    Unknown(String),
 }
 
 impl FromStr for AntMinerModel {
@@ -126,12 +128,37 @@ impl FromStr for AntMinerModel {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_value(serde_json::Value::String(s.to_string()))
-            .map_err(|_| ModelSelectionError::UnknownModel(s.to_string()))
+            .or_else(|_| Ok(Self::Unknown(s.to_string())))
     }
 }
 
 impl asic_rs_core::traits::model::MinerModel for AntMinerModel {
     fn make_name(&self) -> String {
         "Antminer".to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn known_model_parses() {
+        // Act
+        let result = AntMinerModel::from_str("ANTMINER S21").unwrap();
+
+        // Assert
+        assert_eq!(result, AntMinerModel::S21);
+    }
+
+    #[test]
+    fn unknown_model_falls_back() {
+        // Act
+        let result = AntMinerModel::from_str("ANTMINER S99").unwrap();
+
+        // Assert
+        assert_eq!(result, AntMinerModel::Unknown("ANTMINER S99".to_string()));
     }
 }

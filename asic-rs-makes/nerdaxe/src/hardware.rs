@@ -85,6 +85,7 @@ impl From<NerdAxeModel> for MinerHardware {
                 fans: Some(1),
                 boards: Some(1),
             },
+            NerdAxeModel::Unknown(_) => Default::default(),
         }
     }
 }

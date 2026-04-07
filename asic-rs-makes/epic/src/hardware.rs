@@ -17,6 +17,7 @@ impl From<EPicModel> for MinerHardware {
                 fans: Some(8),
                 boards: Some(6),
             },
+            EPicModel::Unknown(_) => Default::default(),
         }
     }
 }

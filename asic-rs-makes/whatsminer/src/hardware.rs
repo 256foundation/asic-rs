@@ -2502,6 +2502,7 @@ impl From<WhatsMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(8),
             },
+            WhatsMinerModel::Unknown(_) => Default::default(),
         }
     }
 }

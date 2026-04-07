@@ -34,7 +34,7 @@ impl DeviceInfo {
     feature = "python",
     pyclass(from_py_object, get_all, module = "asic_rs")
 )]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Default)]
 pub struct MinerHardware {
     pub chips: Option<u16>,
     pub fans: Option<u8>,

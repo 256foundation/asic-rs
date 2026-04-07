@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display)]
 pub enum WhatsMinerModel {
     #[serde(alias = "M20PV10")]
     M20PV10,
@@ -1007,6 +1007,8 @@ pub enum WhatsMinerModel {
     M78SVM30,
     #[serde(alias = "M79SVM30")]
     M79SVM30,
+    #[strum(to_string = "{0}")]
+    Unknown(String),
 }
 
 impl FromStr for WhatsMinerModel {
@@ -1014,12 +1016,37 @@ impl FromStr for WhatsMinerModel {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_value(serde_json::Value::String(s.to_string()))
-            .map_err(|_| ModelSelectionError::UnknownModel(s.to_string()))
+            .or_else(|_| Ok(Self::Unknown(s.to_string())))
     }
 }
 
 impl asic_rs_core::traits::model::MinerModel for WhatsMinerModel {
     fn make_name(&self) -> String {
         "Whatsminer".to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn known_model_parses() {
+        // Act
+        let result = WhatsMinerModel::from_str("M20PV10").unwrap();
+
+        // Assert
+        assert_eq!(result, WhatsMinerModel::M20PV10);
+    }
+
+    #[test]
+    fn unknown_model_falls_back() {
+        // Act
+        let result = WhatsMinerModel::from_str("M99XV99").unwrap();
+
+        // Assert
+        assert_eq!(result, WhatsMinerModel::Unknown("M99XV99".to_string()));
     }
 }

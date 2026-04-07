@@ -277,6 +277,7 @@ impl From<AntMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(3),
             },
+            AntMinerModel::Unknown(_) => Default::default(),
         }
     }
 }

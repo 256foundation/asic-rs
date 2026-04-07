@@ -5,11 +5,14 @@ use strum::Display;
 use crate::models::BitaxeModel;
 
 impl From<BitaxeModel> for MinerHardware {
-    fn from(_model: BitaxeModel) -> Self {
-        Self {
-            chips: Some(1),
-            fans: Some(1),
-            boards: Some(1),
+    fn from(model: BitaxeModel) -> Self {
+        match model {
+            BitaxeModel::Unknown(_) => Default::default(),
+            _ => Self {
+                chips: Some(1),
+                fans: Some(1),
+                boards: Some(1),
+            },
         }
     }
 }

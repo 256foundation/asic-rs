@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use strum::Display;
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display)]
 pub enum BitaxeModel {
     #[serde(alias = "BM1368")]
     Supra,
@@ -17,6 +17,8 @@ pub enum BitaxeModel {
     Max,
     #[serde(alias = "BM1366")]
     Ultra,
+    #[strum(to_string = "{0}")]
+    Unknown(String),
 }
 
 impl FromStr for BitaxeModel {
@@ -24,12 +26,37 @@ impl FromStr for BitaxeModel {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_value(serde_json::Value::String(s.to_string()))
-            .map_err(|_| ModelSelectionError::UnknownModel(s.to_string()))
+            .or_else(|_| Ok(Self::Unknown(s.to_string())))
     }
 }
 
 impl asic_rs_core::traits::model::MinerModel for BitaxeModel {
     fn make_name(&self) -> String {
         "Bitaxe".to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn known_model_parses() {
+        // Act
+        let result = BitaxeModel::from_str("BM1370").unwrap();
+
+        // Assert
+        assert_eq!(result, BitaxeModel::Gamma);
+    }
+
+    #[test]
+    fn unknown_model_falls_back() {
+        // Act
+        let result = BitaxeModel::from_str("BM9999").unwrap();
+
+        // Assert
+        assert_eq!(result, BitaxeModel::Unknown("BM9999".to_string()));
     }
 }
