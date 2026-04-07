@@ -5,13 +5,33 @@ use asic_rs_core::data::{
     device::DeviceInfo,
     fan::FanData as FanData_Base,
     hashrate::HashRate,
-    message::MinerMessage,
+    message::MinerMessage as MinerMessage_Base,
     miner::{MinerData as MinerData_Base, MiningMode, TuningTarget as TuningTargetBase},
     pool::PoolGroupData,
 };
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
+
+#[pyclass(from_py_object, get_all, module = "asic_rs")]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MinerMessage {
+    pub timestamp: u32,
+    pub code: u64,
+    pub message: String,
+    pub severity: String,
+}
+
+impl From<&MinerMessage_Base> for MinerMessage {
+    fn from(base: &MinerMessage_Base) -> Self {
+        Self {
+            timestamp: base.timestamp,
+            code: base.code,
+            message: base.message.clone(),
+            severity: base.severity.to_string(),
+        }
+    }
+}
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
@@ -175,7 +195,7 @@ impl From<&MinerData_Base> for MinerData {
             tuning_target: base.tuning_target.as_ref().map(TuningTarget::from),
             efficiency: base.efficiency,
             light_flashing: base.light_flashing,
-            messages: base.messages.clone(),
+            messages: base.messages.iter().map(MinerMessage::from).collect(),
             uptime: base.uptime,
             is_mining: base.is_mining,
             pools: base.pools.clone(),

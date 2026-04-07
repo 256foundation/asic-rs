@@ -16,7 +16,7 @@ use pyo3::{
     prelude::*,
 };
 
-use super::data::{BoardData, FanData, MinerData, TuningTarget};
+use super::data::{BoardData, FanData, MinerData, MinerMessage, TuningTarget};
 
 #[pyclass(module = "asic_rs")]
 pub(crate) struct Miner {
@@ -257,7 +257,7 @@ impl Miner {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             let data = inner.get_messages().await;
-            Ok(data)
+            Ok(data.iter().map(MinerMessage::from).collect::<Vec<_>>())
         })
     }
     pub fn get_uptime<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
