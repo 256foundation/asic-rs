@@ -194,9 +194,9 @@ The README is auto generated with `doc2readme`, please do not edit it manually.
 Instead, changes can be made in `lib.rs`.
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbgiWOwqb2YKkbqMVrNrCIcPMbhrOdZpcmg20bYiAXpb0OQsdhYvRhcoQbP95UYbyOOXcbymyiOygram8b_FTtvQwrMaQbwag7P0pfc8RhZIODZ2FzaWMtcnNlMC40LjBnYXNpY19yc4JkZGF0YfaCZm1pbmVyc_Y
- [__link0]: https://docs.rs/asic-rs/0.4.0/asic_rs/?search=factory::MinerFactory
- [__link1]: https://docs.rs/asic-rs/0.4.0/asic_rs/?search=factory::MinerFactory
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbgiWOwqb2YKkbqMVrNrCIcPMbhrOdZpcmg20bYiAXpb0OQsdhYvRhcoQbP95UYbyOOXcbymyiOygram8b_FTtvQwrMaQbwag7P0pfc8RhZIODZ2FzaWMtcnNlMC40LjFnYXNpY19yc4JkZGF0YfaCZm1pbmVyc_Y
+ [__link0]: https://docs.rs/asic-rs/0.4.1/asic_rs/?search=factory::MinerFactory
+ [__link1]: https://docs.rs/asic-rs/0.4.1/asic_rs/?search=factory::MinerFactory
  [__link2]: https://docs.rs/data/latest/data/?search=miner::MinerData
  [__link3]: https://docs.rs/miners/latest/miners/?search=backends::traits::GetMinerData
  [__link4]: https://docs.rs/miners/latest/miners/?search=backends::traits::HasMinerControl
