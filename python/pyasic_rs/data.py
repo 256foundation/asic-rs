@@ -128,11 +128,13 @@ class HashRate(BaseModel):
     @field_validator("unit", mode="before")
     @classmethod
     def parse_unit(cls, value: _rs_HashRateUnit) -> HashRateUnit:
+        if isinstance(value, HashRateUnit):
+            return value
         return HashRateUnit.from_asic_rs(value)
 
     def into_unit(self, unit: HashRateUnit) -> Self:
         return HashRate(
-            value=(self.value / int(self.unit)) * int(unit), unit=unit, algo=self.algo
+            value=(self.value * int(self.unit)) / int(unit), unit=unit, algo=self.algo
         )
 
 
