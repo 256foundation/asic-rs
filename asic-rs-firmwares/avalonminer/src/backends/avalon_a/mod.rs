@@ -107,10 +107,10 @@ impl Pause for AvalonAMiner {
         if let Some(status) = data.get("STATUS").and_then(|s| s.as_array())
             && !status.is_empty()
             && let Some(status_code) = status[0].get("STATUS").and_then(|s| s.as_str())
-            && status_code == "I"
+            && status_code == "S"
             && let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str())
         {
-            return Ok(msg.contains("success softoff"));
+            return Ok(msg == "ASC 0 set OK");
         }
 
         Ok(false)
@@ -130,24 +130,36 @@ impl Resume for AvalonAMiner {
             .expect("Shutdown time is before UNIX epoch")
             .as_secs();
 
-        let data = self
+        let result = self
             .rpc
             .send_command(
                 "ascset",
                 false,
                 Some(json!(["0", format!("softon,1:{}", timestamp)])),
             )
-            .await?;
+            .await;
 
-        if let Some(status) = data.get("STATUS").and_then(|s| s.as_array())
-            && !status.is_empty()
-            && let Some(status_code) = status[0].get("STATUS").and_then(|s| s.as_str())
-            && status_code == "I"
-            && let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str())
-        {
-            return Ok(msg.contains("success softon"));
+        match result {
+            Ok(data) => {
+                if let Some(status) = data.get("STATUS").and_then(|s| s.as_array())
+                    && !status.is_empty()
+                    && let Some(status_code) = status[0].get("STATUS").and_then(|s| s.as_str())
+                    && status_code == "S"
+                    && let Some(msg) = status[0].get("Msg").and_then(|m| m.as_str())
+                {
+                    return Ok(msg == "ASC 0 set OK");
+                }
+                Ok(false)
+            }
+            // softon closes the connection without responding — treat as success
+            Err(e)
+                if e.to_string().contains("No data received")
+                    || e.to_string().contains("timed out") =>
+            {
+                Ok(true)
+            }
+            Err(e) => Err(e),
         }
-        Ok(false)
     }
     fn supports_resume(&self) -> bool {
         true

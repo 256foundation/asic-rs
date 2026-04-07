@@ -72,6 +72,11 @@ impl From<AvalonMinerModel> for MinerHardware {
                 chips: Some(120),
                 fans: Some(4),
             },
+            AvalonMinerModel::Avalon1466 => Self {
+                boards: Some(3),
+                chips: Some(153),
+                fans: Some(2),
+            },
             AvalonMinerModel::Avalon1566 => Self {
                 boards: Some(3),
                 chips: Some(160),

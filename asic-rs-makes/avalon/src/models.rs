@@ -35,6 +35,8 @@ pub enum AvalonMinerModel {
     Avalon1126Pro,
     #[serde(alias = "1246")]
     Avalon1246,
+    #[serde(alias = "1466")]
+    Avalon1466,
     #[serde(alias = "1566")]
     Avalon1566,
     #[serde(alias = "NANO3")]
