@@ -24,6 +24,10 @@ class Miner:
         return self.__inner.__repr__()
 
     @property
+    def ip(self) -> str:
+        return self.__inner.ip
+
+    @property
     def model(self) -> str:
         return self.__inner.model
 
