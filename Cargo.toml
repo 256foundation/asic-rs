@@ -177,6 +177,7 @@ asic-rs-firmwares-vnish = { workspace = true, optional = true }
 asic-rs-firmwares-whatsminer = { workspace = true, optional = true }
 
 futures.workspace = true
+measurements.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

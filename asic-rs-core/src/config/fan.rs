@@ -9,6 +9,7 @@ pub enum FanMode {
     Manual,
 }
 
+#[cfg_attr(feature = "python", pyclass(skip_from_py_object, module = "asic_rs"))]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "mode", rename_all = "PascalCase")]
 pub enum FanConfig {
@@ -58,6 +59,69 @@ impl FanConfig {
         match self {
             Self::Auto { .. } => None,
             Self::Manual { fan_speed } => Some(*fan_speed),
+        }
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl FanConfig {
+    #[getter]
+    #[pyo3(name = "mode")]
+    fn py_mode(&self) -> FanMode {
+        self.mode()
+    }
+
+    #[getter]
+    #[pyo3(name = "target_temp")]
+    fn py_target_temp(&self) -> Option<f64> {
+        self.target_temp()
+    }
+
+    #[getter]
+    #[pyo3(name = "idle_speed")]
+    fn py_idle_speed(&self) -> Option<u64> {
+        self.idle_speed()
+    }
+
+    #[getter]
+    #[pyo3(name = "fan_speed")]
+    fn py_fan_speed(&self) -> Option<u64> {
+        self.fan_speed()
+    }
+}
+
+#[cfg(feature = "python")]
+mod python_impls {
+    use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
+
+    use super::FanConfig;
+
+    impl FromPyObject<'_, '_> for FanConfig {
+        type Error = PyErr;
+
+        fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
+            let mode: String = obj.getattr("mode")?.extract()?;
+            match mode.to_lowercase().as_str() {
+                "auto" => {
+                    let target_temp: f64 = obj.getattr("target_temp")?.extract()?;
+                    let idle_speed: Option<u64> = obj
+                        .getattr("idle_speed")
+                        .and_then(|v| v.extract())
+                        .unwrap_or(None);
+                    Ok(FanConfig::Auto {
+                        target_temp,
+                        idle_speed,
+                    })
+                }
+                "manual" => {
+                    let fan_speed: u64 = obj.getattr("fan_speed")?.extract()?;
+                    Ok(FanConfig::Manual { fan_speed })
+                }
+                _ => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                    "Unknown fan mode '{mode}', expected 'auto' or 'manual'"
+                ))),
+            }
         }
     }
 }

@@ -1,9 +1,20 @@
+import os
 from datetime import timedelta
 
 from pyasic_rs.asic_rs import HashAlgorithm as _rs_HashAlgorithm
 from pyasic_rs.asic_rs import Miner as _rs_Miner
 
-from .config import PoolGroup
+from .config import (
+    AutoFanConfig,
+    FanConfig,
+    ManualFanConfig,
+    PoolGroup,
+    ScalingConfig,
+    TuningConfig,
+    TuningConfigHashRate,
+    TuningConfigMode,
+    TuningConfigPower,
+)
 from .data import (
     MinerData,
     BoardData,
@@ -155,8 +166,52 @@ class Miner:
             at_time = timedelta(seconds=at_time)
         return await self.__inner.resume(at_time)
 
+    async def get_scaling_config(self) -> ScalingConfig | None:
+        inner = await self.__inner.get_scaling_config()
+        if inner is not None:
+            return ScalingConfig.model_validate(inner)
+        return None
+
+    async def get_tuning_config(
+        self,
+    ) -> TuningConfigPower | TuningConfigHashRate | TuningConfigMode | None:
+        inner = await self.__inner.get_tuning_config()
+        if inner is not None:
+            return TuningConfig.model_validate(inner)
+        return None
+
+    async def get_fan_config(self) -> FanConfig | None:
+        inner = await self.__inner.get_fan_config()
+        if inner is None:
+            return None
+        mode = str(inner.mode).lower()
+        if mode == "auto":
+            return AutoFanConfig.model_validate(inner)
+        if mode == "manual":
+            return ManualFanConfig.model_validate(inner)
+        return None
+
     async def set_pools_config(self, groups: list[PoolGroup]) -> bool | None:
         return await self.__inner.set_pools_config(groups)
+
+    async def set_power_limit(self, watts: float) -> bool | None:
+        return await self.__inner.set_power_limit(watts)
+
+    async def set_scaling_config(self, config: ScalingConfig) -> bool | None:
+        return await self.__inner.set_scaling_config(config)
+
+    async def set_tuning_config(
+        self,
+        config: TuningConfigPower | TuningConfigHashRate | TuningConfigMode,
+        scaling_config: ScalingConfig | None = None,
+    ) -> bool | None:
+        return await self.__inner.set_tuning_config(config, scaling_config)
+
+    async def set_fan_config(self, config: FanConfig) -> bool | None:
+        return await self.__inner.set_fan_config(config)
+
+    async def upgrade_firmware(self, path: str | os.PathLike[str]) -> None:
+        return await self.__inner.upgrade_firmware(path)
 
     @property
     def supports_set_fault_light(self) -> bool:
@@ -181,6 +236,22 @@ class Miner:
     @property
     def supports_pools_config(self) -> bool:
         return self.__inner.supports_pools_config
+
+    @property
+    def supports_scaling_config(self) -> bool:
+        return self.__inner.supports_scaling_config
+
+    @property
+    def supports_tuning_config(self) -> bool:
+        return self.__inner.supports_tuning_config
+
+    @property
+    def supports_fan_config(self) -> bool:
+        return self.__inner.supports_fan_config
+
+    @property
+    def supports_upgrade_firmware(self) -> bool:
+        return self.__inner.supports_upgrade_firmware
 
     def set_auth(self, username: str, password: str) -> None:
         self.__inner.set_auth(username, password)

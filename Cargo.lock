@@ -79,6 +79,7 @@ dependencies = [
  "async-stream",
  "futures",
  "ipnet",
+ "measurements",
  "pyo3",
  "pyo3-async-runtimes",
  "pyo3-introspection",
