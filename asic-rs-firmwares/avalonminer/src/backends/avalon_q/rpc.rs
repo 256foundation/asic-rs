@@ -151,10 +151,22 @@ impl RPCAPIClient for AvalonMinerRPCAPI {
         param: Option<Value>,
     ) -> anyhow::Result<Value> {
         let cmd = match param {
-            Some(params) => json!({
-                "command": command,
-                "parameter": params
-            }),
+            Some(params) => {
+                let parameter = if let Some(arr) = params.as_array() {
+                    Value::String(
+                        arr.iter()
+                            .filter_map(|v| v.as_str())
+                            .collect::<Vec<_>>()
+                            .join(","),
+                    )
+                } else {
+                    params
+                };
+                json!({
+                    "command": command,
+                    "parameter": parameter
+                })
+            }
             None => json!({
                 "command": command
             }),
