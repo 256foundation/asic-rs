@@ -339,11 +339,11 @@ impl MinerFactory {
             Some(fw) => {
                 let auth = self.discovery_auth_by_firmware.get(fw.firmware_id());
                 match fw.build_miner(ip, auth).await {
-                Ok(miner) => Ok(Some(miner)),
-                Err(e) => {
-                    tracing::debug!("failed to build miner for {ip}: {e}");
-                    Ok(None)
-                }
+                    Ok(miner) => Ok(Some(miner)),
+                    Err(e) => {
+                        tracing::debug!("failed to build miner for {ip}: {e}");
+                        Ok(None)
+                    }
                 }
             }
             None => {
@@ -380,7 +380,8 @@ impl MinerFactory {
         firmware_id: impl Into<String>,
         auth: MinerAuth,
     ) -> Self {
-        self.discovery_auth_by_firmware.insert(firmware_id.into(), auth);
+        self.discovery_auth_by_firmware
+            .insert(firmware_id.into(), auth);
         self
     }
 
