@@ -27,13 +27,14 @@ sed -i '/^\[workspace\.dependencies\]/,/^\[/{s/version = "'"$CURRENT_VERSION"'"/
 # Update pyproject.toml (only the [project] section)
 sed -i '/^\[project\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' pyproject.toml
 
-# Regenerate README from doc comments
-if ! cargo doc2readme 2>/dev/null; then
-    echo "Warning: cargo doc2readme failed or not installed; README not updated" >&2
-fi
+# Update Cargo.lock to reflect new version
+cargo update --workspace
+
+# Regenerate README from doc comments (mirrors .github/workflows/readme.yml)
+cargo doc2readme
 
 git checkout -b "$BRANCH"
-git add Cargo.toml pyproject.toml README.md
+git add Cargo.toml pyproject.toml README.md Cargo.lock
 git commit -m "chore(release): prepare for v${VERSION}"
 
 echo "Done. Branch '$BRANCH' created with version bumped to $VERSION."
