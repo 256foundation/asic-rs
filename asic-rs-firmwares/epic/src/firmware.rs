@@ -151,6 +151,10 @@ impl FirmwareIdentification for EPicFirmware {
 
 #[async_trait]
 impl FirmwareEntry for EPicFirmware {
+    fn firmware_id(&self) -> &'static str {
+        "epic"
+    }
+
     async fn build_miner(
         &self,
         ip: IpAddr,

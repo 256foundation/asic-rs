@@ -17,6 +17,12 @@ use crate::{
 /// construct a fully-typed miner instance after identification succeeds.
 #[async_trait]
 pub trait FirmwareEntry: FirmwareIdentification + DiscoveryCommands + Send + Sync + Debug {
+    /// Stable identifier for this firmware entry.
+    ///
+    /// Intended for wiring per-firmware configuration in factory-level
+    /// discovery/build flows (for example credential overrides).
+    fn firmware_id(&self) -> &'static str;
+
     /// Construct a fully-typed miner instance for the given IP.
     ///
     /// When `auth` is provided, it is used for both discovery (e.g.

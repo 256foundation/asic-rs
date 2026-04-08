@@ -65,6 +65,10 @@ impl FirmwareIdentification for MarathonFirmware {
 
 #[async_trait]
 impl FirmwareEntry for MarathonFirmware {
+    fn firmware_id(&self) -> &'static str {
+        "marathon"
+    }
+
     async fn build_miner(
         &self,
         ip: IpAddr,

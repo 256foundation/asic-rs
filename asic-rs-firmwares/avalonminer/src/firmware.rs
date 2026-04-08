@@ -72,6 +72,10 @@ impl FirmwareIdentification for AvalonStockFirmware {
 
 #[async_trait]
 impl FirmwareEntry for AvalonStockFirmware {
+    fn firmware_id(&self) -> &'static str {
+        "avalonminer-stock"
+    }
+
     async fn build_miner(
         &self,
         ip: IpAddr,

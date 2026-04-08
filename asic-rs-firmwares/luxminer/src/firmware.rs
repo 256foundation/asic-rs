@@ -65,6 +65,10 @@ impl FirmwareIdentification for LuxMinerFirmware {
 
 #[async_trait]
 impl FirmwareEntry for LuxMinerFirmware {
+    fn firmware_id(&self) -> &'static str {
+        "luxminer"
+    }
+
     async fn build_miner(
         &self,
         ip: IpAddr,

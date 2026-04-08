@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     net::{IpAddr, Ipv4Addr, SocketAddr},
     panic::AssertUnwindSafe,
     pin::Pin,
@@ -162,7 +162,7 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
 pub struct MinerFactory {
     search_firmwares: Option<Vec<Arc<dyn FirmwareEntry>>>,
     ips: Vec<IpAddr>,
-    discovery_auth: Option<MinerAuth>,
+    discovery_auth_by_firmware: HashMap<String, MinerAuth>,
     identification_timeout: Duration,
     connectivity_timeout: Duration,
     connectivity_retries: u32,
@@ -180,7 +180,10 @@ impl std::fmt::Debug for MinerFactory {
                 "search_firmwares",
                 &self.search_firmwares.as_ref().map(|v| v.len()),
             )
-            .field("discovery_auth", &self.discovery_auth.is_some())
+            .field(
+                "discovery_auth_by_firmware",
+                &self.discovery_auth_by_firmware.len(),
+            )
             .field("identification_timeout", &self.identification_timeout)
             .field("connectivity_timeout", &self.connectivity_timeout)
             .field("connectivity_retries", &self.connectivity_retries)
@@ -224,8 +227,8 @@ impl MinerFactory {
 
     /// Discover and construct a miner at the given IP.
     ///
-    /// Uses default credentials during discovery unless overridden via
-    /// [`Self::with_discovery_auth`].
+    /// Uses backend default credentials during discovery/build unless
+    /// overridden via [`Self::with_firmware_discovery_auth`].
     #[tracing::instrument(level = "debug", skip(self))]
     pub async fn get_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         match AssertUnwindSafe(self.get_miner_inner(ip))
@@ -333,13 +336,16 @@ impl MinerFactory {
         while discovery_tasks.join_next().await.is_some() {}
 
         match found {
-            Some(fw) => match fw.build_miner(ip, self.discovery_auth.as_ref()).await {
+            Some(fw) => {
+                let auth = self.discovery_auth_by_firmware.get(fw.firmware_id());
+                match fw.build_miner(ip, auth).await {
                 Ok(miner) => Ok(Some(miner)),
                 Err(e) => {
                     tracing::debug!("failed to build miner for {ip}: {e}");
                     Ok(None)
                 }
-            },
+                }
+            }
             None => {
                 tracing::debug!("failed to identify {ip}");
                 Ok(None)
@@ -351,7 +357,7 @@ impl MinerFactory {
         MinerFactory {
             search_firmwares: None,
             ips: Vec::new(),
-            discovery_auth: None,
+            discovery_auth_by_firmware: HashMap::new(),
             identification_timeout: IDENTIFICATION_TIMEOUT,
             connectivity_timeout: CONNECTIVITY_TIMEOUT,
             connectivity_retries: CONNECTIVITY_RETRIES,
@@ -367,12 +373,14 @@ impl MinerFactory {
         self
     }
 
-    /// Set credentials to use when building miners after identification.
-    ///
-    /// This is useful for stock firmwares that require non-default digest
-    /// credentials during model/version probing.
-    pub fn with_discovery_auth(mut self, auth: MinerAuth) -> Self {
-        self.discovery_auth = Some(auth);
+    /// Set credentials for a specific firmware entry ID to use during
+    /// miner construction after identification.
+    pub fn with_firmware_discovery_auth(
+        mut self,
+        firmware_id: impl Into<String>,
+        auth: MinerAuth,
+    ) -> Self {
+        self.discovery_auth_by_firmware.insert(firmware_id.into(), auth);
         self
     }
 

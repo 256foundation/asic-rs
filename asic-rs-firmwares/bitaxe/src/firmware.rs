@@ -75,6 +75,10 @@ impl FirmwareIdentification for BitaxeFirmware {
 
 #[async_trait]
 impl FirmwareEntry for BitaxeFirmware {
+    fn firmware_id(&self) -> &'static str {
+        "bitaxe-stock"
+    }
+
     async fn build_miner(
         &self,
         ip: IpAddr,
