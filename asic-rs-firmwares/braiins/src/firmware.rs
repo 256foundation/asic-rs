@@ -129,10 +129,6 @@ impl FirmwareIdentification for BraiinsFirmware {
 
 #[async_trait]
 impl FirmwareEntry for BraiinsFirmware {
-    fn firmware_id(&self) -> &'static str {
-        "braiins"
-    }
-
     async fn build_miner(
         &self,
         ip: IpAddr,

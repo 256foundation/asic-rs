@@ -121,10 +121,6 @@ impl FirmwareIdentification for WhatsMinerFirmware {
 
 #[async_trait]
 impl FirmwareEntry for WhatsMinerFirmware {
-    fn firmware_id(&self) -> &'static str {
-        "whatsminer-stock"
-    }
-
     async fn build_miner(
         &self,
         ip: IpAddr,

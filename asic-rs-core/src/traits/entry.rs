@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 
 use async_trait::async_trait;
@@ -16,13 +16,9 @@ use crate::{
 /// Provides identification logic, discovery commands, and the ability to
 /// construct a fully-typed miner instance after identification succeeds.
 #[async_trait]
-pub trait FirmwareEntry: FirmwareIdentification + DiscoveryCommands + Send + Sync + Debug {
-    /// Stable identifier for this firmware entry.
-    ///
-    /// Intended for wiring per-firmware configuration in factory-level
-    /// discovery/build flows (for example credential overrides).
-    fn firmware_id(&self) -> &'static str;
-
+pub trait FirmwareEntry:
+    FirmwareIdentification + DiscoveryCommands + Send + Sync + Debug + Display
+{
     /// Construct a fully-typed miner instance for the given IP.
     ///
     /// When `auth` is provided, it is used for both discovery (e.g.

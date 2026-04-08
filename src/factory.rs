@@ -337,7 +337,7 @@ impl MinerFactory {
 
         match found {
             Some(fw) => {
-                let auth = self.discovery_auth_by_firmware.get(fw.firmware_id());
+                let auth = self.discovery_auth_by_firmware.get(&fw.to_string());
                 match fw.build_miner(ip, auth).await {
                     Ok(miner) => Ok(Some(miner)),
                     Err(e) => {
@@ -373,15 +373,15 @@ impl MinerFactory {
         self
     }
 
-    /// Set credentials for a specific firmware entry ID to use during
+    /// Set credentials for a specific firmware entry to use during
     /// miner construction after identification.
     pub fn with_firmware_discovery_auth(
         mut self,
-        firmware_id: impl Into<String>,
+        firmware: &dyn FirmwareEntry,
         auth: MinerAuth,
     ) -> Self {
         self.discovery_auth_by_firmware
-            .insert(firmware_id.into(), auth);
+            .insert(firmware.to_string(), auth);
         self
     }
 

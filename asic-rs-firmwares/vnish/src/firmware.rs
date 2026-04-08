@@ -74,10 +74,6 @@ impl FirmwareIdentification for VnishFirmware {
 
 #[async_trait]
 impl FirmwareEntry for VnishFirmware {
-    fn firmware_id(&self) -> &'static str {
-        "vnish"
-    }
-
     async fn build_miner(
         &self,
         ip: IpAddr,

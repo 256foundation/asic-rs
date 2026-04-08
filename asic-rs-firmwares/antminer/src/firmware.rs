@@ -169,10 +169,6 @@ impl FirmwareIdentification for AntMinerStockFirmware {
 
 #[async_trait]
 impl FirmwareEntry for AntMinerStockFirmware {
-    fn firmware_id(&self) -> &'static str {
-        "antminer-stock"
-    }
-
     async fn build_miner(
         &self,
         ip: IpAddr,

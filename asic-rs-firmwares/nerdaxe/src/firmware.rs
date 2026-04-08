@@ -71,10 +71,6 @@ impl FirmwareIdentification for NerdAxeFirmware {
 
 #[async_trait]
 impl FirmwareEntry for NerdAxeFirmware {
-    fn firmware_id(&self) -> &'static str {
-        "nerdaxe-stock"
-    }
-
     async fn build_miner(
         &self,
         ip: IpAddr,
