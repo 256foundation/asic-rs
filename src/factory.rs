@@ -11,7 +11,11 @@ use std::{
 use anyhow::Result;
 use asic_rs_core::{
     data::command::MinerCommand,
-    traits::{entry::FirmwareEntry, identification::WebResponse, miner::{Miner, MinerAuth}},
+    traits::{
+        entry::FirmwareEntry,
+        identification::WebResponse,
+        miner::{Miner, MinerAuth},
+    },
     util::{send_rpc_command, send_web_command},
 };
 use futures::{Stream, StreamExt, future::FutureExt, pin_mut, stream};
