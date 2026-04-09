@@ -108,6 +108,10 @@ impl LUXMinerRPCAPI {
         self.send_command("profiles", false, None).await
     }
 
+    pub async fn events(&self) -> anyhow::Result<Value> {
+        self.send_command("events", false, None).await
+    }
+
     pub async fn tempctrl(&self) -> anyhow::Result<Value> {
         self.send_command("tempctrl", false, None).await
     }

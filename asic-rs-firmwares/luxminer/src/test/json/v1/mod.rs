@@ -11,6 +11,7 @@ pub(crate) const STATS: &str = include_str!("stats.json");
 pub(crate) const SUMMARY: &str = include_str!("summary.json");
 pub(crate) const TEMPS: &str = include_str!("temps.json");
 pub(crate) const VERSION: &str = include_str!("version.json");
+pub(crate) const EVENTS: &str = include_str!("events.json");
 
 pub(crate) const VOLTAGEGET_0: &str = include_str!("voltageget_0.json");
 pub(crate) const VOLTAGEGET_1: &str = include_str!("voltageget_1.json");

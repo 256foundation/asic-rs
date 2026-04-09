@@ -229,6 +229,11 @@ impl GetDataLocations for LuxMinerV1 {
             parameters: None,
         };
 
+        const RPC_EVENTS: MinerCommand = MinerCommand::RPC {
+            command: "events",
+            parameters: None,
+        };
+
         const RPC_POOLS: MinerCommand = MinerCommand::RPC {
             command: "pools",
             parameters: None,
@@ -483,10 +488,10 @@ impl GetDataLocations for LuxMinerV1 {
                 },
             )],
             DataField::Messages => vec![(
-                RPC_SUMMARY,
+                RPC_EVENTS,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATUS"),
+                    key: Some("/EVENTS"),
                     tag: None,
                 },
             )],
@@ -1051,21 +1056,46 @@ impl GetMessages for LuxMinerV1 {
             .and_then(|v| v.as_array())
             .into_iter()
             .flatten()
-            .enumerate()
-            .filter_map(|(idx, item)| {
-                let status = item.get("STATUS")?.as_str()?;
-                (status != "S").then(|| {
-                    let text = item
-                        .get("Msg")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Unknown error");
-                    let severity = match status {
-                        "E" => MessageSeverity::Error,
-                        "W" => MessageSeverity::Warning,
-                        _ => MessageSeverity::Info,
-                    };
-                    MinerMessage::new(0, idx as u64, text.to_string(), severity)
-                })
+            .filter_map(|event| {
+                let code = event.get("Code")?.as_str()?;
+                let description = event
+                    .get("Description")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(code);
+
+                let severity = if code.contains("FAILURE")
+                    || code.contains("PANIC")
+                    || (code.contains("SHUTDOWN") && !code.ends_with("USER"))
+                {
+                    MessageSeverity::Error
+                } else if matches!(
+                    code,
+                    "MINER_TUNED"
+                        | "MINER_TUNING"
+                        | "IDLE"
+                        | "SLEEP"
+                        | "REBOOT_USER"
+                        | "SHUTDOWN_USER"
+                        | "REBOOT_SYSINIT"
+                        | "HASH_ON_DISCONNECT"
+                ) {
+                    MessageSeverity::Info
+                } else {
+                    MessageSeverity::Warning
+                };
+
+                let message = match (
+                    event.get("Target").and_then(|v| v.as_str()),
+                    event.get("ID").and_then(|v| v.as_u64()),
+                ) {
+                    (Some(target), Some(id)) => {
+                        format!("[{target} {id}] {description}")
+                    }
+                    (Some(target), None) => format!("[{target}] {description}"),
+                    _ => description.to_string(),
+                };
+
+                Some(MinerMessage::new(0, 0, message, severity))
             })
             .collect()
     }
@@ -1232,8 +1262,8 @@ mod tests {
 
     use super::*;
     use crate::test::json::v1::{
-        CONFIG, DEVS, FANS, HEALTHCHIPGET_0, HEALTHCHIPGET_1, HEALTHCHIPGET_2, POOLS, POWER,
-        PROFILES, STATS, SUMMARY, TEMPS, VERSION, VOLTAGEGET_0, VOLTAGEGET_1, VOLTAGEGET_2,
+        CONFIG, DEVS, EVENTS, FANS, HEALTHCHIPGET_0, HEALTHCHIPGET_1, HEALTHCHIPGET_2, POOLS,
+        POWER, PROFILES, STATS, SUMMARY, TEMPS, VERSION, VOLTAGEGET_0, VOLTAGEGET_1, VOLTAGEGET_2,
     };
 
     #[tokio::test]
@@ -1302,6 +1332,13 @@ mod tests {
         results.insert(profiles_cmd, Value::from_str(PROFILES)?);
         results.insert(temps_cmd, Value::from_str(TEMPS)?);
         results.insert(devs_cmd, Value::from_str(DEVS)?);
+        results.insert(
+            MinerCommand::RPC {
+                command: "events",
+                parameters: None,
+            },
+            Value::from_str(EVENTS)?,
+        );
 
         results.insert(
             MinerCommand::RPC {
@@ -1381,6 +1418,18 @@ mod tests {
         assert_eq!(miner_data.pools.len(), 2);
         assert_eq!(miner_data.pools[0].len(), 2);
         assert_eq!(miner_data.pools[1].len(), 2);
+
+        assert_eq!(miner_data.messages.len(), 2);
+        assert_eq!(miner_data.messages[0].severity, MessageSeverity::Warning);
+        assert_eq!(
+            miner_data.messages[0].message,
+            "[MINER] Miner shutdown due to NOPIC protection."
+        );
+        assert_eq!(miner_data.messages[1].severity, MessageSeverity::Warning);
+        assert_eq!(
+            miner_data.messages[1].message,
+            "[BOARD 0] Board reboot due to it not hashing."
+        );
 
         Ok(())
     }
