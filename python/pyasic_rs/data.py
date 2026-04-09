@@ -1,5 +1,5 @@
 from datetime import timedelta
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from ipaddress import IPv4Address
 from typing import Annotated, Self
 
@@ -217,9 +217,25 @@ class TuningTargetHashRate(BaseModel):
         return {"type": "hashrate", "value": self.hashrate.model_dump(mode="json")}
 
 
+class MiningMode(StrEnum):
+    Low = "Low"
+    Normal = "Normal"
+    High = "High"
+
+
+class TuningTargetMiningMode(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    mode: MiningMode
+
+    @model_serializer
+    def serialize_tuning_target(self):
+        return {"type": "mode", "value": self.mode}
+
+
 def _parse_tuning_target(v):
     # Handle already-correct model instances
-    if isinstance(v, (TuningTargetPower, TuningTargetHashRate)):
+    if isinstance(v, (TuningTargetPower, TuningTargetHashRate, TuningTargetMiningMode)):
         return v
 
     # Handle dictionary inputs (e.g. serializer output or plain dicts)
@@ -229,6 +245,8 @@ def _parse_tuning_target(v):
             return TuningTargetPower.model_validate(v)
         if "hashrate" in v:
             return TuningTargetHashRate.model_validate(v)
+        if "mode" in v:
+            return TuningTargetMiningMode(mode=MiningMode(v["mode"]))
 
         # Handle serializer-shaped dicts: {"type": ..., "value": ...}
         target_type = v.get("type")
@@ -237,6 +255,8 @@ def _parse_tuning_target(v):
             return TuningTargetPower(watts=float(value))
         if target_type == "hashrate" and value is not None:
             return TuningTargetHashRate(hashrate=HashRate.model_validate(value))
+        if target_type == "mode" and value is not None:
+            return TuningTargetMiningMode(mode=MiningMode(str(value)))
 
         # Fallback: return dict unchanged
         return v
@@ -247,11 +267,13 @@ def _parse_tuning_target(v):
         return TuningTargetPower(watts=float(v._0))
     if variant == "HashRate" and hasattr(v, "_0"):
         return TuningTargetHashRate(hashrate=HashRate.model_validate(v._0))
+    if variant == "MiningMode" and hasattr(v, "_0"):
+        return TuningTargetMiningMode(mode=MiningMode(str(v._0)))
     return v
 
 
 TuningTarget = Annotated[
-    TuningTargetPower | TuningTargetHashRate,
+    TuningTargetPower | TuningTargetHashRate | TuningTargetMiningMode,
     BeforeValidator(_parse_tuning_target),
 ]
 
