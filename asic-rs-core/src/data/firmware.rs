@@ -9,11 +9,6 @@ pub struct FirmwareImage {
     pub bytes: Vec<u8>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct FirmwareUpgradeOptions {
-    pub retain_settings: Option<bool>,
-}
-
 impl FirmwareImage {
     pub fn new(filename: String, bytes: Vec<u8>) -> Self {
         Self { filename, bytes }

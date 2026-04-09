@@ -6,7 +6,7 @@ use asic_rs_core::{
     },
     data::{
         device::{HashAlgorithm, MinerHardware},
-        firmware::{FirmwareImage, FirmwareUpgradeOptions},
+        firmware::FirmwareImage,
     },
     traits::{auth::MinerAuth, miner::Miner as MinerTrait},
 };
@@ -395,16 +395,14 @@ impl Miner {
         &self,
         py: Python<'a>,
         path: PathBuf,
-        retain_settings: Option<bool>,
     ) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         pyo3_async_runtimes::tokio::future_into_py(py, async move {
             let image = FirmwareImage::from_file_async(&path)
                 .await
                 .map_err(|e| PyValueError::new_err(e.to_string()))?;
-            let options = FirmwareUpgradeOptions { retain_settings };
             inner
-                .upgrade_firmware(image, options)
+                .upgrade_firmware(image)
                 .await
                 .map_err(|e| PyRuntimeError::new_err(e.to_string()))
         })

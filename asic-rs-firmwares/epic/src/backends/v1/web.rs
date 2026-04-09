@@ -2,10 +2,7 @@ use std::{net::IpAddr, time::Duration};
 
 use anyhow::{self, Context, bail};
 use asic_rs_core::{
-    data::{
-        command::MinerCommand,
-        firmware::{FirmwareImage, FirmwareUpgradeOptions},
-    },
+    data::{command::MinerCommand, firmware::FirmwareImage},
     traits::miner::*,
 };
 use async_trait::async_trait;
@@ -102,18 +99,16 @@ impl PowerPlayWebAPI {
     pub async fn upgrade_firmware(
         &self,
         image: FirmwareImage,
-        options: FirmwareUpgradeOptions,
     ) -> anyhow::Result<bool> {
         let endpoint = Self::SYSTEM_UPDATE_ENDPOINT;
         let url = format!("http://{}:{}{}", self.ip, self.port, endpoint);
         let FirmwareImage { filename, bytes } = image;
         let checksum = Self::sha256_hex(&bytes);
-        let keep_settings = options.retain_settings.unwrap_or(true);
 
         let form = multipart::Form::new()
             .text("password", self.auth.password.expose_secret().to_string())
             .text("checksum", checksum)
-            .text("keepsettings", keep_settings.to_string())
+            .text("keepsettings", "true")
             .part(
                 "update.zip",
                 multipart::Part::bytes(bytes)

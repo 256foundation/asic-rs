@@ -27,7 +27,7 @@ use crate::{
         command::MinerCommand,
         device::DeviceInfo,
         fan::FanData,
-        firmware::{FirmwareImage, FirmwareUpgradeOptions},
+        firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
         message::MinerMessage,
         miner::{MinerData, TuningTarget},
@@ -712,11 +712,7 @@ pub trait Resume {
 #[async_trait]
 pub trait UpgradeFirmware {
     #[allow(unused_variables)]
-    async fn upgrade_firmware(
-        &self,
-        image: FirmwareImage,
-        options: FirmwareUpgradeOptions,
-    ) -> anyhow::Result<bool> {
+    async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
         anyhow::bail!("Upgrading firmware is not supported on this platform");
     }
 

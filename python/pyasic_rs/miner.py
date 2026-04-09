@@ -213,9 +213,8 @@ class Miner:
     async def upgrade_firmware(
         self,
         path: str | os.PathLike[str],
-        retain_settings: bool | None = None,
     ) -> bool:
-        return await self.__inner.upgrade_firmware(path, retain_settings)
+        return await self.__inner.upgrade_firmware(path)
 
     @property
     def supports_set_fault_light(self) -> bool:
