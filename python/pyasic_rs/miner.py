@@ -210,8 +210,12 @@ class Miner:
     async def set_fan_config(self, config: FanConfig) -> bool | None:
         return await self.__inner.set_fan_config(config)
 
-    async def upgrade_firmware(self, path: str | os.PathLike[str]) -> None:
-        return await self.__inner.upgrade_firmware(path)
+    async def upgrade_firmware(
+        self,
+        path: str | os.PathLike[str],
+        retain_settings: bool | None = None,
+    ) -> bool:
+        return await self.__inner.upgrade_firmware(path, retain_settings)
 
     @property
     def supports_set_fault_light(self) -> bool:

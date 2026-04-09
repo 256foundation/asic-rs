@@ -1,10 +1,15 @@
 use std::{net::IpAddr, time::Duration};
 
-use anyhow;
-use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
+use anyhow::{self, Context, bail};
+use asic_rs_core::{
+    data::{command::MinerCommand, firmware::{FirmwareImage, FirmwareUpgradeOptions}},
+    traits::miner::*,
+};
 use async_trait::async_trait;
-use reqwest::{Client, Method, Response};
+use reqwest::{Client, Method, Response, header, multipart};
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
+use tracing::warn;
 
 /// ePIC PowerPlay WebAPI client
 #[derive(Debug)]
@@ -62,6 +67,15 @@ impl WebAPIClient for PowerPlayWebAPI {
 }
 
 impl PowerPlayWebAPI {
+    const FIRMWARE_UPLOAD_TIMEOUT: Duration = Duration::from_secs(300);
+    const SYSTEM_UPDATE_ENDPOINT: &str = "/systemupdate";
+
+    fn sha256_hex(bytes: &[u8]) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(bytes);
+        format!("{:x}", hasher.finalize())
+    }
+
     /// Create a new EPic WebAPI client
     pub fn new(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
         let client = Client::builder()
@@ -80,6 +94,69 @@ impl PowerPlayWebAPI {
 
     pub fn set_auth(&mut self, auth: MinerAuth) {
         self.auth = auth;
+    }
+
+    pub async fn upgrade_firmware(
+        &self,
+        image: FirmwareImage,
+        options: FirmwareUpgradeOptions,
+    ) -> anyhow::Result<bool> {
+        let endpoint = Self::SYSTEM_UPDATE_ENDPOINT;
+        let url = format!("http://{}:{}{}", self.ip, self.port, endpoint);
+        let FirmwareImage { filename, bytes } = image;
+        let checksum = Self::sha256_hex(&bytes);
+        let keep_settings = options.retain_settings.unwrap_or(true);
+
+        let form = multipart::Form::new()
+            .text("password", self.auth.password.expose_secret().to_string())
+            .text("checksum", checksum)
+            .text("keepsettings", keep_settings.to_string())
+            .part(
+                "update.zip",
+                multipart::Part::bytes(bytes)
+                    .file_name(filename)
+                    .mime_str("application/zip")
+                    .context("failed to set firmware part mime type")?,
+            );
+
+        let response = self
+            .client
+            .post(url)
+            .header(header::ACCEPT, "application/json")
+            .timeout(self.timeout.max(Self::FIRMWARE_UPLOAD_TIMEOUT))
+            .multipart(form)
+            .send()
+            .await
+            .context("firmware upload HTTP request failed")?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .context("failed to read firmware upload response body")?;
+
+        if !status.is_success() {
+            bail!(
+                "Firmware upload failed with status code {}: {}",
+                status,
+                body
+            );
+        }
+
+        let payload: Value = serde_json::from_str(&body)
+            .with_context(|| format!("Invalid {endpoint} response body from {}: {}", self.ip, body))?;
+        let result = payload.get("result").and_then(Value::as_bool).unwrap_or(false);
+
+        if !result && let Some(error) = payload.get("error").and_then(Value::as_str) {
+            warn!(
+                miner_ip = %self.ip,
+                endpoint = endpoint,
+                error = error,
+                "ePIC firmware update API returned result=false"
+            );
+        }
+
+        Ok(result)
     }
 
     /// Execute the actual HTTP request

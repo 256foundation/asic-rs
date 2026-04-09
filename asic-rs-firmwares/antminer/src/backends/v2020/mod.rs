@@ -14,7 +14,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
-        firmware::FirmwareImage,
+        firmware::{FirmwareImage, FirmwareUpgradeOptions},
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         pool::{PoolData, PoolGroupData, PoolURL},
@@ -956,7 +956,11 @@ impl SupportsScalingConfig for AntMinerV2020 {
 
 #[async_trait]
 impl UpgradeFirmware for AntMinerV2020 {
-    async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
+    async fn upgrade_firmware(
+        &self,
+        image: FirmwareImage,
+        _options: FirmwareUpgradeOptions,
+    ) -> anyhow::Result<bool> {
         let miner = self.get_miner_type_info().await?;
         let image = image.resolve_for_miner(&miner)?;
         self.web.upgrade_firmware(image).await?;
