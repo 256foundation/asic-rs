@@ -120,12 +120,7 @@ class Miner:
         inner = await self.__inner.get_tuning_target()
         if inner is None:
             return None
-        parsed = _parse_tuning_target(inner)
-        if isinstance(parsed, TuningTarget):
-            return parsed
-        raise TypeError(
-            f"Unexpected tuning target type from _parse_tuning_target: {type(parsed)!r}"
-        )
+        return _parse_tuning_target(inner)
 
     async def get_light_flashing(self) -> bool | None:
         return await self.__inner.get_light_flashing()
