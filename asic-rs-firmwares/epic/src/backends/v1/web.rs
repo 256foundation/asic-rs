@@ -2,7 +2,10 @@ use std::{net::IpAddr, time::Duration};
 
 use anyhow::{self, Context, bail};
 use asic_rs_core::{
-    data::{command::MinerCommand, firmware::{FirmwareImage, FirmwareUpgradeOptions}},
+    data::{
+        command::MinerCommand,
+        firmware::{FirmwareImage, FirmwareUpgradeOptions},
+    },
     traits::miner::*,
 };
 use async_trait::async_trait;
@@ -143,9 +146,16 @@ impl PowerPlayWebAPI {
             );
         }
 
-        let payload: Value = serde_json::from_str(&body)
-            .with_context(|| format!("Invalid {endpoint} response body from {}: {}", self.ip, body))?;
-        let result = payload.get("result").and_then(Value::as_bool).unwrap_or(false);
+        let payload: Value = serde_json::from_str(&body).with_context(|| {
+            format!(
+                "Invalid {endpoint} response body from {}: {}",
+                self.ip, body
+            )
+        })?;
+        let result = payload
+            .get("result")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
 
         if !result && let Some(error) = payload.get("error").and_then(Value::as_str) {
             warn!(
