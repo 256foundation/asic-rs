@@ -96,10 +96,7 @@ impl PowerPlayWebAPI {
         self.auth = auth;
     }
 
-    pub async fn upgrade_firmware(
-        &self,
-        image: FirmwareImage,
-    ) -> anyhow::Result<bool> {
+    pub async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
         let endpoint = Self::SYSTEM_UPDATE_ENDPOINT;
         let url = format!("http://{}:{}{}", self.ip, self.port, endpoint);
         let FirmwareImage { filename, bytes } = image;
