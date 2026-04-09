@@ -733,6 +733,13 @@ impl GetHashboards for LuxMinerV1 {
                 {
                     boards[board_idx].frequency = Some(frequency);
                 }
+
+                if let Some(working_chips) = stats_data
+                    .get(format!("chain_acn{}", idx))
+                    .and_then(|v| v.as_u64())
+                {
+                    boards[board_idx].working_chips = Some(working_chips as u16);
+                }
             }
         }
 
@@ -816,7 +823,10 @@ impl GetHashboards for LuxMinerV1 {
                                 .and_then(|v| v.as_f64())
                                 .map(Frequency::from_megahertz),
                             tuned: o.get("Healthy").and_then(|v| v.as_str()).map(|s| s == "Y"),
-                            working: o.get("Healthy").and_then(|v| v.as_str()).map(|s| s == "Y"),
+                            working: o
+                                .get("Healthy")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s == "Y" || s == "Unknown"),
                             voltage: None,
                         })
                         .collect();
@@ -826,12 +836,6 @@ impl GetHashboards for LuxMinerV1 {
 
         for b in &mut boards {
             if !b.chips.is_empty() {
-                b.working_chips = Some(
-                    b.chips
-                        .iter()
-                        .filter(|c| c.working.unwrap_or(false))
-                        .count() as u16,
-                );
                 let total_hr: f64 = b
                     .chips
                     .iter()
