@@ -67,9 +67,6 @@ impl WebAPIClient for PowerPlayWebAPI {
 }
 
 impl PowerPlayWebAPI {
-    const FIRMWARE_UPLOAD_TIMEOUT: Duration = Duration::from_secs(300);
-    const SYSTEM_UPDATE_ENDPOINT: &str = "/systemupdate";
-
     fn sha256_hex(bytes: &[u8]) -> String {
         let mut hasher = Sha256::new();
         hasher.update(bytes);
@@ -96,9 +93,16 @@ impl PowerPlayWebAPI {
         self.auth = auth;
     }
 
-    pub async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
-        let endpoint = Self::SYSTEM_UPDATE_ENDPOINT;
-        let url = format!("http://{}:{}{}", self.ip, self.port, endpoint);
+    pub async fn upgrade_firmware(
+        &self,
+        image: FirmwareImage,
+    ) -> anyhow::Result<bool> {
+        let url = format!(
+            "http://{}:{}{}",
+            self.ip,
+            self.port,
+            "/systemupdate"
+        );
         let FirmwareImage { filename, bytes } = image;
         let checksum = Self::sha256_hex(&bytes);
 
@@ -118,7 +122,7 @@ impl PowerPlayWebAPI {
             .client
             .post(url)
             .header(header::ACCEPT, "application/json")
-            .timeout(self.timeout.max(Self::FIRMWARE_UPLOAD_TIMEOUT))
+            .timeout(self.timeout.max(Duration::from_secs(300)))
             .multipart(form)
             .send()
             .await
@@ -140,8 +144,10 @@ impl PowerPlayWebAPI {
 
         let payload: Value = serde_json::from_str(&body).with_context(|| {
             format!(
-                "Invalid {endpoint} response body from {}: {}",
-                self.ip, body
+                "Invalid {} response body from {}: {}",
+                "/systemupdate",
+                self.ip,
+                body
             )
         })?;
         let result = payload
@@ -152,7 +158,7 @@ impl PowerPlayWebAPI {
         if !result && let Some(error) = payload.get("error").and_then(Value::as_str) {
             warn!(
                 miner_ip = %self.ip,
-                endpoint = endpoint,
+                endpoint = "/systemupdate",
                 error = error,
                 "ePIC firmware update API returned result=false"
             );
