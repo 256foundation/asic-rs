@@ -93,16 +93,8 @@ impl PowerPlayWebAPI {
         self.auth = auth;
     }
 
-    pub async fn upgrade_firmware(
-        &self,
-        image: FirmwareImage,
-    ) -> anyhow::Result<bool> {
-        let url = format!(
-            "http://{}:{}{}",
-            self.ip,
-            self.port,
-            "/systemupdate"
-        );
+    pub async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
+        let url = format!("http://{}:{}{}", self.ip, self.port, "/systemupdate");
         let FirmwareImage { filename, bytes } = image;
         let checksum = Self::sha256_hex(&bytes);
 
@@ -145,9 +137,7 @@ impl PowerPlayWebAPI {
         let payload: Value = serde_json::from_str(&body).with_context(|| {
             format!(
                 "Invalid {} response body from {}: {}",
-                "/systemupdate",
-                self.ip,
-                body
+                "/systemupdate", self.ip, body
             )
         })?;
         let result = payload
