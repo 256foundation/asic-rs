@@ -2,13 +2,15 @@ use std::{net::IpAddr, time::Duration};
 
 use anyhow::{Context, Result, anyhow, bail};
 use asic_rs_core::{
-    data::command::{MinerCommand, RPCCommandStatus},
+    data::command::MinerCommand,
     traits::miner::*,
 };
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response, StatusCode};
 use serde_json::{Map, Value, json};
 use tokio::sync::RwLock;
+
+use super::status::StatusFromAuradineV1;
 
 #[derive(Debug)]
 pub struct AuradineWebAPI {
@@ -46,22 +48,6 @@ impl AuradineWebAPI {
     fn endpoint_url(&self, command: &str) -> String {
         let endpoint = command.trim_start_matches('/');
         format!("http://{}:{}/{}", self.ip, self.port, endpoint)
-    }
-
-    fn status_from_value(value: &Value) -> Result<RPCCommandStatus> {
-        if let Some(status_array) = value.get("STATUS").and_then(|v| v.as_array())
-            && let Some(status_obj) = status_array.first()
-            && let Some(status) = status_obj.get("STATUS").and_then(|v| v.as_str())
-        {
-            let message = status_obj.get("Msg").and_then(|v| v.as_str());
-            return Ok(RPCCommandStatus::from_str(status, message));
-        }
-
-        if let Some(status) = value.get("STATUS").and_then(|v| v.as_str()) {
-            return Ok(RPCCommandStatus::from_str(status, None));
-        }
-
-        Ok(RPCCommandStatus::Success)
     }
 
     fn build_post_payload(command: &str, parameters: Option<Value>) -> Value {
@@ -126,7 +112,7 @@ impl AuradineWebAPI {
             .await
             .map_err(|e| anyhow!("Failed to parse token response JSON: {e}"))?;
 
-        let status = Self::status_from_value(&data)?;
+        let status = data.status_from_auradine_v1()?;
         status.into_result()?;
 
         data.pointer("/Token/0/Token")
@@ -223,7 +209,7 @@ impl WebAPIClient for AuradineWebAPI {
                 .await
                 .map_err(|e| anyhow!("Failed to parse JSON response: {e}"))?;
 
-            let status = Self::status_from_value(&data)?;
+            let status = data.status_from_auradine_v1()?;
             if let Err(err) = status.into_result() {
                 let msg = err.to_string().to_ascii_uppercase();
                 if attempt == 1

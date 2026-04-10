@@ -2,7 +2,7 @@ use std::net::IpAddr;
 
 use anyhow;
 use asic_rs_core::{
-    data::command::{MinerCommand, RPCCommandStatus},
+    data::command::MinerCommand,
     errors::RPCError,
     traits::miner::*,
     util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
@@ -10,6 +10,8 @@ use asic_rs_core::{
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use tokio::io::AsyncWriteExt;
+
+use super::status::StatusFromAuradineV1;
 
 #[derive(Debug)]
 pub struct AuradineRPCAPI {
@@ -55,25 +57,9 @@ impl AuradineRPCAPI {
 
     fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
         let value: Value = serde_json::from_str(response)?;
-        let status = Self::status_from_value(&value)?;
+        let status = value.status_from_auradine_v1()?;
         status.into_result()?;
         Ok(value)
-    }
-
-    fn status_from_value(value: &Value) -> Result<RPCCommandStatus, RPCError> {
-        if let Some(status_array) = value.get("STATUS").and_then(|v| v.as_array())
-            && let Some(status_obj) = status_array.first()
-            && let Some(status) = status_obj.get("STATUS").and_then(|v| v.as_str())
-        {
-            let message = status_obj.get("Msg").and_then(|v| v.as_str());
-            return Ok(RPCCommandStatus::from_str(status, message));
-        }
-
-        if let Some(status) = value.get("STATUS").and_then(|v| v.as_str()) {
-            return Ok(RPCCommandStatus::from_str(status, None));
-        }
-
-        Ok(RPCCommandStatus::Success)
     }
 }
 
