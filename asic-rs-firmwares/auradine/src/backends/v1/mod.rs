@@ -425,22 +425,24 @@ impl GetDataLocations for AuradineV1 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![(
-                RPC_SUMMARY,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/SUMMARY/0/MHS 5s"),
-                    tag: Some("hashrate"),
-                },
-            ),
-            (
-                WEB_MODE,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/Mode/0/Sleep"),
-                    tag: Some("sleep"),
-                },
-            )],
+            DataField::IsMining => vec![
+                (
+                    RPC_SUMMARY,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/SUMMARY/0/MHS 5s"),
+                        tag: Some("hashrate"),
+                    },
+                ),
+                (
+                    WEB_MODE,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/Mode/0/Sleep"),
+                        tag: Some("sleep"),
+                    },
+                ),
+            ],
             DataField::Pools => vec![(
                 RPC_POOLS,
                 DataExtractor {
@@ -1589,7 +1591,10 @@ mod tests {
 
         let payload = AuradineV1::build_update_pools_payload(&config)?;
         assert_eq!(payload.len(), 3);
-        assert_eq!(payload[2].get("user").and_then(Value::as_str), Some("worker2"));
+        assert_eq!(
+            payload[2].get("user").and_then(Value::as_str),
+            Some("worker2")
+        );
 
         Ok(())
     }
