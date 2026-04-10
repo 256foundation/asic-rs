@@ -39,6 +39,7 @@ use serde_json::{Value, json};
 use crate::firmware::AuradineFirmware;
 
 mod rpc;
+mod status;
 pub(crate) mod web;
 
 use rpc::AuradineRPCAPI;
@@ -88,15 +89,16 @@ impl AuradineV1 {
             .flat_map(|group| group.pools.iter())
             .take(3)
             .map(|pool| {
-                anyhow::ensure!(
-                    !pool.password.is_empty(),
-                    "Auradine pool updates require explicit passwords because the current password cannot be read back from the miner"
-                );
+                let password = if pool.password.is_empty() {
+                    "x"
+                } else {
+                    pool.password.as_str()
+                };
 
                 Ok(json!({
                     "url": pool.url.to_string(),
                     "user": pool.username,
-                    "pass": pool.password,
+                    "pass": password,
                 }))
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
@@ -552,7 +554,26 @@ impl GetHashboards for AuradineV1 {
             u16::try_from(total_chips / total_boards).ok()
         });
 
-        let mut boards = vec![];
+        let expected_chips = chips_per_board.or(self.device_info.hardware.chips);
+        let expected_boards = hashboards_data
+            .get("asccount")
+            .and_then(|count| count.get("BoardCount"))
+            .and_then(Value::as_u64)
+            .and_then(|count| u8::try_from(count).ok())
+            .or(self.device_info.hardware.boards);
+
+        let mut boards: BTreeMap<u8, BoardData> = (0..expected_boards.unwrap_or(0))
+            .map(|position| {
+                (
+                    position,
+                    BoardData {
+                        position,
+                        expected_chips,
+                        ..Default::default()
+                    },
+                )
+            })
+            .collect();
 
         if let Some(devs) = devs {
             for (idx, board) in devs.iter().enumerate() {
@@ -563,12 +584,21 @@ impl GetHashboards for AuradineV1 {
                     .unwrap_or((idx + 1) as u64);
                 let position = board_id.saturating_sub(1) as u8;
 
-                let board_temperature = board
+                let board_data = boards
+                    .entry(position)
+                    .or_insert_with(|| BoardData {
+                        position,
+                        expected_chips,
+                        ..Default::default()
+                    });
+
+                board_data.board_temperature = board
                     .get("Temperature")
                     .and_then(Value::as_f64)
                     .map(Temperature::from_celsius);
-
-                let hashrate = board
+                board_data.intake_temperature = board_data.board_temperature;
+                board_data.outlet_temperature = board_data.board_temperature;
+                board_data.hashrate = board
                     .get("MHS 5s")
                     .and_then(Value::as_f64)
                     .map(|value| HashRate {
@@ -576,97 +606,28 @@ impl GetHashboards for AuradineV1 {
                         unit: HashRateUnit::MegaHash,
                         algo: String::from("SHA256"),
                     });
-
-                let serial_number = serials
+                board_data.serial_number = serials
                     .and_then(|sns| sns.get(position as usize))
                     .and_then(Value::as_str)
                     .map(String::from);
-
-                let active = board.get("Enabled").and_then(Value::as_bool);
-
-                boards.push(BoardData {
-                    position,
-                    hashrate,
-                    expected_hashrate: None,
-                    board_temperature,
-                    intake_temperature: board_temperature,
-                    outlet_temperature: board_temperature,
-                    expected_chips: chips_per_board.or(self.device_info.hardware.chips),
-                    working_chips: None,
-                    serial_number,
-                    chips: vec![],
-                    voltage: None,
-                    frequency: None,
-                    tuned: active,
-                    active,
-                });
+                board_data.active = board.get("Enabled").and_then(Value::as_bool);
+                board_data.tuned = board_data.active;
             }
         }
-
-        if boards.is_empty()
-            && let Some(serials) = serials
-        {
-            for (idx, serial) in serials.iter().enumerate() {
-                boards.push(BoardData {
-                    position: idx as u8,
-                    hashrate: None,
-                    expected_hashrate: None,
-                    board_temperature: None,
-                    intake_temperature: None,
-                    outlet_temperature: None,
-                    expected_chips: chips_per_board.or(self.device_info.hardware.chips),
-                    working_chips: None,
-                    serial_number: serial.as_str().map(String::from),
-                    chips: vec![],
-                    voltage: None,
-                    frequency: None,
-                    tuned: None,
-                    active: None,
-                });
-            }
-        }
-
-        if boards.is_empty()
-            && let Some(temperature_boards) =
-                hashboards_data.get("temperature").and_then(Value::as_array)
-        {
-            for temp_board in temperature_boards {
-                let Some(id) = temp_board.get("ID").and_then(Value::as_u64) else {
-                    continue;
-                };
-                if id == 0 {
-                    continue;
-                }
-
-                boards.push(BoardData {
-                    position: id.saturating_sub(1) as u8,
-                    hashrate: None,
-                    expected_hashrate: None,
-                    board_temperature: None,
-                    intake_temperature: None,
-                    outlet_temperature: None,
-                    expected_chips: chips_per_board.or(self.device_info.hardware.chips),
-                    working_chips: None,
-                    serial_number: None,
-                    chips: vec![],
-                    voltage: None,
-                    frequency: None,
-                    tuned: None,
-                    active: Some(true),
-                });
-            }
-        }
-
-        boards.sort_by_key(|b| b.position);
-        boards.dedup_by_key(|b| b.position);
 
         if let Some(serials) = serials {
             for (idx, serial) in serials.iter().enumerate() {
-                if let Some(serial_str) = serial.as_str()
-                    && let Some(board) = boards.iter_mut().find(|b| b.position == idx as u8)
-                    && board.serial_number.is_none()
-                {
-                    board.serial_number = Some(serial_str.to_string());
+                if let Some(serial_str) = serial.as_str() {
+                    let board = boards
+                        .entry(idx as u8)
+                        .or_insert_with(|| BoardData {
+                            position: idx as u8,
+                            expected_chips,
+                            ..Default::default()
+                        });
+                    if board.serial_number.is_none() {
+                        board.serial_number = Some(serial_str.to_string());
+                    }
                 }
             }
         }
@@ -682,9 +643,14 @@ impl GetHashboards for AuradineV1 {
                     continue;
                 }
                 let position = id.saturating_sub(1) as u8;
-                let Some(board) = boards.iter_mut().find(|b| b.position == position) else {
-                    continue;
-                };
+                let board = boards
+                    .entry(position)
+                    .or_insert_with(|| BoardData {
+                        position,
+                        expected_chips,
+                        ..Default::default()
+                    });
+                board.active.get_or_insert(true);
 
                 if let Some(sensor_values) = temp_board
                     .get("BoardTemp")
@@ -822,8 +788,8 @@ impl GetHashboards for AuradineV1 {
             }
         }
 
-        for board in &mut boards {
-            let Some(chips_map) = chip_maps.remove(&board.position) else {
+        for (position, board) in &mut boards {
+            let Some(chips_map) = chip_maps.remove(position) else {
                 continue;
             };
 
@@ -873,8 +839,7 @@ impl GetHashboards for AuradineV1 {
             }
         }
 
-        boards.sort_by_key(|b| b.position);
-        boards
+        boards.into_values().collect()
     }
 }
 
@@ -928,21 +893,22 @@ impl GetPsuFans for AuradineV1 {
             return vec![];
         };
 
-        let mut fans = Vec::new();
-        for (position, key) in ["FanSpeed1", "FanSpeed2"].into_iter().enumerate() {
-            let rpm = psu
-                .get(key)
-                .and_then(Value::as_str)
-                .and_then(Self::parse_number_from_units)
-                .map(AngularVelocity::from_rpm);
-            if rpm.is_some() {
-                fans.push(FanData {
-                    position: position as i16,
-                    rpm,
-                });
-            }
-        }
+        let mut fans: Vec<FanData> = psu
+            .iter()
+            .filter_map(|(key, value)| {
+                let position = key.strip_prefix("FanSpeed")?.parse::<i16>().ok()? - 1;
+                let rpm = value
+                    .as_str()
+                    .and_then(Self::parse_number_from_units)
+                    .map(AngularVelocity::from_rpm)?;
+                Some(FanData {
+                    position,
+                    rpm: Some(rpm),
+                })
+            })
+            .collect();
 
+        fans.sort_by_key(|fan| fan.position);
         fans
     }
 }
@@ -1183,7 +1149,7 @@ impl SupportsPoolsConfig for AuradineV1 {
                     .and_then(Value::as_str)
                     .unwrap_or_default()
                     .to_string(),
-                password: String::new(),
+                password: String::from("x"),
             });
         }
 
@@ -1560,7 +1526,7 @@ mod tests {
     }
 
     #[test]
-    fn build_update_pools_payload_requires_explicit_passwords() {
+    fn build_update_pools_payload_defaults_empty_passwords_to_x() -> anyhow::Result<()> {
         let config = vec![PoolGroupConfig {
             name: String::new(),
             quota: 1,
@@ -1571,8 +1537,10 @@ mod tests {
             }],
         }];
 
-        let err = AuradineV1::build_update_pools_payload(&config).unwrap_err();
-        assert!(err.to_string().contains("require explicit passwords"));
+        let payload = AuradineV1::build_update_pools_payload(&config)?;
+        assert_eq!(payload[0].get("pass").and_then(Value::as_str), Some("x"));
+
+        Ok(())
     }
 
     #[test]
