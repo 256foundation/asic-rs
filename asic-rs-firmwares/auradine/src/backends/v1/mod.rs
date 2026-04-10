@@ -584,13 +584,11 @@ impl GetHashboards for AuradineV1 {
                     .unwrap_or((idx + 1) as u64);
                 let position = board_id.saturating_sub(1) as u8;
 
-                let board_data = boards
-                    .entry(position)
-                    .or_insert_with(|| BoardData {
-                        position,
-                        expected_chips,
-                        ..Default::default()
-                    });
+                let board_data = boards.entry(position).or_insert_with(|| BoardData {
+                    position,
+                    expected_chips,
+                    ..Default::default()
+                });
 
                 board_data.board_temperature = board
                     .get("Temperature")
@@ -598,14 +596,15 @@ impl GetHashboards for AuradineV1 {
                     .map(Temperature::from_celsius);
                 board_data.intake_temperature = board_data.board_temperature;
                 board_data.outlet_temperature = board_data.board_temperature;
-                board_data.hashrate = board
-                    .get("MHS 5s")
-                    .and_then(Value::as_f64)
-                    .map(|value| HashRate {
-                        value,
-                        unit: HashRateUnit::MegaHash,
-                        algo: String::from("SHA256"),
-                    });
+                board_data.hashrate =
+                    board
+                        .get("MHS 5s")
+                        .and_then(Value::as_f64)
+                        .map(|value| HashRate {
+                            value,
+                            unit: HashRateUnit::MegaHash,
+                            algo: String::from("SHA256"),
+                        });
                 board_data.serial_number = serials
                     .and_then(|sns| sns.get(position as usize))
                     .and_then(Value::as_str)
@@ -618,13 +617,11 @@ impl GetHashboards for AuradineV1 {
         if let Some(serials) = serials {
             for (idx, serial) in serials.iter().enumerate() {
                 if let Some(serial_str) = serial.as_str() {
-                    let board = boards
-                        .entry(idx as u8)
-                        .or_insert_with(|| BoardData {
-                            position: idx as u8,
-                            expected_chips,
-                            ..Default::default()
-                        });
+                    let board = boards.entry(idx as u8).or_insert_with(|| BoardData {
+                        position: idx as u8,
+                        expected_chips,
+                        ..Default::default()
+                    });
                     if board.serial_number.is_none() {
                         board.serial_number = Some(serial_str.to_string());
                     }
@@ -643,13 +640,11 @@ impl GetHashboards for AuradineV1 {
                     continue;
                 }
                 let position = id.saturating_sub(1) as u8;
-                let board = boards
-                    .entry(position)
-                    .or_insert_with(|| BoardData {
-                        position,
-                        expected_chips,
-                        ..Default::default()
-                    });
+                let board = boards.entry(position).or_insert_with(|| BoardData {
+                    position,
+                    expected_chips,
+                    ..Default::default()
+                });
                 board.active.get_or_insert(true);
 
                 if let Some(sensor_values) = temp_board
