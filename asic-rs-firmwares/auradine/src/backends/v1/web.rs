@@ -1,10 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
 use anyhow::{Context, Result, anyhow, bail};
-use asic_rs_core::{
-    data::command::MinerCommand,
-    traits::miner::*,
-};
+use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response, StatusCode};
 use serde_json::{Map, Value, json};
