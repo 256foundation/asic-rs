@@ -105,6 +105,7 @@ panic = "warn"
 
 [features]
 default = [
+    "core",
     "antminer",
     "avalonminer",
     "bitaxe",
@@ -117,6 +118,7 @@ default = [
     "whatsminer",
 ]
 
+core = []
 antminer = ["dep:asic-rs-firmwares-antminer"]
 avalonminer = ["dep:asic-rs-firmwares-avalonminer"]
 bitaxe = ["dep:asic-rs-firmwares-bitaxe"]
