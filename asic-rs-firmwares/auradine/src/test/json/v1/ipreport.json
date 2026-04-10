@@ -1,0 +1,31 @@
+{
+  "STATUS": [
+    {
+      "STATUS": "S",
+      "When": 1703711730,
+      "Code": 620,
+      "Msg": "IP Report",
+      "Description": "FluxOS-2023-12.27-9bf070ee4408866329c93a70f2dfdc6248938aaa"
+    }
+  ],
+  "IPReport": [
+    {
+      "command": "ipreport",
+      "SerialNo": "AU23200006",
+      "ip": "192.168.1.50",
+      "mac": "1c:00:00:0e:3b:2b",
+      "model": "AT1500",
+      "version": "2023-12.27",
+      "hostname": "teraflux-01",
+      "CBSerialNo": "AU23200006",
+      "ChassisSerialNo": "000020",
+      "HBSerialNo": [
+        "QAHB01230908001X",
+        "QAHB01230908001Y",
+        "QAHB01230908001Z"
+      ],
+      "InternalType": "T0"
+    }
+  ],
+  "id": 1
+}
