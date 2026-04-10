@@ -1,0 +1,145 @@
+{
+  "STATUS": [
+    {
+      "STATUS": "S",
+      "When": 1775782219,
+      "Code": 590,
+      "Msg": "System temperature",
+      "Description": "2.2.0"
+    }
+  ],
+  "Temperature": [
+    {
+      "ID": 0,
+      "Name": "Control Board",
+      "BoardTemp": [
+        {
+          "ID": 0,
+          "Temperature": 24.9375
+        }
+      ],
+      "ChipTemp": null
+    },
+    {
+      "ID": 1,
+      "Name": "Hash Board 1",
+      "BoardTemp": [
+        {
+          "ID": 0,
+          "Temperature": 21.5
+        },
+        {
+          "ID": 1,
+          "Temperature": 20.5
+        },
+        {
+          "ID": 2,
+          "Temperature": 22.5
+        },
+        {
+          "ID": 3,
+          "Temperature": 41.5
+        },
+        {
+          "ID": 4,
+          "Temperature": 41.0
+        }
+      ],
+      "ChipTemp": [
+        {
+          "ID": 0,
+          "Temperature": 45.827271728515655
+        },
+        {
+          "ID": 1,
+          "Temperature": 45.827271728515655
+        },
+        {
+          "ID": 2,
+          "Temperature": 45.029410400390645
+        }
+      ]
+    },
+    {
+      "ID": 2,
+      "Name": "Hash Board 2",
+      "BoardTemp": [
+        {
+          "ID": 0,
+          "Temperature": 22.0
+        },
+        {
+          "ID": 1,
+          "Temperature": 21.5
+        },
+        {
+          "ID": 2,
+          "Temperature": 23.0
+        },
+        {
+          "ID": 3,
+          "Temperature": 43.0
+        },
+        {
+          "ID": 4,
+          "Temperature": 42.5
+        }
+      ],
+      "ChipTemp": [
+        {
+          "ID": 0,
+          "Temperature": 44.43101440429689
+        },
+        {
+          "ID": 1,
+          "Temperature": 46.22620239257816
+        },
+        {
+          "ID": 2,
+          "Temperature": 48.220855712890625
+        }
+      ]
+    },
+    {
+      "ID": 3,
+      "Name": "Hash Board 3",
+      "BoardTemp": [
+        {
+          "ID": 0,
+          "Temperature": 23.0
+        },
+        {
+          "ID": 1,
+          "Temperature": 22.5
+        },
+        {
+          "ID": 2,
+          "Temperature": 22.0
+        },
+        {
+          "ID": 3,
+          "Temperature": 47.5
+        },
+        {
+          "ID": 4,
+          "Temperature": 45.0
+        }
+      ],
+      "ChipTemp": [
+        {
+          "ID": 0,
+          "Temperature": 51.41230102539066
+        },
+        {
+          "ID": 1,
+          "Temperature": 50.21550903320315
+        },
+        {
+          "ID": 2,
+          "Temperature": 50.21550903320315
+        }
+      ]
+    }
+  ],
+  "id": 1
+}

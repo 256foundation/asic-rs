@@ -1,0 +1,41 @@
+{
+  "STATUS": [
+    {
+      "STATUS": "S",
+      "When": 1685118068,
+      "Code": 9,
+      "Msg": "3 Dev(s)",
+      "Description": "GCMiner-2023-05.24-0ce5e7cc93a3815240fa189d0beb44b8c834936c"
+    }
+  ],
+  "DEVS": [
+    {
+      "DEV": 1,
+      "Name": "ASICBoard",
+      "ID": 1,
+      "Enabled": true,
+      "Status": "Alive",
+      "Temperature": 28.25,
+      "MHS 5s": 6800000.0
+    },
+    {
+      "DEV": 2,
+      "Name": "ASICBoard",
+      "ID": 2,
+      "Enabled": true,
+      "Status": "Alive",
+      "Temperature": 29.06,
+      "MHS 5s": 6900000.0
+    },
+    {
+      "DEV": 3,
+      "Name": "ASICBoard",
+      "ID": 3,
+      "Enabled": true,
+      "Status": "Alive",
+      "Temperature": 30.12,
+      "MHS 5s": 7000000.0
+    }
+  ],
+  "id": 1
+}

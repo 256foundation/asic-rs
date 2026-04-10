@@ -1,0 +1,26 @@
+{
+  "STATUS": [
+    {
+      "STATUS": "S",
+      "When": 1681497182,
+      "Code": 570,
+      "Msg": "PSU status",
+      "Description": "GCMiner-2023-04.14-a2b42b45e25194dcdf799c07cbb51d18c6c7ed51"
+    }
+  ],
+  "PSU": [
+    {
+      "VoutSet": "11.50V",
+      "Vin": "245.00V",
+      "Iin": "0.28A",
+      "Vout": "11.53V",
+      "Iout": "0.00A",
+      "FanSpeed1": "4052.00 RPM",
+      "FanSpeed2": "4144.00 RPM",
+      "PowerOut": "0.00W",
+      "PowerIn": "58.94W",
+      "PoutMax": "3452.00W"
+    }
+  ],
+  "id": 1
+}
