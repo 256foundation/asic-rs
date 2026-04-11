@@ -516,9 +516,11 @@ impl GetControlBoardVersion for AuradineV1 {
             if let Some(internal_type) = control_board_data
                 .get("internal_type")
                 .and_then(Value::as_str)
-                && let Some(parsed) = AuradineControlBoard::parse(internal_type)
             {
-                return Some(parsed.into());
+                if let Some(parsed) = AuradineControlBoard::parse(internal_type) {
+                    return Some(parsed.into());
+                }
+                return Some(MinerControlBoard::unknown(internal_type.to_string()));
             }
 
             if let Some(driver) = control_board_data.get("driver").and_then(Value::as_str) {
@@ -858,24 +860,37 @@ impl GetHashboards for AuradineV1 {
                 hashboard.expected_chips = u16::try_from(hashboard.chips.len()).ok();
             }
 
-            hashboard.working_chips = Some(
-                hashboard
-                    .chips
-                    .iter()
-                    .filter(|chip| {
-                        chip.working.unwrap_or_else(|| {
-                            chip.temperature
-                                .map(|t| t.as_celsius() > 0.0)
+            let working_chip_count = hashboard
+                .chips
+                .iter()
+                .filter(|chip| {
+                    chip.working.unwrap_or_else(|| {
+                        chip.temperature
+                            .map(|t| t.as_celsius() > 0.0)
+                            .unwrap_or(false)
+                            || chip.voltage.map(|v| v.as_volts() > 0.0).unwrap_or(false)
+                            || chip
+                                .frequency
+                                .map(|f| f.as_megahertz() > 0.0)
                                 .unwrap_or(false)
-                                || chip.voltage.map(|v| v.as_volts() > 0.0).unwrap_or(false)
-                                || chip
-                                    .frequency
-                                    .map(|f| f.as_megahertz() > 0.0)
-                                    .unwrap_or(false)
-                        })
                     })
-                    .count() as u16,
-            );
+                })
+                .count() as u16;
+
+            hashboard.working_chips = if let Some(expected_chips) = hashboard.expected_chips {
+                if !hashboard.chips.is_empty()
+                    && hashboard.chips.len() < usize::from(expected_chips)
+                {
+                    Some(match hashboard.active {
+                        Some(false) => 0,
+                        _ => expected_chips,
+                    })
+                } else {
+                    Some(working_chip_count)
+                }
+            } else {
+                Some(working_chip_count)
+            };
 
             let voltages: Vec<f64> = hashboard
                 .chips
@@ -1459,6 +1474,7 @@ mod tests {
         assert_eq!(miner_data.uptime, Some(Duration::from_secs(56696)));
         assert_eq!(miner_data.expected_hashboards, Some(3));
         assert_eq!(miner_data.expected_chips, Some(396));
+        assert_eq!(miner_data.total_chips, Some(396));
         assert_eq!(miner_data.expected_fans, Some(4));
         assert_eq!(miner_data.wattage, Some(Power::from_watts(58.94)));
         assert_eq!(miner_data.fans.len(), 4);
@@ -1475,9 +1491,9 @@ mod tests {
             miner_data.hashboards.first().and_then(|b| b.expected_chips),
             Some(132)
         );
-        assert_eq!(miner_data.hashboards[0].working_chips, Some(3));
-        assert_eq!(miner_data.hashboards[1].working_chips, Some(3));
-        assert_eq!(miner_data.hashboards[2].working_chips, Some(3));
+        assert_eq!(miner_data.hashboards[0].working_chips, Some(132));
+        assert_eq!(miner_data.hashboards[1].working_chips, Some(132));
+        assert_eq!(miner_data.hashboards[2].working_chips, Some(132));
         assert_eq!(miner_data.hashboards[0].chips.len(), 3);
         assert_eq!(
             miner_data.hashboards[0].intake_temperature,
@@ -1523,6 +1539,23 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn parse_control_board_version_keeps_unknown_internal_type() {
+        let miner = AuradineV1::new(IpAddr::from([127, 0, 0, 1]), AuradineModel::AT1500);
+        let mut data = HashMap::new();
+        data.insert(
+            DataField::ControlBoardVersion,
+            json!({
+                "internal_type": "T9"
+            }),
+        );
+
+        assert_eq!(
+            miner.parse_control_board_version(&data),
+            Some(MinerControlBoard::unknown("T9".to_string()))
+        );
     }
 
     #[tokio::test]
