@@ -229,13 +229,11 @@ impl<
         let average_temperature = {
             let board_temps = hashboards
                 .iter()
-                .map(|b| b.board_temperature)
-                .filter(|x| x.is_some())
-                .map(|x| x.unwrap().as_celsius())
+                .filter_map(|b| b.board_temperature.map(|t| t.as_celsius()))
                 .collect::<Vec<f64>>();
             if !board_temps.is_empty() {
                 Some(Temperature::from_celsius(
-                    board_temps.iter().sum::<f64>() / hashboards.len() as f64,
+                    board_temps.iter().sum::<f64>() / board_temps.len() as f64,
                 ))
             } else {
                 None
