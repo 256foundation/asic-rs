@@ -59,6 +59,7 @@ dependencies = [
  "anyhow",
  "asic-rs-core",
  "asic-rs-firmwares-antminer",
+ "asic-rs-firmwares-auradine",
  "asic-rs-firmwares-avalonminer",
  "asic-rs-firmwares-bitaxe",
  "asic-rs-firmwares-braiins",
@@ -69,6 +70,7 @@ dependencies = [
  "asic-rs-firmwares-vnish",
  "asic-rs-firmwares-whatsminer",
  "asic-rs-makes-antminer",
+ "asic-rs-makes-auradine",
  "asic-rs-makes-avalon",
  "asic-rs-makes-bitaxe",
  "asic-rs-makes-braiins",
@@ -125,6 +127,23 @@ dependencies = [
  "chrono",
  "crc32fast",
  "diqwest",
+ "macaddr",
+ "measurements",
+ "pyo3",
+ "reqwest",
+ "semver",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "asic-rs-firmwares-auradine"
+version = "0.4.2"
+dependencies = [
+ "anyhow",
+ "asic-rs-core",
+ "asic-rs-makes-auradine",
+ "async-trait",
  "macaddr",
  "measurements",
  "pyo3",
@@ -303,6 +322,17 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-antminer"
+version = "0.4.2"
+dependencies = [
+ "asic-rs-core",
+ "pyo3",
+ "serde",
+ "serde_json",
+ "strum",
+]
+
+[[package]]
+name = "asic-rs-makes-auradine"
 version = "0.4.2"
 dependencies = [
  "asic-rs-core",
@@ -1940,9 +1970,9 @@ dependencies = [
 
 [[package]]
 name = "rlimit"
-version = "0.10.2"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7043b63bd0cd1aaa628e476b80e6d4023a3b50eb32789f2728908107bd0c793a"
+checksum = "f35ee2729c56bb610f6dba436bf78135f728b7373bdffae2ec815b2d3eb98cc3"
 dependencies = [
  "libc",
 ]

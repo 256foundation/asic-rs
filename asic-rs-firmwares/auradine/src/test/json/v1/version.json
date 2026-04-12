@@ -1,0 +1,18 @@
+{
+  "STATUS": [
+    {
+      "STATUS": "S",
+      "When": 1647971699,
+      "Code": 22,
+      "Msg": "GCMiner versions",
+      "Description": "GCMiner-0.5-devsbXXX"
+    }
+  ],
+  "VERSION": [
+    {
+      "GCMiner": "0.5",
+      "API": "1.0"
+    }
+  ],
+  "id": 1
+}
