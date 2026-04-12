@@ -41,10 +41,6 @@ pub async fn get_miner(
             _ = &mut id_timeout => break,
             r = discovery_tasks.join_next() => {
                 match r.unwrap_or(Ok(None)) {
-                    Ok(Some(fw)) if !fw.is_stock() => {
-                        found = Some(fw);
-                        break;
-                    }
                     Ok(Some(fw)) => {
                         found = Some(fw);
                         break;
