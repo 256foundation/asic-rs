@@ -941,8 +941,7 @@ impl GetMessages for PowerPlayV1 {}
 
 impl GetUptime for PowerPlayV1 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
-        data.extract::<u64>(DataField::Uptime)
-            .map(Duration::from_secs)
+        data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
