@@ -54,13 +54,12 @@ enum MinerMode {
 
 impl Display for MinerMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            MinerMode::Normal => "0".to_string(),
-            MinerMode::Sleep => "1".to_string(),
-            MinerMode::Low => "3".to_string(),
-            _ => "0".to_string(),
+        let s = match self {
+            MinerMode::Sleep => "1",
+            MinerMode::Low => "3",
+            _ => "0",
         };
-        write!(f, "{}", str)
+        f.write_str(s)
     }
 }
 
