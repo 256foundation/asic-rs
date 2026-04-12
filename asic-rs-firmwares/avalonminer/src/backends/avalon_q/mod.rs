@@ -308,14 +308,24 @@ impl GetDataLocations for AvalonQMiner {
                     tag: None,
                 },
             )],
-            DataField::Hashboards => vec![(
-                RPC_STATS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/0/HBinfo"),
-                    tag: None,
-                },
-            )],
+            DataField::Hashboards => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/HBinfo"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS"),
+                        tag: Some("summary"),
+                    },
+                ),
+            ],
             DataField::AverageTemperature => vec![(
                 RPC_STATS,
                 DataExtractor {
@@ -435,40 +445,40 @@ impl GetControlBoardVersion for AvalonQMiner {}
 
 impl GetHashboards for AvalonQMiner {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let hw = &self.device_info.hardware;
-        let board_cnt = hw.boards.unwrap_or(1) as usize;
-        let chips_per = hw.chips.unwrap_or(0);
+        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
+            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
+            .collect();
 
-        let hb_info = match data.get(&DataField::Hashboards).and_then(|v| v.as_object()) {
-            Some(v) => v,
-            _ => return Vec::new(),
-        };
+        let hb_info = data.get(&DataField::Hashboards).and_then(|v| v.as_object());
+        let summary = data
+            .get(&DataField::Hashboards)
+            .and_then(|v| v.get("summary"));
 
-        let summary = match data.get(&DataField::Fans) {
-            Some(v) => v,
-            _ => return Vec::new(),
-        }; //some HB info is grouped with fan data.
+        for board in hashboards.iter_mut() {
+            let idx = board.position as usize;
 
-        (0..board_cnt)
-            .map(|idx| {
-                let key = format!("HB{idx}");
-
-                // per-board aggregates
-                let intake = summary["ITemp"][idx]
-                    .as_f64()
-                    .map(Temperature::from_celsius);
-
-                let board_t = summary["HBITemp"][idx]
-                    .as_f64()
-                    .map(Temperature::from_celsius);
-
-                let hashrate = summary["MGHS"][idx].as_f64().map(|r| HashRate {
-                    value: r,
-                    unit: HashRateUnit::GigaHash,
-                    algo: "SHA256".to_string(),
+            if let Some(summary) = summary {
+                board.hashrate = summary["MGHS"][idx].as_f64().map(|r| {
+                    HashRate {
+                        value: r,
+                        unit: HashRateUnit::GigaHash,
+                        algo: "SHA256".to_string(),
+                    }
+                    .as_unit(HashRateUnit::default())
                 });
 
-                // per-chip arrays
+                board.board_temperature = summary["HBITemp"][idx]
+                    .as_f64()
+                    .map(Temperature::from_celsius);
+
+                board.intake_temperature = summary["ITemp"][idx]
+                    .as_f64()
+                    .map(Temperature::from_celsius);
+            }
+
+            if let Some(hb_info) = hb_info {
+                let key = format!("HB{idx}");
+
                 let temps: Vec<f64> = hb_info[&key]["PVT_T0"]
                     .as_array()
                     .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
@@ -484,7 +494,7 @@ impl GetHashboards for AvalonQMiner {
                     .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
 
-                let chips: Vec<ChipData> = temps
+                board.chips = temps
                     .iter()
                     .zip(volts.iter())
                     .zip(works.iter())
@@ -498,19 +508,12 @@ impl GetHashboards for AvalonQMiner {
                     })
                     .collect();
 
-                BoardData {
-                    position: idx as u8,
-                    expected_chips: Some(chips_per),
-                    working_chips: Some(chips.len() as u16),
-                    chips: chips.clone(),
-                    intake_temperature: intake,
-                    board_temperature: board_t,
-                    hashrate,
-                    active: Some(!chips.is_empty()),
-                    ..Default::default()
-                }
-            })
-            .collect()
+                board.working_chips = Some(board.chips.len() as u16);
+                board.active = Some(!board.chips.is_empty());
+            }
+        }
+
+        hashboards
     }
 }
 

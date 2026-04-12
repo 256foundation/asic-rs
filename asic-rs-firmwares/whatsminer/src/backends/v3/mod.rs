@@ -371,74 +371,69 @@ impl GetControlBoardVersion for WhatsMinerV3 {
 }
 impl GetHashboards for WhatsMinerV3 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = Vec::new();
-        let board_count = self.device_info.hardware.boards.unwrap_or(3);
-        for idx in 0..board_count {
-            let hashrate = data
-                .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{idx}/hash-average")))
-                .and_then(|val| val.as_f64())
-                .map(|f| HashRate {
-                    value: f,
-                    unit: HashRateUnit::TeraHash,
-                    algo: "SHA256".to_string(),
-                });
-            let expected_hashrate = data
-                .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{idx}/factory-hash")))
-                .and_then(|val| val.as_f64())
-                .map(|f| HashRate {
-                    value: f,
-                    unit: HashRateUnit::TeraHash,
-                    algo: "SHA256".to_string(),
-                });
-            let board_temperature = data
-                .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{idx}/chip-temp-min")))
-                .and_then(|val| val.as_f64())
-                .map(Temperature::from_celsius);
-            let intake_temperature = data
-                .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{idx}/chip-temp-min")))
-                .and_then(|val| val.as_f64())
-                .map(Temperature::from_celsius);
-            let outlet_temperature = data
-                .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{idx}/chip-temp-max")))
-                .and_then(|val| val.as_f64())
-                .map(Temperature::from_celsius);
-            let serial_number =
-                data.extract_nested::<String>(DataField::Hashboards, &format!("pcbsn{idx}"));
+        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
+            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
+            .collect();
 
-            let working_chips = data
-                .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{idx}/effective-chips")))
+        let Some(hashboard_data) = data.get(&DataField::Hashboards) else {
+            return hashboards;
+        };
+
+        for board in hashboards.iter_mut() {
+            let idx = board.position as usize;
+            board.hashrate = hashboard_data
+                .pointer(&format!("/edevs/{idx}/hash-average"))
+                .and_then(|val| val.as_f64())
+                .map(|f| {
+                    HashRate {
+                        value: f,
+                        unit: HashRateUnit::TeraHash,
+                        algo: "SHA256".to_string(),
+                    }
+                    .as_unit(HashRateUnit::default())
+                });
+            board.expected_hashrate = hashboard_data
+                .pointer(&format!("/edevs/{idx}/factory-hash"))
+                .and_then(|val| val.as_f64())
+                .map(|f| {
+                    HashRate {
+                        value: f,
+                        unit: HashRateUnit::TeraHash,
+                        algo: "SHA256".to_string(),
+                    }
+                    .as_unit(HashRateUnit::default())
+                });
+            board.board_temperature = hashboard_data
+                .pointer(&format!("/edevs/{idx}/chip-temp-min"))
+                .and_then(|val| val.as_f64())
+                .map(Temperature::from_celsius);
+            board.intake_temperature = hashboard_data
+                .pointer(&format!("/edevs/{idx}/chip-temp-min"))
+                .and_then(|val| val.as_f64())
+                .map(Temperature::from_celsius);
+            board.outlet_temperature = hashboard_data
+                .pointer(&format!("/edevs/{idx}/chip-temp-max"))
+                .and_then(|val| val.as_f64())
+                .map(Temperature::from_celsius);
+            board.working_chips = hashboard_data
+                .pointer(&format!("/edevs/{idx}/effective-chips"))
                 .and_then(|val| val.as_u64())
                 .map(|u| u as u16);
-            let frequency = data
-                .get(&DataField::Hashboards)
-                .and_then(|val| val.pointer(&format!("/edevs/{idx}/freq")))
+            board.serial_number =
+                data.extract_nested::<String>(DataField::Hashboards, &format!("pcbsn{idx}"));
+            board.frequency = hashboard_data
+                .pointer(&format!("/edevs/{idx}/freq"))
                 .and_then(|val| val.as_f64())
                 .map(Frequency::from_megahertz);
-
-            let active = Some(hashrate.clone().map(|h| h.value).unwrap_or(0f64) > 0f64);
-            hashboards.push(BoardData {
-                hashrate,
-                position: idx,
-                expected_hashrate,
-                board_temperature,
-                intake_temperature,
-                outlet_temperature,
-                expected_chips: self.device_info.hardware.chips,
-                working_chips,
-                serial_number,
-                chips: vec![],
-                voltage: None, // TODO
-                frequency,
-                tuned: Some(true),
-                active,
-            });
+            board.active = Some(
+                board
+                    .hashrate
+                    .as_ref()
+                    .map(|h| h.value > 0.0)
+                    .unwrap_or(false),
+            );
         }
+
         hashboards
     }
 }

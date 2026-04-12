@@ -311,63 +311,148 @@ impl GetControlBoardVersion for VnishV120 {
 
 impl GetHashboards for VnishV120 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let all_chains = data.get(&DataField::Hashboards).and_then(|v| v.as_array());
-        let Some(all_chains) = all_chains else {
+        let Some(all_chains) = data.get(&DataField::Hashboards).and_then(|v| v.as_array()) else {
             return Vec::new();
         };
 
-        let board_count = self.device_info.hardware.boards.unwrap_or(0) as u64;
+        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0)
+            as usize)
+            .map(|idx| BoardData::new(idx as u8, self.device_info.hardware.chips))
+            .collect();
 
         // Both /summary and /chains endpoints are concatenated into all_chains.
-        // Iterate by expected board count, merge entries matching each board ID.
-        (1..=board_count)
-            .filter_map(|id| {
-                let mut merged = serde_json::Map::new();
-                for entry in all_chains
-                    .iter()
-                    .filter(|c| c.pointer("/id").and_then(|v| v.as_u64()) == Some(id))
-                {
-                    if let Value::Object(obj) = entry {
-                        for (k, v) in obj {
-                            merged.entry(k.clone()).or_insert_with(|| v.clone());
-                        }
+        // Vnish chain IDs are 1-based; map to 0-based position by adding 1 when matching.
+        for board in hashboards.iter_mut() {
+            let id = board.position as u64 + 1;
+            let mut merged = serde_json::Map::new();
+            for entry in all_chains
+                .iter()
+                .filter(|c| c.pointer("/id").and_then(|v| v.as_u64()) == Some(id))
+            {
+                if let Value::Object(obj) = entry {
+                    for (k, v) in obj {
+                        merged.entry(k.clone()).or_insert_with(|| v.clone());
                     }
                 }
-                if merged.is_empty() {
-                    return None;
-                }
-                let chain = Value::Object(merged);
+            }
 
-                let hashrate = Self::extract_hashrate(&chain, &["/hashrate_rt", "/hr_realtime"]);
-                let expected_hashrate =
-                    Self::extract_hashrate(&chain, &["/hashrate_ideal", "/hr_nominal"]);
-                let frequency = Self::extract_frequency(&chain);
-                let voltage = Self::extract_voltage(&chain);
-                let (board_temperature, chip_temperature) = Self::extract_temperatures(&chain);
-                let working_chips = Self::extract_working_chips(&chain);
-                let active = Self::extract_chain_active_status(&chain, &hashrate);
-                let serial_number = Self::extract_chain_serial(&chain, data);
-                let tuned = Self::extract_tuned_status(&chain, data);
-                let chips = Self::extract_chips(&chain);
+            if merged.is_empty() {
+                continue;
+            }
 
-                Some(BoardData {
-                    position: id as u8,
-                    hashrate,
-                    expected_hashrate,
-                    board_temperature,
-                    intake_temperature: chip_temperature,
-                    outlet_temperature: chip_temperature,
-                    expected_chips: self.device_info.hardware.chips,
-                    working_chips,
-                    serial_number,
-                    chips,
-                    voltage,
-                    frequency,
-                    tuned,
-                    active,
+            let chain = Value::Object(merged);
+            board.hashrate = ["/hashrate_rt", "/hr_realtime"]
+                .iter()
+                .find_map(|&p| chain.pointer(p).and_then(|v| v.as_f64()))
+                .map(|f| {
+                    HashRate {
+                        value: f,
+                        unit: HashRateUnit::GigaHash,
+                        algo: "SHA256".to_string(),
+                    }
+                    .as_unit(HashRateUnit::default())
+                });
+            board.expected_hashrate = ["/hashrate_ideal", "/hr_nominal"]
+                .iter()
+                .find_map(|&p| chain.pointer(p).and_then(|v| v.as_f64()))
+                .map(|f| {
+                    HashRate {
+                        value: f,
+                        unit: HashRateUnit::GigaHash,
+                        algo: "SHA256".to_string(),
+                    }
+                    .as_unit(HashRateUnit::default())
+                });
+            board.board_temperature = chain
+                .pointer("/pcb_temp/max")
+                .and_then(|v| v.as_i64())
+                .map(|t| Temperature::from_celsius(t as f64));
+            board.intake_temperature = chain
+                .pointer("/chip_temp/max")
+                .and_then(|v| v.as_i64())
+                .map(|t| Temperature::from_celsius(t as f64));
+            board.outlet_temperature = board.intake_temperature;
+            board.working_chips = chain
+                .pointer("/chips")
+                .and_then(|v| v.as_array())
+                .map(|chips| {
+                    chips
+                        .iter()
+                        .filter(|c| c.pointer("/hr").and_then(|v| v.as_f64()).unwrap_or(0.0) > 0.0)
+                        .count() as u16
+                });
+            board.serial_number = chain
+                .pointer("/serial")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+                .or_else(|| data.extract::<String>(DataField::SerialNumber));
+            board.chips = chain
+                .pointer("/chips")
+                .and_then(|v| v.as_array())
+                .map(|chips_arr| {
+                    chips_arr
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, chip)| {
+                            let hashrate =
+                                chip.pointer("/hr")
+                                    .and_then(|v| v.as_f64())
+                                    .map(|f| HashRate {
+                                        value: f,
+                                        unit: HashRateUnit::GigaHash,
+                                        algo: "SHA256".to_string(),
+                                    });
+                            let working = hashrate.as_ref().map(|hr| hr.value > 0.0);
+                            ChipData {
+                                position: chip
+                                    .pointer("/id")
+                                    .and_then(|v| v.as_u64())
+                                    .unwrap_or(idx as u64)
+                                    as u16,
+                                hashrate,
+                                temperature: chip
+                                    .pointer("/temp")
+                                    .and_then(|v| v.as_f64())
+                                    .map(Temperature::from_celsius),
+                                voltage: chip
+                                    .pointer("/volt")
+                                    .and_then(|v| v.as_i64())
+                                    .map(|v| Voltage::from_millivolts(v as f64)),
+                                frequency: chip
+                                    .pointer("/freq")
+                                    .and_then(|v| v.as_i64())
+                                    .map(|f| Frequency::from_megahertz(f as f64)),
+                                tuned: None,
+                                working,
+                            }
+                        })
+                        .collect()
                 })
-            })
-            .collect()
+                .unwrap_or_default();
+            board.voltage = chain
+                .pointer("/voltage")
+                .and_then(|v| v.as_i64())
+                .map(|v| Voltage::from_millivolts(v as f64));
+            board.frequency = chain
+                .pointer("/frequency")
+                .or_else(|| chain.pointer("/freq"))
+                .and_then(|v| v.as_f64())
+                .map(Frequency::from_megahertz);
+            board.tuned =
+                data.extract::<String>(DataField::IsMining)
+                    .and_then(|s| match s.as_str() {
+                        "auto-tuning" => Some(false),
+                        "mining" => Some(true),
+                        _ => None,
+                    });
+            board.active = chain
+                .pointer("/status/state")
+                .and_then(|v| v.as_str())
+                .map(|s| s == "mining")
+                .or_else(|| board.hashrate.as_ref().map(|h| h.value > 0.0));
+        }
+
+        hashboards
     }
 }
 
@@ -533,69 +618,7 @@ impl GetPools for VnishV120 {
     }
 }
 
-// Helper methods for data extraction
 impl VnishV120 {
-    fn extract_hashrate(chain: &Value, paths: &[&str]) -> Option<HashRate> {
-        paths
-            .iter()
-            .find_map(|&path| chain.pointer(path).and_then(|v| v.as_f64()))
-            .map(|f| HashRate {
-                value: f,
-                unit: HashRateUnit::GigaHash,
-                algo: "SHA256".to_string(),
-            })
-    }
-
-    fn extract_frequency(chain: &Value) -> Option<Frequency> {
-        chain
-            .pointer("/frequency")
-            .or_else(|| chain.pointer("/freq"))
-            .and_then(|v| v.as_f64())
-            .map(Frequency::from_megahertz)
-    }
-
-    fn extract_voltage(chain: &Value) -> Option<Voltage> {
-        chain
-            .pointer("/voltage")
-            .and_then(|v| v.as_i64())
-            .map(|v| Voltage::from_millivolts(v as f64))
-    }
-
-    fn extract_temperatures(chain: &Value) -> (Option<Temperature>, Option<Temperature>) {
-        let board_temp = chain
-            .pointer("/pcb_temp/max")
-            .and_then(|v| v.as_i64())
-            .map(|t| Temperature::from_celsius(t as f64));
-
-        let chip_temp = chain
-            .pointer("/chip_temp/max")
-            .and_then(|v| v.as_i64())
-            .map(|t| Temperature::from_celsius(t as f64));
-
-        (board_temp, chip_temp)
-    }
-
-    fn extract_working_chips(chain: &Value) -> Option<u16> {
-        // Prefer individual chip data: count chips with hashrate > 0
-        chain
-            .pointer("/chips")
-            .and_then(|v| v.as_array())
-            .map(|chips| {
-                chips
-                    .iter()
-                    .filter(|c| c.pointer("/hr").and_then(|v| v.as_f64()).unwrap_or(0.0) > 0.0)
-                    .count() as u16
-            })
-    }
-
-    fn extract_chain_active_status(chain: &Value, hashrate: &Option<HashRate>) -> Option<bool> {
-        chain
-            .pointer("/status/state")
-            .and_then(|v| v.as_str())
-            .map(|s| s == "mining")
-            .or_else(|| hashrate.as_ref().map(|h| h.value > 0.0))
-    }
-
     fn parse_pool_status(status: Option<&str>) -> (Option<bool>, Option<bool>) {
         match status {
             Some("active" | "working") => (Some(true), Some(true)),
@@ -603,80 +626,6 @@ impl VnishV120 {
             Some("rejecting") => (Some(false), Some(true)),
             _ => (None, None),
         }
-    }
-
-    fn extract_chain_serial(chain: &Value, data: &HashMap<DataField, Value>) -> Option<String> {
-        // Try to get serial from chain-specific data first (factory-info)
-        chain
-            .pointer("/serial")
-            .and_then(|v| v.as_str())
-            .map(String::from)
-            .or_else(|| {
-                // Fallback to miner-wide serial number
-                data.extract::<String>(DataField::SerialNumber)
-            })
-    }
-
-    fn extract_tuned_status(_chain: &Value, data: &HashMap<DataField, Value>) -> Option<bool> {
-        // Check miner state to determine tuning status
-        if let Some(miner_state) = data.extract::<String>(DataField::IsMining) {
-            match miner_state.as_str() {
-                "auto-tuning" => Some(false), // Currently tuning, not yet tuned
-                "mining" => Some(true),       // Tuned and mining
-                _ => None,
-            }
-        } else {
-            None
-        }
-    }
-
-    fn extract_chips(chain: &Value) -> Vec<ChipData> {
-        let mut chips: Vec<ChipData> = Vec::new();
-
-        if let Some(chips_array) = chain.pointer("/chips").and_then(|v| v.as_array()) {
-            for (idx, chip) in chips_array.iter().enumerate() {
-                let hashrate = chip
-                    .pointer("/hr")
-                    .and_then(|v| v.as_f64())
-                    .map(|f| HashRate {
-                        value: f,
-                        unit: HashRateUnit::GigaHash,
-                        algo: "SHA256".to_string(),
-                    });
-
-                let temperature = chip
-                    .pointer("/temp")
-                    .and_then(|v| v.as_f64())
-                    .map(Temperature::from_celsius);
-
-                let voltage = chip
-                    .pointer("/volt")
-                    .and_then(|v| v.as_i64())
-                    .map(|v| Voltage::from_millivolts(v as f64));
-
-                let frequency = chip
-                    .pointer("/freq")
-                    .and_then(|v| v.as_i64())
-                    .map(|f| Frequency::from_megahertz(f as f64));
-
-                let working = hashrate.as_ref().map(|hr| hr.value > 0.0);
-
-                chips.push(ChipData {
-                    position: chip
-                        .pointer("/id")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(idx as u64) as u16,
-                    hashrate,
-                    temperature,
-                    voltage,
-                    frequency,
-                    tuned: None,
-                    working,
-                });
-            }
-        }
-
-        chips
     }
 }
 

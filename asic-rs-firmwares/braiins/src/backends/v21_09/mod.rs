@@ -339,81 +339,68 @@ impl GetControlBoardVersion for BraiinsV2109 {}
 
 impl GetHashboards for BraiinsV2109 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = Vec::new();
+        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
+            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
+            .collect();
 
-        let solvers = data.get(&DataField::Hashboards).and_then(|v| v.as_array());
+        let Some(solvers_array) = data.get(&DataField::Hashboards).and_then(|v| v.as_array())
+        else {
+            return hashboards;
+        };
 
-        if let Some(solvers_array) = solvers {
-            for (idx, solver) in solvers_array.iter().enumerate() {
-                let hashrate = solver
-                    .pointer("/realHashrate/mhs5S")
-                    .and_then(|v| v.as_f64())
-                    .map(|f| HashRate {
+        for board in hashboards.iter_mut() {
+            let Some(solver) = solvers_array.get(board.position as usize) else {
+                continue;
+            };
+
+            board.hashrate = solver
+                .pointer("/realHashrate/mhs5S")
+                .and_then(|v| v.as_f64())
+                .map(|f| {
+                    HashRate {
                         value: f,
                         unit: HashRateUnit::MegaHash,
                         algo: "SHA256".to_string(),
-                    });
+                    }
+                    .as_unit(HashRateUnit::default())
+                });
+            board.expected_hashrate = solver.get("nominalMhs").and_then(|v| v.as_f64()).map(|f| {
+                HashRate {
+                    value: f,
+                    unit: HashRateUnit::MegaHash,
+                    algo: "SHA256".to_string(),
+                }
+                .as_unit(HashRateUnit::default())
+            });
 
-                let expected_hashrate =
-                    solver
-                        .get("nominalMhs")
-                        .and_then(|v| v.as_f64())
-                        .map(|f| HashRate {
-                            value: f,
-                            unit: HashRateUnit::MegaHash,
-                            algo: "SHA256".to_string(),
-                        });
-
-                let active = hashrate.as_ref().map(|hr| hr.value > 0.0);
-
-                let working_chips = solver
-                    .pointer("/hwDetails/chips")
-                    .and_then(|v| v.as_u64())
-                    .map(|u| u as u16);
-
-                let frequency = solver
-                    .pointer("/hwDetails/frequencyMhz")
-                    .and_then(|v| v.as_f64())
-                    .map(Frequency::from_megahertz);
-
-                let voltage = solver
-                    .pointer("/hwDetails/voltageV")
-                    .and_then(|v| v.as_f64())
-                    .map(Voltage::from_volts);
-
-                // Temperatures are in a list with name/degreesC pairs
-                let temps = solver.get("temperatures").and_then(|v| v.as_array());
-                let mut board_temperature = None;
-                let mut chip_temperature = None;
-                if let Some(temps_array) = temps {
-                    for temp in temps_array {
-                        let name = temp.get("name").and_then(|v| v.as_str()).unwrap_or("");
-                        let degrees = temp.get("degreesC").and_then(|v| v.as_f64());
-                        if name.contains("Board") {
-                            board_temperature = degrees.map(Temperature::from_celsius);
-                        } else if name.contains("Chip") {
-                            chip_temperature = degrees.map(Temperature::from_celsius);
-                        }
+            // Temperatures are in a list with name/degreesC pairs
+            if let Some(temps_array) = solver.get("temperatures").and_then(|v| v.as_array()) {
+                for temp in temps_array {
+                    let name = temp.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                    let degrees = temp.get("degreesC").and_then(|v| v.as_f64());
+                    if name.contains("Board") {
+                        board.board_temperature = degrees.map(Temperature::from_celsius);
+                    } else if name.contains("Chip") {
+                        let t = degrees.map(Temperature::from_celsius);
+                        board.intake_temperature = t;
+                        board.outlet_temperature = t;
                     }
                 }
-
-                hashboards.push(BoardData {
-                    position: idx as u8,
-                    hashrate,
-                    expected_hashrate,
-                    board_temperature,
-                    intake_temperature: chip_temperature,
-                    outlet_temperature: chip_temperature,
-                    expected_chips: self.device_info.hardware.chips,
-                    working_chips,
-                    serial_number: None,
-                    chips: Vec::new(),
-                    voltage,
-                    frequency,
-                    tuned: None,
-                    active,
-                });
             }
+
+            board.working_chips = solver
+                .pointer("/hwDetails/chips")
+                .and_then(|v| v.as_u64())
+                .map(|u| u as u16);
+            board.voltage = solver
+                .pointer("/hwDetails/voltageV")
+                .and_then(|v| v.as_f64())
+                .map(Voltage::from_volts);
+            board.frequency = solver
+                .pointer("/hwDetails/frequencyMhz")
+                .and_then(|v| v.as_f64())
+                .map(Frequency::from_megahertz);
+            board.active = board.hashrate.as_ref().map(|hr| hr.value > 0.0);
         }
 
         hashboards

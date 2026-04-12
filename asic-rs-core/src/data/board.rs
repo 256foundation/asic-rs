@@ -77,6 +77,34 @@ pub struct BoardData {
     pub active: Option<bool>,
 }
 
+impl BoardData {
+    /// Create a new board at the given position with the specified expected chip count.
+    /// All other fields are left at their defaults.
+    pub fn new(position: u8, expected_chips: Option<u16>) -> Self {
+        Self {
+            position,
+            expected_chips,
+            ..Default::default()
+        }
+    }
+
+    /// Create a new board with tuned and active state pre-set.
+    pub fn with_state(
+        position: u8,
+        expected_chips: Option<u16>,
+        tuned: Option<bool>,
+        active: Option<bool>,
+    ) -> Self {
+        Self {
+            position,
+            expected_chips,
+            tuned,
+            active,
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "python",
