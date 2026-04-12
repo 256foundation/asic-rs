@@ -812,23 +812,21 @@ impl GetHashboards for MaraV1 {
 
 impl GetHashrate for MaraV1 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract::<f64>(DataField::Hashrate)
-            .map(|rate| HashRate {
-                value: rate,
-                unit: HashRateUnit::GigaHash,
-                algo: "SHA256".to_string(),
-            })
+        data.extract_map::<f64, _>(DataField::Hashrate, |rate| HashRate {
+            value: rate,
+            unit: HashRateUnit::GigaHash,
+            algo: "SHA256".to_string(),
+        })
     }
 }
 
 impl GetExpectedHashrate for MaraV1 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract::<f64>(DataField::ExpectedHashrate)
-            .map(|rate| HashRate {
-                value: rate,
-                unit: HashRateUnit::GigaHash,
-                algo: "SHA256".to_string(),
-            })
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |rate| HashRate {
+            value: rate,
+            unit: HashRateUnit::GigaHash,
+            algo: "SHA256".to_string(),
+        })
     }
 }
 
@@ -870,16 +868,15 @@ impl GetFluidTemperature for MaraV1 {}
 
 impl GetWattage for MaraV1 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        data.extract::<f64>(DataField::Wattage)
-            .map(Power::from_watts)
+        data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
 
 impl GetTuningTarget for MaraV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract::<f64>(DataField::TuningTarget)
-            .map(Power::from_watts)
-            .map(TuningTarget::Power)
+        data.extract_map::<f64, _>(DataField::TuningTarget, |w| {
+            TuningTarget::Power(Power::from_watts(w))
+        })
     }
 }
 
@@ -932,8 +929,7 @@ impl GetMessages for MaraV1 {
 }
 impl GetUptime for MaraV1 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
-        data.extract::<u64>(DataField::Uptime)
-            .map(Duration::from_secs)
+        data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
