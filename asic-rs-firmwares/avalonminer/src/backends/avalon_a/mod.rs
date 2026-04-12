@@ -442,104 +442,88 @@ impl GetFirmwareVersion for AvalonAMiner {
 
 impl GetHashboards for AvalonAMiner {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let hw = &self.device_info.hardware;
-        let board_cnt = hw.boards.unwrap_or(1) as usize;
-        let chips_per = hw.chips.unwrap_or(0);
+        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
+            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
+            .collect();
 
-        let hb_info = match data.get(&DataField::Hashboards).and_then(|v| v.as_object()) {
-            Some(v) => v,
-            _ => return Vec::new(),
+        let Some(hb_info) = data.get(&DataField::Hashboards).and_then(|v| v.as_object()) else {
+            return hashboards;
         };
 
-        (0..board_cnt)
-            .map(|idx| {
-                let _chip_temp = hb_info
-                    .get("MTmax")
-                    .and_then(|v| v.as_array())
-                    .and_then(|arr| arr.get(idx))
-                    .and_then(|v| v.as_f64())
-                    .map(Temperature::from_celsius);
+        for board in hashboards.iter_mut() {
+            let idx = board.position as usize;
 
-                let board_temp = hb_info
-                    .get("MTavg")
-                    .and_then(|v| v.as_array())
-                    .and_then(|arr| arr.get(idx))
-                    .and_then(|v| v.as_f64())
-                    .map(Temperature::from_celsius);
-
-                let intake_temp = hb_info
-                    .get("ITemp")
-                    .and_then(|v| v.as_array())
-                    .and_then(|arr| arr.get(idx))
-                    .and_then(|v| v.as_f64())
-                    .map(Temperature::from_celsius);
-
-                let hashrate = hb_info
-                    .get("MGHS")
-                    .and_then(|v| v.as_array())
-                    .and_then(|arr| arr.get(idx))
-                    .and_then(|v| v.as_f64())
-                    .map(|r| HashRate {
+            board.hashrate = hb_info
+                .get("MGHS")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.get(idx))
+                .and_then(|v| v.as_f64())
+                .map(|r| {
+                    HashRate {
                         value: r,
                         unit: HashRateUnit::GigaHash,
                         algo: "SHA256".to_string(),
-                    });
-
-                let chip_temps: Vec<f64> = hb_info
-                    .get(&format!("PVT_T{idx}"))
-                    .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
-                    .unwrap_or_default();
-
-                let chip_volts: Vec<f64> = hb_info
-                    .get(&format!("PVT_V{idx}"))
-                    .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
-                    .unwrap_or_default();
-
-                let chip_works: Vec<f64> = hb_info
-                    .get(&format!("MW{idx}"))
-                    .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
-                    .unwrap_or_default();
-
-                let mut chips = Vec::new();
-                let max_len = chip_temps.len().max(chip_volts.len()).max(chip_works.len());
-
-                for pos in 0..max_len {
-                    let temp = chip_temps.get(pos).copied().unwrap_or(0.0);
-                    let volt = chip_volts.get(pos).copied().unwrap_or(0.0);
-                    let work = chip_works.get(pos).copied().unwrap_or(0.0);
-
-                    if temp == 0.0 {
-                        continue;
                     }
+                    .as_unit(HashRateUnit::default())
+                });
 
-                    chips.push(ChipData {
-                        position: pos as u16,
-                        temperature: Some(Temperature::from_celsius(temp)),
-                        voltage: Some(Voltage::from_millivolts(volt)),
-                        working: Some(work > 0.0),
-                        ..Default::default()
-                    });
+            board.board_temperature = hb_info
+                .get("MTavg")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.get(idx))
+                .and_then(|v| v.as_f64())
+                .map(Temperature::from_celsius);
+
+            board.intake_temperature = hb_info
+                .get("ITemp")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.get(idx))
+                .and_then(|v| v.as_f64())
+                .map(Temperature::from_celsius);
+
+            let chip_temps: Vec<f64> = hb_info
+                .get(&format!("PVT_T{idx}"))
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
+                .unwrap_or_default();
+
+            let chip_volts: Vec<f64> = hb_info
+                .get(&format!("PVT_V{idx}"))
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
+                .unwrap_or_default();
+
+            let chip_works: Vec<f64> = hb_info
+                .get(&format!("MW{idx}"))
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
+                .unwrap_or_default();
+
+            let max_len = chip_temps.len().max(chip_volts.len()).max(chip_works.len());
+
+            for pos in 0..max_len {
+                let temp = chip_temps.get(pos).copied().unwrap_or(0.0);
+                let volt = chip_volts.get(pos).copied().unwrap_or(0.0);
+                let work = chip_works.get(pos).copied().unwrap_or(0.0);
+
+                if temp == 0.0 {
+                    continue;
                 }
 
-                let working_chips = chips.len() as u16;
-                let missing = working_chips == 0;
-
-                BoardData {
-                    position: idx as u8,
-                    expected_chips: Some(chips_per),
-                    working_chips: Some(working_chips),
-                    chips,
-                    intake_temperature: intake_temp,
-                    board_temperature: board_temp,
-                    hashrate,
-                    active: Some(!missing),
+                board.chips.push(ChipData {
+                    position: pos as u16,
+                    temperature: Some(Temperature::from_celsius(temp)),
+                    voltage: Some(Voltage::from_millivolts(volt)),
+                    working: Some(work > 0.0),
                     ..Default::default()
-                }
-            })
-            .collect()
+                });
+            }
+
+            board.working_chips = Some(board.chips.len() as u16);
+            board.active = Some(!board.chips.is_empty());
+        }
+
+        hashboards
     }
 }
 

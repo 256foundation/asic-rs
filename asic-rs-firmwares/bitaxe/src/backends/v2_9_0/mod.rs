@@ -262,74 +262,64 @@ impl GetControlBoardVersion for Bitaxe290 {
 }
 impl GetHashboards for Bitaxe290 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        // Extract nested values with type conversion
-        let board_voltage = data.extract_nested_map::<f64, _>(
-            DataField::Hashboards,
-            "voltage",
-            Voltage::from_millivolts,
-        );
+        let mut board = BoardData::new(0, self.device_info.hardware.chips);
 
-        let board_temperature = data.extract_nested_map::<f64, _>(
-            DataField::Hashboards,
-            "vrTemp",
-            Temperature::from_celsius,
-        );
+        let Some(api_data) = data.get(&DataField::Hashboards) else {
+            return vec![board];
+        };
 
-        let board_frequency = data.extract_nested_map::<f64, _>(
-            DataField::Hashboards,
-            "frequency",
-            Frequency::from_megahertz,
-        );
-
-        let chip_temperature = data.extract_nested_map::<f64, _>(
-            DataField::Hashboards,
-            "temp",
-            Temperature::from_celsius,
-        );
-
-        let expected_hashrate = Some(HashRate {
-            value: data.extract_nested_or::<f64>(DataField::Hashboards, "expectedHashrate", 0.0),
-            unit: HashRateUnit::GigaHash,
-            algo: "SHA256".to_string(),
+        board.hashrate = api_data.get("hashRate").and_then(|v| v.as_f64()).map(|f| {
+            HashRate {
+                value: f,
+                unit: HashRateUnit::GigaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         });
-
-        let board_hashrate = Some(HashRate {
-            value: data.extract_nested_or::<f64>(DataField::Hashboards, "hashRate", 0.0),
-            unit: HashRateUnit::GigaHash,
-            algo: "SHA256".to_string(),
-        });
-
-        let total_chips =
-            data.extract_nested_map::<u64, _>(DataField::Hashboards, "asicCount", |u| u as u16);
-
-        let chip_info = ChipData {
+        board.expected_hashrate = api_data
+            .get("expectedHashrate")
+            .and_then(|v| v.as_f64())
+            .map(|f| {
+                HashRate {
+                    value: f,
+                    unit: HashRateUnit::GigaHash,
+                    algo: "SHA256".to_string(),
+                }
+                .as_unit(HashRateUnit::default())
+            });
+        board.board_temperature = api_data
+            .get("vrTemp")
+            .and_then(|v| v.as_f64())
+            .map(Temperature::from_celsius);
+        board.intake_temperature = board.board_temperature;
+        board.outlet_temperature = board.board_temperature;
+        board.working_chips = api_data
+            .get("asicCount")
+            .and_then(|v| v.as_u64())
+            .map(|u| u as u16);
+        board.voltage = api_data
+            .get("voltage")
+            .and_then(|v| v.as_f64())
+            .map(Voltage::from_millivolts);
+        board.frequency = api_data
+            .get("frequency")
+            .and_then(|v| v.as_f64())
+            .map(Frequency::from_megahertz);
+        board.chips = vec![ChipData {
             position: 0,
-            temperature: chip_temperature,
-            voltage: board_voltage,
-            frequency: board_frequency,
+            temperature: api_data
+                .get("temp")
+                .and_then(|v| v.as_f64())
+                .map(Temperature::from_celsius),
+            voltage: board.voltage,
+            frequency: board.frequency,
             tuned: Some(true),
             working: Some(true),
-            hashrate: board_hashrate.clone(),
-        };
+            hashrate: board.hashrate.clone(),
+        }];
+        board.active = Some(true);
 
-        let board_data = BoardData {
-            position: 0,
-            hashrate: board_hashrate,
-            expected_hashrate,
-            board_temperature,
-            intake_temperature: board_temperature,
-            outlet_temperature: board_temperature,
-            expected_chips: self.device_info.hardware.chips,
-            working_chips: total_chips,
-            serial_number: None,
-            chips: vec![chip_info],
-            voltage: board_voltage,
-            frequency: board_frequency,
-            tuned: Some(true),
-            active: Some(true),
-        };
-
-        vec![board_data]
+        vec![board]
     }
 }
 impl GetHashrate for Bitaxe290 {

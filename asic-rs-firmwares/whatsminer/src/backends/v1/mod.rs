@@ -290,13 +290,18 @@ impl GetControlBoardVersion for WhatsMinerV1 {
 }
 impl GetHashboards for WhatsMinerV1 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = Vec::new();
-        let board_count = self.device_info.hardware.boards.unwrap_or(3);
-        let hashboard_data = data.get(&DataField::Hashboards);
+        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
+            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
+            .collect();
 
-        for idx in 0..board_count {
-            let hashrate = hashboard_data
-                .and_then(|val| val.pointer(&format!("/DEVS/{}/MHS av", idx)))
+        let Some(hashboard_data) = data.get(&DataField::Hashboards) else {
+            return hashboards;
+        };
+
+        for board in hashboards.iter_mut() {
+            let idx = board.position as usize;
+            board.hashrate = hashboard_data
+                .pointer(&format!("/DEVS/{idx}/MHS av"))
                 .and_then(|val| val.as_f64())
                 .map(|f| {
                     HashRate {
@@ -304,10 +309,10 @@ impl GetHashboards for WhatsMinerV1 {
                         unit: HashRateUnit::MegaHash,
                         algo: "SHA256".to_string(),
                     }
-                    .as_unit(HashRateUnit::TeraHash)
+                    .as_unit(HashRateUnit::default())
                 });
-            let expected_hashrate = hashboard_data
-                .and_then(|val| val.pointer(&format!("/DEVS/{}/Factory GHS", idx)))
+            board.expected_hashrate = hashboard_data
+                .pointer(&format!("/DEVS/{idx}/Factory GHS"))
                 .and_then(|val| val.as_f64())
                 .map(|f| {
                     HashRate {
@@ -315,51 +320,41 @@ impl GetHashboards for WhatsMinerV1 {
                         unit: HashRateUnit::GigaHash,
                         algo: "SHA256".to_string(),
                     }
-                    .as_unit(HashRateUnit::TeraHash)
+                    .as_unit(HashRateUnit::default())
                 });
-            let board_temperature = hashboard_data
-                .and_then(|val| val.pointer(&format!("/DEVS/{}/Temperature", idx)))
+            board.board_temperature = hashboard_data
+                .pointer(&format!("/DEVS/{idx}/Temperature"))
                 .and_then(|val| val.as_f64())
                 .map(Temperature::from_celsius);
-            let intake_temperature = hashboard_data
-                .and_then(|val| val.pointer(&format!("/DEVS/{}/Chip Temp Min", idx)))
+            board.intake_temperature = hashboard_data
+                .pointer(&format!("/DEVS/{idx}/Chip Temp Min"))
                 .and_then(|val| val.as_f64())
                 .map(Temperature::from_celsius);
-            let outlet_temperature = hashboard_data
-                .and_then(|val| val.pointer(&format!("/DEVS/{}/Chip Temp Max", idx)))
+            board.outlet_temperature = hashboard_data
+                .pointer(&format!("/DEVS/{idx}/Chip Temp Max"))
                 .and_then(|val| val.as_f64())
                 .map(Temperature::from_celsius);
-            let serial_number = hashboard_data
-                .and_then(|val| val.pointer(&format!("/DEVS/{}/PCB SN", idx)))
-                .and_then(|val| val.as_str())
-                .map(String::from);
-            let working_chips = hashboard_data
-                .and_then(|val| val.pointer(&format!("/DEVS/{}/Effective Chips", idx)))
+            board.working_chips = hashboard_data
+                .pointer(&format!("/DEVS/{idx}/Effective Chips"))
                 .and_then(|val| val.as_u64())
                 .map(|u| u as u16);
-            let frequency = hashboard_data
-                .and_then(|val| val.pointer(&format!("/DEVS/{}/Frequency", idx)))
+            board.serial_number = hashboard_data
+                .pointer(&format!("/DEVS/{idx}/PCB SN"))
+                .and_then(|val| val.as_str())
+                .map(String::from);
+            board.frequency = hashboard_data
+                .pointer(&format!("/DEVS/{idx}/Frequency"))
                 .and_then(|val| val.as_f64())
                 .map(Frequency::from_megahertz);
-
-            let active = Some(hashrate.clone().map(|h| h.value).unwrap_or(0f64) > 0f64);
-            hashboards.push(BoardData {
-                hashrate,
-                position: idx,
-                expected_hashrate,
-                board_temperature,
-                intake_temperature,
-                outlet_temperature,
-                expected_chips: self.device_info.hardware.chips,
-                working_chips,
-                serial_number,
-                chips: vec![],
-                voltage: None, // TODO
-                frequency,
-                tuned: Some(true),
-                active,
-            });
+            board.active = Some(
+                board
+                    .hashrate
+                    .as_ref()
+                    .map(|h| h.value > 0.0)
+                    .unwrap_or(false),
+            );
         }
+
         hashboards
     }
 }
