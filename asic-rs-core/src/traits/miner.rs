@@ -242,7 +242,11 @@ impl<
         let efficiency = match (hashrate.as_ref(), wattage.as_ref()) {
             (Some(hr), Some(w)) => {
                 let hashrate_th = hr.clone().as_unit(HashRateUnit::TeraHash).value;
-                Some(w.as_watts() / hashrate_th)
+                if hashrate_th > 0.0 {
+                    Some(w.as_watts() / hashrate_th)
+                } else {
+                    None
+                }
             }
             _ => None,
         };
