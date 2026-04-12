@@ -10,7 +10,7 @@ pub enum MarathonControlBoard {
 
 impl MarathonControlBoard {
     pub fn parse(s: &str) -> Option<Self> {
-        let cb_model = s.trim().replace(" ", "").to_uppercase();
+        let cb_model = s.trim().replace(' ', "").to_uppercase();
         match &cb_model {
             s if s.starts_with("MARACB") => Some(Self::MaraCB),
             _ => None,
