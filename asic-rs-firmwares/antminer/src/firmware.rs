@@ -86,11 +86,9 @@ async fn get_model_with_auth(
         .ok();
     match response {
         Some(data) => {
-            let json_data = data.json::<Value>().await.ok();
-            if json_data.is_none() {
+            let Some(json_data) = data.json::<Value>().await.ok() else {
                 return Err(ModelSelectionError::UnexpectedModelResponse);
-            }
-            let json_data = json_data.unwrap();
+            };
 
             let model = json_data["miner_type"]
                 .as_str()
