@@ -10,7 +10,7 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum HashRateUnit {
     Hash,
     KiloHash,
@@ -111,7 +111,7 @@ impl HashRate {
         let base = self.value * self.unit.to_multiplier(); // Convert to base unit (e.g., bytes)
 
         Self {
-            value: base / unit.clone().to_multiplier(),
+            value: base / unit.to_multiplier(),
             unit,
             algo: self.algo,
         }
@@ -135,7 +135,7 @@ impl Display for HashRate {
 
 impl PartialEq for HashRate {
     fn eq(&self, other: &Self) -> bool {
-        other.clone().as_unit(self.unit.clone()).value == self.value
+        other.clone().as_unit(self.unit).value == self.value
     }
 }
 
