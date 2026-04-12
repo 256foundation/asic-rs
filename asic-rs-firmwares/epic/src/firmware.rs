@@ -13,6 +13,7 @@ use asic_rs_core::{
         miner::{Miner, MinerAuth, MinerConstructor},
         model::{MinerModel, UnknownMinerModel},
     },
+    util::DEFAULT_RPC_TIMEOUT,
 };
 use asic_rs_makes_antminer::{make::AntMinerMake, models::AntMinerModel};
 use asic_rs_makes_epic::{make::EPicMake, models::EPicModel};
@@ -81,6 +82,7 @@ impl MinerFirmware for EPicFirmware {
         let url = format!("http://{}:4028/capabilities", ip);
         let response = reqwest::Client::new()
             .get(&url)
+            .timeout(DEFAULT_RPC_TIMEOUT)
             .send()
             .await
             .map_err(|_| ModelSelectionError::NoModelResponse)?;
@@ -134,7 +136,12 @@ impl MinerFirmware for EPicFirmware {
 
     async fn get_version(ip: IpAddr) -> Option<semver::Version> {
         let url = format!("http://{}:4028/summary", ip);
-        let response = reqwest::Client::new().get(&url).send().await.ok()?;
+        let response = reqwest::Client::new()
+            .get(&url)
+            .timeout(DEFAULT_RPC_TIMEOUT)
+            .send()
+            .await
+            .ok()?;
         let json_data = response.json::<serde_json::Value>().await.ok()?;
 
         let fw_str = json_data["Software"].as_str()?;

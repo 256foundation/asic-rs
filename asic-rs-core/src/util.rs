@@ -2,7 +2,10 @@ use std::{net::IpAddr, sync::LazyLock, time::Duration};
 
 use reqwest::{StatusCode, header::HeaderMap};
 use serde_json::json;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
+use tokio::{
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    net::{TcpStream, ToSocketAddrs},
+};
 
 use crate::errors::RPCError;
 
@@ -24,10 +27,23 @@ static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .redirect(reqwest::redirect::Policy::none())
         .danger_accept_invalid_certs(true)
         .gzip(true)
+        .timeout(DEFAULT_RPC_TIMEOUT)
         .pool_max_idle_per_host(0)
         .build()
         .expect("Failed to initialize shared HTTP client")
 });
+
+/// Connect to a miner TCP endpoint with a bounded timeout.
+pub async fn connect_tcp_stream<A>(addr: A, timeout: Duration) -> anyhow::Result<TcpStream>
+where
+    A: ToSocketAddrs,
+{
+    tokio::time::timeout(timeout, TcpStream::connect(addr))
+        .await
+        .map_err(|_| RPCError::ConnectionTimeout)?
+        .map_err(RPCError::from)
+        .map_err(Into::into)
+}
 
 /// Read a complete RPC response from a stream.
 ///
@@ -76,15 +92,30 @@ pub async fn read_exact_with_timeout(
     Ok(())
 }
 
+/// Write a complete RPC request with a timeout.
+pub async fn write_all_with_timeout(
+    stream: &mut (impl AsyncWrite + Unpin),
+    buf: &[u8],
+    timeout: Duration,
+) -> anyhow::Result<()> {
+    tokio::time::timeout(timeout, stream.write_all(buf))
+        .await
+        .map_err(|_| RPCError::WriteTimeout)?
+        .map_err(RPCError::from)?;
+    Ok(())
+}
+
 #[tracing::instrument(level = "debug")]
 pub async fn send_rpc_command(ip: &IpAddr, command: &'static str) -> Option<serde_json::Value> {
-    let mut stream = tokio::net::TcpStream::connect(format!("{ip}:4028"))
+    let mut stream = connect_tcp_stream((*ip, 4028), DEFAULT_RPC_TIMEOUT)
         .await
         .map_err(|_| tracing::debug!("failed to connect to {ip} rpc"))
         .ok()?;
 
     let command = format!("{{\"command\":\"{command}\"}}");
-    if let Err(err) = stream.write_all(command.as_bytes()).await {
+    if let Err(err) =
+        write_all_with_timeout(&mut stream, command.as_bytes(), DEFAULT_RPC_TIMEOUT).await
+    {
         tracing::debug!("failed to write command to {ip}: {err:?}");
         return None;
     }

@@ -166,6 +166,36 @@ impl MinerFactory {
         Ok(())
     }
 
+    pub fn with_concurrent_limit(&mut self, limit: usize) -> PyResult<()> {
+        let inner = Arc::<MinerFactory_Base>::make_mut(&mut self.inner).clone();
+        self.inner = Arc::new(inner.with_concurrent_limit(limit));
+        Ok(())
+    }
+
+    pub fn with_identification_timeout_secs(&mut self, timeout_secs: u64) -> PyResult<()> {
+        let inner = Arc::<MinerFactory_Base>::make_mut(&mut self.inner).clone();
+        self.inner = Arc::new(inner.with_identification_timeout_secs(timeout_secs));
+        Ok(())
+    }
+
+    pub fn with_connectivity_timeout_secs(&mut self, timeout_secs: u64) -> PyResult<()> {
+        let inner = Arc::<MinerFactory_Base>::make_mut(&mut self.inner).clone();
+        self.inner = Arc::new(inner.with_connectivity_timeout_secs(timeout_secs));
+        Ok(())
+    }
+
+    pub fn with_connectivity_retries(&mut self, retries: u32) -> PyResult<()> {
+        let inner = Arc::<MinerFactory_Base>::make_mut(&mut self.inner).clone();
+        self.inner = Arc::new(inner.with_connectivity_retries(retries));
+        Ok(())
+    }
+
+    pub fn with_port_check(&mut self, enabled: bool) -> PyResult<()> {
+        let inner = Arc::<MinerFactory_Base>::make_mut(&mut self.inner).clone();
+        self.inner = Arc::new(inner.with_port_check(enabled));
+        Ok(())
+    }
+
     pub fn scan<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {

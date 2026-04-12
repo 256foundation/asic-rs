@@ -15,6 +15,7 @@ use asic_rs_core::{
         miner::{ExposeSecret, HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
         model::MinerModel,
     },
+    util::DEFAULT_RPC_TIMEOUT,
 };
 use asic_rs_makes_antminer::make::AntMinerMake;
 use asic_rs_makes_antminer::models::AntMinerModel;
@@ -79,6 +80,7 @@ async fn get_model_with_auth(
 ) -> Result<AntMinerCompatibleModel, ModelSelectionError> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{ip}/cgi-bin/miner_type.cgi"))
+        .timeout(DEFAULT_RPC_TIMEOUT)
         .send_digest_auth((auth.username.as_str(), auth.password.expose_secret()))
         .await
         .ok();
@@ -111,6 +113,7 @@ async fn get_model_with_auth(
 async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::Version> {
     let response: Option<Response> = Client::new()
         .get(format!("http://{ip}/cgi-bin/summary.cgi"))
+        .timeout(DEFAULT_RPC_TIMEOUT)
         .send_digest_auth((auth.username.as_str(), auth.password.expose_secret()))
         .await
         .ok();

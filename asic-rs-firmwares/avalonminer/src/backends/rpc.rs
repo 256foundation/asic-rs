@@ -3,14 +3,12 @@ use std::{collections::HashMap, net::IpAddr, sync::LazyLock};
 use anyhow;
 use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
-    errors::RPCError,
     traits::miner::{APIClient, RPCAPIClient},
-    util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
+    util::{DEFAULT_RPC_TIMEOUT, connect_tcp_stream, read_stream_response, write_all_with_timeout},
 };
 use async_trait::async_trait;
 use regex::Regex;
 use serde_json::{Value, json};
-use tokio::io::AsyncWriteExt;
 
 static STATS_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(\w+)\[([^]]+)]").expect("valid hardcoded regex"));
@@ -172,13 +170,10 @@ impl RPCAPIClient for AvalonMinerRPCAPI {
             }),
         };
 
-        let stream = tokio::net::TcpStream::connect(format!("{}:{}", self.ip, self.port))
-            .await
-            .map_err(|_| RPCError::ConnectionFailed)?;
-        let mut stream = stream;
+        let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT).await?;
 
         let json_str = cmd.to_string();
-        stream.write_all(json_str.as_bytes()).await?;
+        write_all_with_timeout(&mut stream, json_str.as_bytes(), DEFAULT_RPC_TIMEOUT).await?;
 
         let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?;
 

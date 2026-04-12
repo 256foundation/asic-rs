@@ -204,21 +204,15 @@ impl Default for MinerFactory {
 impl MinerFactory {
     #[tracing::instrument(level = "debug", skip(self))]
     pub async fn scan_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
-        if (1..self.connectivity_retries).next().is_some() {
-            if !self.check_port {
-                return self.get_miner(ip).await;
-            }
-            if check_port_open(ip, 80, self.connectivity_timeout).await {
-                return self.get_miner(ip).await;
-            }
-            if check_port_open(ip, 4028, self.connectivity_timeout).await {
-                return self.get_miner(ip).await;
-            }
-            if check_port_open(ip, 4029, self.connectivity_timeout).await {
-                return self.get_miner(ip).await;
-            }
-            if check_port_open(ip, 8889, self.connectivity_timeout).await {
-                return self.get_miner(ip).await;
+        if !self.check_port {
+            return self.get_miner(ip).await;
+        }
+
+        for _ in 0..self.connectivity_retries {
+            for port in [80, 4028, 4029, 8889] {
+                if check_port_open(ip, port, self.connectivity_timeout).await {
+                    return self.get_miner(ip).await;
+                }
             }
         }
         tracing::trace!("no response from any miner-specific ports");
@@ -338,10 +332,14 @@ impl MinerFactory {
         match found {
             Some(fw) => {
                 let auth = self.discovery_auth_by_firmware.get(&fw.to_string());
-                match fw.build_miner(ip, auth).await {
-                    Ok(miner) => Ok(Some(miner)),
-                    Err(e) => {
+                match timeout(self.identification_timeout, fw.build_miner(ip, auth)).await {
+                    Ok(Ok(miner)) => Ok(Some(miner)),
+                    Ok(Err(e)) => {
                         tracing::debug!("failed to build miner for {ip}: {e}");
+                        Ok(None)
+                    }
+                    Err(_) => {
+                        tracing::debug!("timed out building miner for {ip}");
                         Ok(None)
                     }
                 }
@@ -464,15 +462,7 @@ impl MinerFactory {
     fn hosts_from_subnet(&self, subnet: &str) -> Result<Vec<IpAddr>> {
         let network = IpNet::from_str(subnet)?;
         let hosts = match network {
-            IpNet::V4(network_v4) => {
-                let start = u32::from(network_v4.network());
-                let end = u32::from(network_v4.broadcast());
-
-                (start..=end)
-                    .map(Ipv4Addr::from)
-                    .map(IpAddr::V4)
-                    .collect::<Vec<IpAddr>>()
-            }
+            IpNet::V4(network_v4) => network_v4.hosts().map(IpAddr::V4).collect::<Vec<IpAddr>>(),
             IpNet::V6(network_v6) => network_v6.hosts().map(IpAddr::V6).collect(),
         };
 
@@ -824,6 +814,17 @@ mod tests {
         assert_eq!(ips.len(), 2);
         assert!(ips.contains(&IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))));
         assert!(ips.contains(&IpAddr::V4(Ipv4Addr::new(192, 168, 1, 2))));
+    }
+
+    #[test]
+    fn test_hosts_from_subnet_excludes_ipv4_network_and_broadcast() -> Result<()> {
+        let factory = MinerFactory::new();
+        let ips = factory.hosts_from_subnet("192.168.1.0/30")?;
+
+        assert_eq!(ips.len(), 2);
+        assert_eq!(ips[0], IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)));
+        assert_eq!(ips[1], IpAddr::V4(Ipv4Addr::new(192, 168, 1, 2)));
+        Ok(())
     }
 
     #[test]

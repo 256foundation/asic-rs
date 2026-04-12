@@ -5,11 +5,10 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
-    util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
+    util::{DEFAULT_RPC_TIMEOUT, connect_tcp_stream, read_stream_response, write_all_with_timeout},
 };
 use async_trait::async_trait;
 use serde_json::{Value, json};
-use tokio::io::AsyncWriteExt;
 
 #[derive(Debug)]
 pub struct WhatsMinerRPCAPI {
@@ -78,9 +77,7 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         _privileged: bool,
         parameters: Option<Value>,
     ) -> anyhow::Result<Value> {
-        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
-            .await
-            .map_err(|_| RPCError::ConnectionFailed)?;
+        let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT).await?;
 
         let request = match parameters {
             Some(Value::Object(mut obj)) => {
@@ -100,7 +97,7 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         let json_str = request.to_string();
         let json_bytes = json_str.as_bytes();
 
-        stream.write_all(json_bytes).await?;
+        write_all_with_timeout(&mut stream, json_bytes, DEFAULT_RPC_TIMEOUT).await?;
 
         let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?;
         let response = response

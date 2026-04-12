@@ -9,7 +9,7 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::{RPCError, RPCError::StatusCheckFailed},
     traits::miner::*,
-    util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
+    util::{DEFAULT_RPC_TIMEOUT, connect_tcp_stream, read_stream_response, write_all_with_timeout},
 };
 use async_trait::async_trait;
 use base64::prelude::*;
@@ -172,9 +172,7 @@ impl WhatsMinerRPCAPI {
             return self.send_privileged_command(command, parameters).await;
         }
 
-        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
-            .await
-            .map_err(|_| RPCError::ConnectionFailed)?;
+        let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT).await?;
 
         let request = match parameters {
             Some(Value::Object(mut obj)) => {
@@ -194,7 +192,7 @@ impl WhatsMinerRPCAPI {
         let json_str = request.to_string();
         let json_bytes = json_str.as_bytes();
 
-        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
+        write_all_with_timeout(&mut stream, json_bytes, DEFAULT_RPC_TIMEOUT).await?;
 
         let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
         let _ = stream.shutdown().await;
@@ -204,19 +202,15 @@ impl WhatsMinerRPCAPI {
     }
 
     async fn unlock_write_commands(&self) -> anyhow::Result<()> {
-        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
-            .await
-            .map_err(|_| RPCError::ConnectionFailed)?;
+        let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT).await?;
 
         let open_cmd = json!({
             "command": "open_write_api",
             "client": UNLOCK_CLIENT,
             "enable": true,
         });
-        stream
-            .write_all(open_cmd.to_string().as_bytes())
-            .await
-            .map_err(RPCError::from)?;
+        let open_cmd = open_cmd.to_string();
+        write_all_with_timeout(&mut stream, open_cmd.as_bytes(), DEFAULT_RPC_TIMEOUT).await?;
 
         let mut buf = vec![0u8; 4096];
         let n = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut buf))
@@ -252,10 +246,8 @@ impl WhatsMinerRPCAPI {
         let token_md5 = format!("{:x}", md5::compute(token_data.as_bytes()));
 
         let token_json = json!({ "token": token_md5 });
-        stream
-            .write_all(token_json.to_string().as_bytes())
-            .await
-            .map_err(RPCError::from)?;
+        let token_json = token_json.to_string();
+        write_all_with_timeout(&mut stream, token_json.as_bytes(), DEFAULT_RPC_TIMEOUT).await?;
 
         let mut final_buf = vec![0u8; 4096];
         let _ = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut final_buf))
@@ -349,9 +341,7 @@ impl WhatsMinerRPCAPI {
     ) -> anyhow::Result<Value> {
         let token_data = self.get_token_data().await?;
 
-        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
-            .await
-            .map_err(|_| RPCError::ConnectionFailed)?;
+        let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT).await?;
 
         let request = match parameters {
             Some(Value::Object(mut obj)) => {
@@ -374,7 +364,7 @@ impl WhatsMinerRPCAPI {
         let json_str = command.to_string();
         let json_bytes = json_str.as_bytes();
 
-        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
+        write_all_with_timeout(&mut stream, json_bytes, DEFAULT_RPC_TIMEOUT).await?;
 
         let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
         let _ = stream.shutdown().await;

@@ -24,7 +24,9 @@ pub enum RPCError {
     StatusCheckFailed(String),
     DeserializationFailed(serde_json::Error),
     ConnectionFailed,
+    ConnectionTimeout,
     ReadTimeout,
+    WriteTimeout,
     ConnectionReset,
     BrokenPipe,
 }
@@ -35,7 +37,11 @@ impl RPCError {
     pub fn is_transient(&self) -> bool {
         matches!(
             self,
-            Self::ReadTimeout | Self::ConnectionReset | Self::BrokenPipe
+            Self::ConnectionTimeout
+                | Self::ReadTimeout
+                | Self::WriteTimeout
+                | Self::ConnectionReset
+                | Self::BrokenPipe
         )
     }
 }
@@ -52,8 +58,14 @@ impl Display for RPCError {
             RPCError::ConnectionFailed => {
                 write!(f, "Failed to connect to RPC API")
             }
+            RPCError::ConnectionTimeout => {
+                write!(f, "RPC connect timed out")
+            }
             RPCError::ReadTimeout => {
                 write!(f, "RPC read timed out")
+            }
+            RPCError::WriteTimeout => {
+                write!(f, "RPC write timed out")
             }
             RPCError::ConnectionReset => {
                 write!(f, "Connection reset by miner")

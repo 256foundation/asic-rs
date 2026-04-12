@@ -9,7 +9,9 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
-    util::{DEFAULT_RPC_TIMEOUT, read_exact_with_timeout},
+    util::{
+        DEFAULT_RPC_TIMEOUT, connect_tcp_stream, read_exact_with_timeout, write_all_with_timeout,
+    },
 };
 use async_trait::async_trait;
 use base64::prelude::*;
@@ -17,7 +19,6 @@ use chrono::Utc;
 use ecb::cipher::block_padding::ZeroPadding;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use tokio::io::AsyncWriteExt;
 
 type Aes256EcbEnc = ecb::Encryptor<Aes256>;
 
@@ -102,9 +103,7 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
             return self.send_privileged_command(command, parameters).await;
         }
 
-        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
-            .await
-            .map_err(|_| RPCError::ConnectionFailed)?;
+        let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT).await?;
 
         let request = match parameters {
             Some(Value::Object(mut obj)) => {
@@ -125,11 +124,10 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         let json_bytes = json_str.as_bytes();
         let length = json_bytes.len() as u32;
 
-        stream
-            .write_all(&length.to_le_bytes())
-            .await
-            .map_err(RPCError::from)?;
-        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
+        let mut request_frame = Vec::with_capacity(4 + json_bytes.len());
+        request_frame.extend_from_slice(&length.to_le_bytes());
+        request_frame.extend_from_slice(json_bytes);
+        write_all_with_timeout(&mut stream, &request_frame, DEFAULT_RPC_TIMEOUT).await?;
 
         let mut len_buf = [0u8; 4];
         read_exact_with_timeout(&mut stream, &mut len_buf, DEFAULT_RPC_TIMEOUT).await?;
@@ -175,9 +173,7 @@ impl WhatsMinerRPCAPI {
             .await
             .ok_or_else(|| anyhow::anyhow!("Could not get salt for privileged command"))?;
 
-        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
-            .await
-            .map_err(|_| RPCError::ConnectionFailed)?;
+        let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT).await?;
 
         let timestamp = Utc::now().timestamp();
 
@@ -229,11 +225,10 @@ impl WhatsMinerRPCAPI {
         let json_bytes = json_str.as_bytes();
         let length = json_bytes.len() as u32;
 
-        stream
-            .write_all(&length.to_le_bytes())
-            .await
-            .map_err(RPCError::from)?;
-        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
+        let mut request_frame = Vec::with_capacity(4 + json_bytes.len());
+        request_frame.extend_from_slice(&length.to_le_bytes());
+        request_frame.extend_from_slice(json_bytes);
+        write_all_with_timeout(&mut stream, &request_frame, DEFAULT_RPC_TIMEOUT).await?;
 
         let mut len_buf = [0u8; 4];
         read_exact_with_timeout(&mut stream, &mut len_buf, DEFAULT_RPC_TIMEOUT).await?;
