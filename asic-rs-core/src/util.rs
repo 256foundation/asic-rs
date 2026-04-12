@@ -176,7 +176,7 @@ pub async fn send_graphql_command(ip: &IpAddr, command: &'static str) -> Option<
 #[tracing::instrument(level = "debug")]
 fn parse_rpc_result(response: &str) -> Option<serde_json::Value> {
     // Fix for WM V1, can have newlines in version which breaks the json parser
-    let response = response.replace("\n", "");
+    let response = response.replace('\n', "");
     let parsed: Result<serde_json::Value, _> = serde_json::from_str(&response);
     let success_codes = ["S", "I"];
 

@@ -30,7 +30,7 @@ pub enum BraiinsControlBoard {
 
 impl BraiinsControlBoard {
     pub fn parse(s: &str) -> Option<Self> {
-        let cb_model = s.trim().replace(" ", "").to_uppercase();
+        let cb_model = s.trim().replace(' ', "").to_uppercase();
         match cb_model.as_ref() {
             "BRAIINSCB" => Some(Self::BraiinsCB),
             _ => None,
