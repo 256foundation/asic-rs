@@ -482,7 +482,7 @@ impl GetHashboards for AvalonAMiner {
                     .map(|r| HashRate {
                         value: r,
                         unit: HashRateUnit::GigaHash,
-                        algo: "SHA256".into(),
+                        algo: "SHA256".to_string(),
                     });
 
                 let chip_temps: Vec<f64> = hb_info
@@ -548,7 +548,7 @@ impl GetHashrate for AvalonAMiner {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::MegaHash,
-            algo: "SHA256".into(),
+            algo: "SHA256".to_string(),
         })
     }
 }
@@ -558,7 +558,7 @@ impl GetExpectedHashrate for AvalonAMiner {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::GigaHash,
-            algo: "SHA256".into(),
+            algo: "SHA256".to_string(),
         })
     }
 }

@@ -685,7 +685,7 @@ impl GetHashboards for LuxMinerV1 {
                             HashRate {
                                 value: expected_hashrate,
                                 unit: HashRateUnit::MegaHash,
-                                algo: String::from("SHA256"),
+                                algo: "SHA256".to_string(),
                             }
                             .as_unit(HashRateUnit::TeraHash),
                         );
@@ -707,7 +707,7 @@ impl GetHashboards for LuxMinerV1 {
                         HashRate {
                             value: f,
                             unit: HashRateUnit::GigaHash,
-                            algo: String::from("SHA256"),
+                            algo: "SHA256".to_string(),
                         }
                         .as_unit(HashRateUnit::TeraHash)
                     })
@@ -821,7 +821,7 @@ impl GetHashboards for LuxMinerV1 {
                             hashrate: o.get("GHS 1m").and_then(|v| v.as_f64()).map(|hr| HashRate {
                                 value: hr,
                                 unit: HashRateUnit::GigaHash,
-                                algo: "SHA256".into(),
+                                algo: "SHA256".to_string(),
                             }),
                             frequency: o
                                 .get("Frequency")
@@ -852,7 +852,7 @@ impl GetHashboards for LuxMinerV1 {
                         HashRate {
                             value: total_hr,
                             unit: HashRateUnit::GigaHash,
-                            algo: "SHA256".into(),
+                            algo: "SHA256".to_string(),
                         }
                         .as_unit(HashRateUnit::TeraHash),
                     );
@@ -885,7 +885,7 @@ impl GetHashrate for LuxMinerV1 {
             HashRate {
                 value: f,
                 unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             }
             .as_unit(HashRateUnit::TeraHash)
         })
@@ -915,7 +915,7 @@ impl GetExpectedHashrate for LuxMinerV1 {
             HashRate {
                 value: expected_hashrate,
                 unit: HashRateUnit::MegaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             }
             .as_unit(HashRateUnit::TeraHash),
         )

@@ -741,7 +741,7 @@ impl GetHashboards for MaraV1 {
                         hashboard.hashrate = Some(HashRate {
                             value: hashrate,
                             unit: HashRateUnit::GigaHash,
-                            algo: String::from("SHA256"),
+                            algo: "SHA256".to_string(),
                         });
                     }
 
@@ -793,7 +793,7 @@ impl GetHashboards for MaraV1 {
                         hashboard.expected_hashrate = Some(HashRate {
                             value: expected_hashrate,
                             unit: HashRateUnit::GigaHash,
-                            algo: String::from("SHA256"),
+                            algo: "SHA256".to_string(),
                         });
                     }
 
@@ -816,7 +816,7 @@ impl GetHashrate for MaraV1 {
             .map(|rate| HashRate {
                 value: rate,
                 unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             })
     }
 }
@@ -827,7 +827,7 @@ impl GetExpectedHashrate for MaraV1 {
             .map(|rate| HashRate {
                 value: rate,
                 unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             })
     }
 }

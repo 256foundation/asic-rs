@@ -344,7 +344,7 @@ impl GetHashboards for WhatsMinerV2 {
                     HashRate {
                         value: f,
                         unit: HashRateUnit::MegaHash,
-                        algo: String::from("SHA256"),
+                        algo: "SHA256".to_string(),
                     }
                     .as_unit(HashRateUnit::TeraHash)
                 });
@@ -355,7 +355,7 @@ impl GetHashboards for WhatsMinerV2 {
                     HashRate {
                         value: f,
                         unit: HashRateUnit::GigaHash,
-                        algo: String::from("SHA256"),
+                        algo: "SHA256".to_string(),
                     }
                     .as_unit(HashRateUnit::TeraHash)
                 });
@@ -411,7 +411,7 @@ impl GetHashrate for WhatsMinerV2 {
             HashRate {
                 value: f,
                 unit: HashRateUnit::MegaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             }
             .as_unit(HashRateUnit::TeraHash)
         })
@@ -423,7 +423,7 @@ impl GetExpectedHashrate for WhatsMinerV2 {
             HashRate {
                 value: f,
                 unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             }
             .as_unit(HashRateUnit::TeraHash)
         })
@@ -1070,7 +1070,7 @@ mod integration_tests {
             Some(HashRate {
                 value: 124.5,
                 unit: HashRateUnit::TeraHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             })
         );
         assert_eq!(
@@ -1078,7 +1078,7 @@ mod integration_tests {
             Some(HashRate {
                 value: 126.0,
                 unit: HashRateUnit::TeraHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             })
         );
         assert_eq!(miner_data.wattage, Some(Power::from_watts(3200.0)));

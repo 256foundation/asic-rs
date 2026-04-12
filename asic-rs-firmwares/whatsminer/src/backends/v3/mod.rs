@@ -381,7 +381,7 @@ impl GetHashboards for WhatsMinerV3 {
                 .map(|f| HashRate {
                     value: f,
                     unit: HashRateUnit::TeraHash,
-                    algo: String::from("SHA256"),
+                    algo: "SHA256".to_string(),
                 });
             let expected_hashrate = data
                 .get(&DataField::Hashboards)
@@ -390,7 +390,7 @@ impl GetHashboards for WhatsMinerV3 {
                 .map(|f| HashRate {
                     value: f,
                     unit: HashRateUnit::TeraHash,
-                    algo: String::from("SHA256"),
+                    algo: "SHA256".to_string(),
                 });
             let board_temperature = data
                 .get(&DataField::Hashboards)
@@ -447,7 +447,7 @@ impl GetHashrate for WhatsMinerV3 {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::TeraHash,
-            algo: String::from("SHA256"),
+            algo: "SHA256".to_string(),
         })
     }
 }
@@ -456,7 +456,7 @@ impl GetExpectedHashrate for WhatsMinerV3 {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::TeraHash,
-            algo: String::from("SHA256"),
+            algo: "SHA256".to_string(),
         })
     }
 }
@@ -1076,7 +1076,7 @@ mod integration_tests {
             Some(HashRate {
                 value: 171.259,
                 unit: HashRateUnit::TeraHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             })
         );
         assert_eq!(
@@ -1084,7 +1084,7 @@ mod integration_tests {
             Some(HashRate {
                 value: 181.051,
                 unit: HashRateUnit::TeraHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             })
         );
         assert_eq!(miner_data.wattage, Some(Power::from_watts(3156.0)));

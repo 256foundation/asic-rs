@@ -322,7 +322,7 @@ impl GetHashboards for BraiinsV2507 {
                     .map(|f| HashRate {
                         value: f,
                         unit: HashRateUnit::GigaHash,
-                        algo: String::from("SHA256"),
+                        algo: "SHA256".to_string(),
                     });
                 let expected_hashrate = chain
                     .pointer("/stats/nominal_hashrate/gigahash_per_second")
@@ -330,7 +330,7 @@ impl GetHashboards for BraiinsV2507 {
                     .map(|f| HashRate {
                         value: f,
                         unit: HashRateUnit::GigaHash,
-                        algo: String::from("SHA256"),
+                        algo: "SHA256".to_string(),
                     });
 
                 let frequency = chain
@@ -391,7 +391,7 @@ impl GetHashrate for BraiinsV2507 {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::GigaHash,
-            algo: String::from("SHA256"),
+            algo: "SHA256".to_string(),
         })
     }
 }
@@ -401,7 +401,7 @@ impl GetExpectedHashrate for BraiinsV2507 {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::GigaHash,
-            algo: String::from("SHA256"),
+            algo: "SHA256".to_string(),
         })
     }
 }

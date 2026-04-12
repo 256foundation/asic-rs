@@ -561,7 +561,7 @@ impl GetHashboards for PowerPlayV1 {
                                 hashboard.hashrate = Some(HashRate {
                                     value: h,
                                     unit: HashRateUnit::MegaHash,
-                                    algo: String::from("SHA256"),
+                                    algo: "SHA256".to_string(),
                                 })
                             };
 
@@ -579,7 +579,7 @@ impl GetHashboards for PowerPlayV1 {
                                 hashboard.expected_hashrate = Some(HashRate {
                                     value: h.0 / h.1,
                                     unit: HashRateUnit::MegaHash,
-                                    algo: String::from("SHA256"),
+                                    algo: "SHA256".to_string(),
                                 })
                             };
 
@@ -748,7 +748,7 @@ impl GetHashboards for PowerPlayV1 {
                                         .map(|hr| HashRate {
                                             value: hr,
                                             unit: HashRateUnit::MegaHash,
-                                            algo: String::from("SHA256"),
+                                            algo: "SHA256".to_string(),
                                         })
                                         .collect::<Vec<HashRate>>()
                                 })
@@ -803,7 +803,7 @@ impl GetHashrate for PowerPlayV1 {
         Some(HashRate {
             value: total_hashrate,
             unit: HashRateUnit::MegaHash,
-            algo: String::from("SHA256"),
+            algo: "SHA256".to_string(),
         })
     }
 }
@@ -813,7 +813,7 @@ impl GetExpectedHashrate for PowerPlayV1 {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::TeraHash,
-            algo: String::from("SHA256"),
+            algo: "SHA256".to_string(),
         })
     }
 }
@@ -1537,7 +1537,7 @@ mod tests {
             Some(HashRate {
                 value: 305937.8,
                 unit: HashRateUnit::MegaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             })
         );
         assert_eq!(
@@ -1545,7 +1545,7 @@ mod tests {
             Some(HashRate {
                 value: 487695.28,
                 unit: HashRateUnit::MegaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             })
         );
 

@@ -302,7 +302,7 @@ impl GetHashboards for WhatsMinerV1 {
                     HashRate {
                         value: f,
                         unit: HashRateUnit::MegaHash,
-                        algo: String::from("SHA256"),
+                        algo: "SHA256".to_string(),
                     }
                     .as_unit(HashRateUnit::TeraHash)
                 });
@@ -313,7 +313,7 @@ impl GetHashboards for WhatsMinerV1 {
                     HashRate {
                         value: f,
                         unit: HashRateUnit::GigaHash,
-                        algo: String::from("SHA256"),
+                        algo: "SHA256".to_string(),
                     }
                     .as_unit(HashRateUnit::TeraHash)
                 });
@@ -369,7 +369,7 @@ impl GetHashrate for WhatsMinerV1 {
             HashRate {
                 value: f,
                 unit: HashRateUnit::MegaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             }
             .as_unit(HashRateUnit::TeraHash)
         })
@@ -381,7 +381,7 @@ impl GetExpectedHashrate for WhatsMinerV1 {
             HashRate {
                 value: f,
                 unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             }
             .as_unit(HashRateUnit::TeraHash)
         })
@@ -709,7 +709,7 @@ mod integration_tests {
             Some(HashRate {
                 value: 67.39480097,
                 unit: HashRateUnit::TeraHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             })
         );
         assert_eq!(
@@ -717,7 +717,7 @@ mod integration_tests {
             Some(HashRate {
                 value: 68.796,
                 unit: HashRateUnit::TeraHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             })
         );
         assert_eq!(miner_data.wattage, Some(Power::from_watts(3417f64)));

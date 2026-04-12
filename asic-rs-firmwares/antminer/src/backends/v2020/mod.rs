@@ -477,7 +477,7 @@ impl GetHashboards for AntMinerV2020 {
                         HashRate {
                             value: f,
                             unit: HashRateUnit::GigaHash,
-                            algo: String::from("SHA256"),
+                            algo: "SHA256".to_string(),
                         }
                         .as_unit(HashRateUnit::TeraHash)
                     })
@@ -534,7 +534,7 @@ impl GetHashrate for AntMinerV2020 {
             HashRate {
                 value: f,
                 unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             }
             .as_unit(HashRateUnit::TeraHash)
         })
@@ -547,7 +547,7 @@ impl GetExpectedHashrate for AntMinerV2020 {
             HashRate {
                 value: f,
                 unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             }
             .as_unit(HashRateUnit::TeraHash)
         })
