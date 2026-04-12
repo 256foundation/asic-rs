@@ -86,11 +86,9 @@ async fn get_model_with_auth(
         .ok();
     match response {
         Some(data) => {
-            let json_data = data.json::<Value>().await.ok();
-            if json_data.is_none() {
+            let Some(json_data) = data.json::<Value>().await.ok() else {
                 return Err(ModelSelectionError::UnexpectedModelResponse);
-            }
-            let json_data = json_data.unwrap();
+            };
 
             let model = json_data["miner_type"]
                 .as_str()
@@ -111,34 +109,31 @@ async fn get_model_with_auth(
 
 /// Fetch the firmware version from a miner using digest auth.
 async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::Version> {
-    let response: Option<Response> = Client::new()
+    let data: Response = Client::new()
         .get(format!("http://{ip}/cgi-bin/summary.cgi"))
         .timeout(DEFAULT_RPC_TIMEOUT)
         .send_digest_auth((auth.username.as_str(), auth.password.expose_secret()))
         .await
-        .ok();
-    match response {
-        Some(data) => {
-            let json_data = data.json::<serde_json::Value>().await.ok()?;
-            let fw_version = json_data["INFO"]["CompileTime"].as_str().unwrap_or("");
+        .ok()?;
 
-            let cleaned: String = {
-                let mut parts: Vec<&str> = fw_version.split_whitespace().collect();
-                if parts.len() > 4 {
-                    parts.remove(4); // remove time zone
-                }
-                parts.join(" ")
-            };
+    let json_data = data.json::<serde_json::Value>().await.ok()?;
+    let fw_version = json_data["INFO"]["CompileTime"].as_str().unwrap_or("");
 
-            let dt = NaiveDateTime::parse_from_str(&cleaned, "%a %b %e %H:%M:%S %Y").ok()?;
-
-            let version =
-                semver::Version::new(dt.year() as u64, dt.month() as u64, dt.day() as u64);
-
-            Some(version)
+    let cleaned: String = {
+        let mut parts: Vec<&str> = fw_version.split_whitespace().collect();
+        if parts.len() > 4 {
+            parts.remove(4); // remove time zone
         }
-        None => None,
-    }
+        parts.join(" ")
+    };
+
+    let dt = NaiveDateTime::parse_from_str(&cleaned, "%a %b %e %H:%M:%S %Y").ok()?;
+
+    Some(semver::Version::new(
+        dt.year() as u64,
+        dt.month() as u64,
+        dt.day() as u64,
+    ))
 }
 
 #[async_trait]

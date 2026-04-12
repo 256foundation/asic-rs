@@ -115,7 +115,7 @@ impl MinerFirmware for EPicFirmware {
                 })))
         } else if model_upper.starts_with("WHATSMINER") {
             let base = model_upper.replace("WHATSMINER ", "");
-            let mut model_str = format!("{}{}", base, subtype).replace("_", "");
+            let mut model_str = format!("{}{}", base, subtype).replace('_', "");
             if !model_str.is_empty() {
                 model_str.pop();
                 model_str.push('0');

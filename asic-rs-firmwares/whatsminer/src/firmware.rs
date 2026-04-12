@@ -31,7 +31,7 @@ impl Display for WhatsMinerFirmware {
 }
 
 fn normalize_whatsminer_model(model: &str) -> String {
-    let mut s = model.to_uppercase().replace("_", "");
+    let mut s = model.to_uppercase().replace('_', "");
     if !s.is_empty() {
         s.pop();
         s.push('0');

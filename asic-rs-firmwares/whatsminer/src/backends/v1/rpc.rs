@@ -101,7 +101,7 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
 
         let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?;
         let response = response
-            .replace("\n", "") // Fix for WM V1, can have newlines in version which breaks the json parser
+            .replace('\n', "") // Fix for WM V1, can have newlines in version which breaks the json parser
             .replace(",}", "}"); // Fix for WM V1, can have trailing commas which breaks the json parser
 
         self.parse_rpc_result(&response)

@@ -29,7 +29,7 @@ pub enum EPicControlBoard {
 
 impl EPicControlBoard {
     pub fn parse(s: &str) -> Option<Self> {
-        let cb_model = s.trim().replace(" ", "").to_uppercase();
+        let cb_model = s.trim().replace(' ', "").to_uppercase();
         match cb_model.as_ref() {
             "EPICUMC" => Some(Self::EPicUMC),
             _ => None,

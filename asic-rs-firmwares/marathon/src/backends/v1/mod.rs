@@ -694,116 +694,90 @@ impl MaraV1 {
 
 impl GetHashboards for MaraV1 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = Vec::new();
+        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
+            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
+            .collect();
 
-        if let Some(expected_boards) = self.device_info.hardware.boards {
-            for i in 0..expected_boards {
-                hashboards.push(BoardData {
-                    position: i,
-                    hashrate: None,
-                    expected_hashrate: None,
-                    board_temperature: None,
-                    intake_temperature: None,
-                    outlet_temperature: None,
-                    expected_chips: self.device_info.hardware.chips,
-                    working_chips: None,
-                    serial_number: None,
-                    chips: vec![],
-                    voltage: None,
-                    frequency: None,
-                    tuned: None,
-                    active: None,
-                });
-            }
-        }
+        let Some(api_data) = data.get(&DataField::Hashboards) else {
+            return hashboards;
+        };
 
-        if let Some(hashboards_data) = data
-            .get(&DataField::Hashboards)
-            .and_then(|v| v.pointer("/chip_data"))
-            && let Some(hb_array) = hashboards_data.as_array()
-        {
-            let hashboard_temps = data
-                .get(&DataField::Hashboards)
-                .and_then(|v| v.pointer("/hb_temps"))
-                .and_then(|v| v.as_array());
+        let chip_data = api_data.pointer("/chip_data").and_then(|v| v.as_array());
+        let hb_temps = api_data.pointer("/hb_temps").and_then(|v| v.as_array());
 
-            for hb in hb_array {
-                if let Some(idx) = hb.get("index").and_then(|v| v.as_u64())
-                    && let Some(hashboard) = hashboards.get_mut(idx as usize)
+        for board in hashboards.iter_mut() {
+            let idx = board.position as usize;
+
+            let Some(hb) = chip_data.and_then(|arr| {
+                arr.iter()
+                    .find(|e| e.get("index").and_then(|v| v.as_u64()) == Some(idx as u64))
+            }) else {
+                continue;
+            };
+
+            let temps_obj = hb_temps
+                .and_then(|temps| temps.get(idx))
+                .and_then(|v| v.as_object());
+
+            board.hashrate = hb.get("hashrate_avg").and_then(|v| v.as_f64()).map(|f| {
+                HashRate {
+                    value: f,
+                    unit: HashRateUnit::GigaHash,
+                    algo: "SHA256".to_string(),
+                }
+                .as_unit(HashRateUnit::default())
+            });
+            board.expected_hashrate = hb.get("hashrate_ideal").and_then(|v| v.as_f64()).map(|f| {
+                HashRate {
+                    value: f,
+                    unit: HashRateUnit::GigaHash,
+                    algo: "SHA256".to_string(),
+                }
+                .as_unit(HashRateUnit::default())
+            });
+
+            if let Some(temps_obj) = temps_obj {
+                if let Some(temp_pcb) = temps_obj.get("temperature_pcb").and_then(|v| v.as_array())
                 {
-                    hashboard.position = idx as u8;
-
-                    let hb_temps = hashboard_temps
-                        .and_then(|temps| temps.get(idx as usize))
-                        .and_then(|v| v.as_object());
-
-                    if let Some(hashrate) = hb.get("hashrate_avg").and_then(|v| v.as_f64()) {
-                        hashboard.hashrate = Some(HashRate {
-                            value: hashrate,
-                            unit: HashRateUnit::GigaHash,
-                            algo: String::from("SHA256"),
-                        });
+                    let temps: Vec<f64> = temp_pcb.iter().filter_map(|t| t.as_f64()).collect();
+                    if !temps.is_empty() {
+                        board.board_temperature = Some(Temperature::from_celsius(
+                            temps.iter().sum::<f64>() / temps.len() as f64,
+                        ));
                     }
-
-                    if let Some(temps_obj) = hb_temps {
-                        if let Some(temp_pcb) =
-                            temps_obj.get("temperature_pcb").and_then(|v| v.as_array())
-                        {
-                            let temps: Vec<f64> =
-                                temp_pcb.iter().filter_map(|t| t.as_f64()).collect();
-                            if !temps.is_empty() {
-                                let avg_temp = temps.iter().sum::<f64>() / temps.len() as f64;
-                                hashboard.board_temperature =
-                                    Some(Temperature::from_celsius(avg_temp));
-                            }
-                        }
-
-                        if let Some(temp_raw) =
-                            temps_obj.get("temperature_raw").and_then(|v| v.as_array())
-                        {
-                            let temps: Vec<f64> =
-                                temp_raw.iter().filter_map(|t| t.as_f64()).collect();
-                            if !temps.is_empty() {
-                                let avg_temp = temps.iter().sum::<f64>() / temps.len() as f64;
-                                hashboard.intake_temperature =
-                                    Some(Temperature::from_celsius(avg_temp));
-                            }
-                        }
-                    }
-
-                    if let Some(asic_num) = hb.get("asic_num").and_then(|v| v.as_u64()) {
-                        hashboard.working_chips = Some(asic_num as u16);
-                    }
-
-                    if let Some(serial) = hb.get("serial_number").and_then(|v| v.as_str()) {
-                        hashboard.serial_number = Some(serial.to_string());
-                    }
-
-                    if let Some(voltage) = hb.get("voltage").and_then(|v| v.as_f64()) {
-                        hashboard.voltage = Some(Voltage::from_volts(voltage));
-                    }
-
-                    if let Some(frequency) = hb.get("frequency_avg").and_then(|v| v.as_f64()) {
-                        hashboard.frequency = Some(Frequency::from_megahertz(frequency));
-                    }
-
-                    if let Some(expected_hashrate) =
-                        hb.get("hashrate_ideal").and_then(|v| v.as_f64())
-                    {
-                        hashboard.expected_hashrate = Some(HashRate {
-                            value: expected_hashrate,
-                            unit: HashRateUnit::GigaHash,
-                            algo: String::from("SHA256"),
-                        });
-                    }
-
-                    hashboard.active = Some(true);
-
-                    if let Some(asic_infos) = hb.get("asic_infos") {
-                        hashboard.chips = Self::parse_chip_data(asic_infos);
+                }
+                if let Some(temp_raw) = temps_obj.get("temperature_raw").and_then(|v| v.as_array())
+                {
+                    let temps: Vec<f64> = temp_raw.iter().filter_map(|t| t.as_f64()).collect();
+                    if !temps.is_empty() {
+                        board.intake_temperature = Some(Temperature::from_celsius(
+                            temps.iter().sum::<f64>() / temps.len() as f64,
+                        ));
                     }
                 }
             }
+
+            board.working_chips = hb
+                .get("asic_num")
+                .and_then(|v| v.as_u64())
+                .map(|u| u as u16);
+            board.serial_number = hb
+                .get("serial_number")
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
+            board.chips = hb
+                .get("asic_infos")
+                .map(Self::parse_chip_data)
+                .unwrap_or_default();
+            board.voltage = hb
+                .get("voltage")
+                .and_then(|v| v.as_f64())
+                .map(Voltage::from_volts);
+            board.frequency = hb
+                .get("frequency_avg")
+                .and_then(|v| v.as_f64())
+                .map(Frequency::from_megahertz);
+            board.active = Some(true);
         }
 
         hashboards
@@ -812,23 +786,21 @@ impl GetHashboards for MaraV1 {
 
 impl GetHashrate for MaraV1 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract::<f64>(DataField::Hashrate)
-            .map(|rate| HashRate {
-                value: rate,
-                unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
-            })
+        data.extract_map::<f64, _>(DataField::Hashrate, |rate| HashRate {
+            value: rate,
+            unit: HashRateUnit::GigaHash,
+            algo: "SHA256".to_string(),
+        })
     }
 }
 
 impl GetExpectedHashrate for MaraV1 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract::<f64>(DataField::ExpectedHashrate)
-            .map(|rate| HashRate {
-                value: rate,
-                unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
-            })
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |rate| HashRate {
+            value: rate,
+            unit: HashRateUnit::GigaHash,
+            algo: "SHA256".to_string(),
+        })
     }
 }
 
@@ -870,16 +842,15 @@ impl GetFluidTemperature for MaraV1 {}
 
 impl GetWattage for MaraV1 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        data.extract::<f64>(DataField::Wattage)
-            .map(Power::from_watts)
+        data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
 
 impl GetTuningTarget for MaraV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
-        data.extract::<f64>(DataField::TuningTarget)
-            .map(Power::from_watts)
-            .map(TuningTarget::Power)
+        data.extract_map::<f64, _>(DataField::TuningTarget, |w| {
+            TuningTarget::Power(Power::from_watts(w))
+        })
     }
 }
 
@@ -932,8 +903,7 @@ impl GetMessages for MaraV1 {
 }
 impl GetUptime for MaraV1 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
-        data.extract::<u64>(DataField::Uptime)
-            .map(Duration::from_secs)
+        data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 

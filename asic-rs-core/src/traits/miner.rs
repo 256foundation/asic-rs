@@ -229,13 +229,11 @@ impl<
         let average_temperature = {
             let board_temps = hashboards
                 .iter()
-                .map(|b| b.board_temperature)
-                .filter(|x| x.is_some())
-                .map(|x| x.unwrap().as_celsius())
+                .filter_map(|b| b.board_temperature.map(|t| t.as_celsius()))
                 .collect::<Vec<f64>>();
             if !board_temps.is_empty() {
                 Some(Temperature::from_celsius(
-                    board_temps.iter().sum::<f64>() / hashboards.len() as f64,
+                    board_temps.iter().sum::<f64>() / board_temps.len() as f64,
                 ))
             } else {
                 None
@@ -244,7 +242,11 @@ impl<
         let efficiency = match (hashrate.as_ref(), wattage.as_ref()) {
             (Some(hr), Some(w)) => {
                 let hashrate_th = hr.clone().as_unit(HashRateUnit::TeraHash).value;
-                Some(w.as_watts() / hashrate_th)
+                if hashrate_th > 0.0 {
+                    Some(w.as_watts() / hashrate_th)
+                } else {
+                    None
+                }
             }
             _ => None,
         };
@@ -275,10 +277,10 @@ impl<
             expected_hashrate,
 
             // Chip information
-            expected_chips: Some(
-                device_info.hardware.chips.unwrap_or(0)
-                    * device_info.hardware.boards.map(|u| u as u16).unwrap_or(0),
-            ),
+            expected_chips: match (device_info.hardware.chips, device_info.hardware.boards) {
+                (Some(chips), Some(boards)) => Some(chips * boards as u16),
+                _ => None,
+            },
             total_chips,
 
             // Cooling information

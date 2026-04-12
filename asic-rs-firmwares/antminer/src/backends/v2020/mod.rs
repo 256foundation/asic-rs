@@ -54,13 +54,12 @@ enum MinerMode {
 
 impl Display for MinerMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            MinerMode::Normal => "0".to_string(),
-            MinerMode::Sleep => "1".to_string(),
-            MinerMode::Low => "3".to_string(),
-            _ => "0".to_string(),
+        let s = match self {
+            MinerMode::Sleep => "1",
+            MinerMode::Low => "3",
+            _ => "0",
         };
-        write!(f, "{}", str)
+        f.write_str(s)
     }
 }
 
@@ -440,88 +439,53 @@ impl GetFirmwareVersion for AntMinerV2020 {
 
 impl GetHashboards for AntMinerV2020 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = Vec::new();
-        let board_count = self.device_info.hardware.boards.unwrap_or(3);
+        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
+            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
+            .collect();
 
-        for idx in 0..board_count {
-            hashboards.push(BoardData {
-                hashrate: None,
-                position: idx,
-                expected_hashrate: None,
-                board_temperature: None,
-                intake_temperature: None,
-                outlet_temperature: None,
-                expected_chips: self.device_info.hardware.chips,
-                working_chips: None,
-                serial_number: None,
-                chips: vec![],
-                voltage: None,
-                frequency: None,
-                tuned: Some(false),
-                active: Some(false),
-            });
-        }
+        let Some(stats_data) = data.get(&DataField::Hashboards).and_then(|v| v.as_object()) else {
+            return hashboards;
+        };
 
-        if let Some(stats_data) = data.get(&DataField::Hashboards) {
-            for idx in 1..=board_count {
-                let board_idx = (idx - 1) as usize;
-                if board_idx >= hashboards.len() {
-                    break;
-                }
+        for board in hashboards.iter_mut() {
+            let idx = board.position + 1;
 
-                if let Some(hashrate) = stats_data
-                    .get(format!("chain_rate{}", idx))
-                    .and_then(|v| v.as_str())
-                    .and_then(|s| s.parse::<f64>().ok())
-                    .map(|f| {
-                        HashRate {
-                            value: f,
-                            unit: HashRateUnit::GigaHash,
-                            algo: String::from("SHA256"),
-                        }
-                        .as_unit(HashRateUnit::TeraHash)
-                    })
-                {
-                    hashboards[board_idx].hashrate = Some(hashrate);
-                }
+            board.hashrate = stats_data
+                .get(&format!("chain_rate{idx}"))
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse::<f64>().ok())
+                .map(|r| {
+                    HashRate {
+                        value: r,
+                        unit: HashRateUnit::GigaHash,
+                        algo: "SHA256".to_string(),
+                    }
+                    .as_unit(HashRateUnit::default())
+                });
 
-                if let Some(working_chips) = stats_data
-                    .get(format!("chain_acn{}", idx))
-                    .and_then(|v| v.as_u64())
-                    .map(|u| u as u16)
-                {
-                    hashboards[board_idx].working_chips = Some(working_chips);
-                }
+            board.board_temperature = stats_data
+                .get(&format!("temp_pcb{idx}"))
+                .and_then(|v| v.as_str())
+                .and_then(Self::parse_temp_string);
 
-                if let Some(board_temp) = stats_data
-                    .get(format!("temp_pcb{}", idx))
-                    .and_then(|v| v.as_str())
-                    .and_then(Self::parse_temp_string)
-                {
-                    hashboards[board_idx].board_temperature = Some(board_temp);
-                }
+            board.working_chips = stats_data
+                .get(&format!("chain_acn{idx}"))
+                .and_then(|v| v.as_u64())
+                .map(|u| u as u16);
 
-                if let Some(frequency) = stats_data
-                    .get(format!("freq{}", idx))
-                    .and_then(|v| v.as_u64())
-                    .map(|f| Frequency::from_megahertz(f as f64))
-                {
-                    hashboards[board_idx].frequency = Some(frequency);
-                }
+            board.frequency = stats_data
+                .get(&format!("freq{idx}"))
+                .and_then(|v| v.as_u64())
+                .map(|f| Frequency::from_megahertz(f as f64));
 
-                let has_hashrate = hashboards[board_idx]
-                    .hashrate
-                    .as_ref()
-                    .map(|h| h.value > 0.0)
-                    .unwrap_or(false);
-                let has_chips = hashboards[board_idx]
-                    .working_chips
-                    .map(|chips| chips > 0)
-                    .unwrap_or(false);
+            let has_hashrate = board
+                .hashrate
+                .as_ref()
+                .map(|h| h.value > 0.0)
+                .unwrap_or(false);
+            let has_chips = board.working_chips.map(|chips| chips > 0).unwrap_or(false);
 
-                hashboards[board_idx].active = Some(has_hashrate || has_chips);
-                hashboards[board_idx].tuned = Some(has_hashrate || has_chips);
-            }
+            board.active = Some(has_hashrate || has_chips);
         }
 
         hashboards
@@ -534,7 +498,7 @@ impl GetHashrate for AntMinerV2020 {
             HashRate {
                 value: f,
                 unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             }
             .as_unit(HashRateUnit::TeraHash)
         })
@@ -547,7 +511,7 @@ impl GetExpectedHashrate for AntMinerV2020 {
             HashRate {
                 value: f,
                 unit: HashRateUnit::GigaHash,
-                algo: String::from("SHA256"),
+                algo: "SHA256".to_string(),
             }
             .as_unit(HashRateUnit::TeraHash)
         })

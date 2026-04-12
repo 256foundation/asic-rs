@@ -310,76 +310,74 @@ impl GetFirmwareVersion for BraiinsV2507 {
 
 impl GetHashboards for BraiinsV2507 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = Vec::new();
+        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
+            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
+            .collect();
 
-        let chains_data = data.get(&DataField::Hashboards).and_then(|v| v.as_array());
+        let Some(chains_array) = data.get(&DataField::Hashboards).and_then(|v| v.as_array()) else {
+            return hashboards;
+        };
 
-        if let Some(chains_array) = chains_data {
-            for (idx, chain) in chains_array.iter().enumerate() {
-                let hashrate = chain
-                    .pointer("/stats/real_hashrate/last_5s/gigahash_per_second")
-                    .and_then(|v| v.as_f64())
-                    .map(|f| HashRate {
-                        value: f,
-                        unit: HashRateUnit::GigaHash,
-                        algo: String::from("SHA256"),
-                    });
-                let expected_hashrate = chain
-                    .pointer("/stats/nominal_hashrate/gigahash_per_second")
-                    .and_then(|v| v.as_f64())
-                    .map(|f| HashRate {
-                        value: f,
-                        unit: HashRateUnit::GigaHash,
-                        algo: String::from("SHA256"),
-                    });
-
-                let frequency = chain
-                    .pointer("/current_frequency/hertz")
-                    .and_then(|v| v.as_f64())
-                    .map(Frequency::from_hertz);
-                let voltage = chain
-                    .pointer("/current_voltage/volt")
-                    .and_then(|v| v.as_f64())
-                    .map(Voltage::from_volts);
-                let board_temperature = chain
-                    .pointer("/board_temp/degree_c")
-                    .and_then(|v| v.as_f64())
-                    .map(Temperature::from_celsius);
-                let chip_temperature = chain
-                    .pointer("/highest_chip_temp/temperature/degree_c")
-                    .and_then(|v| v.as_f64())
-                    .map(Temperature::from_celsius);
-
-                let working_chips = chain
-                    .pointer("/chips_count")
+        for board in hashboards.iter_mut() {
+            let Some(chain) = chains_array.iter().find(|c| {
+                c.pointer("/id")
                     .and_then(|v| v.as_u64())
-                    .map(|u| u as u16);
-                let active = chain.pointer("/enabled").and_then(|v| v.as_bool());
-                let serial_number = chain
-                    .pointer("/serial_number")
-                    .and_then(|v| v.as_str())
-                    .map(|u| u.to_string());
+                    .map(|id| id as u8 == board.position)
+                    .unwrap_or(false)
+            }) else {
+                continue;
+            };
 
-                hashboards.push(BoardData {
-                    position: chain
-                        .pointer("/id")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(idx as u64) as u8,
-                    hashrate,
-                    expected_hashrate,
-                    board_temperature,
-                    intake_temperature: chip_temperature,
-                    outlet_temperature: chip_temperature,
-                    expected_chips: self.device_info.hardware.chips,
-                    working_chips,
-                    serial_number,
-                    chips: Vec::new(),
-                    voltage,
-                    frequency,
-                    tuned: None, // Can maybe be parsed later from tuner status endpoint
-                    active,
+            let chip_temperature = chain
+                .pointer("/highest_chip_temp/temperature/degree_c")
+                .and_then(|v| v.as_f64())
+                .map(Temperature::from_celsius);
+
+            board.hashrate = chain
+                .pointer("/stats/real_hashrate/last_5s/gigahash_per_second")
+                .and_then(|v| v.as_f64())
+                .map(|f| {
+                    HashRate {
+                        value: f,
+                        unit: HashRateUnit::GigaHash,
+                        algo: "SHA256".to_string(),
+                    }
+                    .as_unit(HashRateUnit::default())
                 });
-            }
+            board.expected_hashrate = chain
+                .pointer("/stats/nominal_hashrate/gigahash_per_second")
+                .and_then(|v| v.as_f64())
+                .map(|f| {
+                    HashRate {
+                        value: f,
+                        unit: HashRateUnit::GigaHash,
+                        algo: "SHA256".to_string(),
+                    }
+                    .as_unit(HashRateUnit::default())
+                });
+            board.board_temperature = chain
+                .pointer("/board_temp/degree_c")
+                .and_then(|v| v.as_f64())
+                .map(Temperature::from_celsius);
+            board.intake_temperature = chip_temperature;
+            board.outlet_temperature = chip_temperature;
+            board.working_chips = chain
+                .pointer("/chips_count")
+                .and_then(|v| v.as_u64())
+                .map(|u| u as u16);
+            board.serial_number = chain
+                .pointer("/serial_number")
+                .and_then(|v| v.as_str())
+                .map(|u| u.to_string());
+            board.voltage = chain
+                .pointer("/current_voltage/volt")
+                .and_then(|v| v.as_f64())
+                .map(Voltage::from_volts);
+            board.frequency = chain
+                .pointer("/current_frequency/hertz")
+                .and_then(|v| v.as_f64())
+                .map(Frequency::from_hertz);
+            board.active = chain.pointer("/enabled").and_then(|v| v.as_bool());
         }
 
         hashboards
@@ -391,7 +389,7 @@ impl GetHashrate for BraiinsV2507 {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::GigaHash,
-            algo: String::from("SHA256"),
+            algo: "SHA256".to_string(),
         })
     }
 }
@@ -401,7 +399,7 @@ impl GetExpectedHashrate for BraiinsV2507 {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
             value: f,
             unit: HashRateUnit::GigaHash,
-            algo: String::from("SHA256"),
+            algo: "SHA256".to_string(),
         })
     }
 }

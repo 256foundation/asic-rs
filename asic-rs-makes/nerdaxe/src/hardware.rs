@@ -36,7 +36,7 @@ pub enum NerdAxeControlBoard {
 
 impl NerdAxeControlBoard {
     pub fn parse(s: &str) -> Option<Self> {
-        let cb_model = s.trim().replace(" ", "").to_uppercase();
+        let cb_model = s.trim().replace(' ', "").to_uppercase();
         match cb_model.as_ref() {
             "102" => Some(Self::B102),
             "201" => Some(Self::B201),

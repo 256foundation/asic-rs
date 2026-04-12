@@ -116,7 +116,7 @@ pub enum AvalonMinerControlBoard {
 
 impl AvalonMinerControlBoard {
     pub fn parse(s: &str) -> Option<Self> {
-        let cb_model = s.trim().replace(" ", "").to_uppercase();
+        let cb_model = s.trim().replace(' ', "").to_uppercase();
         match cb_model.as_ref() {
             "MM3V2_X3" => Some(Self::MM3v2X3),
             "MM3V1_X3" => Some(Self::MM3v1X3),
