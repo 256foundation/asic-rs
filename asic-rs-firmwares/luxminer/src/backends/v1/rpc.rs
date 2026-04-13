@@ -5,7 +5,7 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
-    util::{DEFAULT_RPC_TIMEOUT, connect_tcp_stream, read_stream_response, write_all_with_timeout},
+    util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
 };
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -402,7 +402,9 @@ impl RPCAPIClient for LUXMinerRPCAPI {
         privileged: bool,
         parameters: Option<Value>,
     ) -> anyhow::Result<Value> {
-        let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT).await?;
+        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
+            .await
+            .map_err(|_| RPCError::ConnectionFailed)?;
 
         let mut request = json!({
             "command": command
@@ -429,7 +431,7 @@ impl RPCAPIClient for LUXMinerRPCAPI {
         let json_str = request.to_string();
         let message = format!("{}\n", json_str);
 
-        write_all_with_timeout(&mut stream, message.as_bytes(), DEFAULT_RPC_TIMEOUT).await?;
+        stream.write_all(message.as_bytes()).await?;
 
         let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
         let _ = stream.shutdown().await;

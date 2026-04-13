@@ -63,7 +63,7 @@ where
 {
     tokio::time::timeout(timeout, TcpStream::connect(addr))
         .await
-        .map_err(|_| RPCError::ConnectionTimeout)?
+        .map_err(|_| RPCError::ConnectionFailed)?
         .map_err(RPCError::from)
         .map_err(Into::into)
 }
@@ -123,7 +123,7 @@ pub async fn write_all_with_timeout(
 ) -> anyhow::Result<()> {
     tokio::time::timeout(timeout, stream.write_all(buf))
         .await
-        .map_err(|_| RPCError::WriteTimeout)?
+        .map_err(|_| RPCError::ReadTimeout)?
         .map_err(RPCError::from)?;
     Ok(())
 }
