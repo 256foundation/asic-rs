@@ -1,5 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
+use once_cell::sync::OnceCell;
+
 use anyhow;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
@@ -11,7 +13,7 @@ use tokio::sync::RwLock;
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct BraiinsWebAPI {
-    client: Client,
+    client: OnceCell<Client>,
     pub ip: IpAddr,
     port: u16,
     timeout: Duration,
@@ -70,13 +72,8 @@ impl WebAPIClient for BraiinsWebAPI {
 impl BraiinsWebAPI {
     /// Create a new Braiins WebAPI client
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
-
         Self {
-            client,
+            client: OnceCell::new(),
             ip,
             port: 80,
             timeout: Duration::from_secs(5),
@@ -88,6 +85,17 @@ impl BraiinsWebAPI {
     pub fn set_auth(&mut self, auth: MinerAuth) {
         self.auth = auth;
         *self.bearer_token.get_mut() = None;
+    }
+
+    fn build_client() -> Result<Client, BraiinsError> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| BraiinsError::RequestError(format!("failed to create HTTP client: {e}")))
+    }
+
+    fn client(&self) -> Result<&Client, BraiinsError> {
+        self.client.get_or_try_init(Self::build_client)
     }
 
     /// Ensure authentication token is present, authenticate if needed
@@ -107,9 +115,9 @@ impl BraiinsWebAPI {
         let username = &self.auth.username;
         let unlock_payload = serde_json::json!({ "password": password, "username": username });
         let url = format!("http://{}:{}/api/v1/auth/login", self.ip, self.port);
+        let client = self.client()?;
 
-        let response = self
-            .client
+        let response = client
             .post(&url)
             .json(&unlock_payload)
             .timeout(self.timeout)
@@ -140,24 +148,26 @@ impl BraiinsWebAPI {
         method: &Method,
         parameters: Option<Value>,
     ) -> anyhow::Result<Response, BraiinsError> {
+        let client = self.client()?;
+
         let request_builder = match *method {
-            Method::GET => self.client.get(url),
+            Method::GET => client.get(url),
             Method::POST => {
-                let mut builder = self.client.post(url);
+                let mut builder = client.post(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
                 }
                 builder
             }
             Method::PUT => {
-                let mut builder = self.client.put(url);
+                let mut builder = client.put(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
                 }
                 builder
             }
             Method::PATCH => {
-                let mut builder = self.client.patch(url);
+                let mut builder = client.patch(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
                 }
@@ -177,8 +187,7 @@ impl BraiinsWebAPI {
             .build()
             .map_err(|e| BraiinsError::RequestError(e.to_string()))?;
 
-        let response = self
-            .client
+        let response = client
             .execute(request)
             .await
             .map_err(|e| BraiinsError::NetworkError(e.to_string()))?;

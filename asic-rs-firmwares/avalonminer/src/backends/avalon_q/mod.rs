@@ -87,7 +87,7 @@ impl Pause for AvalonQMiner {
 
         let timestamp = shutdown_time
             .duration_since(UNIX_EPOCH)
-            .expect("Shutdown time is before UNIX epoch")
+            .map_err(|_| anyhow::anyhow!("shutdown time is before UNIX epoch"))?
             .as_secs();
 
         let data = self
@@ -122,7 +122,7 @@ impl Resume for AvalonQMiner {
 
         let timestamp = shutdown_time
             .duration_since(UNIX_EPOCH)
-            .expect("Shutdown time is before UNIX epoch")
+            .map_err(|_| anyhow::anyhow!("shutdown time is before UNIX epoch"))?
             .as_secs();
 
         let result = self

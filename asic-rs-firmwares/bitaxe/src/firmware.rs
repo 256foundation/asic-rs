@@ -40,17 +40,14 @@ impl MinerFirmware for BitaxeFirmware {
 
         match response {
             Some((raw_json, _, _)) => {
-                let json_data: Option<serde_json::Value> = serde_json::from_str(&raw_json).ok();
-                if json_data.is_none() {
+                let Ok(json_data) = serde_json::from_str::<serde_json::Value>(&raw_json) else {
                     return Err(ModelSelectionError::UnexpectedModelResponse);
-                }
-                let json_data = json_data.unwrap();
+                };
 
-                let model = json_data["ASICModel"].as_str();
-                if model.is_none() {
+                let Some(model) = json_data["ASICModel"].as_str() else {
                     return Err(ModelSelectionError::UnexpectedModelResponse);
-                }
-                let model = model.unwrap().to_uppercase();
+                };
+                let model = model.to_uppercase();
 
                 BitaxeMake::parse_model(model)
             }

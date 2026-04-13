@@ -1,5 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
+use once_cell::sync::OnceCell;
+
 use anyhow;
 use asic_rs_core::{
     data::command::MinerCommand,
@@ -14,27 +16,33 @@ use serde_json::Value;
 pub struct MaraWebAPI {
     ip: IpAddr,
     port: u16,
-    client: Client,
+    client: OnceCell<Client>,
     auth: MinerAuth,
 }
 
 impl MaraWebAPI {
     pub fn new(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(5))
-            .build()
-            .unwrap();
-
         Self {
             ip,
             port,
-            client,
+            client: OnceCell::new(),
             auth,
         }
     }
 
     pub fn set_auth(&mut self, auth: MinerAuth) {
         self.auth = auth;
+    }
+
+    fn build_client() -> anyhow::Result<Client> {
+        Client::builder()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .map_err(|e| anyhow::anyhow!("failed to create HTTP client: {e}"))
+    }
+
+    fn client(&self) -> anyhow::Result<&Client> {
+        self.client.get_or_try_init(Self::build_client)
     }
 
     async fn make_request(
@@ -44,10 +52,11 @@ impl MaraWebAPI {
         parameters: Option<Value>,
     ) -> anyhow::Result<Value> {
         let url = format!("http://{}:{}/kaonsu/v1/{}", self.ip, self.port, endpoint);
+        let client = self.client()?;
 
         let mut request_builder = match method {
-            Method::GET => self.client.get(&url),
-            Method::POST => self.client.post(&url),
+            Method::GET => client.get(&url),
+            Method::POST => client.post(&url),
             _ => return Err(anyhow::anyhow!("Unsupported HTTP method")),
         };
 

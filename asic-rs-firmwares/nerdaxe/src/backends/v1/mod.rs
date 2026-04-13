@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    net::IpAddr,
-    str::FromStr,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
+use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{
@@ -25,6 +20,7 @@ use asic_rs_core::{
         pool::{PoolData, PoolGroupData, PoolScheme, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
+    util::unix_timestamp_secs,
 };
 use asic_rs_makes_nerdaxe::hardware::NerdAxeControlBoard;
 use async_trait::async_trait;
@@ -365,10 +361,7 @@ impl GetLightFlashing for NerdAxeV1 {}
 impl GetMessages for NerdAxeV1 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages = Vec::new();
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Failed to get system time")
-            .as_secs();
+        let timestamp = unix_timestamp_secs();
 
         let is_overheating = data.extract_nested::<bool>(DataField::Hashboards, "overheat_mode");
 

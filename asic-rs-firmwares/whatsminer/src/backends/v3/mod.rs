@@ -817,7 +817,9 @@ impl SupportsTuningConfig for WhatsMinerV3 {
             return Ok(true);
         }
 
-        let err = result.unwrap_err();
+        let Err(err) = result else {
+            return Ok(true);
+        };
         tracing::warn!("set_tuning_config V3 RPC failed: {err}");
 
         // Fall back to V2 for MiningMode on any V3 error — set.miner.mode is

@@ -1,5 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
+use once_cell::sync::OnceCell;
+
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use reqwest::{Client, Method};
@@ -8,7 +10,7 @@ use tokio::sync::RwLock;
 
 #[derive(Debug)]
 pub struct BraiinsWebAPI {
-    client: Client,
+    client: OnceCell<Client>,
     ip: IpAddr,
     port: u16,
     timeout: Duration,
@@ -18,13 +20,8 @@ pub struct BraiinsWebAPI {
 
 impl BraiinsWebAPI {
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
-
         Self {
-            client,
+            client: OnceCell::new(),
             ip,
             port: 80,
             timeout: Duration::from_secs(5),
@@ -38,16 +35,27 @@ impl BraiinsWebAPI {
         *self.session_id.get_mut() = None;
     }
 
+    fn build_client() -> anyhow::Result<Client> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| anyhow::anyhow!("failed to create HTTP client: {e}"))
+    }
+
+    fn client(&self) -> anyhow::Result<&Client> {
+        self.client.get_or_try_init(Self::build_client)
+    }
+
     async fn authenticate(&self) -> anyhow::Result<String> {
         let url = format!("http://{}:{}/cgi-bin/luci", self.ip, self.port);
+        let client = self.client()?;
         let body = format!(
             "luci_username={}&luci_password={}",
             self.auth.username,
             self.auth.password.expose_secret()
         );
 
-        let response = self
-            .client
+        let response = client
             .post(&url)
             .header("User-Agent", "BTC Tools v0.1")
             .header("Content-Type", "application/x-www-form-urlencoded")
@@ -87,9 +95,9 @@ impl BraiinsWebAPI {
         self.ensure_authenticated().await?;
 
         let url = format!("http://{}:{}/cgi-bin/luci/{}", self.ip, self.port, command);
+        let client = self.client()?;
 
-        let mut request = self
-            .client
+        let mut request = client
             .get(&url)
             .header("User-Agent", "BTC Tools v0.1")
             .timeout(self.timeout);

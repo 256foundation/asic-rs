@@ -86,7 +86,7 @@ async fn get_model_with_auth(
         .ok();
     match response {
         Some(data) => {
-            let Some(json_data) = data.json::<Value>().await.ok() else {
+            let Ok(json_data) = data.json::<Value>().await else {
                 return Err(ModelSelectionError::UnexpectedModelResponse);
             };
 

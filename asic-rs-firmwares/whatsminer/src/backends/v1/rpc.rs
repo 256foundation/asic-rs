@@ -42,29 +42,30 @@ impl StatusFromBTMinerV1 for RPCCommandStatus {
     fn from_btminer_v1(response: &str) -> anyhow::Result<Self, RPCError> {
         let parsed: anyhow::Result<serde_json::Value, _> = serde_json::from_str(response);
 
-        if let Ok(data) = &parsed {
-            let command_status = data["STATUS"][0]["STATUS"]
-                .as_str()
-                .or(data["STATUS"].as_str());
-            let message = data["STATUS"][0]["Msg"].as_str().or(data["Msg"].as_str());
+        match parsed {
+            Ok(data) => {
+                let command_status = data["STATUS"][0]["STATUS"]
+                    .as_str()
+                    .or(data["STATUS"].as_str());
+                let message = data["STATUS"][0]["Msg"].as_str().or(data["Msg"].as_str());
 
-            match command_status {
-                Some(status) => match status {
-                    "S" | "I" => Ok(RPCCommandStatus::Success),
-                    _ => Err(RPCError::StatusCheckFailed(
+                match command_status {
+                    Some(status) => match status {
+                        "S" | "I" => Ok(RPCCommandStatus::Success),
+                        _ => Err(RPCError::StatusCheckFailed(
+                            message
+                                .unwrap_or("Unknown error when looking for status code")
+                                .to_owned(),
+                        )),
+                    },
+                    None => Err(RPCError::StatusCheckFailed(
                         message
-                            .unwrap_or("Unknown error when looking for status code")
+                            .unwrap_or("Unknown error when parsing status")
                             .to_owned(),
                     )),
-                },
-                None => Err(RPCError::StatusCheckFailed(
-                    message
-                        .unwrap_or("Unknown error when parsing status")
-                        .to_owned(),
-                )),
+                }
             }
-        } else {
-            Err(RPCError::DeserializationFailed(parsed.err().unwrap()))
+            Err(err) => Err(RPCError::DeserializationFailed(err)),
         }
     }
 }
