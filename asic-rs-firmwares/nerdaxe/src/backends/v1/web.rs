@@ -1,5 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
+use once_cell::sync::OnceCell;
+
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
@@ -8,7 +10,7 @@ use tokio::time::timeout;
 
 #[derive(Debug)]
 pub struct NerdAxeWebAPI {
-    client: Client,
+    client: OnceCell<Client>,
     pub ip: IpAddr,
     port: u16,
     timeout: Duration,
@@ -76,18 +78,24 @@ impl WebAPIClient for NerdAxeWebAPI {
 
 impl NerdAxeWebAPI {
     pub fn new(ip: IpAddr, port: u16) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
-
         Self {
-            client,
+            client: OnceCell::new(),
             ip,
             port,
             timeout: Duration::from_secs(5),
             retries: 1,
         }
+    }
+
+    fn build_client() -> Result<Client, NerdAxeError> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| NerdAxeError::RequestError(format!("failed to create HTTP client: {e}")))
+    }
+
+    fn client(&self) -> Result<&Client, NerdAxeError> {
+        self.client.get_or_try_init(Self::build_client)
     }
 
     async fn execute_request(
@@ -96,17 +104,19 @@ impl NerdAxeWebAPI {
         method: &Method,
         parameters: Option<Value>,
     ) -> anyhow::Result<Response, NerdAxeError> {
+        let client = self.client()?;
+
         let request_builder = match *method {
-            Method::GET => self.client.get(url),
+            Method::GET => client.get(url),
             Method::POST => {
-                let mut builder = self.client.post(url);
+                let mut builder = client.post(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
                 }
                 builder
             }
             Method::PATCH => {
-                let mut builder = self.client.patch(url);
+                let mut builder = client.patch(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
                 }
@@ -120,7 +130,7 @@ impl NerdAxeWebAPI {
             .build()
             .map_err(|e| NerdAxeError::RequestError(e.to_string()))?;
 
-        let response = timeout(self.timeout, self.client.execute(request))
+        let response = timeout(self.timeout, client.execute(request))
             .await
             .map_err(|_| NerdAxeError::Timeout)?
             .map_err(|e| NerdAxeError::NetworkError(e.to_string()))?;

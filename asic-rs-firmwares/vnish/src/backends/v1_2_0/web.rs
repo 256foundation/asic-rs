@@ -1,5 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
+use once_cell::sync::OnceCell;
+
 use anyhow;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
@@ -10,7 +12,7 @@ use tokio::sync::RwLock;
 /// VNish WebAPI client
 #[derive(Debug)]
 pub struct VnishWebAPI {
-    client: Client,
+    client: OnceCell<Client>,
     pub ip: IpAddr,
     port: u16,
     timeout: Duration,
@@ -69,13 +71,8 @@ impl WebAPIClient for VnishWebAPI {
 impl VnishWebAPI {
     /// Create a new Vnish WebAPI client
     pub fn new(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
-
         Self {
-            client,
+            client: OnceCell::new(),
             ip,
             port,
             timeout: Duration::from_secs(5),
@@ -88,6 +85,17 @@ impl VnishWebAPI {
         self.auth = auth;
         // Clear cached bearer token to force re-authentication with new creds
         *self.bearer_token.get_mut() = None;
+    }
+
+    fn build_client() -> Result<Client, VnishError> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| VnishError::RequestError(format!("failed to create HTTP client: {e}")))
+    }
+
+    fn client(&self) -> Result<&Client, VnishError> {
+        self.client.get_or_try_init(Self::build_client)
     }
 
     /// Ensure authentication token is present, authenticate if needed
@@ -106,9 +114,9 @@ impl VnishWebAPI {
     async fn authenticate(&self, password: &str) -> anyhow::Result<String, VnishError> {
         let unlock_payload = serde_json::json!({ "pw": password });
         let url = format!("http://{}:{}/api/v1/unlock", self.ip, self.port);
+        let client = self.client()?;
 
-        let response = self
-            .client
+        let response = client
             .post(&url)
             .json(&unlock_payload)
             .timeout(self.timeout)
@@ -139,17 +147,19 @@ impl VnishWebAPI {
         method: &Method,
         parameters: Option<Value>,
     ) -> anyhow::Result<Response, VnishError> {
+        let client = self.client()?;
+
         let request_builder = match *method {
-            Method::GET => self.client.get(url),
+            Method::GET => client.get(url),
             Method::POST => {
-                let mut builder = self.client.post(url);
+                let mut builder = client.post(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
                 }
                 builder
             }
             Method::PATCH => {
-                let mut builder = self.client.patch(url);
+                let mut builder = client.patch(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
                 }
@@ -169,8 +179,7 @@ impl VnishWebAPI {
             .build()
             .map_err(|e| VnishError::RequestError(e.to_string()))?;
 
-        let response = self
-            .client
+        let response = client
             .execute(request)
             .await
             .map_err(|e| VnishError::NetworkError(e.to_string()))?;

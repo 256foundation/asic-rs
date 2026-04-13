@@ -71,12 +71,13 @@ fn aes_ecb_enc(key: &str, data: &str) -> anyhow::Result<String> {
     let mut hasher = Sha256::new();
     hasher.update(key.as_bytes());
     let hashed_key = format!("{:x}", hasher.finalize());
-    let aes_key = hex::decode(hashed_key).expect("SHA256 hex output is always valid hex");
+    let aes_key =
+        hex::decode(hashed_key).map_err(|e| anyhow::anyhow!("invalid SHA256 hex output: {e}"))?;
 
     let mut buffer = add_to_16(data).to_vec();
 
     let enc = Aes256EcbEnc::new_from_slice(&aes_key)
-        .expect("SHA256 always produces 32 bytes, valid for AES-256")
+        .map_err(|e| anyhow::anyhow!("invalid AES-256 key length: {e:?}"))?
         .encrypt_padded_mut::<ZeroPadding>(&mut buffer, original_message.len())
         .map_err(|e| anyhow::anyhow!("AES encryption failed: {e:?}"))?;
 
@@ -87,12 +88,13 @@ fn aes_ecb_dec(key: &str, data: &str) -> anyhow::Result<String> {
     let mut hasher = Sha256::new();
     hasher.update(key.as_bytes());
     let hashed_key = format!("{:x}", hasher.finalize());
-    let aes_key = hex::decode(hashed_key).expect("SHA256 hex output is always valid hex");
+    let aes_key =
+        hex::decode(hashed_key).map_err(|e| anyhow::anyhow!("invalid SHA256 hex output: {e}"))?;
 
     let b64_dec = &mut BASE64_STANDARD.decode(data)?[..];
 
     let dec = Aes256EcbDec::new_from_slice(aes_key.as_slice())
-        .expect("SHA256 always produces 32 bytes, valid for AES-256")
+        .map_err(|e| anyhow::anyhow!("invalid AES-256 key length: {e:?}"))?
         .decrypt_padded_mut::<ZeroPadding>(b64_dec)
         .map_err(|e| anyhow::anyhow!("AES decryption failed: {e:?}"))?;
 
@@ -109,29 +111,30 @@ impl StatusFromBTMinerV2 for RPCCommandStatus {
     fn from_btminer_v2(response: &str) -> anyhow::Result<Self, RPCError> {
         let parsed: anyhow::Result<serde_json::Value, _> = serde_json::from_str(response);
 
-        if let Ok(data) = &parsed {
-            let command_status = data["STATUS"][0]["STATUS"]
-                .as_str()
-                .or(data["STATUS"].as_str());
-            let message = data["STATUS"][0]["Msg"].as_str().or(data["Msg"].as_str());
+        match parsed {
+            Ok(data) => {
+                let command_status = data["STATUS"][0]["STATUS"]
+                    .as_str()
+                    .or(data["STATUS"].as_str());
+                let message = data["STATUS"][0]["Msg"].as_str().or(data["Msg"].as_str());
 
-            match command_status {
-                Some(status) => match status {
-                    "S" | "I" => Ok(RPCCommandStatus::Success),
-                    _ => Err(RPCError::StatusCheckFailed(
+                match command_status {
+                    Some(status) => match status {
+                        "S" | "I" => Ok(RPCCommandStatus::Success),
+                        _ => Err(RPCError::StatusCheckFailed(
+                            message
+                                .unwrap_or("Unknown error when looking for status code")
+                                .to_owned(),
+                        )),
+                    },
+                    None => Err(RPCError::StatusCheckFailed(
                         message
-                            .unwrap_or("Unknown error when looking for status code")
+                            .unwrap_or("Unknown error when parsing status")
                             .to_owned(),
                     )),
-                },
-                None => Err(RPCError::StatusCheckFailed(
-                    message
-                        .unwrap_or("Unknown error when parsing status")
-                        .to_owned(),
-                )),
+                }
             }
-        } else {
-            Err(RPCError::DeserializationFailed(parsed.err().unwrap()))
+            Err(err) => Err(RPCError::DeserializationFailed(err)),
         }
     }
 }

@@ -10,10 +10,9 @@ use async_trait::async_trait;
 use regex::Regex;
 use serde_json::{Value, json};
 
-static STATS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(\w+)\[([^]]+)]").expect("valid hardcoded regex"));
-static NESTED_STATS_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"'([^']+)':\{([^}]*)}").expect("valid hardcoded regex"));
+static STATS_RE: LazyLock<Option<Regex>> = LazyLock::new(|| Regex::new(r"(\w+)\[([^]]+)]").ok());
+static NESTED_STATS_RE: LazyLock<Option<Regex>> =
+    LazyLock::new(|| Regex::new(r"'([^']+)':\{([^}]*)}").ok());
 
 #[derive(Debug)]
 pub struct AvalonMinerRPCAPI {
@@ -113,7 +112,9 @@ impl AvalonMinerRPCAPI {
 
     fn parse_stats(&self, stats: &str) -> HashMap<String, Value> {
         let mut stats_dict = HashMap::new();
-        let re = STATS_RE.clone();
+        let Some(re) = STATS_RE.as_ref() else {
+            return stats_dict;
+        };
 
         for cap in re.captures_iter(stats) {
             let key = cap[1].to_string();
@@ -128,7 +129,9 @@ impl AvalonMinerRPCAPI {
 
     fn parse_nested_stats(&self, stats: &str) -> HashMap<String, HashMap<String, Value>> {
         let mut outer = HashMap::new();
-        let re = NESTED_STATS_RE.clone();
+        let Some(re) = NESTED_STATS_RE.as_ref() else {
+            return outer;
+        };
 
         for cap in re.captures_iter(stats) {
             let section = cap[1].to_string();

@@ -14,6 +14,7 @@ asic-rs-makes-bitaxe.workspace = true
 
 async-trait.workspace = true
 reqwest.workspace = true
+once_cell.workspace = true
 serde_json.workspace = true
 semver.workspace = true
 anyhow.workspace = true

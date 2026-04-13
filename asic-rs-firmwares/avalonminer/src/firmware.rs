@@ -39,11 +39,10 @@ impl MinerFirmware for AvalonStockFirmware {
 
         match response {
             Some(json_data) => {
-                let model = json_data["VERSION"][0]["MODEL"].as_str();
-                if model.is_none() {
+                let Some(model) = json_data["VERSION"][0]["MODEL"].as_str() else {
                     return Err(ModelSelectionError::UnexpectedModelResponse);
-                }
-                let model = model.unwrap().split("-").collect::<Vec<&str>>()[0].to_uppercase();
+                };
+                let model = model.split('-').next().unwrap_or(model).to_uppercase();
 
                 AvalonMinerMake::parse_model(model)
             }

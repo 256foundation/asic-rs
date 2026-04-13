@@ -1,5 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
+use once_cell::sync::OnceCell;
+
 use anyhow;
 use asic_rs_core::{
     data::command::MinerCommand,
@@ -13,7 +15,7 @@ use tokio::time::timeout;
 /// Bitaxe WebAPI client for communicating with Bitaxe and similar miners
 #[derive(Debug)]
 pub struct BitaxeWebAPI {
-    client: Client,
+    client: OnceCell<Client>,
     pub ip: IpAddr,
     port: u16,
     timeout: Duration,
@@ -113,18 +115,24 @@ impl Bitaxe200WebAPI for BitaxeWebAPI {}
 impl BitaxeWebAPI {
     /// Create a new Bitaxe WebAPI client
     pub fn new(ip: IpAddr, port: u16) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
-
         Self {
-            client,
+            client: OnceCell::new(),
             ip,
             port,
             timeout: Duration::from_secs(5),
             retries: 1,
         }
+    }
+
+    fn build_client() -> Result<Client, BitaxeError> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| BitaxeError::RequestError(format!("failed to create HTTP client: {e}")))
+    }
+
+    fn client(&self) -> Result<&Client, BitaxeError> {
+        self.client.get_or_try_init(Self::build_client)
     }
 
     /// Execute the actual HTTP request
@@ -134,17 +142,19 @@ impl BitaxeWebAPI {
         method: &Method,
         parameters: Option<Value>,
     ) -> anyhow::Result<Response, BitaxeError> {
+        let client = self.client()?;
+
         let request_builder = match *method {
-            Method::GET => self.client.get(url),
+            Method::GET => client.get(url),
             Method::POST => {
-                let mut builder = self.client.post(url);
+                let mut builder = client.post(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
                 }
                 builder
             }
             Method::PATCH => {
-                let mut builder = self.client.patch(url);
+                let mut builder = client.patch(url);
                 if let Some(params) = parameters {
                     builder = builder.json(&params);
                 }
@@ -158,7 +168,7 @@ impl BitaxeWebAPI {
             .build()
             .map_err(|e| BitaxeError::RequestError(e.to_string()))?;
 
-        let response = timeout(self.timeout, self.client.execute(request))
+        let response = timeout(self.timeout, client.execute(request))
             .await
             .map_err(|_| BitaxeError::Timeout)?
             .map_err(|e| BitaxeError::NetworkError(e.to_string()))?;

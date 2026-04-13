@@ -10,7 +10,7 @@ use asic_rs_core::data::{
     pool::PoolGroupData,
 };
 #[cfg(feature = "python")]
-use pyo3::prelude::*;
+use pyo3::{exceptions::PyValueError, prelude::*};
 use serde::{Deserialize, Serialize};
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
@@ -205,7 +205,7 @@ impl From<&MinerData_Base> for MinerData {
 
 #[pymethods]
 impl MinerData {
-    pub fn __repr__(&self) -> String {
-        serde_json::to_string(self).unwrap()
+    pub fn __repr__(&self) -> PyResult<String> {
+        serde_json::to_string(self).map_err(|err| PyValueError::new_err(err.to_string()))
     }
 }

@@ -15,6 +15,7 @@ asic-rs-makes-marathon.workspace = true
 
 async-trait.workspace = true
 reqwest.workspace = true
+once_cell.workspace = true
 diqwest.workspace = true
 serde_json.workspace = true
 semver.workspace = true

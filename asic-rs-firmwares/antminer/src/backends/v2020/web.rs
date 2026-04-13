@@ -1,5 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
+use once_cell::sync::OnceCell;
+
 use anyhow::{Context, Result, anyhow, bail};
 use asic_rs_core::data::firmware::FirmwareImage;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
@@ -14,7 +16,7 @@ use super::firmware::AntMinerFirmwareUpgradeResponseExt;
 pub struct AntMinerWebAPI {
     ip: IpAddr,
     port: u16,
-    client: Client,
+    client: OnceCell<Client>,
     timeout: Duration,
     auth: MinerAuth,
 }
@@ -60,15 +62,10 @@ impl AntMinerWebAPI {
     }
 
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
-
         Self {
             ip,
             port: 80,
-            client,
+            client: OnceCell::new(),
             timeout: Duration::from_secs(5),
             auth,
         }
@@ -83,6 +80,17 @@ impl AntMinerWebAPI {
         client.port = 80;
         client.timeout = timeout;
         client
+    }
+
+    fn build_client() -> Result<Client> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .context("failed to create HTTP client")
+    }
+
+    fn client(&self) -> Result<&Client> {
+        self.client.get_or_try_init(Self::build_client)
     }
 
     async fn send_web_command(
@@ -113,9 +121,10 @@ impl AntMinerWebAPI {
         method: &Method,
         parameters: Option<Value>,
     ) -> Result<Response> {
+        let client = self.client()?;
+
         let response = match *method {
-            Method::GET => self
-                .client
+            Method::GET => client
                 .get(url)
                 .timeout(self.timeout)
                 .send_digest_auth((
@@ -126,7 +135,7 @@ impl AntMinerWebAPI {
                 .map_err(|e| anyhow!(e.to_string()))?,
             Method::POST => {
                 let data = parameters.unwrap_or_else(|| json!({}));
-                self.client
+                client
                     .post(url)
                     .json(&data)
                     .timeout(self.timeout)
@@ -173,7 +182,7 @@ impl AntMinerWebAPI {
         let (body, content_type) = Self::build_firmware_upload_request_body(image);
 
         let response = self
-            .client
+            .client()?
             .post(url)
             .header(CONTENT_TYPE, content_type)
             .body(body)

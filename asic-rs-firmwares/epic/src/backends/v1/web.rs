@@ -1,5 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
+use once_cell::sync::OnceCell;
+
 use anyhow::{self, Context, bail};
 use asic_rs_core::{
     data::{command::MinerCommand, firmware::FirmwareImage},
@@ -14,7 +16,7 @@ use tracing::warn;
 /// ePIC PowerPlay WebAPI client
 #[derive(Debug)]
 pub struct PowerPlayWebAPI {
-    client: Client,
+    client: OnceCell<Client>,
     pub ip: IpAddr,
     port: u16,
     timeout: Duration,
@@ -75,13 +77,8 @@ impl PowerPlayWebAPI {
 
     /// Create a new EPic WebAPI client
     pub fn new(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
-
         Self {
-            client,
+            client: OnceCell::new(),
             ip,
             port,
             timeout: Duration::from_secs(5),
@@ -91,6 +88,17 @@ impl PowerPlayWebAPI {
 
     pub fn set_auth(&mut self, auth: MinerAuth) {
         self.auth = auth;
+    }
+
+    fn build_client() -> Result<Client, PowerPlayError> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| PowerPlayError::RequestError(format!("failed to create HTTP client: {e}")))
+    }
+
+    fn client(&self) -> Result<&Client, PowerPlayError> {
+        self.client.get_or_try_init(Self::build_client)
     }
 
     pub async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
@@ -111,7 +119,7 @@ impl PowerPlayWebAPI {
             );
 
         let response = self
-            .client
+            .client()?
             .post(url)
             .header(header::ACCEPT, "application/json")
             .timeout(self.timeout.max(Duration::from_secs(300)))
@@ -164,9 +172,11 @@ impl PowerPlayWebAPI {
         method: &Method,
         parameters: Option<Value>,
     ) -> anyhow::Result<Response, PowerPlayError> {
+        let client = self.client()?;
+
         let request_builder = match *method {
-            Method::GET => self.client.get(url),
-            Method::POST => self.client.post(url).json(&{
+            Method::GET => client.get(url),
+            Method::POST => client.post(url).json(&{
                 let mut p = parameters.unwrap_or_else(|| json!({}));
                 p.as_object_mut().map(|m| {
                     m.insert(
@@ -185,8 +195,7 @@ impl PowerPlayWebAPI {
             .build()
             .map_err(|e| PowerPlayError::RequestError(e.to_string()))?;
 
-        let response = self
-            .client
+        let response = client
             .execute(request)
             .await
             .map_err(|e| PowerPlayError::NetworkError(e.to_string()))?;

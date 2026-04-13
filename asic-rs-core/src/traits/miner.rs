@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    net::IpAddr,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
+use std::{collections::HashMap, fmt::Debug, net::IpAddr, time::Duration};
 
 use anyhow;
 use async_trait::async_trait;
@@ -34,6 +29,7 @@ use crate::{
         pool::PoolGroupData,
     },
     traits::model::MinerModel,
+    util::unix_timestamp_secs,
 };
 
 pub use crate::traits::auth::{ExposeSecret, HasAuth, HasDefaultAuth, MinerAuth, SecretString};
@@ -186,10 +182,7 @@ impl<
     }
     fn parse_data(&self, data: HashMap<DataField, Value>) -> MinerData {
         let schema_version = env!("CARGO_PKG_VERSION").to_string();
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Failed to get system time")
-            .as_secs();
+        let timestamp = unix_timestamp_secs();
 
         let ip = self.get_ip();
         let mac = self.parse_mac(&data);
@@ -229,7 +222,7 @@ impl<
         let average_temperature = {
             let board_temps = hashboards
                 .iter()
-                .filter_map(|b| b.board_temperature.map(|t| t.as_celsius()))
+                .filter_map(|b| b.board_temperature.map(|temp| temp.as_celsius()))
                 .collect::<Vec<f64>>();
             if !board_temps.is_empty() {
                 Some(Temperature::from_celsius(

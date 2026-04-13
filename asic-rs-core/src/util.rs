@@ -1,4 +1,8 @@
-use std::{net::IpAddr, sync::LazyLock, time::Duration};
+use std::{
+    net::IpAddr,
+    sync::LazyLock,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use reqwest::{StatusCode, header::HeaderMap};
 use serde_json::json;
@@ -12,6 +16,16 @@ use crate::errors::RPCError;
 /// Default read timeout for RPC stream responses.
 pub const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(5);
 
+pub fn unix_timestamp_secs() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map_or_else(
+        |error| {
+            tracing::error!(?error, "failed to get system time");
+            0
+        },
+        |duration| duration.as_secs(),
+    )
+}
+
 /// Returns true if the error is an expected transient failure from a
 /// privileged write — timeout or connection drop. These indicate the miner
 /// received and applied the command but didn't respond in time.
@@ -22,7 +36,7 @@ pub fn is_expected_write_error(err: &anyhow::Error) -> bool {
 
 /// Shared HTTP client for discovery and utility requests.
 /// Reused across all calls to avoid per-request client construction overhead.
-static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+static HTTP_CLIENT: LazyLock<Result<reqwest::Client, reqwest::Error>> = LazyLock::new(|| {
     reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .danger_accept_invalid_certs(true)
@@ -30,8 +44,17 @@ static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .timeout(DEFAULT_RPC_TIMEOUT)
         .pool_max_idle_per_host(0)
         .build()
-        .expect("Failed to initialize shared HTTP client")
 });
+
+fn http_client() -> Option<&'static reqwest::Client> {
+    match HTTP_CLIENT.as_ref() {
+        Ok(client) => Some(client),
+        Err(err) => {
+            tracing::error!("failed to initialize shared HTTP client: {err}");
+            None
+        }
+    }
+}
 
 /// Connect to a miner TCP endpoint with a bounded timeout.
 pub async fn connect_tcp_stream<A>(addr: A, timeout: Duration) -> anyhow::Result<TcpStream>
@@ -139,7 +162,7 @@ pub async fn send_web_command(
     ip: &IpAddr,
     command: &'static str,
 ) -> Option<(String, HeaderMap, StatusCode)> {
-    let data = HTTP_CLIENT
+    let data = http_client()?
         .get(format!("http://{ip}{command}"))
         .send()
         .await
@@ -162,7 +185,7 @@ pub async fn send_web_command(
 pub async fn send_graphql_command(ip: &IpAddr, command: &'static str) -> Option<serde_json::Value> {
     let query = json!({ "query": command });
 
-    let response = HTTP_CLIENT
+    let response = http_client()?
         .post(format!("http://{}/graphql", ip))
         .header("Content-Type", "application/json")
         .json(&query)

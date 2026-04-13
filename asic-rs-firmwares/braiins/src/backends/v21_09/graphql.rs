@@ -1,5 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
+use once_cell::sync::OnceCell;
+
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use reqwest::Client;
@@ -8,7 +10,7 @@ use tokio::sync::RwLock;
 
 #[derive(Debug)]
 pub struct BraiinsGraphQLAPI {
-    client: Client,
+    client: OnceCell<Client>,
     ip: IpAddr,
     port: u16,
     timeout: Duration,
@@ -18,13 +20,8 @@ pub struct BraiinsGraphQLAPI {
 
 impl BraiinsGraphQLAPI {
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
-
         Self {
-            client,
+            client: OnceCell::new(),
             ip,
             port: 80,
             timeout: Duration::from_secs(5),
@@ -38,8 +35,20 @@ impl BraiinsGraphQLAPI {
         *self.session_id.get_mut() = None;
     }
 
+    fn build_client() -> anyhow::Result<Client> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| anyhow::anyhow!("failed to create HTTP client: {e}"))
+    }
+
+    fn client(&self) -> anyhow::Result<&Client> {
+        self.client.get_or_try_init(Self::build_client)
+    }
+
     async fn authenticate(&self) -> anyhow::Result<String> {
         let url = format!("http://{}:{}/graphql", self.ip, self.port);
+        let client = self.client()?;
         let body = json!({
             "query": r#"mutation (
                 $username: String!,
@@ -62,8 +71,7 @@ impl BraiinsGraphQLAPI {
             }
         });
 
-        let response = self
-            .client
+        let response = client
             .post(&url)
             .json(&body)
             .timeout(self.timeout)
@@ -110,12 +118,13 @@ impl BraiinsGraphQLAPI {
         }
 
         let url = format!("http://{}:{}/graphql", self.ip, self.port);
+        let client = self.client()?;
         let mut body = json!({ "query": command });
         if let Some(vars) = parameters {
             body["variables"] = vars;
         }
 
-        let mut request = self.client.post(&url).json(&body).timeout(self.timeout);
+        let mut request = client.post(&url).json(&body).timeout(self.timeout);
 
         if let Some(ref session) = *self.session_id.read().await {
             request = request.header("Cookie", format!("session_id={}", session));
