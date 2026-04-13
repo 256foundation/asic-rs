@@ -76,6 +76,40 @@ impl AuradineV1 {
         cleaned.parse::<f64>().ok()
     }
 
+    fn board_position_from_id(id: u64) -> Option<usize> {
+        id.checked_sub(1)
+            .and_then(|position| usize::try_from(position).ok())
+    }
+
+    fn board_id_from_dev_entry(board: &Value, idx: usize) -> Option<u64> {
+        board
+            .get("ID")
+            .and_then(Value::as_u64)
+            .or_else(|| board.get("DEV").and_then(Value::as_u64))
+            .or_else(|| u64::try_from(idx + 1).ok())
+    }
+
+    fn update_board_count(board_count: &mut u8, board_id: u64) {
+        if board_id > 0
+            && let Ok(count) = u8::try_from(board_id)
+        {
+            *board_count = (*board_count).max(count);
+        }
+    }
+
+    fn chip_id(chip: &Value) -> Option<u16> {
+        chip.get("ID")
+            .and_then(Value::as_u64)
+            .and_then(|chip_id| u16::try_from(chip_id).ok())
+    }
+
+    fn upsert_chip_data(chip_map: &mut BTreeMap<u16, ChipData>, chip_id: u16) -> &mut ChipData {
+        chip_map.entry(chip_id).or_insert_with(|| ChipData {
+            position: chip_id,
+            ..Default::default()
+        })
+    }
+
     fn led_status_severity(code: u64) -> MessageSeverity {
         match code {
             2 | 3 => MessageSeverity::Info,
@@ -559,61 +593,10 @@ impl GetHashboards for AuradineV1 {
             .or(self.device_info.hardware.boards);
 
         let mut board_count = expected_boards.unwrap_or(0);
-
-        if let Some(api_data) = api_data {
-            let devs_data = api_data
-                .get("devs")
-                .and_then(Value::as_array)
-                .or_else(|| api_data.as_array());
-            let serials_data = api_data.get("serials").and_then(Value::as_array);
-
-            if let Some(devs) = devs_data {
-                for (idx, board) in devs.iter().enumerate() {
-                    let board_id = board
-                        .get("ID")
-                        .and_then(Value::as_u64)
-                        .or_else(|| board.get("DEV").and_then(Value::as_u64))
-                        .or_else(|| u64::try_from(idx + 1).ok());
-
-                    if let Some(board_id) = board_id
-                        && board_id > 0
-                        && let Ok(count) = u8::try_from(board_id)
-                    {
-                        board_count = board_count.max(count);
-                    }
-                }
-            }
-
-            if let Some(serials_data) = serials_data {
-                let detected = u8::try_from(serials_data.len()).unwrap_or(u8::MAX);
-                board_count = board_count.max(detected);
-            }
-
-            for key in ["temperature", "voltage", "frequency"] {
-                if let Some(source_boards) = api_data.get(key).and_then(Value::as_array) {
-                    for board in source_boards {
-                        if let Some(board_id) = board.get("ID").and_then(Value::as_u64)
-                            && board_id > 0
-                            && let Ok(count) = u8::try_from(board_id)
-                        {
-                            board_count = board_count.max(count);
-                        }
-                    }
-                }
-            }
-        }
-
-        let mut hashboards: Vec<BoardData> = (0..board_count)
-            .map(|idx| BoardData::new(idx, expected_chips))
-            .collect();
-
         let Some(api_data) = api_data else {
-            return hashboards;
-        };
-
-        let board_position_from_id = |id: u64| {
-            id.checked_sub(1)
-                .and_then(|position| usize::try_from(position).ok())
+            return (0..board_count)
+                .map(|idx| BoardData::new(idx, expected_chips))
+                .collect();
         };
 
         let devs_data = api_data
@@ -624,14 +607,37 @@ impl GetHashboards for AuradineV1 {
 
         if let Some(devs) = devs_data {
             for (idx, board) in devs.iter().enumerate() {
-                let board_id = board
-                    .get("ID")
-                    .and_then(Value::as_u64)
-                    .or_else(|| board.get("DEV").and_then(Value::as_u64))
-                    .or_else(|| u64::try_from(idx + 1).ok())
-                    .unwrap_or_default();
+                if let Some(board_id) = Self::board_id_from_dev_entry(board, idx) {
+                    Self::update_board_count(&mut board_count, board_id);
+                }
+            }
+        }
 
-                let Some(position) = board_position_from_id(board_id) else {
+        if let Some(serials_data) = serials_data {
+            let detected = u8::try_from(serials_data.len()).unwrap_or(u8::MAX);
+            board_count = board_count.max(detected);
+        }
+
+        for key in ["temperature", "voltage", "frequency"] {
+            if let Some(source_boards) = api_data.get(key).and_then(Value::as_array) {
+                for board in source_boards {
+                    if let Some(board_id) = board.get("ID").and_then(Value::as_u64) {
+                        Self::update_board_count(&mut board_count, board_id);
+                    }
+                }
+            }
+        }
+
+        let mut hashboards: Vec<BoardData> = (0..board_count)
+            .map(|idx| BoardData::new(idx, expected_chips))
+            .collect();
+
+        if let Some(devs) = devs_data {
+            for (idx, board) in devs.iter().enumerate() {
+                let Some(board_id) = Self::board_id_from_dev_entry(board, idx) else {
+                    continue;
+                };
+                let Some(position) = Self::board_position_from_id(board_id) else {
                     continue;
                 };
                 let Some(hashboard) = hashboards.get_mut(position) else {
@@ -655,7 +661,7 @@ impl GetHashboards for AuradineV1 {
                 hashboard.serial_number = serials_data
                     .and_then(|sns| sns.get(position))
                     .and_then(Value::as_str)
-                    .map(String::from);
+                    .map(str::to_string);
                 hashboard.active = board.get("Enabled").and_then(Value::as_bool);
                 hashboard.tuned = hashboard.active;
             }
@@ -684,7 +690,7 @@ impl GetHashboards for AuradineV1 {
                 let Some(id) = temp_board.get("ID").and_then(Value::as_u64) else {
                     continue;
                 };
-                let Some(position) = board_position_from_id(id) else {
+                let Some(position) = Self::board_position_from_id(id) else {
                     continue;
                 };
                 let Some(hashboard) = hashboards.get_mut(position) else {
@@ -720,27 +726,19 @@ impl GetHashboards for AuradineV1 {
                 let Some(chip_temps) = temp_board.get("ChipTemp").and_then(Value::as_array) else {
                     continue;
                 };
-
                 let Some(chip_map) = chip_maps.get_mut(position) else {
                     continue;
                 };
 
                 for chip in chip_temps {
-                    let Some(chip_id) = chip
-                        .get("ID")
-                        .and_then(Value::as_u64)
-                        .and_then(|chip_id| u16::try_from(chip_id).ok())
-                    else {
+                    let Some(chip_id) = Self::chip_id(chip) else {
                         continue;
                     };
                     let Some(temp) = chip.get("Temperature").and_then(Value::as_f64) else {
                         continue;
                     };
 
-                    let chip_data = chip_map.entry(chip_id).or_insert_with(|| ChipData {
-                        position: chip_id,
-                        ..Default::default()
-                    });
+                    let chip_data = Self::upsert_chip_data(chip_map, chip_id);
                     chip_data.temperature = Some(Temperature::from_celsius(temp));
                     chip_data.working = Some(temp > 0.0);
                 }
@@ -752,7 +750,7 @@ impl GetHashboards for AuradineV1 {
                 let Some(id) = voltage_board.get("ID").and_then(Value::as_u64) else {
                     continue;
                 };
-                let Some(position) = board_position_from_id(id) else {
+                let Some(position) = Self::board_position_from_id(id) else {
                     continue;
                 };
                 let Some(chip_voltages) =
@@ -760,27 +758,19 @@ impl GetHashboards for AuradineV1 {
                 else {
                     continue;
                 };
-
                 let Some(chip_map) = chip_maps.get_mut(position) else {
                     continue;
                 };
 
                 for chip in chip_voltages {
-                    let Some(chip_id) = chip
-                        .get("ID")
-                        .and_then(Value::as_u64)
-                        .and_then(|chip_id| u16::try_from(chip_id).ok())
-                    else {
+                    let Some(chip_id) = Self::chip_id(chip) else {
                         continue;
                     };
                     let Some(voltage) = chip.get("Voltage").and_then(Value::as_f64) else {
                         continue;
                     };
 
-                    let chip_data = chip_map.entry(chip_id).or_insert_with(|| ChipData {
-                        position: chip_id,
-                        ..Default::default()
-                    });
+                    let chip_data = Self::upsert_chip_data(chip_map, chip_id);
                     chip_data.voltage = Some(Voltage::from_volts(voltage));
                     if voltage > 0.0 {
                         chip_data.working = Some(true);
@@ -794,7 +784,7 @@ impl GetHashboards for AuradineV1 {
                 let Some(id) = frequency_board.get("ID").and_then(Value::as_u64) else {
                     continue;
                 };
-                let Some(position) = board_position_from_id(id) else {
+                let Some(position) = Self::board_position_from_id(id) else {
                     continue;
                 };
                 let Some(chip_frequencies) = frequency_board
@@ -803,27 +793,19 @@ impl GetHashboards for AuradineV1 {
                 else {
                     continue;
                 };
-
                 let Some(chip_map) = chip_maps.get_mut(position) else {
                     continue;
                 };
 
                 for chip in chip_frequencies {
-                    let Some(chip_id) = chip
-                        .get("ID")
-                        .and_then(Value::as_u64)
-                        .and_then(|chip_id| u16::try_from(chip_id).ok())
-                    else {
+                    let Some(chip_id) = Self::chip_id(chip) else {
                         continue;
                     };
                     let Some(frequency) = chip.get("Frequency").and_then(Value::as_f64) else {
                         continue;
                     };
 
-                    let chip_data = chip_map.entry(chip_id).or_insert_with(|| ChipData {
-                        position: chip_id,
-                        ..Default::default()
-                    });
+                    let chip_data = Self::upsert_chip_data(chip_map, chip_id);
                     chip_data.frequency = Some(Frequency::from_megahertz(frequency));
                     if frequency > 0.0 {
                         chip_data.working = Some(true);
