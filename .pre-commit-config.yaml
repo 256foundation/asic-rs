@@ -1,3 +1,11 @@
+# Skip rust checks in CI, they are run separately
+ci:
+  autofix_commit_msg: "chore(format): auto fixes from pre-commit.ci"
+  skip:
+    - fmt
+    - cargo-check
+    - clippy
+
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
