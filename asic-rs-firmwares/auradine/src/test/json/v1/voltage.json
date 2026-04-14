@@ -1,0 +1,68 @@
+{
+  "STATUS": [
+    {
+      "STATUS": "S",
+      "When": 1775782219,
+      "Code": 630,
+      "Msg": "System voltage",
+      "Description": "2.2.0"
+    }
+  ],
+  "Voltage": [
+    {
+      "ID": 1,
+      "Name": "Hash Board 1",
+      "ChipVoltage": [
+        {
+          "ID": 0,
+          "Voltage": 0.23929554013739107
+        },
+        {
+          "ID": 1,
+          "Voltage": 0.24232864508667262
+        },
+        {
+          "ID": 2,
+          "Voltage": 0.2405087821171037
+        }
+      ]
+    },
+    {
+      "ID": 2,
+      "Name": "Hash Board 2",
+      "ChipVoltage": [
+        {
+          "ID": 0,
+          "Voltage": 0.2452606465376448
+        },
+        {
+          "ID": 1,
+          "Voltage": 0.2464738885173574
+        },
+        {
+          "ID": 2,
+          "Voltage": 0.2457661640291917
+        }
+      ]
+    },
+    {
+      "ID": 3,
+      "Name": "Hash Board 3",
+      "ChipVoltage": [
+        {
+          "ID": 0,
+          "Voltage": 0.24890037247678265
+        },
+        {
+          "ID": 1,
+          "Voltage": 0.24879926897847326
+        },
+        {
+          "ID": 2,
+          "Voltage": 0.24890037247678265
+        }
+      ]
+    }
+  ],
+  "id": 1
+}

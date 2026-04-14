@@ -14,6 +14,7 @@ license = "Apache-2.0"
 members = [
     "asic-rs-core",
     "asic-rs-makes/antminer",
+    "asic-rs-makes/auradine",
     "asic-rs-makes/avalon",
     "asic-rs-makes/bitaxe",
     "asic-rs-makes/braiins",
@@ -22,6 +23,7 @@ members = [
     "asic-rs-makes/whatsminer",
     "asic-rs-makes/marathon",
     "asic-rs-firmwares/antminer",
+    "asic-rs-firmwares/auradine",
     "asic-rs-firmwares/avalonminer",
     "asic-rs-firmwares/bitaxe",
     "asic-rs-firmwares/braiins",
@@ -37,6 +39,7 @@ members = [
 asic-rs-core = { path = "asic-rs-core", version = "0.4.2" }
 
 asic-rs-makes-antminer = { path = "asic-rs-makes/antminer", version = "0.4.2" }
+asic-rs-makes-auradine = { path = "asic-rs-makes/auradine", version = "0.4.2" }
 asic-rs-makes-avalon = { path = "asic-rs-makes/avalon", version = "0.4.2" }
 asic-rs-makes-bitaxe = { path = "asic-rs-makes/bitaxe", version = "0.4.2" }
 asic-rs-makes-braiins = { path = "asic-rs-makes/braiins", version = "0.4.2" }
@@ -46,6 +49,7 @@ asic-rs-makes-whatsminer = { path = "asic-rs-makes/whatsminer", version = "0.4.2
 asic-rs-makes-marathon = { path = "asic-rs-makes/marathon", version = "0.4.2" }
 
 asic-rs-firmwares-antminer = { path = "asic-rs-firmwares/antminer", version = "0.4.2" }
+asic-rs-firmwares-auradine = { path = "asic-rs-firmwares/auradine", version = "0.4.2" }
 asic-rs-firmwares-avalonminer = { path = "asic-rs-firmwares/avalonminer", version = "0.4.2" }
 asic-rs-firmwares-bitaxe = { path = "asic-rs-firmwares/bitaxe", version = "0.4.2" }
 asic-rs-firmwares-braiins = { path = "asic-rs-firmwares/braiins", version = "0.4.2" }
@@ -85,7 +89,7 @@ md5 = "0.8"
 once_cell = "1.21"
 tracing = { version = "0.1.44", features = ["log"] }
 crc32fast = "1.5"
-rlimit = "0.10"
+rlimit = "0.11"
 secrecy = "0.10"
 
 pyo3 = { version = "0.28.2", features = [
@@ -110,6 +114,7 @@ panic = "deny"
 default = [
     "core",
     "antminer",
+    "auradine",
     "avalonminer",
     "bitaxe",
     "braiins",
@@ -123,6 +128,7 @@ default = [
 
 core = []
 antminer = ["dep:asic-rs-firmwares-antminer"]
+auradine = ["dep:asic-rs-firmwares-auradine"]
 avalonminer = ["dep:asic-rs-firmwares-avalonminer"]
 bitaxe = ["dep:asic-rs-firmwares-bitaxe"]
 braiins = ["dep:asic-rs-firmwares-braiins"]
@@ -138,6 +144,7 @@ python = [
     "dep:pyo3-async-runtimes",
     "dep:pyo3-log",
     "asic-rs-makes-antminer/python",
+    "asic-rs-makes-auradine/python",
     "asic-rs-makes-avalon/python",
     "asic-rs-makes-bitaxe/python",
     "asic-rs-makes-braiins/python",
@@ -146,6 +153,7 @@ python = [
     "asic-rs-makes-whatsminer/python",
     "asic-rs-makes-marathon/python",
     "asic-rs-firmwares-antminer/python",
+    "asic-rs-firmwares-auradine/python",
     "asic-rs-firmwares-avalonminer/python",
     "asic-rs-firmwares-bitaxe/python",
     "asic-rs-firmwares-braiins/python",
@@ -161,6 +169,7 @@ python = [
 asic-rs-core.workspace = true
 
 asic-rs-makes-antminer.workspace = true
+asic-rs-makes-auradine.workspace = true
 asic-rs-makes-avalon.workspace = true
 asic-rs-makes-bitaxe.workspace = true
 asic-rs-makes-braiins.workspace = true
@@ -170,6 +179,7 @@ asic-rs-makes-whatsminer.workspace = true
 asic-rs-makes-marathon.workspace = true
 
 asic-rs-firmwares-antminer = { workspace = true, optional = true }
+asic-rs-firmwares-auradine = { workspace = true, optional = true }
 asic-rs-firmwares-avalonminer = { workspace = true, optional = true }
 asic-rs-firmwares-bitaxe = { workspace = true, optional = true }
 asic-rs-firmwares-braiins = { workspace = true, optional = true }
