@@ -1,7 +1,5 @@
 use pyo3::prelude::*;
 
-mod config;
-mod data;
 mod factory;
 mod miner;
 mod typing;
@@ -24,17 +22,23 @@ mod asic_rs {
     use asic_rs_core::data::miner::MiningMode;
 
     #[pymodule_export]
-    use super::config::{
-        AutoFanConfig, ManualFanConfig, Pool, PoolGroup, ScalingConfig, TuningConfig,
-        TuningConfigHashRate, TuningConfigMode, TuningConfigPower,
-    };
-    #[pymodule_export]
-    use super::data::{
-        BoardData, ChipData, DeviceInfo, FanData, MinerControlBoard, MinerData, MinerHardware,
-        MinerMessage, PoolData, PoolGroupData, TuningTarget,
-    };
-    #[pymodule_export]
     use super::factory::MinerFactory;
     #[pymodule_export]
     use super::miner::Miner;
+    #[pymodule_export]
+    use asic_rs_core::config::{
+        fan::{FanConfig, FanMode},
+        pools::{PoolConfig as Pool, PoolGroupConfig as PoolGroup},
+        scaling::ScalingConfig,
+        tuning::TuningConfig,
+    };
+    #[pymodule_export]
+    use asic_rs_core::data::{
+        board::{BoardData, ChipData, MinerControlBoard},
+        device::{DeviceInfo, MinerHardware},
+        fan::FanData,
+        message::{MessageSeverity, MinerMessage},
+        miner::MinerData,
+        pool::{PoolData, PoolGroupData, PoolScheme, PoolURL},
+    };
 }

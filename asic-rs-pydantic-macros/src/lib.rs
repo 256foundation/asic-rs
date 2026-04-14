@@ -12,6 +12,8 @@ struct PydanticModelOptions {
     new: bool,
     repr: bool,
     no_repr: bool,
+    getters: bool,
+    name: Option<LitStr>,
 }
 
 impl PydanticModelOptions {
@@ -35,6 +37,16 @@ impl PydanticModelOptions {
                 return Err(meta.error("no_repr does not accept a value"));
             }
             self.no_repr = true;
+        } else if meta.path.is_ident("getters") {
+            if meta.input.peek(syn::Token![=]) {
+                return Err(meta.error("getters does not accept a value"));
+            }
+            self.getters = true;
+        } else if meta.path.is_ident("name") {
+            if self.name.is_some() {
+                return Err(meta.error("duplicate pydantic name"));
+            }
+            self.name = Some(meta.value()?.parse()?);
         } else {
             return Ok(false);
         }
@@ -163,6 +175,12 @@ fn expand_py_pydantic_model_attr(
     if options.model.no_repr {
         pydantic_options.push(quote!(no_repr));
     }
+    if options.model.getters {
+        pydantic_options.push(quote!(getters));
+    }
+    if let Some(name) = options.model.name {
+        pydantic_options.push(quote!(name = #name));
+    }
     let pydantic_attr =
         (!pydantic_options.is_empty()).then(|| quote!(#[pydantic(#(#pydantic_options),*)]));
 
@@ -183,8 +201,12 @@ pub fn derive_py_pydantic_model(input: TokenStream) -> TokenStream {
 
 fn expand_py_pydantic_model(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let name = &input.ident;
-    let name_str = name.to_string();
     let options = PydanticModelOptions::parse(input)?;
+    let rust_name_str = name.to_string();
+    let name_str = options
+        .name
+        .clone()
+        .unwrap_or_else(|| LitStr::new(&rust_name_str, name.span()));
     let schema = options
         .schema
         .map(|schema| schema.parse::<Path>())
@@ -244,6 +266,10 @@ fn expand_py_pydantic_model(input: &DeriveInput) -> syn::Result<proc_macro2::Tok
     let repr_method = (!options.no_repr)
         .then(|| expand_generated_pydantic_repr(input))
         .transpose()?;
+    let getter_methods = options
+        .getters
+        .then(|| expand_generated_pydantic_getters(input))
+        .transpose()?;
 
     Ok(quote! {
         impl ::asic_rs_pydantic::PyPydanticType for #name {
@@ -281,6 +307,7 @@ fn expand_py_pydantic_model(input: &DeriveInput) -> syn::Result<proc_macro2::Tok
         impl #name {
             #new_method
             #repr_method
+            #getter_methods
 
             #[classmethod]
             #[pyo3(signature = (_source_type: "object", _handler: "object") -> "object")]
@@ -400,6 +427,35 @@ fn expand_generated_pydantic_repr(input: &DeriveInput) -> syn::Result<proc_macro
             #(#fields)*
             Ok(format!("{}({})", #name_str, fields.join(", ")))
         }
+    })
+}
+
+fn expand_generated_pydantic_getters(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let fields = named_struct_fields(input)?
+        .iter()
+        .map(|field| {
+            let ident = field
+                .ident
+                .as_ref()
+                .ok_or_else(|| syn::Error::new_spanned(field, "expected named field"))?;
+            let ty = &field.ty;
+            Ok(quote! {
+                #[getter]
+                fn #ident(
+                    &self,
+                    py: ::pyo3::Python<'_>,
+                ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                    <#ty as ::asic_rs_pydantic::PyPydanticType>::to_pydantic_repr_value(
+                        &self.#ident,
+                        py,
+                    )
+                }
+            })
+        })
+        .collect::<syn::Result<Vec<_>>>()?;
+
+    Ok(quote! {
+        #(#fields)*
     })
 }
 
@@ -576,6 +632,7 @@ impl PydanticEnumVariantOptions {
 
 fn expand_py_pydantic_enum(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let name = &input.ident;
+    let name_str = name.to_string();
     let Data::Enum(data) = &input.data else {
         return Err(syn::Error::new_spanned(
             input,
@@ -619,6 +676,94 @@ fn expand_py_pydantic_enum(input: &DeriveInput) -> syn::Result<proc_macro2::Toke
                     .into_pyobject(py)?
                     .into_any()
                     .unbind())
+            }
+        }
+
+        #[::pyo3::pymethods]
+        impl #name {
+            #[classmethod]
+            #[pyo3(signature = (_source_type: "object", _handler: "object") -> "object")]
+            pub fn __get_pydantic_core_schema__(
+                cls: &::pyo3::Bound<'_, ::pyo3::types::PyType>,
+                _source_type: &::pyo3::Bound<'_, ::pyo3::PyAny>,
+                _handler: &::pyo3::Bound<'_, ::pyo3::PyAny>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                use ::pyo3::types::PyAnyMethods as _;
+                let core_schema = cls.py().import("pydantic_core")?.getattr("core_schema")?;
+                let validation_schema =
+                    <Self as ::asic_rs_pydantic::PyPydanticType>::pydantic_schema(
+                        &core_schema,
+                        ::asic_rs_pydantic::PydanticSchemaMode::Validation,
+                    )?;
+                let serialization_schema =
+                    <Self as ::asic_rs_pydantic::PyPydanticType>::pydantic_schema(
+                        &core_schema,
+                        ::asic_rs_pydantic::PydanticSchemaMode::Serialization,
+                    )?;
+                ::asic_rs_pydantic::model_core_schema(
+                    cls,
+                    &validation_schema,
+                    &serialization_schema,
+                )
+            }
+
+            #[classmethod]
+            #[pyo3(signature = (obj: "object", **_kwargs: "object") -> #name_str)]
+            pub fn model_validate(
+                cls: &::pyo3::Bound<'_, ::pyo3::types::PyType>,
+                obj: &::pyo3::Bound<'_, ::pyo3::PyAny>,
+                _kwargs: Option<&::pyo3::Bound<'_, ::pyo3::types::PyDict>>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                use ::pyo3::types::PyAnyMethods as _;
+                use ::pyo3::IntoPyObject as _;
+                ::asic_rs_pydantic::reject_model_kwargs(_kwargs, "model_validate")?;
+                if obj.is_instance(cls)? {
+                    return Ok(obj.clone().unbind());
+                }
+                Ok(
+                    <Self as ::asic_rs_pydantic::PyPydanticType>::from_pydantic(obj)?
+                        .into_pyobject(obj.py())?
+                        .into_any()
+                        .unbind()
+                )
+            }
+
+            #[classmethod]
+            #[pyo3(signature = (**kwargs: "object") -> "dict[str, object]")]
+            pub fn model_json_schema(
+                cls: &::pyo3::Bound<'_, ::pyo3::types::PyType>,
+                kwargs: Option<&::pyo3::Bound<'_, ::pyo3::types::PyDict>>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                ::asic_rs_pydantic::model_json_schema(cls, kwargs)
+            }
+
+            #[pyo3(signature = (**_kwargs: "object") -> "object")]
+            pub fn model_dump(
+                &self,
+                py: ::pyo3::Python<'_>,
+                _kwargs: Option<&::pyo3::Bound<'_, ::pyo3::types::PyDict>>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                ::asic_rs_pydantic::reject_model_kwargs(_kwargs, "model_dump")?;
+                <Self as ::asic_rs_pydantic::PyPydanticType>::to_pydantic_data(self, py)
+            }
+
+            #[classmethod]
+            #[pyo3(signature = (value: "object") -> #name_str)]
+            fn _pydantic_validate(
+                cls: &::pyo3::Bound<'_, ::pyo3::types::PyType>,
+                value: &::pyo3::Bound<'_, ::pyo3::PyAny>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                Self::model_validate(cls, value, None)
+            }
+
+            #[staticmethod]
+            #[pyo3(signature = (value: #name_str) -> "object")]
+            fn _pydantic_serialize(
+                value: &::pyo3::Bound<'_, ::pyo3::PyAny>,
+            ) -> ::pyo3::PyResult<::pyo3::Py<::pyo3::PyAny>> {
+                use ::pyo3::types::PyAnyMethods as _;
+                let model = value.extract::<Self>()?;
+                <Self as ::asic_rs_pydantic::PyPydanticType>::to_pydantic_data(&model, value.py())
             }
         }
     })
@@ -892,8 +1037,7 @@ fn expand_py_pydantic_tagged_union(input: &DeriveInput) -> syn::Result<proc_macr
             })
             .collect::<Vec<_>>()
     };
-    let generate_into_pyobject = options.value_field.is_none();
-    let into_pyobject_impl = if generate_into_pyobject {
+    let into_pyobject_impl = if options.value_field.is_none() {
         let into_py_matches = variants.iter().map(|variant| {
             let ident = variant.ident;
             quote! {
@@ -930,7 +1074,32 @@ fn expand_py_pydantic_tagged_union(input: &DeriveInput) -> syn::Result<proc_macr
             }
         })
     } else {
-        None
+        Some(quote! {
+            #[cfg(feature = "python")]
+            impl<'py> ::pyo3::IntoPyObject<'py> for #name #ty_generics #where_clause {
+                type Target = ::pyo3::PyAny;
+                type Output = ::pyo3::Bound<'py, ::pyo3::PyAny>;
+                type Error = ::pyo3::PyErr;
+
+                const OUTPUT_TYPE: ::pyo3::inspect::PyStaticExpr =
+                    ::pyo3::type_hint_subscript!(
+                        ::pyo3::type_hint_identifier!("builtins", "dict"),
+                        ::pyo3::type_hint_identifier!("builtins", "str"),
+                        ::pyo3::type_hint_identifier!("builtins", "object")
+                    );
+
+                fn into_pyobject(
+                    self,
+                    py: ::pyo3::Python<'py>,
+                ) -> Result<Self::Output, Self::Error> {
+                    <Self as ::asic_rs_pydantic::PyPydanticType>::to_pydantic_data(
+                        &self,
+                        py,
+                    )
+                    .map(|value| value.into_bound(py))
+                }
+            }
+        })
     };
     Ok(quote! {
         impl #impl_generics ::asic_rs_pydantic::PyPydanticType for #name #ty_generics #where_clause {

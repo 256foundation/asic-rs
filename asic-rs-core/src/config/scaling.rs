@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
     feature = "python",
     pyclass(skip_from_py_object, get_all, module = "asic_rs")
 )]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScalingConfig {
     pub step: u32,
@@ -36,7 +37,28 @@ impl ScalingConfig {
 }
 
 #[cfg(feature = "python")]
+#[pymethods]
+impl ScalingConfig {
+    #[new]
+    #[pyo3(signature = (step, minimum, shutdown = None, shutdown_duration = None))]
+    fn py_new(
+        step: u32,
+        minimum: u32,
+        shutdown: Option<bool>,
+        shutdown_duration: Option<f32>,
+    ) -> Self {
+        Self {
+            step,
+            minimum,
+            shutdown,
+            shutdown_duration,
+        }
+    }
+}
+
+#[cfg(feature = "python")]
 mod python_impls {
+    use asic_rs_pydantic::{get_optional_field, get_required_field};
     use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
 
     use super::ScalingConfig;
@@ -46,10 +68,16 @@ mod python_impls {
 
         fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
             Ok(ScalingConfig {
-                step: obj.getattr("step")?.extract()?,
-                minimum: obj.getattr("minimum")?.extract()?,
-                shutdown: obj.getattr("shutdown")?.extract()?,
-                shutdown_duration: obj.getattr("shutdown_duration")?.extract()?,
+                step: get_required_field(&obj, "step")?.extract()?,
+                minimum: get_required_field(&obj, "minimum")?.extract()?,
+                shutdown: get_optional_field(&obj, "shutdown")?
+                    .map(|value| value.extract())
+                    .transpose()?
+                    .flatten(),
+                shutdown_duration: get_optional_field(&obj, "shutdown_duration")?
+                    .map(|value| value.extract())
+                    .transpose()?
+                    .flatten(),
             })
         }
     }

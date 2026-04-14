@@ -6,7 +6,11 @@ use crate::data::pool::{PoolGroupData, PoolURL};
 
 #[cfg_attr(
     feature = "python",
-    pyclass(skip_from_py_object, get_all, module = "asic_rs")
+    pyclass(name = "Pool", skip_from_py_object, get_all, module = "asic_rs")
+)]
+#[cfg_attr(
+    feature = "python",
+    asic_rs_pydantic::py_pydantic_model(new, name = "Pool")
 )]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PoolConfig {
@@ -17,7 +21,11 @@ pub struct PoolConfig {
 
 #[cfg_attr(
     feature = "python",
-    pyclass(skip_from_py_object, get_all, module = "asic_rs")
+    pyclass(name = "PoolGroup", skip_from_py_object, get_all, module = "asic_rs")
+)]
+#[cfg_attr(
+    feature = "python",
+    asic_rs_pydantic::py_pydantic_model(new, name = "PoolGroup")
 )]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PoolGroupConfig {
@@ -48,6 +56,7 @@ impl From<PoolGroupData> for PoolGroupConfig {
 
 #[cfg(feature = "python")]
 mod python_impls {
+    use asic_rs_pydantic::get_required_field;
     use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
 
     use super::*;
@@ -57,14 +66,14 @@ mod python_impls {
         type Error = PyErr;
 
         fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
-            let url_ob = obj.getattr("url")?;
+            let url_ob = get_required_field(&obj, "url")?;
             let url = url_ob
                 .extract::<PoolURL>()
                 .or_else(|_| url_ob.extract::<String>().map(PoolURL::from))?;
             Ok(PoolConfig {
                 url,
-                username: obj.getattr("username")?.extract()?,
-                password: obj.getattr("password")?.extract()?,
+                username: get_required_field(&obj, "username")?.extract()?,
+                password: get_required_field(&obj, "password")?.extract()?,
             })
         }
     }
@@ -74,9 +83,9 @@ mod python_impls {
 
         fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
             Ok(PoolGroupConfig {
-                name: obj.getattr("name")?.extract()?,
-                quota: obj.getattr("quota")?.extract()?,
-                pools: obj.getattr("pools")?.extract()?,
+                name: get_required_field(&obj, "name")?.extract()?,
+                quota: get_required_field(&obj, "quota")?.extract()?,
+                pools: get_required_field(&obj, "pools")?.extract()?,
             })
         }
     }

@@ -7,14 +7,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from pyasic_rs.asic_rs import HashAlgorithm, Miner
-from pyasic_rs.config import (
-    AutoFanConfig,
-    ManualFanConfig,
-    TuningConfig,
-    TuningConfigHashRate,
-    TuningConfigMode,
-    TuningConfigPower,
-)
+from pyasic_rs.config import FanConfig, TuningConfig
 from pyasic_rs.data import (
     ChipData,
     HashRate,
@@ -22,7 +15,6 @@ from pyasic_rs.data import (
     MinerControlBoard,
     MinerData,
     MiningMode,
-    TuningTarget,
 )
 
 
@@ -34,40 +26,12 @@ class TuningConfigModel(BaseModel):
     tuning: TuningConfig
 
 
-class TuningConfigPowerModel(BaseModel):
-    tuning: TuningConfigPower
+class FanConfigModel(BaseModel):
+    fan: FanConfig
 
 
-class TuningConfigHashRateModel(BaseModel):
-    tuning: TuningConfigHashRate
-
-
-class TuningConfigModeModel(BaseModel):
-    tuning: TuningConfigMode
-
-
-class AutoFanConfigModel(BaseModel):
-    fan: AutoFanConfig
-
-
-class ManualFanConfigModel(BaseModel):
-    fan: ManualFanConfig
-
-
-class TuningTargetModel(BaseModel):
-    target: TuningTarget
-
-
-class PowerTargetModel(BaseModel):
-    target: TuningTarget.Power
-
-
-class HashRateTargetModel(BaseModel):
-    target: TuningTarget.HashRate
-
-
-class MiningModeTargetModel(BaseModel):
-    target: TuningTarget.MiningMode
+class MiningModeModel(BaseModel):
+    mode: MiningMode
 
 
 class ChipDataModel(BaseModel):
@@ -274,11 +238,8 @@ def test_direct_model_validate_rejects_unsupported_kwargs() -> None:
 
     with pytest.raises(ValueError):
         TuningConfig.model_validate(
-            {"variant": "power", "target_watts": 3250.0}, strict=True
+            {"target": {"type": "power", "value": 3250.0}}, strict=True
         )
-
-    with pytest.raises(ValueError):
-        TuningTarget.model_validate({"type": "power", "value": 3250.0}, strict=True)
 
 
 @pytest.mark.parametrize(
@@ -416,26 +377,32 @@ def test_hashrate_accepts_hash_algorithm_enum() -> None:
     }
 
 
-def test_tuning_config_union_validates_to_rust_variant() -> None:
+def test_tuning_config_validates_canonical_target_shape() -> None:
     model = TuningConfigModel.model_validate(
         {
             "tuning": {
-                "variant": "hashrate",
-                "target_hashrate": {"value": 120.0, "unit": "TH/s", "algo": "SHA256"},
+                "target": {
+                    "type": "hashrate",
+                    "value": {"value": 120.0, "unit": "TH/s", "algo": "SHA256"},
+                },
                 "algorithm": "SHA256",
             }
         }
     )
 
-    assert isinstance(model.tuning, TuningConfigHashRate)
+    assert isinstance(model.tuning, TuningConfig)
+    assert model.tuning.variant == "hashrate"
+    assert model.tuning.target_hashrate is not None
     assert model.tuning.target_hashrate.value == 120.0
     assert model.model_dump() == {
         "tuning": {
-            "variant": "hashrate",
-            "target_hashrate": {
-                "value": 120.0,
-                "unit": "TH/s",
-                "algo": "SHA256",
+            "target": {
+                "type": "hashrate",
+                "value": {
+                    "value": 120.0,
+                    "unit": "TH/s",
+                    "algo": "SHA256",
+                },
             },
             "algorithm": "SHA256",
         }
@@ -450,8 +417,7 @@ def test_tuning_config_accepts_hash_algorithm_enum() -> None:
     model = TuningConfigModel.model_validate(
         {
             "tuning": {
-                "variant": "power",
-                "target_watts": 3250.0,
+                "target": {"type": "power", "value": 3250.0},
                 "algorithm": "Kadena",
             }
         }
@@ -461,28 +427,37 @@ def test_tuning_config_accepts_hash_algorithm_enum() -> None:
     assert hashrate.algorithm == "Blake2S256"
     assert model.model_dump() == {
         "tuning": {
-            "variant": "power",
-            "target_watts": 3250.0,
+            "target": {"type": "power", "value": 3250.0},
             "algorithm": "Kadena",
         }
     }
 
 
 def test_tuning_config_mode_accepts_mining_mode_enum() -> None:
-    model = TuningConfigModeModel.model_validate({"tuning": {"target_mode": "High"}})
+    model = TuningConfigModel.model_validate(
+        {"tuning": {"target": {"type": "mode", "value": "High"}}}
+    )
 
-    assert isinstance(model.tuning, TuningConfigMode)
+    assert model.tuning.target_mode == MiningMode.High
     assert model.model_dump() == {
-        "tuning": {"variant": "mode", "target_mode": "High"}
+        "tuning": {"target": {"type": "mode", "value": "High"}, "algorithm": None}
     }
 
 
 def test_tuning_config_mode_json_schema_exposes_mining_mode_enum() -> None:
-    schema = TuningConfigModeModel.model_json_schema()
+    schema = TuningConfigModel.model_json_schema()
 
     tuning_schema = schema["properties"]["tuning"]
     tuning_def = resolve_ref(schema, tuning_schema)
-    mode_schema = tuning_def["properties"]["target_mode"]
+    target_schema = tuning_def["properties"]["target"]
+    target_union = resolve_ref(schema, target_schema)
+    mode_ref = next(
+        choice["$ref"]
+        for choice in target_union["oneOf"]
+        if choice["$ref"].endswith("TuningTargetMiningMode")
+    )
+    mode_def = schema["$defs"][mode_ref.rsplit("/", 1)[-1]]
+    mode_schema = mode_def["properties"]["value"]
 
     assert mode_schema["enum"] == ["Low", "Normal", "High"]
 
@@ -490,47 +465,20 @@ def test_tuning_config_mode_json_schema_exposes_mining_mode_enum() -> None:
 @pytest.mark.parametrize("mode", ["low", "normal", "high", "LOW", "medium", ""])
 def test_tuning_config_mode_rejects_unknown_values(mode: str) -> None:
     with pytest.raises(ValidationError):
-        TuningConfigModeModel.model_validate({"tuning": {"target_mode": mode}})
+        TuningConfigModel.model_validate(
+            {"tuning": {"target": {"type": "mode", "value": mode}}}
+        )
 
-    with pytest.raises(ValueError):
-        TuningConfigMode(mode)
-
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         TuningConfig.mode(mode)
 
 
 @pytest.mark.parametrize(
     ("model", "payload"),
     [
-        (
-            TuningConfigPowerModel,
-            {"tuning": {"variant": "hashrate", "target_watts": 3250.0}},
-        ),
-        (
-            TuningConfigHashRateModel,
-            {
-                "tuning": {
-                    "variant": "power",
-                    "target_hashrate": {
-                        "value": 120.0,
-                        "unit": "TH/s",
-                        "algo": "SHA256",
-                    },
-                }
-            },
-        ),
-        (
-            TuningConfigModeModel,
-            {"tuning": {"variant": "power", "target_mode": "Normal"}},
-        ),
-        (
-            AutoFanConfigModel,
-            {"fan": {"mode": "manual", "target_temp": 65.0}},
-        ),
-        (
-            ManualFanConfigModel,
-            {"fan": {"mode": "auto", "fan_speed": 75}},
-        ),
+        (TuningConfigModel, {"tuning": {"target": {"type": "power", "value": "fast"}}}),
+        (FanConfigModel, {"fan": {"mode": "manual", "target_temp": 65.0}}),
+        (FanConfigModel, {"fan": {"mode": "auto", "fan_speed": 75}}),
     ],
 )
 def test_tagged_config_models_reject_wrong_discriminators(
@@ -541,10 +489,10 @@ def test_tagged_config_models_reject_wrong_discriminators(
 
 
 def test_tagged_config_constructors_have_fixed_discriminants() -> None:
-    power = TuningConfigPower(3250.0)
-    mode = TuningConfigMode(MiningMode.Low)
-    auto_fan = AutoFanConfig(65.0)
-    manual_fan = ManualFanConfig(75)
+    power = TuningConfig.power(3250.0)
+    mode = TuningConfig.mode(MiningMode.Low)
+    auto_fan = FanConfig.auto(65.0)
+    manual_fan = FanConfig.manual(75)
 
     assert power.variant == "power"
     assert mode.variant == "mode"
@@ -552,26 +500,10 @@ def test_tagged_config_constructors_have_fixed_discriminants() -> None:
     assert manual_fan.mode == "manual"
 
     with pytest.raises(TypeError):
-        TuningConfigPower(3250.0, variant="hashrate")
+        FanConfig.auto(65.0, mode="manual")
 
     with pytest.raises(TypeError):
-        TuningConfigMode(MiningMode.Low, variant="power")
-
-    with pytest.raises(TypeError):
-        AutoFanConfig(65.0, mode="manual")
-
-    with pytest.raises(TypeError):
-        ManualFanConfig(75, mode="auto")
-
-
-def test_tuning_target_union_validates_and_serializes_variants() -> None:
-    model = TuningTargetModel.model_validate(
-        {"target": {"type": "mode", "value": "Normal"}}
-    )
-
-    assert isinstance(model.target, TuningTarget.MiningMode)
-    assert model.target.mode == MiningMode.Normal
-    assert model.model_dump() == {"target": {"type": "mode", "value": "Normal"}}
+        FanConfig.manual(75, mode="auto")
 
 
 @pytest.mark.parametrize(
@@ -585,86 +517,24 @@ def test_tuning_target_union_validates_and_serializes_variants() -> None:
 def test_mining_mode_enum_display_and_target_validation(
     mode: MiningMode, name: str
 ) -> None:
-    model = MiningModeTargetModel.model_validate(
-        {"target": {"type": "mode", "value": name}}
-    )
+    model = MiningModeModel.model_validate({"mode": name})
 
     assert str(mode) == name
     assert repr(mode) == f"MiningMode.{name}"
-    assert model.target.mode == mode
-    assert model.model_dump() == {"target": {"type": "mode", "value": name}}
+    assert model.mode == mode
+    assert model.model_dump() == {"mode": name}
 
 
 @pytest.mark.parametrize("mode", ["low", "normal", "high", "LOW", "medium", ""])
 def test_mining_mode_rejects_unknown_values(mode: str) -> None:
     with pytest.raises(ValidationError):
-        MiningModeTargetModel.model_validate({"target": {"type": "mode", "value": mode}})
+        MiningModeModel.model_validate({"mode": mode})
 
 
-def test_tuning_target_mining_mode_json_schema_exposes_enum() -> None:
-    schema = MiningModeTargetModel.model_json_schema()
+def test_mining_mode_json_schema_exposes_enum() -> None:
+    schema = MiningModeModel.model_json_schema()
 
-    target_schema = schema["properties"]["target"]
-    target_def = resolve_ref(schema, target_schema)
-    value_schema = target_def["properties"]["value"]
-
-    assert value_schema["enum"] == ["Low", "Normal", "High"]
-
-
-def test_typed_tuning_target_variants_accept_canonical_values() -> None:
-    power = PowerTargetModel.model_validate(
-        {"target": {"type": "power", "value": 3250.0}}
-    )
-    hashrate = HashRateTargetModel.model_validate(
-        {
-            "target": {
-                "type": "hashrate",
-                "value": {"value": 110.0, "unit": "TH/s", "algo": "SHA256"},
-            }
-        }
-    )
-    mining_mode = MiningModeTargetModel.model_validate(
-        {"target": {"type": "mode", "value": "Low"}}
-    )
-
-    assert isinstance(power.target, TuningTarget.Power)
-    assert power.model_dump() == {"target": {"type": "power", "value": 3250.0}}
-    assert isinstance(hashrate.target, TuningTarget.HashRate)
-    assert hashrate.model_dump() == {
-        "target": {
-            "type": "hashrate",
-            "value": {"value": 110.0, "unit": "TH/s", "algo": "SHA256"},
-        }
-    }
-    assert isinstance(mining_mode.target, TuningTarget.MiningMode)
-    assert mining_mode.model_dump() == {"target": {"type": "mode", "value": "Low"}}
-
-
-def test_typed_tuning_target_rejects_wrong_variant() -> None:
-    with pytest.raises(ValidationError):
-        PowerTargetModel.model_validate(
-            {
-                "target": {
-                    "type": "hashrate",
-                    "value": {"value": 100.0, "unit": "TH/s", "algo": "SHA256"},
-                }
-            }
-        )
-
-
-@pytest.mark.parametrize(
-    ("model", "target"),
-    [
-        (PowerTargetModel, 3250.0),
-        (HashRateTargetModel, HashRate(110.0, HashRateUnit.TH)),
-        (MiningModeTargetModel, "Low"),
-    ],
-)
-def test_typed_tuning_target_variants_reject_plain_values(
-    model: type[BaseModel], target: object
-) -> None:
-    with pytest.raises(ValidationError):
-        model.model_validate({"target": target})
+    assert schema["properties"]["mode"]["enum"] == ["Low", "Normal", "High"]
 
 
 def test_nested_data_model_round_trips_hashrate_payload() -> None:

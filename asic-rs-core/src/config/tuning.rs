@@ -5,9 +5,11 @@ use serde::{Deserialize, Serialize};
 use crate::data::miner::TuningTarget;
 
 #[cfg_attr(feature = "python", pyclass(skip_from_py_object, module = "asic_rs"))]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TuningConfig {
     pub target: TuningTarget,
+    #[cfg_attr(feature = "python", pydantic(default = None))]
     pub algorithm: Option<String>,
 }
 
@@ -64,6 +66,50 @@ impl TuningConfig {
 #[cfg(feature = "python")]
 #[pymethods]
 impl TuningConfig {
+    #[new]
+    #[pyo3(signature = (target, algorithm = None))]
+    fn py_new(target: &Bound<'_, PyAny>, algorithm: Option<&Bound<'_, PyAny>>) -> PyResult<Self> {
+        let mut config =
+            Self::new(<TuningTarget as asic_rs_pydantic::PyPydanticType>::from_pydantic(target)?);
+        if let Some(algorithm) = algorithm {
+            config.algorithm = Some(asic_rs_pydantic::py_to_string(algorithm)?);
+        }
+        Ok(config)
+    }
+
+    #[classmethod]
+    #[pyo3(signature = (watts, algorithm = None))]
+    fn power(
+        _cls: &Bound<'_, pyo3::types::PyType>,
+        watts: f64,
+        algorithm: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<Self> {
+        let mut config = Self::new(TuningTarget::Power(measurements::Power::from_watts(watts)));
+        if let Some(algorithm) = algorithm {
+            config.algorithm = Some(asic_rs_pydantic::py_to_string(algorithm)?);
+        }
+        Ok(config)
+    }
+
+    #[classmethod]
+    #[pyo3(signature = (hashrate, algorithm = None))]
+    fn hashrate(
+        _cls: &Bound<'_, pyo3::types::PyType>,
+        hashrate: crate::data::hashrate::HashRate,
+        algorithm: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<Self> {
+        let mut config = Self::new(TuningTarget::HashRate(hashrate));
+        if let Some(algorithm) = algorithm {
+            config.algorithm = Some(asic_rs_pydantic::py_to_string(algorithm)?);
+        }
+        Ok(config)
+    }
+
+    #[classmethod]
+    fn mode(_cls: &Bound<'_, pyo3::types::PyType>, mode: crate::data::miner::MiningMode) -> Self {
+        Self::new(TuningTarget::MiningMode(mode))
+    }
+
     #[getter]
     #[pyo3(name = "variant")]
     fn py_variant(&self) -> &'static str {
@@ -100,6 +146,7 @@ impl TuningConfig {
 
 #[cfg(feature = "python")]
 mod python_impls {
+    use asic_rs_pydantic::{PyPydanticType, get_optional_field, get_required_field};
     use measurements::Power;
     use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
 
@@ -113,21 +160,33 @@ mod python_impls {
         type Error = PyErr;
 
         fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
-            let variant: String = obj.getattr("variant")?.extract()?;
-            let algorithm: Option<String> =
-                obj.getattr("algorithm").ok().and_then(|v| v.extract().ok());
+            if let Some(target) = get_optional_field(&obj, "target")? {
+                return Ok(TuningConfig {
+                    target: TuningTarget::from_pydantic(&target)?,
+                    algorithm: get_optional_field(&obj, "algorithm")?
+                        .map(|value| value.extract())
+                        .transpose()?
+                        .flatten(),
+                });
+            }
+
+            let variant: String = get_required_field(&obj, "variant")?.extract()?;
+            let algorithm: Option<String> = get_optional_field(&obj, "algorithm")?
+                .map(|value| value.extract())
+                .transpose()?
+                .flatten();
 
             let target = match variant.as_str() {
                 "power" => {
-                    let watts: f64 = obj.getattr("target_watts")?.extract()?;
+                    let watts: f64 = get_required_field(&obj, "target_watts")?.extract()?;
                     TuningTarget::Power(Power::from_watts(watts))
                 }
                 "hashrate" => {
-                    let hr: HashRate = obj.getattr("target_hashrate")?.extract()?;
+                    let hr: HashRate = get_required_field(&obj, "target_hashrate")?.extract()?;
                     TuningTarget::HashRate(hr)
                 }
                 "mode" => {
-                    let mode_val = obj.getattr("target_mode")?;
+                    let mode_val = get_required_field(&obj, "target_mode")?;
                     let mode = mode_val.extract::<MiningMode>().or_else(|_| {
                         mode_val
                             .extract::<String>()

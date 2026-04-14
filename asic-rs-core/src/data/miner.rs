@@ -55,7 +55,7 @@ pub enum MiningMode {
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinerData {
     /// The schema version of this MinerData object, for use in external APIs

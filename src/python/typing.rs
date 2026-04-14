@@ -1,11 +1,9 @@
 use std::{future::Future, marker::PhantomData};
 
 use pyo3::{
-    IntoPyObject, PyAny, PyErr, PyResult, PyTypeInfo, Python, prelude::*, type_hint_identifier,
-    type_hint_subscript, type_hint_union,
+    IntoPyObject, PyAny, PyErr, PyResult, Python, prelude::*, type_hint_identifier,
+    type_hint_subscript,
 };
-
-use super::data::TuningTarget;
 
 pub(crate) struct PyAwaitable<T> {
     inner: Py<PyAny>,
@@ -68,45 +66,6 @@ where
 
     fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
         Ok(self.inner.into_bound(py))
-    }
-}
-
-const TUNING_TARGET_POWER: pyo3::inspect::PyStaticExpr = pyo3::inspect::PyStaticExpr::Attribute {
-    value: &<TuningTarget as PyTypeInfo>::TYPE_HINT,
-    attr: "Power",
-};
-const TUNING_TARGET_HASHRATE: pyo3::inspect::PyStaticExpr =
-    pyo3::inspect::PyStaticExpr::Attribute {
-        value: &<TuningTarget as PyTypeInfo>::TYPE_HINT,
-        attr: "HashRate",
-    };
-const TUNING_TARGET_MINING_MODE: pyo3::inspect::PyStaticExpr =
-    pyo3::inspect::PyStaticExpr::Attribute {
-        value: &<TuningTarget as PyTypeInfo>::TYPE_HINT,
-        attr: "MiningMode",
-    };
-
-pub(crate) struct PyTuningTargetVariant(TuningTarget);
-
-impl From<TuningTarget> for PyTuningTargetVariant {
-    fn from(target: TuningTarget) -> Self {
-        Self(target)
-    }
-}
-
-impl<'py> IntoPyObject<'py> for PyTuningTargetVariant {
-    type Target = PyAny;
-    type Output = Bound<'py, PyAny>;
-    type Error = PyErr;
-
-    const OUTPUT_TYPE: pyo3::inspect::PyStaticExpr = type_hint_union!(
-        TUNING_TARGET_POWER,
-        TUNING_TARGET_HASHRATE,
-        TUNING_TARGET_MINING_MODE
-    );
-
-    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
-        self.0.into_pyobject(py).map(Bound::into_any)
     }
 }
 

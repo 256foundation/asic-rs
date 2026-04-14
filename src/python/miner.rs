@@ -2,10 +2,19 @@ use std::{net::IpAddr, path::PathBuf, sync::Arc, time::Duration};
 
 use asic_rs_core::{
     config::{
-        fan::FanConfig as FanConfig_Base, pools::PoolGroupConfig as PoolGroupConfig_Base,
-        scaling::ScalingConfig as ScalingConfig_Base, tuning::TuningConfig as TuningConfig_Base,
+        fan::FanConfig, pools::PoolGroupConfig as PoolGroup, scaling::ScalingConfig,
+        tuning::TuningConfig,
     },
-    data::{device::HashAlgorithm, firmware::FirmwareImage, hashrate::HashRate},
+    data::{
+        board::BoardData,
+        device::{HashAlgorithm, MinerHardware},
+        fan::FanData,
+        firmware::FirmwareImage,
+        hashrate::HashRate,
+        message::MinerMessage,
+        miner::{MinerData, TuningTarget},
+        pool::PoolGroupData,
+    },
     traits::{auth::MinerAuth, miner::Miner as MinerTrait},
 };
 use measurements::Power;
@@ -14,13 +23,7 @@ use pyo3::{
     prelude::*,
 };
 
-use super::config::{
-    FanConfig as PyFanConfig, PoolGroup, ScalingConfig, TuningConfigVariant as PyTuningConfig,
-};
-use super::data::{
-    BoardData, FanData, MinerData, MinerHardware, MinerMessage, PoolGroupData, TuningTarget,
-};
-use super::typing::{PyAwaitable, PyTuningTargetVariant, future_into_py};
+use super::typing::{PyAwaitable, future_into_py};
 
 #[pyclass(module = "asic_rs")]
 pub(crate) struct Miner {
@@ -110,8 +113,7 @@ impl Miner {
     }
     #[getter]
     fn hardware(&self) -> MinerHardware {
-        let info = self.inner.get_device_info();
-        info.hardware
+        self.inner.get_device_info().hardware
     }
 
     #[getter]
@@ -179,10 +181,7 @@ impl Miner {
     // Data functions
     pub fn get_data<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<MinerData>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            let data = inner.get_data().await;
-            Ok(MinerData::from(&data))
-        })
+        future_into_py(py, async move { Ok(inner.get_data().await) })
     }
     pub fn get_mac<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
@@ -237,10 +236,7 @@ impl Miner {
     }
     pub fn get_hashboards<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<BoardData>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            let data = inner.get_hashboards().await;
-            Ok(data.iter().map(BoardData::from).collect::<Vec<BoardData>>())
-        })
+        future_into_py(py, async move { Ok(inner.get_hashboards().await) })
     }
     pub fn get_hashrate<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<HashRate>>> {
         let inner = Arc::clone(&self.inner);
@@ -261,17 +257,11 @@ impl Miner {
     }
     pub fn get_fans<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<FanData>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            let data = inner.get_fans().await;
-            Ok(data.iter().map(FanData::from).collect::<Vec<FanData>>())
-        })
+        future_into_py(py, async move { Ok(inner.get_fans().await) })
     }
     pub fn get_psu_fans<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<FanData>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            let data = inner.get_psu_fans().await;
-            Ok(data.iter().map(FanData::from).collect::<Vec<FanData>>())
-        })
+        future_into_py(py, async move { Ok(inner.get_psu_fans().await) })
     }
     pub fn get_fluid_temperature<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<f64>>> {
         let inner = Arc::clone(&self.inner);
@@ -290,15 +280,9 @@ impl Miner {
     pub fn get_tuning_target<'a>(
         &self,
         py: Python<'a>,
-    ) -> PyResult<PyAwaitable<Option<PyTuningTargetVariant>>> {
+    ) -> PyResult<PyAwaitable<Option<TuningTarget>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            let data = inner.get_tuning_target().await;
-            Ok(data
-                .as_ref()
-                .map(TuningTarget::from)
-                .map(PyTuningTargetVariant::from))
-        })
+        future_into_py(py, async move { Ok(inner.get_tuning_target().await) })
     }
     pub fn get_light_flashing<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
@@ -309,10 +293,7 @@ impl Miner {
     }
     pub fn get_messages<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<MinerMessage>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            let data = inner.get_messages().await;
-            Ok(data.iter().map(MinerMessage::from).collect::<Vec<_>>())
-        })
+        future_into_py(py, async move { Ok(inner.get_messages().await) })
     }
     pub fn get_uptime<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<Duration>>> {
         let inner = Arc::clone(&self.inner);
@@ -330,10 +311,7 @@ impl Miner {
     }
     pub fn get_pools<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<PoolGroupData>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            let data = inner.get_pools().await;
-            Ok(data.iter().map(PoolGroupData::from).collect::<Vec<_>>())
-        })
+        future_into_py(py, async move { Ok(inner.get_pools().await) })
     }
 
     pub fn get_pools_config<'a>(
@@ -341,45 +319,25 @@ impl Miner {
         py: Python<'a>,
     ) -> PyResult<PyAwaitable<Option<Vec<PoolGroup>>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            Ok(inner
-                .get_pools_config()
-                .await
-                .ok()
-                .map(|groups| groups.into_iter().map(PoolGroup::from).collect::<Vec<_>>()))
-        })
+        future_into_py(py, async move { Ok(inner.get_pools_config().await.ok()) })
     }
     pub fn get_scaling_config<'a>(
         &self,
         py: Python<'a>,
     ) -> PyResult<PyAwaitable<Option<ScalingConfig>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            Ok(inner
-                .get_scaling_config()
-                .await
-                .ok()
-                .map(ScalingConfig::from))
-        })
+        future_into_py(py, async move { Ok(inner.get_scaling_config().await.ok()) })
     }
     pub fn get_tuning_config<'a>(
         &self,
         py: Python<'a>,
-    ) -> PyResult<PyAwaitable<Option<PyTuningConfig>>> {
+    ) -> PyResult<PyAwaitable<Option<TuningConfig>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            Ok(inner
-                .get_tuning_config()
-                .await
-                .ok()
-                .map(PyTuningConfig::from))
-        })
+        future_into_py(py, async move { Ok(inner.get_tuning_config().await.ok()) })
     }
-    pub fn get_fan_config<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<PyFanConfig>>> {
+    pub fn get_fan_config<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<FanConfig>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move {
-            Ok(inner.get_fan_config().await.ok().map(PyFanConfig::from))
-        })
+        future_into_py(py, async move { Ok(inner.get_fan_config().await.ok()) })
     }
 
     // Control functions
@@ -437,11 +395,11 @@ impl Miner {
             Ok(inner.set_power_limit(Power::from_watts(watts)).await.ok())
         })
     }
-    #[pyo3(signature = (groups: "Sequence[PoolGroup]"))]
+    #[pyo3(signature = (groups: "list[PoolGroup]"))]
     pub fn set_pools_config<'a>(
         &self,
         py: Python<'a>,
-        groups: Vec<PoolGroupConfig_Base>,
+        groups: Vec<PoolGroup>,
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(
@@ -453,30 +411,30 @@ impl Miner {
     pub fn set_scaling_config<'a>(
         &self,
         py: Python<'a>,
-        config: ScalingConfig_Base,
+        config: ScalingConfig,
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
             Ok(inner.set_scaling_config(config).await.ok())
         })
     }
-    #[pyo3(signature = (config: "TuningConfigPower | TuningConfigHashRate | TuningConfigMode", scaling_config: "ScalingConfig | None" = None))]
+    #[pyo3(signature = (config: "TuningConfig", scaling_config: "ScalingConfig | None" = None))]
     pub fn set_tuning_config<'a>(
         &self,
         py: Python<'a>,
-        config: TuningConfig_Base,
-        scaling_config: Option<ScalingConfig_Base>,
+        config: TuningConfig,
+        scaling_config: Option<ScalingConfig>,
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
             Ok(inner.set_tuning_config(config, scaling_config).await.ok())
         })
     }
-    #[pyo3(signature = (config: "AutoFanConfig | ManualFanConfig"))]
+    #[pyo3(signature = (config: "FanConfig"))]
     pub fn set_fan_config<'a>(
         &self,
         py: Python<'a>,
-        config: FanConfig_Base,
+        config: FanConfig,
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(

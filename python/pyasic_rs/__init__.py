@@ -1,29 +1,21 @@
 from .config import (
-    AutoFanConfig,
     FanConfig,
-    ManualFanConfig,
+    FanMode,
     Pool,
     PoolGroup,
     ScalingConfig,
     TuningConfig,
-    TuningConfigHashRate,
-    TuningConfigMode,
-    TuningConfigPower,
 )
 from .factory import MinerFactory
 from .miner import Miner
 
 __all__ = [
-    "AutoFanConfig",
     "FanConfig",
-    "ManualFanConfig",
+    "FanMode",
     "Miner",
     "MinerFactory",
     "Pool",
     "PoolGroup",
     "ScalingConfig",
     "TuningConfig",
-    "TuningConfigHashRate",
-    "TuningConfigMode",
-    "TuningConfigPower",
 ]

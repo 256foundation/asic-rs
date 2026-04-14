@@ -11,7 +11,7 @@ use super::{
 };
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ChipData {
     /// The position of the chip on the board, indexed from 0
@@ -37,7 +37,7 @@ pub struct ChipData {
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BoardData {
     /// The board position in the miner, indexed from 0
