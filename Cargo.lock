@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-sealminer"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -435,7 +435,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-sealminer"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -1616,18 +1616,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
-name = "pin-utils"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
-
-[[package]]
-name = "plain"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
-
-[[package]]
 name = "portable-atomic"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1724,18 +1712,6 @@ checksum = "7f29e10af80b1f7ccaf7f69eace800a03ecd13e883acfacc1e5d0988605f651e"
 dependencies = [
  "libc",
  "pyo3-build-config",
-]
-
-[[package]]
-name = "pyo3-introspection"
-version = "0.28.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96040524552ac54e645ce08146b24023d720ceb0e788fff758c0beb9fe841736"
-dependencies = [
- "anyhow",
- "goblin",
- "serde",
- "serde_json",
 ]
 
 [[package]]
