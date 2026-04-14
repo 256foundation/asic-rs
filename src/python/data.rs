@@ -1,11 +1,11 @@
 use std::{net::IpAddr, time::Duration};
 
+pub use asic_rs_core::data::{
+    board::MinerControlBoard,
+    device::{DeviceInfo, MinerHardware},
+};
 use asic_rs_core::data::{
-    board::{
-        BoardData as BoardData_Base, ChipData as ChipData_Base,
-        MinerControlBoard as MinerControlBoard_Base,
-    },
-    device::{DeviceInfo as DeviceInfo_Base, MinerHardware as MinerHardware_Base},
+    board::{BoardData as BoardData_Base, ChipData as ChipData_Base},
     fan::FanData as FanData_Base,
     hashrate::HashRate,
     message::MinerMessage as MinerMessage_Base,
@@ -13,10 +13,10 @@ use asic_rs_core::data::{
     pool::{PoolData as PoolData_Base, PoolGroupData as PoolGroupData_Base},
 };
 use asic_rs_pydantic::{
-    PyPydanticType, PydanticSchemaMode, get_required_field, list_schema as pydantic_list_schema,
-    literal_schema as pydantic_literal_schema, model_core_schema as pydantic_model_core_schema,
-    model_json_schema as pydantic_model_json_schema, parse_required_list, parse_required_option,
-    py_to_string, reject_model_kwargs, required_dict_item, tagged_union_schema,
+    PyPydanticType, PydanticSchemaMode, literal_schema as pydantic_literal_schema,
+    model_core_schema as pydantic_model_core_schema,
+    model_json_schema as pydantic_model_json_schema, reject_model_kwargs, required_dict_item,
+    tagged_union_schema,
 };
 #[cfg(feature = "python")]
 use pyo3::{
@@ -25,54 +25,6 @@ use pyo3::{
     types::{PyAnyMethods, PyDict, PyType},
 };
 use serde::{Deserialize, Serialize};
-
-#[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub struct MinerHardware {
-    pub chips: Option<u16>,
-    pub fans: Option<u8>,
-    pub boards: Option<u8>,
-}
-
-impl From<&MinerHardware_Base> for MinerHardware {
-    fn from(base: &MinerHardware_Base) -> Self {
-        Self {
-            chips: base.chips,
-            fans: base.fans,
-            boards: base.boards,
-        }
-    }
-}
-
-#[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(
-    feature = "python",
-    asic_rs_pydantic::py_pydantic_model(
-        schema = "pydantic_device_info_schema",
-        parse = "parse_device_info"
-    )
-)]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DeviceInfo {
-    pub make: String,
-    pub model: String,
-    pub hardware: MinerHardware,
-    pub firmware: String,
-    pub algo: String,
-}
-
-impl From<&DeviceInfo_Base> for DeviceInfo {
-    fn from(base: &DeviceInfo_Base) -> Self {
-        Self {
-            make: base.make.clone(),
-            model: base.model.clone(),
-            hardware: MinerHardware::from(&base.hardware),
-            firmware: base.firmware.clone(),
-            algo: base.algo.to_string(),
-        }
-    }
-}
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
@@ -116,23 +68,6 @@ impl From<&PoolGroupData_Base> for PoolGroupData {
             name: base.name.clone(),
             quota: base.quota,
             pools: base.pools.iter().map(PoolData::from).collect(),
-        }
-    }
-}
-
-#[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MinerControlBoard {
-    pub known: bool,
-    pub name: String,
-}
-
-impl From<&MinerControlBoard_Base> for MinerControlBoard {
-    fn from(base: &MinerControlBoard_Base) -> Self {
-        Self {
-            known: base.known,
-            name: base.name.clone(),
         }
     }
 }
@@ -425,44 +360,6 @@ impl PyPydanticType for TuningTarget {
 }
 
 #[cfg(feature = "python")]
-fn parse_required_duration_option(
-    value: &Bound<'_, PyAny>,
-    key: &str,
-) -> PyResult<Option<Duration>> {
-    let field = get_required_field(value, key)?;
-    if field.is_none() {
-        return Ok(None);
-    }
-    if let Ok(duration) = field.extract::<Duration>() {
-        return Ok(Some(duration));
-    }
-    if let Ok(seconds) = field.extract::<f64>()
-        && seconds.is_finite()
-        && seconds >= 0.0
-    {
-        return Ok(Some(Duration::from_secs_f64(seconds)));
-    }
-    if let Ok(dict) = field.cast::<PyDict>() {
-        let secs = required_dict_item(dict, "secs")?.extract::<u64>()?;
-        return Ok(Some(Duration::from_secs(secs)));
-    }
-    Err(PyValueError::new_err(
-        "Expected uptime as timedelta, non-negative seconds, or {secs} dict",
-    ))
-}
-
-#[cfg(feature = "python")]
-fn parse_ip_addr(value: &Bound<'_, PyAny>) -> PyResult<IpAddr> {
-    if let Ok(ip) = value.extract::<IpAddr>() {
-        return Ok(ip);
-    }
-    value
-        .extract::<String>()?
-        .parse()
-        .map_err(|error| PyValueError::new_err(format!("Invalid IP address: {error}")))
-}
-
-#[cfg(feature = "python")]
 fn parse_mining_mode_for_pydantic(value: &Bound<'_, PyAny>) -> PyResult<MiningMode> {
     if let Ok(mode) = value.extract::<MiningMode>() {
         return Ok(mode);
@@ -537,169 +434,6 @@ fn pydantic_tuning_target_schema<'py>(
         TuningTargetKind::HashRate => pydantic_hashrate_schema(core_schema, mode),
         TuningTargetKind::MiningMode => pydantic_mining_mode_schema(core_schema),
     }
-}
-
-#[cfg(feature = "python")]
-fn pydantic_device_info_schema<'py>(
-    core_schema: &Bound<'py, PyAny>,
-    mode: PydanticSchemaMode,
-) -> PyResult<Bound<'py, PyAny>> {
-    let str_schema = core_schema.call_method0("str_schema")?;
-    let hardware_schema = MinerHardware::pydantic_schema(core_schema, mode)?;
-    asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.DeviceInfo", {
-        "make" => required(str_schema),
-        "model" => required(str_schema),
-        "hardware" => required(hardware_schema),
-        "firmware" => required(str_schema),
-        "algo" => required(str_schema),
-    })
-}
-
-#[cfg(feature = "python")]
-fn pydantic_miner_data_schema<'py>(
-    core_schema: &Bound<'py, PyAny>,
-    mode: PydanticSchemaMode,
-) -> PyResult<Bound<'py, PyAny>> {
-    let py = core_schema.py();
-    let str_schema = core_schema.call_method0("str_schema")?;
-    let int_schema = core_schema.call_method0("int_schema")?;
-    let float_schema = core_schema.call_method0("float_schema")?;
-    let bool_schema = core_schema.call_method0("bool_schema")?;
-    let hashrate_schema = HashRate::pydantic_schema(core_schema, mode)?;
-    let device_info_schema = pydantic_device_info_schema(core_schema, mode)?;
-    let control_board_schema = MinerControlBoard::pydantic_schema(core_schema, mode)?;
-    let board_schema = BoardData::pydantic_schema(core_schema, mode)?;
-    let fan_schema = FanData::pydantic_schema(core_schema, mode)?;
-    let target_schema =
-        pydantic_tuning_target_schema(core_schema, &py.get_type::<TuningTarget>(), mode)?;
-    let message_schema = MinerMessage::pydantic_schema(core_schema, mode)?;
-    let pool_group_schema = PoolGroupData::pydantic_schema(core_schema, mode)?;
-    let boards_schema = pydantic_list_schema(core_schema, &board_schema)?;
-    let fans_schema = pydantic_list_schema(core_schema, &fan_schema)?;
-    let messages_schema = pydantic_list_schema(core_schema, &message_schema)?;
-    let pools_schema = pydantic_list_schema(core_schema, &pool_group_schema)?;
-    let uptime_schema = match mode {
-        PydanticSchemaMode::Validation => core_schema.call_method0("any_schema")?,
-        PydanticSchemaMode::Serialization => float_schema.clone(),
-    };
-    asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.MinerData", {
-        "schema_version" => required(str_schema),
-        "timestamp" => required(int_schema),
-        "ip" => required(str_schema),
-        "mac" => nullable(str_schema),
-        "device_info" => required(device_info_schema),
-        "serial_number" => nullable(str_schema),
-        "hostname" => nullable(str_schema),
-        "api_version" => nullable(str_schema),
-        "firmware_version" => nullable(str_schema),
-        "control_board_version" => nullable(control_board_schema),
-        "expected_hashboards" => nullable(int_schema),
-        "hashboards" => required(boards_schema),
-        "hashrate" => nullable(hashrate_schema),
-        "expected_hashrate" => nullable(hashrate_schema),
-        "expected_chips" => nullable(int_schema),
-        "total_chips" => nullable(int_schema),
-        "expected_fans" => nullable(int_schema),
-        "fans" => required(fans_schema),
-        "psu_fans" => required(fans_schema),
-        "average_temperature" => nullable(float_schema),
-        "fluid_temperature" => nullable(float_schema),
-        "wattage" => nullable(float_schema),
-        "tuning_target" => nullable(target_schema),
-        "efficiency" => nullable(float_schema),
-        "light_flashing" => nullable(bool_schema),
-        "messages" => required(messages_schema),
-        "uptime" => nullable(uptime_schema),
-        "is_mining" => required(bool_schema),
-        "pools" => required(pools_schema),
-    })
-}
-
-#[cfg(feature = "python")]
-fn duration_to_seconds(duration: Duration) -> f64 {
-    duration.as_secs() as f64
-}
-
-#[cfg(feature = "python")]
-fn optional_duration_to_seconds(
-    duration: &Option<Duration>,
-    py: Python<'_>,
-) -> PyResult<Py<PyAny>> {
-    if let Some(duration) = duration {
-        Ok(duration_to_seconds(*duration)
-            .into_pyobject(py)?
-            .into_any()
-            .unbind())
-    } else {
-        Ok(py.None())
-    }
-}
-
-#[cfg(feature = "python")]
-fn parse_device_info(value: &Bound<'_, PyAny>) -> PyResult<DeviceInfo> {
-    if let Ok(model) = value.extract::<DeviceInfo>() {
-        return Ok(model);
-    }
-    Ok(DeviceInfo {
-        make: get_required_field(value, "make")?.extract::<String>()?,
-        model: get_required_field(value, "model")?.extract::<String>()?,
-        hardware: MinerHardware::from_pydantic(&get_required_field(value, "hardware")?)?,
-        firmware: get_required_field(value, "firmware")?.extract::<String>()?,
-        algo: py_to_string(&get_required_field(value, "algo")?)?,
-    })
-}
-
-#[cfg(feature = "python")]
-fn parse_miner_data(value: &Bound<'_, PyAny>) -> PyResult<MinerData> {
-    if let Ok(model) = value.extract::<MinerData>() {
-        return Ok(model);
-    }
-    let hashboards = parse_required_list(value, "hashboards", BoardData::from_pydantic)?;
-    let fans = parse_required_list(value, "fans", FanData::from_pydantic)?;
-    let psu_fans = parse_required_list(value, "psu_fans", FanData::from_pydantic)?;
-    let messages = parse_required_list(value, "messages", MinerMessage::from_pydantic)?;
-    let pools = parse_required_list(value, "pools", PoolGroupData::from_pydantic)?;
-
-    Ok(MinerData {
-        schema_version: get_required_field(value, "schema_version")?.extract()?,
-        timestamp: get_required_field(value, "timestamp")?.extract()?,
-        ip: parse_ip_addr(&get_required_field(value, "ip")?)?,
-        mac: parse_required_option(value, "mac")?,
-        device_info: parse_device_info(&get_required_field(value, "device_info")?)?,
-        serial_number: parse_required_option(value, "serial_number")?,
-        hostname: parse_required_option(value, "hostname")?,
-        api_version: parse_required_option(value, "api_version")?,
-        firmware_version: parse_required_option(value, "firmware_version")?,
-        control_board_version: Option::<MinerControlBoard>::from_pydantic(&get_required_field(
-            value,
-            "control_board_version",
-        )?)?,
-        expected_hashboards: parse_required_option(value, "expected_hashboards")?,
-        hashboards,
-        hashrate: Option::<HashRate>::from_pydantic(&get_required_field(value, "hashrate")?)?,
-        expected_hashrate: Option::<HashRate>::from_pydantic(&get_required_field(
-            value,
-            "expected_hashrate",
-        )?)?,
-        expected_chips: parse_required_option(value, "expected_chips")?,
-        total_chips: parse_required_option(value, "total_chips")?,
-        expected_fans: parse_required_option(value, "expected_fans")?,
-        fans,
-        psu_fans,
-        average_temperature: parse_required_option(value, "average_temperature")?,
-        fluid_temperature: parse_required_option(value, "fluid_temperature")?,
-        wattage: parse_required_option(value, "wattage")?,
-        tuning_target: Option::<TuningTarget>::from_pydantic(&get_required_field(
-            value,
-            "tuning_target",
-        )?)?,
-        efficiency: parse_required_option(value, "efficiency")?,
-        light_flashing: parse_required_option(value, "light_flashing")?,
-        messages,
-        uptime: parse_required_duration_option(value, "uptime")?,
-        is_mining: get_required_field(value, "is_mining")?.extract()?,
-        pools,
-    })
 }
 
 #[pymethods]
@@ -780,18 +514,11 @@ impl From<&FanData_Base> for FanData {
 }
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(
-    feature = "python",
-    asic_rs_pydantic::py_pydantic_model(
-        schema = "pydantic_miner_data_schema",
-        parse = "parse_miner_data"
-    )
-)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinerData {
     pub schema_version: String,
     pub timestamp: u64,
-    #[cfg_attr(feature = "python", pydantic_data(to_string))]
     pub ip: IpAddr,
     pub mac: Option<String>,
     pub device_info: DeviceInfo,
@@ -816,10 +543,6 @@ pub struct MinerData {
     pub efficiency: Option<f64>,
     pub light_flashing: Option<bool>,
     pub messages: Vec<MinerMessage>,
-    #[cfg_attr(
-        feature = "python",
-        pydantic_data(with = "optional_duration_to_seconds")
-    )]
     pub uptime: Option<Duration>,
     pub is_mining: bool,
     pub pools: Vec<PoolGroupData>,
@@ -832,15 +555,12 @@ impl From<&MinerData_Base> for MinerData {
             timestamp: base.timestamp,
             ip: base.ip,
             mac: base.mac.map(|m| m.to_string()),
-            device_info: DeviceInfo::from(&base.device_info),
+            device_info: base.device_info.clone(),
             serial_number: base.serial_number.clone(),
             hostname: base.hostname.clone(),
             api_version: base.api_version.clone(),
             firmware_version: base.firmware_version.clone(),
-            control_board_version: base
-                .control_board_version
-                .as_ref()
-                .map(MinerControlBoard::from),
+            control_board_version: base.control_board_version.clone(),
             expected_hashboards: base.expected_hashboards,
             hashboards: base.hashboards.iter().map(BoardData::from).collect(),
             hashrate: base.hashrate.clone(),

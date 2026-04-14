@@ -111,7 +111,7 @@ impl Miner {
     #[getter]
     fn hardware(&self) -> MinerHardware {
         let info = self.inner.get_device_info();
-        MinerHardware::from(&info.hardware)
+        info.hardware
     }
 
     #[getter]

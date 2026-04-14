@@ -11,23 +11,17 @@ use asic_rs_core::{
     },
 };
 use asic_rs_pydantic::{
-    PyPydanticType, PydanticSchemaMode as SchemaMode, get_optional_field as get_optional,
-    get_required_field as get_required, list_schema as pydantic_list_schema, literal_schema,
-    model_core_schema, model_json_schema, parse_optional, parse_required_list, py_to_string,
-    reject_model_kwargs,
+    PyPydanticType, PydanticSchemaMode as SchemaMode, model_core_schema, model_json_schema,
+    py_to_string, reject_model_kwargs,
 };
 use pyo3::{
-    exceptions::PyValueError,
     prelude::*,
     types::{PyAnyMethods, PyDict, PyType},
 };
 use serde::{Deserialize, Serialize};
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(
-    feature = "python",
-    asic_rs_pydantic::py_pydantic_model(schema = "pool_schema", parse = "parse_pool")
-)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Pool {
     pub url: String,
@@ -46,13 +40,11 @@ impl From<PoolConfig_Base> for Pool {
 }
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(
-    feature = "python",
-    asic_rs_pydantic::py_pydantic_model(schema = "pool_group_schema", parse = "parse_pool_group")
-)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolGroup {
     pub name: String,
+    #[cfg_attr(feature = "python", pydantic(default = 1))]
     pub quota: u32,
     pub pools: Vec<Pool>,
 }
@@ -68,18 +60,14 @@ impl From<PoolGroupConfig_Base> for PoolGroup {
 }
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(
-    feature = "python",
-    asic_rs_pydantic::py_pydantic_model(
-        schema = "scaling_config_schema",
-        parse = "parse_scaling_config"
-    )
-)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ScalingConfig {
     pub step: u32,
     pub minimum: u32,
+    #[cfg_attr(feature = "python", pydantic(default = None))]
     pub shutdown: Option<bool>,
+    #[cfg_attr(feature = "python", pydantic(default = None))]
     pub shutdown_duration: Option<f32>,
 }
 
@@ -95,17 +83,13 @@ impl From<ScalingConfig_Base> for ScalingConfig {
 }
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(
-    feature = "python",
-    asic_rs_pydantic::py_pydantic_model(
-        schema = "tuning_power_schema",
-        parse = "parse_tuning_power"
-    )
-)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TuningConfigPower {
+    #[cfg_attr(feature = "python", pydantic(literal = "power"))]
     pub variant: String,
     pub target_watts: f64,
+    #[cfg_attr(feature = "python", pydantic(default = None))]
     pub algorithm: Option<String>,
 }
 
@@ -122,17 +106,13 @@ impl TuningConfigPower {
 }
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(
-    feature = "python",
-    asic_rs_pydantic::py_pydantic_model(
-        schema = "tuning_hashrate_schema",
-        parse = "parse_tuning_hashrate"
-    )
-)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TuningConfigHashRate {
+    #[cfg_attr(feature = "python", pydantic(literal = "hashrate"))]
     pub variant: String,
     pub target_hashrate: HashRate,
+    #[cfg_attr(feature = "python", pydantic(default = None))]
     pub algorithm: Option<String>,
 }
 
@@ -149,23 +129,18 @@ impl TuningConfigHashRate {
 }
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(
-    feature = "python",
-    asic_rs_pydantic::py_pydantic_model(
-        schema = "tuning_mode_schema",
-        parse = "parse_tuning_mode"
-    )
-)]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TuningConfigMode {
+    #[cfg_attr(feature = "python", pydantic(literal = "mode"))]
     pub variant: String,
-    pub target_mode: String,
+    pub target_mode: MiningMode,
 }
 
 impl TuningConfigMode {
     const VARIANT: &'static str = "mode";
 
-    fn from_parts(target_mode: String) -> Self {
+    fn from_parts(target_mode: MiningMode) -> Self {
         Self {
             variant: Self::VARIANT.to_owned(),
             target_mode,
@@ -195,7 +170,7 @@ impl From<TuningConfig_Base> for TuningConfigVariant {
                 Self::HashRate(TuningConfigHashRate::from_parts(target_hashrate, algorithm))
             }
             TuningTarget_Base::MiningMode(target_mode) => {
-                Self::Mode(TuningConfigMode::from_parts(target_mode.to_string()))
+                Self::Mode(TuningConfigMode::from_parts(target_mode))
             }
         }
     }
@@ -205,14 +180,13 @@ impl From<TuningConfig_Base> for TuningConfigVariant {
 pub struct TuningConfig;
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(
-    feature = "python",
-    asic_rs_pydantic::py_pydantic_model(schema = "auto_fan_schema", parse = "parse_auto_fan")
-)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AutoFanConfig {
+    #[cfg_attr(feature = "python", pydantic(literal = "auto"))]
     pub mode: String,
     pub target_temp: f64,
+    #[cfg_attr(feature = "python", pydantic(default = None))]
     pub idle_speed: Option<u64>,
 }
 
@@ -229,12 +203,10 @@ impl AutoFanConfig {
 }
 
 #[pyclass(from_py_object, get_all, module = "asic_rs")]
-#[cfg_attr(
-    feature = "python",
-    asic_rs_pydantic::py_pydantic_model(schema = "manual_fan_schema", parse = "parse_manual_fan")
-)]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ManualFanConfig {
+    #[cfg_attr(feature = "python", pydantic(literal = "manual"))]
     pub mode: String,
     pub fan_speed: u64,
 }
@@ -274,258 +246,8 @@ impl From<FanConfig_Base> for FanConfig {
 }
 
 #[cfg(feature = "python")]
-fn pool_schema<'py>(
-    core_schema: &Bound<'py, PyAny>,
-    _mode: SchemaMode,
-) -> PyResult<Bound<'py, PyAny>> {
-    let str_schema = core_schema.call_method0("str_schema")?;
-    asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.Pool", {
-        "url" => required(str_schema),
-        "username" => required(str_schema),
-        "password" => required(str_schema),
-    })
-}
-
-#[cfg(feature = "python")]
-fn pool_group_schema<'py>(
-    core_schema: &Bound<'py, PyAny>,
-    mode: SchemaMode,
-) -> PyResult<Bound<'py, PyAny>> {
-    let str_schema = core_schema.call_method0("str_schema")?;
-    let int_schema = core_schema.call_method0("int_schema")?;
-    let pool_schema = pool_schema(core_schema, mode)?;
-    let pools_schema = pydantic_list_schema(core_schema, &pool_schema)?;
-    asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.PoolGroup", {
-        "name" => required(str_schema),
-        "quota" => required_if(int_schema, mode == SchemaMode::Serialization),
-        "pools" => required(pools_schema),
-    })
-}
-
-#[cfg(feature = "python")]
-fn scaling_config_schema<'py>(
-    core_schema: &Bound<'py, PyAny>,
-    mode: SchemaMode,
-) -> PyResult<Bound<'py, PyAny>> {
-    let int_schema = core_schema.call_method0("int_schema")?;
-    let bool_schema = core_schema.call_method0("bool_schema")?;
-    let float_schema = core_schema.call_method0("float_schema")?;
-    asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.ScalingConfig", {
-        "step" => required(int_schema),
-        "minimum" => required(int_schema),
-        "shutdown" => nullable_if(bool_schema, mode == SchemaMode::Serialization),
-        "shutdown_duration" => nullable_if(float_schema, mode == SchemaMode::Serialization),
-    })
-}
-
-#[cfg(feature = "python")]
-fn tuning_power_schema<'py>(
-    core_schema: &Bound<'py, PyAny>,
-    mode: SchemaMode,
-) -> PyResult<Bound<'py, PyAny>> {
-    let variant_schema = literal_schema(core_schema, &[TuningConfigPower::VARIANT])?;
-    let float_schema = core_schema.call_method0("float_schema")?;
-    let str_schema = core_schema.call_method0("str_schema")?;
-    asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.TuningConfigPower", {
-        "variant" => required_if(variant_schema, mode == SchemaMode::Serialization),
-        "target_watts" => required(float_schema),
-        "algorithm" => nullable_if(str_schema, mode == SchemaMode::Serialization),
-    })
-}
-
-#[cfg(feature = "python")]
-fn tuning_hashrate_schema<'py>(
-    core_schema: &Bound<'py, PyAny>,
-    mode: SchemaMode,
-) -> PyResult<Bound<'py, PyAny>> {
-    let variant_schema = literal_schema(core_schema, &[TuningConfigHashRate::VARIANT])?;
-    let hashrate_schema = HashRate::pydantic_schema(core_schema, mode)?;
-    let str_schema = core_schema.call_method0("str_schema")?;
-    asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.TuningConfigHashRate", {
-        "variant" => required_if(variant_schema, mode == SchemaMode::Serialization),
-        "target_hashrate" => required(hashrate_schema),
-        "algorithm" => nullable_if(str_schema, mode == SchemaMode::Serialization),
-    })
-}
-
-#[cfg(feature = "python")]
-fn tuning_mode_schema<'py>(
-    core_schema: &Bound<'py, PyAny>,
-    mode: SchemaMode,
-) -> PyResult<Bound<'py, PyAny>> {
-    let variant_schema = literal_schema(core_schema, &[TuningConfigMode::VARIANT])?;
-    let mode_schema = literal_schema(core_schema, &["Low", "Normal", "High"])?;
-    asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.TuningConfigMode", {
-        "variant" => required_if(variant_schema, mode == SchemaMode::Serialization),
-        "target_mode" => required(mode_schema),
-    })
-}
-
-#[cfg(feature = "python")]
-fn auto_fan_schema<'py>(
-    core_schema: &Bound<'py, PyAny>,
-    mode: SchemaMode,
-) -> PyResult<Bound<'py, PyAny>> {
-    let mode_schema = literal_schema(core_schema, &[AutoFanConfig::MODE])?;
-    let float_schema = core_schema.call_method0("float_schema")?;
-    let int_schema = core_schema.call_method0("int_schema")?;
-    asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.AutoFanConfig", {
-        "mode" => required_if(mode_schema, mode == SchemaMode::Serialization),
-        "target_temp" => required(float_schema),
-        "idle_speed" => nullable_if(int_schema, mode == SchemaMode::Serialization),
-    })
-}
-
-#[cfg(feature = "python")]
-fn manual_fan_schema<'py>(
-    core_schema: &Bound<'py, PyAny>,
-    mode: SchemaMode,
-) -> PyResult<Bound<'py, PyAny>> {
-    let mode_schema = literal_schema(core_schema, &[ManualFanConfig::MODE])?;
-    let int_schema = core_schema.call_method0("int_schema")?;
-    asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.ManualFanConfig", {
-        "mode" => required_if(mode_schema, mode == SchemaMode::Serialization),
-        "fan_speed" => required(int_schema),
-    })
-}
-
-#[cfg(feature = "python")]
-fn parse_pool(value: &Bound<'_, PyAny>) -> PyResult<Pool> {
-    if let Ok(pool) = value.extract::<Pool>() {
-        return Ok(pool);
-    }
-    Ok(Pool {
-        url: py_to_string(&get_required(value, "url")?)?,
-        username: get_required(value, "username")?.extract()?,
-        password: get_required(value, "password")?.extract()?,
-    })
-}
-
-#[cfg(feature = "python")]
-fn parse_pool_group(value: &Bound<'_, PyAny>) -> PyResult<PoolGroup> {
-    if let Ok(pool_group) = value.extract::<PoolGroup>() {
-        return Ok(pool_group);
-    }
-    let pools = parse_required_list(value, "pools", parse_pool)?;
-    Ok(PoolGroup {
-        name: get_required(value, "name")?.extract()?,
-        quota: parse_optional(get_optional(value, "quota")?)?.unwrap_or(1),
-        pools,
-    })
-}
-
-#[cfg(feature = "python")]
-fn parse_scaling_config(value: &Bound<'_, PyAny>) -> PyResult<ScalingConfig> {
-    if let Ok(config) = value.extract::<ScalingConfig>() {
-        return Ok(config);
-    }
-    Ok(ScalingConfig {
-        step: get_required(value, "step")?.extract()?,
-        minimum: get_required(value, "minimum")?.extract()?,
-        shutdown: parse_optional(get_optional(value, "shutdown")?)?,
-        shutdown_duration: parse_optional(get_optional(value, "shutdown_duration")?)?,
-    })
-}
-
-#[cfg(feature = "python")]
-fn parse_optional_string_like(value: Option<Bound<'_, PyAny>>) -> PyResult<Option<String>> {
-    match value {
-        Some(value) if value.is_none() => Ok(None),
-        Some(value) => py_to_string(&value).map(Some),
-        None => Ok(None),
-    }
-}
-
-#[cfg(feature = "python")]
-fn validate_optional_literal_field(
-    value: &Bound<'_, PyAny>,
-    key: &str,
-    expected: &str,
-) -> PyResult<()> {
-    let Some(actual) = get_optional(value, key)? else {
-        return Ok(());
-    };
-    let actual = py_to_string(&actual)?;
-    if actual == expected {
-        Ok(())
-    } else {
-        Err(PyValueError::new_err(format!(
-            "Expected {key} to be {expected:?}, got {actual:?}"
-        )))
-    }
-}
-
-#[cfg(feature = "python")]
-fn parse_mining_mode_string(value: &Bound<'_, PyAny>) -> PyResult<String> {
-    if let Ok(mode) = value.extract::<MiningMode>() {
-        return Ok(mode.to_string());
-    }
-
-    let mode = py_to_string(value)?;
-    match mode.as_str() {
-        "Low" | "Normal" | "High" => Ok(mode),
-        mode => Err(PyValueError::new_err(format!(
-            "Unknown mining mode: {mode}"
-        ))),
-    }
-}
-
-#[cfg(feature = "python")]
-fn parse_tuning_power(value: &Bound<'_, PyAny>) -> PyResult<TuningConfigPower> {
-    if let Ok(config) = value.extract::<TuningConfigPower>() {
-        return Ok(config);
-    }
-    validate_optional_literal_field(value, "variant", TuningConfigPower::VARIANT)?;
-    Ok(TuningConfigPower::from_parts(
-        get_required(value, "target_watts")?.extract()?,
-        parse_optional_string_like(get_optional(value, "algorithm")?)?,
-    ))
-}
-
-#[cfg(feature = "python")]
-fn parse_tuning_hashrate(value: &Bound<'_, PyAny>) -> PyResult<TuningConfigHashRate> {
-    if let Ok(config) = value.extract::<TuningConfigHashRate>() {
-        return Ok(config);
-    }
-    validate_optional_literal_field(value, "variant", TuningConfigHashRate::VARIANT)?;
-    Ok(TuningConfigHashRate::from_parts(
-        HashRate::from_pydantic(&get_required(value, "target_hashrate")?)?,
-        parse_optional_string_like(get_optional(value, "algorithm")?)?,
-    ))
-}
-
-#[cfg(feature = "python")]
-fn parse_tuning_mode(value: &Bound<'_, PyAny>) -> PyResult<TuningConfigMode> {
-    if let Ok(config) = value.extract::<TuningConfigMode>() {
-        return Ok(config);
-    }
-    validate_optional_literal_field(value, "variant", TuningConfigMode::VARIANT)?;
-    Ok(TuningConfigMode::from_parts(parse_mining_mode_string(
-        &get_required(value, "target_mode")?,
-    )?))
-}
-
-#[cfg(feature = "python")]
-fn parse_auto_fan(value: &Bound<'_, PyAny>) -> PyResult<AutoFanConfig> {
-    if let Ok(config) = value.extract::<AutoFanConfig>() {
-        return Ok(config);
-    }
-    validate_optional_literal_field(value, "mode", AutoFanConfig::MODE)?;
-    Ok(AutoFanConfig::from_parts(
-        get_required(value, "target_temp")?.extract()?,
-        parse_optional(get_optional(value, "idle_speed")?)?,
-    ))
-}
-
-#[cfg(feature = "python")]
-fn parse_manual_fan(value: &Bound<'_, PyAny>) -> PyResult<ManualFanConfig> {
-    if let Ok(config) = value.extract::<ManualFanConfig>() {
-        return Ok(config);
-    }
-    validate_optional_literal_field(value, "mode", ManualFanConfig::MODE)?;
-    Ok(ManualFanConfig::from_parts(
-        get_required(value, "fan_speed")?.extract()?,
-    ))
+fn parse_mining_mode(value: &Bound<'_, PyAny>) -> PyResult<MiningMode> {
+    MiningMode::from_pydantic(value)
 }
 
 #[pymethods]
@@ -559,9 +281,7 @@ impl TuningConfig {
     #[classmethod]
     #[pyo3(signature = (mode: "MiningMode | str"))]
     fn mode(_cls: &Bound<'_, PyType>, mode: &Bound<'_, PyAny>) -> PyResult<TuningConfigMode> {
-        Ok(TuningConfigMode::from_parts(parse_mining_mode_string(
-            mode,
-        )?))
+        Ok(TuningConfigMode::from_parts(parse_mining_mode(mode)?))
     }
 
     #[classmethod]
@@ -698,7 +418,7 @@ impl TuningConfigMode {
     #[new]
     #[pyo3(signature = (target_mode: "MiningMode | str"))]
     fn new(target_mode: &Bound<'_, PyAny>) -> PyResult<Self> {
-        Ok(Self::from_parts(parse_mining_mode_string(target_mode)?))
+        Ok(Self::from_parts(parse_mining_mode(target_mode)?))
     }
 }
 

@@ -1,7 +1,8 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    Data, DeriveInput, Field, Fields, ItemStruct, LitStr, Path, parse_macro_input, spanned::Spanned,
+    Data, DeriveInput, Expr, Field, Fields, ItemStruct, LitStr, Path, parse_macro_input,
+    spanned::Spanned,
 };
 
 #[derive(Default)]
@@ -65,6 +66,51 @@ impl PydanticModelOptions {
 struct PydanticModelAttrOptions {
     model: PydanticModelOptions,
     manual: bool,
+}
+
+#[derive(Default)]
+struct PydanticModelFieldOptions {
+    default: Option<Expr>,
+    literal: Option<LitStr>,
+}
+
+impl PydanticModelFieldOptions {
+    fn parse(field: &Field) -> syn::Result<Self> {
+        let mut options = Self::default();
+
+        for attr in &field.attrs {
+            if !attr.path().is_ident("pydantic") {
+                continue;
+            }
+
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("default") {
+                    if options.default.is_some() {
+                        return Err(meta.error("duplicate pydantic default"));
+                    }
+                    options.default = Some(meta.value()?.parse()?);
+                    Ok(())
+                } else if meta.path.is_ident("literal") {
+                    if options.literal.is_some() {
+                        return Err(meta.error("duplicate pydantic literal"));
+                    }
+                    options.literal = Some(meta.value()?.parse()?);
+                    Ok(())
+                } else {
+                    Err(meta.error("unknown pydantic field option"))
+                }
+            })?;
+        }
+
+        if options.default.is_some() && options.literal.is_some() {
+            return Err(syn::Error::new_spanned(
+                field,
+                "pydantic default and literal cannot both be set",
+            ));
+        }
+
+        Ok(options)
+    }
 }
 
 #[proc_macro_attribute]
@@ -385,16 +431,30 @@ fn expand_generated_pydantic_schema(input: &DeriveInput) -> syn::Result<proc_mac
                 .as_ref()
                 .ok_or_else(|| syn::Error::new_spanned(field, "expected named field"))?;
             let ty = &field.ty;
+            let options = PydanticModelFieldOptions::parse(field)?;
             let key = LitStr::new(&ident.to_string(), ident.span());
-            Ok(quote! {
-                let field_schema =
+            let schema = if let Some(literal) = &options.literal {
+                quote! {
+                    ::asic_rs_pydantic::literal_schema(core_schema, &[#literal])?
+                }
+            } else {
+                quote! {
                     <#ty as ::asic_rs_pydantic::PyPydanticType>::pydantic_schema(
                         core_schema,
                         mode,
-                    )?;
+                    )?
+                }
+            };
+            let required = if options.default.is_some() || options.literal.is_some() {
+                quote!(mode == ::asic_rs_pydantic::PydanticSchemaMode::Serialization)
+            } else {
+                quote!(true)
+            };
+            Ok(quote! {
+                let field_schema = #schema;
                 fields.set_item(
                     #key,
-                    ::asic_rs_pydantic::typed_dict_field(core_schema, &field_schema, true)?,
+                    ::asic_rs_pydantic::typed_dict_field(core_schema, &field_schema, #required)?,
                 )?;
             })
         })
@@ -423,12 +483,42 @@ fn expand_generated_pydantic_parse(input: &DeriveInput) -> syn::Result<proc_macr
                 .as_ref()
                 .ok_or_else(|| syn::Error::new_spanned(field, "expected named field"))?;
             let ty = &field.ty;
+            let options = PydanticModelFieldOptions::parse(field)?;
             let key = LitStr::new(&ident.to_string(), ident.span());
-            Ok(quote! {
-                #ident: <#ty as ::asic_rs_pydantic::PyPydanticType>::from_pydantic(
-                    &::asic_rs_pydantic::get_required_field(value, #key)?,
-                )?,
-            })
+            if let Some(literal) = options.literal {
+                Ok(quote! {
+                    #ident: {
+                        if let Some(actual) = ::asic_rs_pydantic::get_optional_field(value, #key)? {
+                            let actual = ::asic_rs_pydantic::py_to_string(&actual)?;
+                            if actual != #literal {
+                                return Err(::pyo3::exceptions::PyValueError::new_err(
+                                    format!(
+                                        "Expected {} to be {:?}, got {:?}",
+                                        #key,
+                                        #literal,
+                                        actual,
+                                    ),
+                                ));
+                            }
+                        }
+                        #literal.to_owned()
+                    },
+                })
+            } else if let Some(default) = options.default {
+                Ok(quote! {
+                    #ident: if let Some(field) = ::asic_rs_pydantic::get_optional_field(value, #key)? {
+                        <#ty as ::asic_rs_pydantic::PyPydanticType>::from_pydantic(&field)?
+                    } else {
+                        #default
+                    },
+                })
+            } else {
+                Ok(quote! {
+                    #ident: <#ty as ::asic_rs_pydantic::PyPydanticType>::from_pydantic(
+                        &::asic_rs_pydantic::get_required_field(value, #key)?,
+                    )?,
+                })
+            }
         })
         .collect::<syn::Result<Vec<_>>>()?;
 

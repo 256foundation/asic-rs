@@ -54,6 +54,29 @@ impl ReprModel {
 
 #[pyclass(from_py_object)]
 #[derive(Clone, asic_rs_pydantic::PyPydanticModel)]
+struct DefaultLiteralModel {
+    #[pydantic(literal = "fixed")]
+    kind: String,
+    #[pydantic(default = 1)]
+    quota: u32,
+    #[pydantic(default = None)]
+    maybe: Option<String>,
+    value: u32,
+}
+
+impl DefaultLiteralModel {
+    fn to_pydantic_data(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        let dict = PyDict::new(py);
+        dict.set_item("kind", &self.kind)?;
+        dict.set_item("quota", self.quota)?;
+        dict.set_item("maybe", &self.maybe)?;
+        dict.set_item("value", self.value)?;
+        Ok(dict.into_any().unbind())
+    }
+}
+
+#[pyclass(from_py_object)]
+#[derive(Clone, asic_rs_pydantic::PyPydanticModel)]
 #[pydantic(no_repr)]
 struct NoReprModel {
     value: u32,
