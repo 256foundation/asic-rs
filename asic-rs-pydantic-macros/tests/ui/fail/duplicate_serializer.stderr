@@ -1,0 +1,5 @@
+error: only one pydantic_data serializer option is supported per field
+ --> tests/ui/fail/duplicate_serializer.rs:5:32
+  |
+5 |     #[pydantic_data(to_string, to_string)]
+  |                                ^^^^^^^^^

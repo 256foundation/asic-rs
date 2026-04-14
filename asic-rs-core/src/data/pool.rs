@@ -1,15 +1,24 @@
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    str::FromStr,
+};
 
 #[cfg(feature = "python")]
-use pyo3::prelude::*;
+use asic_rs_pydantic::{PyPydanticType, PydanticSchemaMode, get_required_field};
+#[cfg(feature = "python")]
+use pyo3::{prelude::*, types::PyAnyMethods};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PoolScheme {
+    #[cfg_attr(feature = "python", pydantic(value = "stratum+tcp"))]
     StratumV1,
+    #[cfg_attr(feature = "python", pydantic(value = "stratum+ssl"))]
     StratumV1SSL,
+    #[cfg_attr(feature = "python", pydantic(value = "stratum2+tcp"))]
     StratumV2,
 }
 
@@ -34,9 +43,31 @@ impl Display for PoolScheme {
     }
 }
 
+impl FromStr for PoolScheme {
+    type Err = String;
+
+    fn from_str(scheme: &str) -> Result<Self, Self::Err> {
+        match scheme {
+            "stratum+tcp" => Ok(PoolScheme::StratumV1),
+            "stratum+ssl" => Ok(PoolScheme::StratumV1SSL),
+            "stratum2+tcp" => Ok(PoolScheme::StratumV2),
+            _ => Err(format!("Unknown pool scheme: {scheme}")),
+        }
+    }
+}
+
 #[cfg_attr(
     feature = "python",
     pyclass(from_py_object, get_all, module = "asic_rs")
+)]
+#[cfg_attr(
+    feature = "python",
+    asic_rs_pydantic::py_pydantic_model(
+        schema = "pydantic_pool_url_schema",
+        parse = "parse_pool_url",
+        manual,
+        no_repr
+    )
 )]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolURL {
@@ -98,6 +129,7 @@ impl Display for PoolURL {
     feature = "python",
     pyclass(from_py_object, get_all, module = "asic_rs")
 )]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolData {
     pub position: Option<u16>,
@@ -113,6 +145,7 @@ pub struct PoolData {
     feature = "python",
     pyclass(from_py_object, get_all, module = "asic_rs")
 )]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PoolGroupData {
     pub name: String,
@@ -134,5 +167,52 @@ impl PoolGroupData {
 impl PoolURL {
     pub fn __repr__(&self) -> String {
         self.to_string()
+    }
+}
+
+#[cfg(feature = "python")]
+fn pydantic_pool_url_schema<'py>(
+    core_schema: &Bound<'py, PyAny>,
+    mode: PydanticSchemaMode,
+) -> PyResult<Bound<'py, PyAny>> {
+    let str_schema = core_schema.call_method0("str_schema")?;
+
+    if mode == PydanticSchemaMode::Serialization {
+        return Ok(str_schema);
+    }
+
+    let scheme_schema = PoolScheme::pydantic_schema(core_schema, mode)?;
+    let host_schema = core_schema.call_method0("str_schema")?;
+    let port_schema = core_schema.call_method0("int_schema")?;
+    let pubkey_schema = core_schema.call_method0("str_schema")?;
+    let object_schema = asic_rs_pydantic::pydantic_typed_dict_schema!(core_schema, "asic_rs.PoolURL", {
+        "scheme" => required(scheme_schema),
+        "host" => required(host_schema),
+        "port" => required(port_schema),
+        "pubkey" => nullable(pubkey_schema),
+    })?;
+    asic_rs_pydantic::union_schema(core_schema, [str_schema, object_schema])
+}
+
+#[cfg(feature = "python")]
+fn parse_pool_url(value: &Bound<'_, PyAny>) -> PyResult<PoolURL> {
+    if let Ok(model) = value.extract::<PoolURL>() {
+        return Ok(model);
+    }
+    if let Ok(url) = value.extract::<String>() {
+        return Ok(PoolURL::from(url));
+    }
+    Ok(PoolURL {
+        scheme: PoolScheme::from_pydantic(&get_required_field(value, "scheme")?)?,
+        host: get_required_field(value, "host")?.extract()?,
+        port: get_required_field(value, "port")?.extract()?,
+        pubkey: get_required_field(value, "pubkey")?.extract()?,
+    })
+}
+
+#[cfg(feature = "python")]
+impl PoolURL {
+    fn to_pydantic_data(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        Ok(self.to_string().into_pyobject(py)?.into_any().unbind())
     }
 }

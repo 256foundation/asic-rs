@@ -1,13 +1,17 @@
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
-use strum::Display;
+use strum::{Display, EnumString};
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, EnumString)]
 pub enum MessageSeverity {
+    #[cfg_attr(feature = "python", pydantic(value = "Error"))]
     Error,
+    #[cfg_attr(feature = "python", pydantic(value = "Warning"))]
     Warning,
+    #[cfg_attr(feature = "python", pydantic(value = "Info"))]
     Info,
 }
 
@@ -15,6 +19,7 @@ pub enum MessageSeverity {
     feature = "python",
     pyclass(from_py_object, get_all, module = "asic_rs")
 )]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MinerMessage {
     /// The time this message was generated or occurred

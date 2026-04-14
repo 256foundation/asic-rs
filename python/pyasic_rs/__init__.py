@@ -12,3 +12,18 @@ from .config import (
 )
 from .factory import MinerFactory
 from .miner import Miner
+
+__all__ = [
+    "AutoFanConfig",
+    "FanConfig",
+    "ManualFanConfig",
+    "Miner",
+    "MinerFactory",
+    "Pool",
+    "PoolGroup",
+    "ScalingConfig",
+    "TuningConfig",
+    "TuningConfigHashRate",
+    "TuningConfigMode",
+    "TuningConfigPower",
+]

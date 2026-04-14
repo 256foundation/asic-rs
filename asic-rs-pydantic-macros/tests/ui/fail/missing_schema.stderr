@@ -1,0 +1,8 @@
+error: PyPydanticModel requires schema and parse to be provided together
+  --> tests/ui/fail/missing_schema.rs:7:1
+   |
+ 7 | / #[pydantic(parse = "parse")]
+ 8 | | struct MissingSchema {
+ 9 | |     value: u32,
+10 | | }
+   | |_^

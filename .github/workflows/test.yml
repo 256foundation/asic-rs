@@ -17,3 +17,32 @@ jobs:
 
       - name: Run tests
         run: cargo test --all --locked
+
+  python-test:
+    name: Python Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Create Python environment
+        run: python -m venv .venv
+
+      - name: Install maturin
+        run: .venv/bin/python -m pip install --upgrade pip maturin
+
+      - name: Build and install package with test dependencies
+        run: VIRTUAL_ENV="$PWD/.venv" .venv/bin/maturin develop --features python --extras test
+
+      - name: Run Python tests
+        run: .venv/bin/python -m pytest python/tests

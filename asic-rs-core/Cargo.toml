@@ -24,7 +24,8 @@ tokio.workspace = true
 futures.workspace = true
 secrecy.workspace = true
 
+asic-rs-pydantic = { workspace = true, optional = true }
 pyo3 = {workspace = true, optional = true}
 
 [features]
-python = ["dep:pyo3"]
+python = ["dep:asic-rs-pydantic", "dep:pyo3"]

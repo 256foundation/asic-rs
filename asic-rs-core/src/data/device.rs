@@ -10,6 +10,7 @@ use crate::traits::{firmware::MinerFirmware, model::MinerModel};
     feature = "python",
     pyclass(from_py_object, get_all, module = "asic_rs")
 )]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 pub struct DeviceInfo {
     pub make: String,
     pub model: String,
@@ -34,6 +35,7 @@ impl DeviceInfo {
     feature = "python",
     pyclass(from_py_object, get_all, module = "asic_rs")
 )]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Default)]
 pub struct MinerHardware {
     pub chips: Option<u16>,
@@ -42,18 +44,24 @@ pub struct MinerHardware {
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
 #[derive(
     Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, StrumDisplay, EnumString,
 )]
 pub enum HashAlgorithm {
+    #[cfg_attr(feature = "python", pydantic(value = "SHA256"))]
     #[serde(rename = "SHA256")]
     SHA256,
+    #[cfg_attr(feature = "python", pydantic(value = "Scrypt"))]
     #[serde(rename = "Scrypt")]
     Scrypt,
+    #[cfg_attr(feature = "python", pydantic(value = "X11"))]
     #[serde(rename = "X11")]
     X11,
+    #[cfg_attr(feature = "python", pydantic(value = "Blake2S256"))]
     #[serde(rename = "Blake2S256")]
     Blake2S256,
+    #[cfg_attr(feature = "python", pydantic(value = "Kadena"))]
     #[serde(rename = "Kadena")]
     Kadena,
 }

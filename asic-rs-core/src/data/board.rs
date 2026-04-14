@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use measurements::{Frequency, Temperature, Voltage};
 #[cfg(feature = "python")]
-use pyo3::prelude::*;
+use pyo3::pyclass;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -10,6 +10,8 @@ use super::{
     serialize::{serialize_frequency, serialize_temperature, serialize_voltage},
 };
 
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ChipData {
     /// The position of the chip on the board, indexed from 0
@@ -34,6 +36,8 @@ pub struct ChipData {
     pub working: Option<bool>,
 }
 
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BoardData {
     /// The board position in the miner, indexed from 0
@@ -110,6 +114,7 @@ impl BoardData {
     feature = "python",
     pyclass(from_py_object, get_all, module = "asic_rs")
 )]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 pub struct MinerControlBoard {
     pub known: bool,
     pub name: String,

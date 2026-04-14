@@ -1,9 +1,13 @@
 use measurements::AngularVelocity;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use serialize::serialize_angular_velocity;
 
 use crate::data::serialize;
 
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FanData {
     /// The position or index of the fan as seen by the device

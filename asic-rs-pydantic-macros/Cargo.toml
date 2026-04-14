@@ -1,0 +1,22 @@
+[package]
+name = "asic-rs-pydantic-macros"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Pydantic proc macros for asic-rs."
+
+[lib]
+proc-macro = true
+
+[lints]
+workspace = true
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full"] }
+
+[dev-dependencies]
+asic-rs-pydantic.workspace = true
+pyo3.workspace = true
+trybuild = "1.0"

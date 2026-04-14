@@ -1,0 +1,15 @@
+[package]
+name = "asic-rs-pydantic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Pydantic integration support for asic-rs Python bindings."
+
+[lints]
+workspace = true
+
+[dependencies]
+asic-rs-pydantic-macros.workspace = true
+macaddr.workspace = true
+measurements.workspace = true
+pyo3.workspace = true

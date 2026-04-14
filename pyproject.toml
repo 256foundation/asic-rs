@@ -1,5 +1,5 @@
 [build-system]
-requires = ["maturin>=1.4,<2.0"]
+requires = ["maturin>=1.9.4,<2.0"]
 build-backend = "maturin"
 
 [project]
@@ -18,7 +18,7 @@ readme = "python/README.md"
 
 requires-python = ">=3.11, <4.0"
 dependencies = [
-    "pydantic"
+    "pydantic>=2"
 ]
 
 keywords = [
@@ -43,6 +43,11 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8",
+]
+
 
 
 [tool.maturin]
@@ -50,3 +55,20 @@ package-name = "pyasic_rs"
 module-name = "pyasic_rs.asic_rs"
 features = ["python"]
 python-source = "python"
+
+[tool.mypy]
+files = ["python/pyasic_rs"]
+mypy_path = ["python"]
+explicit_package_bases = true
+plugins = ["pydantic.mypy"]
+python_version = "3.11"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "pyasic_rs.asic_rs"
+disable_error_code = ["no-redef"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true

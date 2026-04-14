@@ -28,3 +28,19 @@ repos:
       - id: cargo-check
       - id: clippy
         args: ["--all-targets", "--all-features", "--workspace", "--fix", "--allow-dirty"]
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.11.6
+    hooks:
+      - id: uv-lock
+        alias: generate-pyo3-stubs
+        name: generate PyO3 stubs
+        entry: uvx maturin generate-stubs --features python -o python/pyasic_rs
+        always_run: true
+        pass_filenames: false
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.20.0
+    hooks:
+      - id: mypy
+        args: ["--config-file=pyproject.toml"]
+        additional_dependencies: [pydantic==2.12.5]
+        pass_filenames: false

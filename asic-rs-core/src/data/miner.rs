@@ -19,10 +19,18 @@ use crate::data::{
     serialize::{serialize_macaddr, serialize_power, serialize_temperature},
 };
 
+#[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticTaggedUnion))]
+#[cfg_attr(
+    feature = "python",
+    pydantic(discriminator = "type", value = "value", ref = "asic_rs.TuningTarget")
+)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TuningTarget {
+    #[cfg_attr(feature = "python", pydantic(tag = "power"))]
     Power(Power),
+    #[cfg_attr(feature = "python", pydantic(tag = "hashrate"))]
     HashRate(HashRate),
+    #[cfg_attr(feature = "python", pydantic(tag = "mode"))]
     MiningMode(MiningMode),
 }
 
@@ -33,13 +41,21 @@ impl TuningTarget {
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, strum::Display)]
+#[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
 pub enum MiningMode {
+    #[cfg_attr(feature = "python", pydantic(value = "Low"))]
     Low,
+    #[cfg_attr(feature = "python", pydantic(value = "Normal"))]
     Normal,
+    #[cfg_attr(feature = "python", pydantic(value = "High"))]
     High,
 }
 
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
+#[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinerData {
     /// The schema version of this MinerData object, for use in external APIs
