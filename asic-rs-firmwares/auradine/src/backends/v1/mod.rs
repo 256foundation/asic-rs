@@ -39,7 +39,6 @@ use serde_json::{Value, json};
 use crate::firmware::AuradineFirmware;
 
 mod rpc;
-mod status;
 pub(crate) mod web;
 
 use rpc::AuradineRPCAPI;

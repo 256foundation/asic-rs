@@ -2,7 +2,7 @@ use std::net::IpAddr;
 
 use anyhow;
 use asic_rs_core::{
-    data::command::MinerCommand,
+    data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
     util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
@@ -10,8 +10,6 @@ use asic_rs_core::{
 use async_trait::async_trait;
 use serde_json::{Value, json};
 use tokio::io::AsyncWriteExt;
-
-use super::status::StatusFromAuradineV1;
 
 #[derive(Debug)]
 pub struct AuradineRPCAPI {
@@ -56,10 +54,11 @@ impl AuradineRPCAPI {
     }
 
     fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
-        let value: Value = serde_json::from_str(response)?;
-        let status = value.status_from_auradine_v1()?;
-        status.into_result()?;
-        Ok(value)
+        let status = RPCCommandStatus::from_auradine_v1(response)?;
+        match status.into_result() {
+            Ok(_) => Ok(serde_json::from_str(response)?),
+            Err(e) => Err(e)?,
+        }
     }
 }
 
@@ -88,5 +87,31 @@ impl RPCAPIClient for AuradineRPCAPI {
         parameters: Option<Value>,
     ) -> anyhow::Result<Value> {
         self.send_rpc_command(command, privileged, parameters).await
+    }
+}
+
+pub(crate) trait StatusFromAuradineV1 {
+    fn from_auradine_v1(response: &str) -> Result<Self, RPCError>
+    where
+        Self: Sized;
+}
+
+impl StatusFromAuradineV1 for RPCCommandStatus {
+    fn from_auradine_v1(response: &str) -> Result<Self, RPCError> {
+        let value: Value = serde_json::from_str(response)?;
+
+        if let Some(status_array) = value.get("STATUS").and_then(|v| v.as_array())
+            && let Some(status_obj) = status_array.first()
+            && let Some(status) = status_obj.get("STATUS").and_then(|v| v.as_str())
+        {
+            let message = status_obj.get("Msg").and_then(|v| v.as_str());
+            return Ok(Self::from_str(status, message));
+        }
+
+        if let Some(status) = value.get("STATUS").and_then(|v| v.as_str()) {
+            return Ok(Self::from_str(status, None));
+        }
+
+        Ok(Self::Success)
     }
 }

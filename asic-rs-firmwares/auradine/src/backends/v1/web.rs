@@ -1,13 +1,16 @@
 use std::{net::IpAddr, time::Duration};
 
 use anyhow::{Context, Result, anyhow, bail};
-use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
+use asic_rs_core::{
+    data::command::{MinerCommand, RPCCommandStatus},
+    traits::miner::*,
+};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response, StatusCode};
 use serde_json::{Map, Value, json};
 use tokio::sync::RwLock;
 
-use super::status::StatusFromAuradineV1;
+use super::rpc::StatusFromAuradineV1;
 
 #[derive(Debug)]
 pub struct AuradineWebAPI {
@@ -104,13 +107,16 @@ impl AuradineWebAPI {
             );
         }
 
-        let data: Value = response
-            .json()
+        let body = response
+            .text()
             .await
-            .map_err(|e| anyhow!("Failed to parse token response JSON: {e}"))?;
+            .map_err(|e| anyhow!("Failed to read token response body: {e}"))?;
 
-        let status = data.status_from_auradine_v1()?;
+        let status = RPCCommandStatus::from_auradine_v1(&body)?;
         status.into_result()?;
+
+        let data: Value = serde_json::from_str(&body)
+            .map_err(|e| anyhow!("Failed to parse token response JSON: {e}"))?;
 
         data.pointer("/Token/0/Token")
             .and_then(|t| t.as_str())
@@ -201,12 +207,12 @@ impl WebAPIClient for AuradineWebAPI {
                 bail!("HTTP request failed with status code {status}: {body}");
             }
 
-            let data: Value = response
-                .json()
+            let body = response
+                .text()
                 .await
-                .map_err(|e| anyhow!("Failed to parse JSON response: {e}"))?;
+                .map_err(|e| anyhow!("Failed to read response body: {e}"))?;
 
-            let status = data.status_from_auradine_v1()?;
+            let status = RPCCommandStatus::from_auradine_v1(&body)?;
             if let Err(err) = status.into_result() {
                 let msg = err.to_string().to_ascii_uppercase();
                 if attempt == 1
@@ -221,6 +227,9 @@ impl WebAPIClient for AuradineWebAPI {
                 }
                 return Err(anyhow!(err.to_string()));
             }
+
+            let data: Value = serde_json::from_str(&body)
+                .map_err(|e| anyhow!("Failed to parse JSON response: {e}"))?;
 
             return Ok(data);
         }
