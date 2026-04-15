@@ -20,6 +20,7 @@ members = [
     "asic-rs-makes/braiins",
     "asic-rs-makes/epic",
     "asic-rs-makes/nerdaxe",
+    "asic-rs-makes/sealminer",
     "asic-rs-makes/whatsminer",
     "asic-rs-makes/marathon",
     "asic-rs-firmwares/antminer",
@@ -31,6 +32,7 @@ members = [
     "asic-rs-firmwares/luxminer",
     "asic-rs-firmwares/marathon",
     "asic-rs-firmwares/nerdaxe",
+    "asic-rs-firmwares/sealminer",
     "asic-rs-firmwares/vnish",
     "asic-rs-firmwares/whatsminer",
     "asic-rs-pydantic",
@@ -49,6 +51,7 @@ asic-rs-makes-bitaxe = { path = "asic-rs-makes/bitaxe", version = "0.4.2" }
 asic-rs-makes-braiins = { path = "asic-rs-makes/braiins", version = "0.4.2" }
 asic-rs-makes-epic = { path = "asic-rs-makes/epic", version = "0.4.2" }
 asic-rs-makes-nerdaxe = { path = "asic-rs-makes/nerdaxe", version = "0.4.2" }
+asic-rs-makes-sealminer = { path = "asic-rs-makes/sealminer", version = "0.4.2" }
 asic-rs-makes-whatsminer = { path = "asic-rs-makes/whatsminer", version = "0.4.2" }
 asic-rs-makes-marathon = { path = "asic-rs-makes/marathon", version = "0.4.2" }
 
@@ -61,6 +64,7 @@ asic-rs-firmwares-epic = { path = "asic-rs-firmwares/epic", version = "0.4.2" }
 asic-rs-firmwares-luxminer = { path = "asic-rs-firmwares/luxminer", version = "0.4.2" }
 asic-rs-firmwares-marathon = { path = "asic-rs-firmwares/marathon", version = "0.4.2" }
 asic-rs-firmwares-nerdaxe = { path = "asic-rs-firmwares/nerdaxe", version = "0.4.2" }
+asic-rs-firmwares-sealminer = { path = "asic-rs-firmwares/sealminer", version = "0.4.2" }
 asic-rs-firmwares-vnish = { path = "asic-rs-firmwares/vnish", version = "0.4.2" }
 asic-rs-firmwares-whatsminer = { path = "asic-rs-firmwares/whatsminer", version = "0.4.2" }
 
@@ -126,6 +130,7 @@ default = [
     "luxminer",
     "marathon",
     "nerdaxe",
+    "sealminer",
     "vnish",
     "whatsminer",
 ]
@@ -140,6 +145,7 @@ epic = ["dep:asic-rs-firmwares-epic"]
 luxminer = ["dep:asic-rs-firmwares-luxminer"]
 marathon = ["dep:asic-rs-firmwares-marathon"]
 nerdaxe = ["dep:asic-rs-firmwares-nerdaxe"]
+sealminer = ["dep:asic-rs-firmwares-sealminer"]
 vnish = ["dep:asic-rs-firmwares-vnish"]
 whatsminer = ["dep:asic-rs-firmwares-whatsminer"]
 
@@ -156,6 +162,7 @@ python = [
     "asic-rs-makes-braiins/python",
     "asic-rs-makes-epic/python",
     "asic-rs-makes-nerdaxe/python",
+    "asic-rs-makes-sealminer/python",
     "asic-rs-makes-whatsminer/python",
     "asic-rs-makes-marathon/python",
     "asic-rs-firmwares-antminer/python",
@@ -167,6 +174,7 @@ python = [
     "asic-rs-firmwares-luxminer/python",
     "asic-rs-firmwares-marathon/python",
     "asic-rs-firmwares-nerdaxe/python",
+    "asic-rs-firmwares-sealminer/python",
     "asic-rs-firmwares-vnish/python",
     "asic-rs-firmwares-whatsminer/python",
 ]
@@ -182,6 +190,7 @@ asic-rs-makes-bitaxe.workspace = true
 asic-rs-makes-braiins.workspace = true
 asic-rs-makes-epic.workspace = true
 asic-rs-makes-nerdaxe.workspace = true
+asic-rs-makes-sealminer.workspace = true
 asic-rs-makes-whatsminer.workspace = true
 asic-rs-makes-marathon.workspace = true
 
@@ -194,6 +203,7 @@ asic-rs-firmwares-epic = { workspace = true, optional = true }
 asic-rs-firmwares-luxminer = { workspace = true, optional = true }
 asic-rs-firmwares-marathon = { workspace = true, optional = true }
 asic-rs-firmwares-nerdaxe = { workspace = true, optional = true }
+asic-rs-firmwares-sealminer = { workspace = true, optional = true }
 asic-rs-firmwares-vnish = { workspace = true, optional = true }
 asic-rs-firmwares-whatsminer = { workspace = true, optional = true }
 
