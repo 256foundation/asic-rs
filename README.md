@@ -194,7 +194,7 @@ The README is auto generated with `doc2readme`, please do not edit it manually.
 Instead, changes can be made in `lib.rs`.
 
 
- [__cargo_doc2readme_dependencies_info]: ggGkYW0CYXSEG4IljsKm9mCpG6jFazawiHDzG4aznWaXJoNtG2IgF6W9DkLHYXKEGz_eVGG8jjl3G8psojsoK2pvG_xU7b0MKzGkG8GoOz9KX3PEYWSDg2dhc2ljLXJzZTAuNS4wZ2FzaWNfcnOCZGRhdGH2gmZtaW5lcnP2
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbgiWOwqb2YKkbqMVrNrCIcPMbhrOdZpcmg20bYiAXpb0OQsdhYvRhcoQbP95UYbyOOXcbymyiOygram8b_FTtvQwrMaQbwag7P0pfc8RhZIODZ2FzaWMtcnNlMC41LjBnYXNpY19yc4JkZGF0YfaCZm1pbmVyc_Y
  [__link0]: https://docs.rs/asic-rs/0.5.0/asic_rs/?search=factory::MinerFactory
  [__link1]: https://docs.rs/asic-rs/0.5.0/asic_rs/?search=factory::MinerFactory
  [__link2]: https://docs.rs/data/latest/data/?search=miner::MinerData
