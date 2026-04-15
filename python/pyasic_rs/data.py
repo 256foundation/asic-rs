@@ -6,6 +6,7 @@ from pyasic_rs.asic_rs import MinerControlBoard, MinerData, MinerMessage
 from pyasic_rs.asic_rs import MessageSeverity
 from pyasic_rs.asic_rs import MiningMode
 from pyasic_rs.asic_rs import PoolData, PoolGroupData, PoolScheme, PoolURL
+from pyasic_rs.asic_rs import TuningTargetMode, TuningTargetPower, TuningTargetHashRate
 
 __all__ = [
     "BoardData",
@@ -24,4 +25,7 @@ __all__ = [
     "PoolGroupData",
     "PoolScheme",
     "PoolURL",
+    "TuningTargetMode",
+    "TuningTargetPower",
+    "TuningTargetHashRate"
 ]
