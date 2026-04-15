@@ -454,7 +454,7 @@ def test_tuning_config_mode_json_schema_exposes_mining_mode_enum() -> None:
     mode_ref = next(
         choice["$ref"]
         for choice in target_union["oneOf"]
-        if choice["$ref"].endswith("TuningTargetMiningMode")
+        if choice["$ref"].endswith("TuningTargetMode")
     )
     mode_def = schema["$defs"][mode_ref.rsplit("/", 1)[-1]]
     mode_schema = mode_def["properties"]["value"]

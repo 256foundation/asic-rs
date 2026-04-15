@@ -16,7 +16,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run tests
-        run: cargo test --all --locked
+        run: cargo test --all --locked --exclude asic-rs-pydantic
 
   python-test:
     name: Python Test
