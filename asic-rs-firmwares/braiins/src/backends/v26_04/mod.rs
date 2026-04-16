@@ -29,23 +29,20 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use reqwest::Method;
 use serde_json::{Value, json};
-use web::BraiinsWebAPI;
 
-use crate::firmware::BraiinsFirmware;
-
-pub mod web;
+use crate::{backends::v25_07::web::BraiinsWebAPI, firmware::BraiinsFirmware};
 
 #[derive(Debug)]
-pub struct BraiinsV2507 {
+pub struct BraiinsV2604 {
     pub ip: IpAddr,
     pub web: BraiinsWebAPI,
     pub device_info: DeviceInfo,
 }
 
-impl BraiinsV2507 {
+impl BraiinsV2604 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
-        BraiinsV2507 {
+        BraiinsV2604 {
             ip,
             web: BraiinsWebAPI::new(ip, auth),
             device_info: DeviceInfo::new(model, BraiinsFirmware::default(), HashAlgorithm::SHA256),
@@ -54,7 +51,7 @@ impl BraiinsV2507 {
 }
 
 #[async_trait]
-impl APIClient for BraiinsV2507 {
+impl APIClient for BraiinsV2604 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
@@ -63,20 +60,20 @@ impl APIClient for BraiinsV2507 {
     }
 }
 
-impl GetConfigsLocations for BraiinsV2507 {
+impl GetConfigsLocations for BraiinsV2604 {
     #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }
 }
 
-impl CollectConfigs for BraiinsV2507 {
+impl CollectConfigs for BraiinsV2604 {
     fn get_config_collector(&self) -> ConfigCollector<'_> {
         ConfigCollector::new(self)
     }
 }
 
-impl GetDataLocations for BraiinsV2507 {
+impl GetDataLocations for BraiinsV2604 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const WEB_NETWORK: MinerCommand = MinerCommand::WebAPI {
             command: "network",
@@ -261,38 +258,38 @@ impl GetDataLocations for BraiinsV2507 {
     }
 }
 
-impl GetIP for BraiinsV2507 {
+impl GetIP for BraiinsV2604 {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
 
-impl GetDeviceInfo for BraiinsV2507 {
+impl GetDeviceInfo for BraiinsV2604 {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info.clone()
     }
 }
 
-impl CollectData for BraiinsV2507 {
+impl CollectData for BraiinsV2604 {
     fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self)
     }
 }
 
-impl GetMAC for BraiinsV2507 {
+impl GetMAC for BraiinsV2604 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         data.extract::<String>(DataField::Mac)
             .and_then(|s| MacAddr::from_str(&s).ok())
     }
 }
 
-impl GetHostname for BraiinsV2507 {
+impl GetHostname for BraiinsV2604 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
     }
 }
 
-impl GetApiVersion for BraiinsV2507 {
+impl GetApiVersion for BraiinsV2604 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         let major = data.extract_nested::<f64>(DataField::ApiVersion, "major");
         let minor = data.extract_nested::<f64>(DataField::ApiVersion, "minor");
@@ -302,13 +299,13 @@ impl GetApiVersion for BraiinsV2507 {
     }
 }
 
-impl GetFirmwareVersion for BraiinsV2507 {
+impl GetFirmwareVersion for BraiinsV2604 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
 
-impl GetHashboards for BraiinsV2507 {
+impl GetHashboards for BraiinsV2604 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
             .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
@@ -384,7 +381,7 @@ impl GetHashboards for BraiinsV2507 {
     }
 }
 
-impl GetHashrate for BraiinsV2507 {
+impl GetHashrate for BraiinsV2604 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
@@ -394,7 +391,7 @@ impl GetHashrate for BraiinsV2507 {
     }
 }
 
-impl GetExpectedHashrate for BraiinsV2507 {
+impl GetExpectedHashrate for BraiinsV2604 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
             value: f,
@@ -404,7 +401,7 @@ impl GetExpectedHashrate for BraiinsV2507 {
     }
 }
 
-impl GetFans for BraiinsV2507 {
+impl GetFans for BraiinsV2604 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let mut fans: Vec<FanData> = Vec::new();
 
@@ -429,30 +426,25 @@ impl GetFans for BraiinsV2507 {
     }
 }
 
-impl GetLightFlashing for BraiinsV2507 {
+impl GetLightFlashing for BraiinsV2604 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)
     }
 }
 
-impl GetUptime for BraiinsV2507 {
+impl GetUptime for BraiinsV2604 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
-impl GetIsMining for BraiinsV2507 {
+impl GetIsMining for BraiinsV2604 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        // 1 -> Not Started
-        // 2 -> Normal
-        // 3 -> Paused
-        // 4 -> Suspended
-        // See: https://github.com/braiins/bos-plus-api/blob/ef28e752f80711c54d5587ec8f2cd838fdb34042/proto/bos/v1/miner.proto#L117-L124
         data.extract::<u64>(DataField::IsMining) == Some(2)
     }
 }
 
-impl GetPools for BraiinsV2507 {
+impl GetPools for BraiinsV2604 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let mut pools: Vec<PoolData> = Vec::new();
 
@@ -500,13 +492,13 @@ impl GetPools for BraiinsV2507 {
     }
 }
 
-impl GetSerialNumber for BraiinsV2507 {
+impl GetSerialNumber for BraiinsV2604 {
     fn parse_serial_number(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::SerialNumber)
     }
 }
 
-impl GetControlBoardVersion for BraiinsV2507 {
+impl GetControlBoardVersion for BraiinsV2604 {
     fn parse_control_board_version(
         &self,
         data: &HashMap<DataField, Value>,
@@ -524,24 +516,24 @@ impl GetControlBoardVersion for BraiinsV2507 {
     }
 }
 
-impl GetWattage for BraiinsV2507 {
+impl GetWattage for BraiinsV2604 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<i64, _>(DataField::Wattage, |w| Power::from_watts(w as f64))
     }
 }
 
-impl GetTuningTarget for BraiinsV2507 {
+impl GetTuningTarget for BraiinsV2604 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.extract_map::<i64, _>(DataField::TuningTarget, |w| Power::from_watts(w as f64))
             .map(TuningTarget::Power)
     }
 }
 
-impl GetFluidTemperature for BraiinsV2507 {}
+impl GetFluidTemperature for BraiinsV2604 {}
 
-impl GetPsuFans for BraiinsV2507 {}
+impl GetPsuFans for BraiinsV2604 {}
 
-impl GetMessages for BraiinsV2507 {
+impl GetMessages for BraiinsV2604 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages: Vec<MinerMessage> = Vec::new();
 
@@ -558,7 +550,7 @@ impl GetMessages for BraiinsV2507 {
                 if let Some(ts) = timestamp {
                     messages.push(MinerMessage::new(
                         ts,
-                        0, // They have codes, but they include a string
+                        0,
                         message.unwrap_or("Unknown error").to_string(),
                         MessageSeverity::Error,
                     ))
@@ -571,7 +563,7 @@ impl GetMessages for BraiinsV2507 {
 }
 
 #[async_trait]
-impl SetFaultLight for BraiinsV2507 {
+impl SetFaultLight for BraiinsV2604 {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         Ok(self
             .web
@@ -585,7 +577,7 @@ impl SetFaultLight for BraiinsV2507 {
 }
 
 #[async_trait]
-impl SetPowerLimit for BraiinsV2507 {
+impl SetPowerLimit for BraiinsV2604 {
     async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
         Ok(self
             .web
@@ -604,7 +596,7 @@ impl SetPowerLimit for BraiinsV2507 {
 }
 
 #[async_trait]
-impl SupportsPoolsConfig for BraiinsV2507 {
+impl SupportsPoolsConfig for BraiinsV2604 {
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
         Ok(self
             .get_pools()
@@ -652,7 +644,7 @@ impl SupportsPoolsConfig for BraiinsV2507 {
 }
 
 #[async_trait]
-impl Restart for BraiinsV2507 {
+impl Restart for BraiinsV2604 {
     async fn restart(&self) -> anyhow::Result<bool> {
         Ok(self
             .web
@@ -666,7 +658,7 @@ impl Restart for BraiinsV2507 {
 }
 
 #[async_trait]
-impl Pause for BraiinsV2507 {
+impl Pause for BraiinsV2604 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self
@@ -681,7 +673,7 @@ impl Pause for BraiinsV2507 {
 }
 
 #[async_trait]
-impl Resume for BraiinsV2507 {
+impl Resume for BraiinsV2604 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         Ok(self
@@ -696,40 +688,40 @@ impl Resume for BraiinsV2507 {
 }
 
 #[async_trait]
-impl SupportsScalingConfig for BraiinsV2507 {
+impl SupportsScalingConfig for BraiinsV2604 {
     fn supports_scaling_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl UpgradeFirmware for BraiinsV2507 {
+impl UpgradeFirmware for BraiinsV2604 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
     }
 }
 
-impl HasDefaultAuth for BraiinsV2507 {
+impl HasDefaultAuth for BraiinsV2604 {
     fn default_auth() -> MinerAuth {
         MinerAuth::new("root", "root")
     }
 }
 
-impl HasAuth for BraiinsV2507 {
+impl HasAuth for BraiinsV2604 {
     fn set_auth(&mut self, auth: MinerAuth) {
         self.web.set_auth(auth);
     }
 }
 
 #[async_trait]
-impl SupportsTuningConfig for BraiinsV2507 {
+impl SupportsTuningConfig for BraiinsV2604 {
     fn supports_tuning_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsFanConfig for BraiinsV2507 {
+impl SupportsFanConfig for BraiinsV2604 {
     fn supports_fan_config(&self) -> bool {
         false
     }
