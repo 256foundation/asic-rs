@@ -1,0 +1,6123 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Braiins OS Public REST API",
+    "description": "",
+    "contact": {
+      "name": "Braiins",
+      "url": "https://help.braiins.com",
+      "email": "help@braiins.com"
+    },
+    "license": {
+      "name": ""
+    },
+    "version": "1.3.0"
+  },
+  "servers": [
+    {
+      "url": "http://miner/"
+    }
+  ],
+  "paths": {
+    "/api/v1/actions/factory-reset": {
+      "put": {
+        "tags": [
+          "Actions"
+        ],
+        "summary": "Factory Reset",
+        "description": "Performs Factory Reset.",
+        "operationId": "factory_reset",
+        "responses": {
+          "204": {
+            "description": "Successful response."
+          }
+        }
+      }
+    },
+    "/api/v1/actions/locate": {
+      "get": {
+        "tags": [
+          "Actions"
+        ],
+        "summary": "Get locate device status",
+        "description": "Gets locate device status.",
+        "operationId": "getLocateDeviceStatus",
+        "responses": {
+          "200": {
+            "description": "Successful response containing bool if enabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Actions"
+        ],
+        "summary": "Set locate device status",
+        "description": "Sets locate device status (turn LED blinking on or off).",
+        "operationId": "setLocateDeviceStatus",
+        "requestBody": {
+          "description": "Enable or disable.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "boolean"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing bool if enabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actions/pause": {
+      "put": {
+        "tags": [
+          "Actions"
+        ],
+        "summary": "Pause mining",
+        "description": "Pauses mining.",
+        "operationId": "pauseMining",
+        "responses": {
+          "200": {
+            "description": "Successful response containing bool if was already paused.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actions/reboot": {
+      "put": {
+        "tags": [
+          "Actions"
+        ],
+        "summary": "Reboot",
+        "description": "Reboots mining.",
+        "operationId": "reboot",
+        "responses": {
+          "204": {
+            "description": "Successful response."
+          }
+        }
+      }
+    },
+    "/api/v1/actions/restart": {
+      "put": {
+        "tags": [
+          "Actions"
+        ],
+        "summary": "Restart",
+        "description": "Restarts mining.",
+        "operationId": "restart",
+        "responses": {
+          "200": {
+            "description": "Successful response containing bool if was already running.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actions/resume": {
+      "put": {
+        "tags": [
+          "Actions"
+        ],
+        "summary": "Resume mining",
+        "description": "Resumes mining.",
+        "operationId": "resumeMining",
+        "responses": {
+          "200": {
+            "description": "Successful response containing bool if was already mining.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actions/start": {
+      "put": {
+        "tags": [
+          "Actions"
+        ],
+        "summary": "Start",
+        "description": "Starts mining.",
+        "operationId": "start",
+        "responses": {
+          "200": {
+            "description": "Successful response containing bool if was already running.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actions/stop": {
+      "put": {
+        "tags": [
+          "Actions"
+        ],
+        "summary": "Stop",
+        "description": "Stops mining.",
+        "operationId": "stop",
+        "responses": {
+          "200": {
+            "description": "Successful response containing bool if was already stopped.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "User login",
+        "description": "Authenticates a user using their username and password. If the credentials are valid, a token is returned, which should be included in the `Authorization` header of subsequent requests.",
+        "operationId": "login",
+        "requestBody": {
+          "description": "User login credentials, including username and password.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "example": {
+                "password": "1234",
+                "username": "root"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login. Returns an authentication token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/password": {
+      "put": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Set or remove user password",
+        "description": "Allows a user to set or update their password. To remove the password, set the `password` field to `null`. This operation requires authentication.",
+        "operationId": "setPassword",
+        "requestBody": {
+          "description": "Payload containing the new password. If the password field is null, the password will be removed.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPasswordRequest"
+              },
+              "example": {
+                "password": "1234"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Password successfully set or removed."
+          },
+          "400": {
+            "description": "Invalid request payload."
+          },
+          "401": {
+            "description": "Unauthorized. User must be authenticated."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/configuration/constraints": {
+      "get": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Get constraints",
+        "description": "",
+        "operationId": "getConstraints",
+        "responses": {
+          "200": {
+            "description": "Successful response containing miner configuration constraints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetConstraintsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/configuration/miner": {
+      "get": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Get miner configuration",
+        "description": "",
+        "operationId": "getMinerConfiguration",
+        "responses": {
+          "200": {
+            "description": "Successful response containing miner configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMinerConfigurationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cooling/mode": {
+      "put": {
+        "tags": [
+          "Cooling"
+        ],
+        "summary": "Set cooling mode",
+        "description": "Sets the active cooling mode for the miner. The mode can be set to auto, manual, immersion, or hydro.",
+        "operationId": "setCoolingMode",
+        "requestBody": {
+          "description": "Cooling mode to activate. Can be one of: auto, manual, immersion, or hydro.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCoolingModeRequestMode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing active cooling mode",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetCoolingModeResponseMode"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cooling/state": {
+      "get": {
+        "tags": [
+          "Cooling"
+        ],
+        "summary": "Get cooling state",
+        "description": "Retrieves the current cooling state of the miner, including temperature measurements and the state of all fans.",
+        "operationId": "getCoolingState",
+        "responses": {
+          "200": {
+            "description": "Successful response containing information about temperature measurements and fans states",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCoolingStateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/openapi.json": {
+      "get": {
+        "tags": [
+          "Documentation"
+        ],
+        "summary": "Retrieve OpenAPI JSON schema",
+        "description": "Returns the OpenAPI specification in JSON format, which can be used by Redoc or Swagger UI for documentation.",
+        "operationId": "getOpenApiSchema",
+        "responses": {
+          "200": {
+            "description": "Openapi schema in a JSON format",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/license/apply-contract-key": {
+      "put": {
+        "tags": [
+          "License"
+        ],
+        "summary": "Apply custom contract key",
+        "description": "Apply custom contract key.",
+        "operationId": "applyContractKey",
+        "requestBody": {
+          "description": "Custom contract key to be set.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyContractKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response with successful flag to indicate success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyContractKeyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/license/license": {
+      "get": {
+        "tags": [
+          "License"
+        ],
+        "summary": "Get license state",
+        "description": "Retrieves the current license state of the miner. The license may be in one of several states: none, limited, valid, or expired.",
+        "operationId": "getLicenseState",
+        "responses": {
+          "200": {
+            "description": "Successful response containing information about license",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetLicenseStateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/miner/details": {
+      "get": {
+        "tags": [
+          "Miner"
+        ],
+        "summary": "Get miner details",
+        "description": "Retrieves detailed information about the miner, such as hardware model, firmware version, serial number, and other identifying data.",
+        "operationId": "getMinerDetails",
+        "responses": {
+          "200": {
+            "description": "Successful response containing detailed miner information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMinerDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/miner/errors": {
+      "get": {
+        "tags": [
+          "Miner"
+        ],
+        "summary": "Get miner errors",
+        "description": "Retrieves a list of errors reported by the miner, including timestamps, messages, error codes, and affected components.",
+        "operationId": "getMinerErrors",
+        "responses": {
+          "200": {
+            "description": "Successful response containing an array of miner errors.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetErrorsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/miner/hw/hashboards": {
+      "get": {
+        "tags": [
+          "Miner"
+        ],
+        "summary": "Get hashboard details",
+        "description": "Retrieves detailed information about all hashboards in the miner, including their status, temperature, voltage, frequency, and statistics.",
+        "operationId": "getHashboards",
+        "responses": {
+          "200": {
+            "description": "Successful response containing a list of hashboards.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetHashboardsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Miner"
+        ],
+        "summary": "Enable or disable hashboards",
+        "description": "Enables or disables one or more hashboards based on the provided IDs. Useful for toggling hardware components during runtime or diagnostics.",
+        "operationId": "updateHashboards",
+        "requestBody": {
+          "description": "List of hashboard IDs to update and the desired enabled state.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHashboards"
+              },
+              "example": {
+                "enable": false,
+                "hashboard_ids": [
+                  "1",
+                  "3"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response with the updated enable state of hashboards.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnableHashboardsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/miner/log/{log_type}": {
+      "get": {
+        "tags": [
+          "Miner"
+        ],
+        "summary": "Stream log file",
+        "description": "Streams the merged log file for a given log type. Supported log types: errors, bosminer, boser, monitor, syslog, dmesg.",
+        "operationId": "getLog",
+        "parameters": [
+          {
+            "name": "log_type",
+            "in": "path",
+            "description": "Log type to download",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stream of log data.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/miner/stats": {
+      "get": {
+        "tags": [
+          "Miner"
+        ],
+        "summary": "Get miner statistics",
+        "description": "Retrieves runtime statistics about the miner, including pool performance, hashrate metrics, and power consumption.",
+        "operationId": "getMinerStats",
+        "responses": {
+          "200": {
+            "description": "Successful response containing miner statistics.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMinerStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/miner/status": {
+      "get": {
+        "tags": [
+          "Miner"
+        ],
+        "summary": "Stream miner status updates",
+        "description": "Streams the current status of the miner in real-time. The status can be one of: `unspecified`, `not_started`, `normal`, `paused`, `suspended`, or `restricted`. The response is a continuous JSON stream.",
+        "operationId": "getMinerStatus",
+        "responses": {
+          "200": {
+            "description": "Stream of miner status updates.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMinerStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/miner/support-archive": {
+      "get": {
+        "tags": [
+          "Miner"
+        ],
+        "summary": "Stream support archive",
+        "description": "Streams support archive.",
+        "operationId": "getSupportArchive",
+        "requestBody": {
+          "description": "Support archive format. Format can be one of: 'zip' (compressed zip format), 'bos' (BOS custom format) or 'zipencrypted' (compressed encrypted zip format).",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetSupportArchive"
+              },
+              "example": {
+                "format": "zipencrypted"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Stream of support archive.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/network/": {
+      "get": {
+        "tags": [
+          "Network"
+        ],
+        "summary": "Retrieve miner network information",
+        "description": "Fetches detailed information about the miner's network, including interfaces, MAC addresses, DNS settings, and default gateway.",
+        "operationId": "getNetwork",
+        "responses": {
+          "200": {
+            "description": "Successful response containing miner network information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetNetworkInfoResponse"
+                },
+                "example": {
+                  "default_gateway": "192.168.1.1",
+                  "dns_servers": [
+                    "8.8.8.8",
+                    "8.8.4.4"
+                  ],
+                  "hostname": "miner-01.local",
+                  "mac_address": "00:1A:2B:3C:4D:5E",
+                  "name": "eth0",
+                  "networks": [
+                    {
+                      "address": "192.168.1.100",
+                      "netmask": "255.255.255.0"
+                    }
+                  ],
+                  "protocol": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/network/configuration": {
+      "get": {
+        "tags": [
+          "Network"
+        ],
+        "summary": "Get network configuration",
+        "description": "Fetches the miner's network configuration, including interface settings, IP configurations, and routing details.",
+        "operationId": "getNetworkConfiguration",
+        "responses": {
+          "200": {
+            "description": "Successful response containing network configuration.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkConfiguration"
+                },
+                "example": {
+                  "hostname": "miner-01.local",
+                  "protocol": {
+                    "dhcp": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Network"
+        ],
+        "summary": "Update network configuration",
+        "description": "Updates the miner's network configuration. Users can modify one or more fields, such as the hostname, network protocol, or DNS settings.",
+        "operationId": "updateNetworkConfiguration",
+        "requestBody": {
+          "description": "Partial or full network configuration update request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNetworkConfigurationRequest"
+              },
+              "example": {
+                "hostname": "miner-01.local",
+                "protocol": {
+                  "dhcp": {}
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully updated network configuration.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkConfiguration"
+                },
+                "example": {
+                  "hostname": "miner-01.local",
+                  "protocol": {
+                    "dhcp": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/dps": {
+      "put": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Set DPS (Dynamic Performance Scaling)",
+        "description": "Sets DPS for the miner, including DPS enable flag, DPS shutdown enable flag, DPS shutdown duration, DPS target, DPS mode and initial target for DPS.",
+        "operationId": "setDps",
+        "requestBody": {
+          "description": "Save action (deprecated), DPS enable flag, DPS shutdown enable flag, DPS shutdown duration, DPS target, DPS mode and initial target for DPS.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDpsRequestRest"
+              },
+              "example": {
+                "enable": true,
+                "enable_shutdown": true,
+                "mode": 1,
+                "on_start_target_percent": 100,
+                "save_action": null,
+                "shutdown_duration": {
+                  "hours": 4
+                },
+                "target": {
+                  "target": {
+                    "powertarget": {
+                      "min_power_target": {
+                        "watt": 3210
+                      },
+                      "power_step": {
+                        "watt": 20
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing DPS settings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetDpsResponse"
+                },
+                "example": {
+                  "enabled": true,
+                  "hashrate_target": null,
+                  "mode": 1,
+                  "on_start_target_percent": 100,
+                  "power_target": {
+                    "min_power_target": {
+                      "watt": 3210
+                    },
+                    "power_step": {
+                      "watt": 20
+                    }
+                  },
+                  "shutdown_duration": {
+                    "hours": 4
+                  },
+                  "shutdown_enabled": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/hashrate-target": {
+      "put": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Set hashrate target",
+        "description": "Sets hashrate target for the miner.",
+        "operationId": "setHashrateTarget",
+        "requestBody": {
+          "description": "Hashrate target to be set.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeraHashrate"
+              },
+              "example": {
+                "terahash_per_second": 190
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing hashrate target (Th/s).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeraHashrate"
+                },
+                "example": {
+                  "terahash_per_second": 190
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/hashrate-target/decrement": {
+      "patch": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Decrement hashrate target",
+        "description": "Decrements hashrate target for the miner by a set value.",
+        "operationId": "decrementHashrateTarget",
+        "requestBody": {
+          "description": "Hashrate target decrement.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeraHashrate"
+              },
+              "example": {
+                "terahash_per_second": 10
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing hashrate target (Th/s).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeraHashrate"
+                },
+                "example": {
+                  "terahash_per_second": 190
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/hashrate-target/default": {
+      "put": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Set default hashrate target",
+        "description": "Sets default hashrate target for the miner.",
+        "operationId": "setDefaultHashrateTarget",
+        "responses": {
+          "200": {
+            "description": "Successful response containing hashrate target (Th/s).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeraHashrate"
+                },
+                "example": {
+                  "terahash_per_second": 190
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/hashrate-target/increment": {
+      "patch": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Increment hashrate target",
+        "description": "Increments hashrate target for the miner by a set value.",
+        "operationId": "incrementHashrateTarget",
+        "requestBody": {
+          "description": "Hashrate target increment.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeraHashrate"
+              },
+              "example": {
+                "terahash_per_second": 10
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing hashrate target (Th/s).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeraHashrate"
+                },
+                "example": {
+                  "terahash_per_second": 190
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/hashrate-target/relative": {
+      "patch": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Set hashrate target to a relative reference",
+        "description": "Sets hashrate target to a relative reference by a set percentage.",
+        "operationId": "relativeHashrateTarget",
+        "requestBody": {
+          "description": "Set relative target",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRelativeTargetRequestRest"
+              },
+              "example": {
+                "percentage": 85.5,
+                "reference": 1
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing hashrate target (Th/s).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeraHashrate"
+                },
+                "example": {
+                  "terahash_per_second": 190
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/mode": {
+      "get": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Get performance mode",
+        "description": "Fetches miner's performance mode, including manual or tuner mode.",
+        "operationId": "getPerformanceMode",
+        "responses": {
+          "200": {
+            "description": "Successful response containing performance mode.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceModeMode"
+                },
+                "example": {
+                  "tunermode": {
+                    "target": {
+                      "powertarget": {
+                        "power_target": {
+                          "watt": 2000
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Set performance mode",
+        "description": "Sets performance mode for the miner.",
+        "operationId": "setPerformanceMode",
+        "requestBody": {
+          "description": "Performance mode.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerformanceModeMode"
+              },
+              "example": {
+                "tunermode": {
+                  "target": {
+                    "powertarget": {
+                      "power_target": {
+                        "watt": 2000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing performance mode.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceModeMode"
+                },
+                "example": {
+                  "tunermode": {
+                    "target": {
+                      "powertarget": {
+                        "power_target": {
+                          "watt": 2000
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/power-target": {
+      "put": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Set power target",
+        "description": "Sets power target for the miner.",
+        "operationId": "setPowerTarget",
+        "requestBody": {
+          "description": "Power target to be set.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Power"
+              },
+              "example": {
+                "watt": 3730
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing power target (watt).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Power"
+                },
+                "example": {
+                  "watt": 3730
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/power-target/decrement": {
+      "patch": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Decrement power target",
+        "description": "Decrements power target for the miner by a set value.",
+        "operationId": "decrementPowerTarget",
+        "requestBody": {
+          "description": "Power target decrement.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Power"
+              },
+              "example": {
+                "watt": 100
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing power target (watt).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Power"
+                },
+                "example": {
+                  "watt": 3730
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/power-target/default": {
+      "put": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Set default power target",
+        "description": "Sets default power target for the miner.",
+        "operationId": "setDefaultPowerTarget",
+        "responses": {
+          "200": {
+            "description": "Successful response containing power target (watt).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Power"
+                },
+                "example": {
+                  "watt": 3730
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/power-target/increment": {
+      "patch": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Increment power target",
+        "description": "Increments power target for the miner by a set value.",
+        "operationId": "incrementPowerTarget",
+        "requestBody": {
+          "description": "Save action and power target increment.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Power"
+              },
+              "example": {
+                "watt": 100
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing power target (watt).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Power"
+                },
+                "example": {
+                  "watt": 3730
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/power-target/relative": {
+      "patch": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Set power target to a relative reference",
+        "description": "Sets power target to a relative reference by a set percentage.",
+        "operationId": "relativePowerTarget",
+        "requestBody": {
+          "description": "Set relative target",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRelativeTargetRequestRest"
+              },
+              "example": {
+                "percentage": 85.5,
+                "reference": 1
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing power target (watt).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Power"
+                },
+                "example": {
+                  "watt": 3730
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/quick-ramping": {
+      "put": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Set quick ramping",
+        "description": "Sets quick ramping up and down times for the miner (used in curtailments).",
+        "operationId": "setQuickRamping",
+        "requestBody": {
+          "description": "Quick ramping up and down times to be set.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetQuickRampingRequestRest"
+              },
+              "example": {
+                "down_s": 2,
+                "up_s": 5
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response containing quick ramping up and down times (s).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickRampingResponse"
+                },
+                "example": {
+                  "down_s": 2,
+                  "up_s": 5
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/quick-ramping/default": {
+      "put": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Set default quick ramping",
+        "description": "Sets default quick ramping up and down times for the miner (used in curtailments).",
+        "operationId": "setDefaultQuickRamping",
+        "responses": {
+          "200": {
+            "description": "Successful response containing quick ramping up and down times (s).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickRampingResponse"
+                },
+                "example": {
+                  "down_s": 2,
+                  "up_s": 5
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/target-profiles": {
+      "get": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Get target profiles",
+        "description": "Fetches miner's target profiles, including power and hashrate target profiles.",
+        "operationId": "getTargetProfiles",
+        "responses": {
+          "200": {
+            "description": "Successful response containing target profiles.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTargetProfilesRequest"
+                },
+                "example": {
+                  "hashrate_target_profiles": [],
+                  "power_target_profiles": [
+                    {
+                      "created": {
+                        "nanos": 0,
+                        "seconds": 1744000000
+                      },
+                      "estimated_power_consumption": {
+                        "watt": 2000
+                      },
+                      "measured_hashrate": {
+                        "gigahash_per_second": 12345
+                      },
+                      "target": {
+                        "watt": 2000
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/performance/tuned-profiles": {
+      "delete": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Remove tuner profiles",
+        "description": "Removes tuner profiles. If it was mining before stops and then starts mining.",
+        "operationId": "removeTunedProfiles",
+        "responses": {
+          "204": {
+            "description": "Tuned profiles successfully removed."
+          }
+        }
+      }
+    },
+    "/api/v1/performance/tuner-state": {
+      "get": {
+        "tags": [
+          "Performance"
+        ],
+        "summary": "Get tuner state",
+        "description": "Fetches miner's tuner state, including overall tuner state and power or hashrate mode both including profile and current target.",
+        "operationId": "getTunerState",
+        "responses": {
+          "200": {
+            "description": "Successful response containing tuner state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTunerStateResponse"
+                },
+                "example": {
+                  "mode_state": {
+                    "powertargetmodestate": {
+                      "current_target": {
+                        "watt": 3000
+                      },
+                      "profile": {
+                        "created": {
+                          "nanos": 0,
+                          "seconds": 1744000000
+                        },
+                        "estimated_power_consumption": {
+                          "watt": 3000
+                        },
+                        "measured_hashrate": {
+                          "gigahash_per_second": 12345
+                        },
+                        "target": {
+                          "watt": 3000
+                        }
+                      }
+                    }
+                  },
+                  "overall_tuner_state": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pools/": {
+      "get": {
+        "tags": [
+          "Pools"
+        ],
+        "summary": "Get Pool Groups",
+        "description": "Fetches the list of all configured pool groups, including their pools, load balancing strategy, and status.",
+        "operationId": "getPools",
+        "responses": {
+          "200": {
+            "description": "A list of pool groups with their respective pools and configurations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PoolGroup"
+                  }
+                },
+                "example": [
+                  {
+                    "name": "High Performance",
+                    "pools": [
+                      {
+                        "active": true,
+                        "alive": true,
+                        "enabled": true,
+                        "stats": {
+                          "accepted_shares": 1000,
+                          "best_share": 1200000,
+                          "best_share_str": "1200000",
+                          "generated_work": 5000000,
+                          "last_difficulty": 800000,
+                          "last_share_time": {
+                            "nanos": 255441271,
+                            "seconds": 1741260910
+                          },
+                          "rejected_shares": 10,
+                          "stale_shares": 5
+                        },
+                        "uid": "pool1",
+                        "url": "stratum+tcp://pool.example.com:3333",
+                        "user": "miner1"
+                      }
+                    ],
+                    "strategy": {
+                      "quota": {
+                        "value": 70
+                      }
+                    },
+                    "uid": "group1"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Pools"
+        ],
+        "summary": "Create a new pool group",
+        "description": "Creates a new pool group with a specified name, list of pools, and load balancing strategy.",
+        "operationId": "createPoolGroup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoolGroupConfiguration"
+              },
+              "example": {
+                "load_balance_strategy": {
+                  "fixedshareratio": {
+                    "value": 50
+                  }
+                },
+                "name": "Pools",
+                "pools": [
+                  {
+                    "enabled": true,
+                    "password": "xxxx",
+                    "uid": "1",
+                    "url": "stratum+tcp://pool.example.com:3333",
+                    "user": "miner1"
+                  }
+                ],
+                "uid": "group1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Pool group successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolGroupConfiguration"
+                },
+                "example": {
+                  "load_balance_strategy": {
+                    "fixedshareratio": {
+                      "value": 50
+                    }
+                  },
+                  "name": "Pools",
+                  "pools": [
+                    {
+                      "enabled": true,
+                      "password": "xxxx",
+                      "uid": "1",
+                      "url": "stratum+tcp://pool.example.com:3333",
+                      "user": "miner1"
+                    }
+                  ],
+                  "uid": "group1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pools/batch": {
+      "put": {
+        "tags": [
+          "Pools"
+        ],
+        "summary": "Set multiple pool groups",
+        "description": "Sets the pool groups with new configurations, replacing the existing ones.",
+        "operationId": "setBatchPools",
+        "requestBody": {
+          "description": "A list of pool group configurations to set.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PoolGroupConfiguration"
+                }
+              },
+              "example": [
+                {
+                  "load_balance_strategy": {
+                    "fixedshareratio": {
+                      "value": 50
+                    }
+                  },
+                  "name": "Pools",
+                  "pools": [
+                    {
+                      "enabled": true,
+                      "password": "xxxx",
+                      "uid": "1",
+                      "url": "stratum+tcp://pool.example.com:3333",
+                      "user": "miner1"
+                    }
+                  ],
+                  "uid": "group1"
+                }
+              ]
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully set pool groups.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PoolGroupConfiguration"
+                  }
+                },
+                "example": [
+                  {
+                    "load_balance_strategy": {
+                      "fixedshareratio": {
+                        "value": 50
+                      }
+                    },
+                    "name": "Pools",
+                    "pools": [
+                      {
+                        "enabled": true,
+                        "password": "xxxx",
+                        "uid": "1",
+                        "url": "stratum+tcp://pool.example.com:3333",
+                        "user": "miner1"
+                      }
+                    ],
+                    "uid": "group1"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pools/{uid}": {
+      "put": {
+        "tags": [
+          "Pools"
+        ],
+        "summary": "Update an existing pool group",
+        "description": "Updates the specified pool group with a new name, list of pools, and load balancing strategy.",
+        "operationId": "updatePoolGroup",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "description": "The UID of the pool to be updated.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Pool group configuration to be updated.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoolGroupConfiguration"
+              },
+              "example": {
+                "load_balance_strategy": {
+                  "fixedshareratio": {
+                    "value": 50
+                  }
+                },
+                "name": "Pools",
+                "pools": [
+                  {
+                    "enabled": true,
+                    "password": "xxxx",
+                    "uid": "1",
+                    "url": "stratum+tcp://pool.example.com:3333",
+                    "user": "miner1"
+                  }
+                ],
+                "uid": "group1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Pool group successfully updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolGroupConfiguration"
+                },
+                "example": {
+                  "load_balance_strategy": {
+                    "fixedshareratio": {
+                      "value": 50
+                    }
+                  },
+                  "name": "Pools",
+                  "pools": [
+                    {
+                      "enabled": true,
+                      "password": "xxxx",
+                      "uid": "1",
+                      "url": "stratum+tcp://pool.example.com:3333",
+                      "user": "miner1"
+                    }
+                  ],
+                  "uid": "group1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pool group not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Pools"
+        ],
+        "summary": "Delete a pool group by UID",
+        "description": "Deletes a pool group configuration based on the provided UID.",
+        "operationId": "deletePool",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "description": "The UID of the pool group to be deleted.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Pool group successfully deleted."
+          }
+        }
+      }
+    },
+    "/api/v1/upgrade/auto-upgrade": {
+      "get": {
+        "tags": [
+          "Upgrade"
+        ],
+        "summary": "Get auto-upgrade settings",
+        "description": "Get the current auto-upgrade configuration.",
+        "operationId": "getAutoUpgradeStatus",
+        "responses": {
+          "200": {
+            "description": "Successful response with auto-upgrade settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetAutoUpgradeStatusResponse"
+                },
+                "example": {
+                  "enabled": true,
+                  "last_execution": {
+                    "nanos": 0,
+                    "seconds": 1744085400
+                  },
+                  "next_execution": {
+                    "nanos": 0,
+                    "seconds": 1744171800
+                  },
+                  "schedule": {
+                    "schedule_type": {
+                      "daily": {
+                        "time": {
+                          "hours": 3,
+                          "minutes": 30,
+                          "seconds": null
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Upgrade"
+        ],
+        "summary": "Set auto-upgrade settings",
+        "description": "Configure auto-upgrade settings.",
+        "operationId": "updateAutoUpgradeConfig",
+        "requestBody": {
+          "description": "Auto-upgrade configuration",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAutoUpgradeConfigRequest"
+              },
+              "example": {
+                "enabled": true,
+                "schedule": {
+                  "schedule_type": {
+                    "daily": {
+                      "time": {
+                        "hours": 3,
+                        "minutes": 30,
+                        "seconds": 21
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Auto-upgrade settings updated successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "enabled": true,
+                  "next_execution": {
+                    "nanos": 0,
+                    "seconds": 1744171800
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/upgrade/restore-stock": {
+      "post": {
+        "tags": [
+          "Upgrade"
+        ],
+        "summary": "Restore stock",
+        "description": "Uninstalls BraiinsOS and restores the miner to its original stock firmware. After initial checks pass, the response is returned and the restoration continues in the background. The device will become unreachable as the process proceeds. Not supported on all platforms (e.g. BMM) or SD card installations.",
+        "operationId": "restoreStock",
+        "responses": {
+          "204": {
+            "description": "Successful response."
+          },
+          "409": {
+            "description": "Another system task is already in progress."
+          },
+          "500": {
+            "description": "Internal server error."
+          },
+          "501": {
+            "description": "Uninstall is not supported on this platform."
+          }
+        }
+      }
+    },
+    "/api/v1/upgrade/system-upgrade": {
+      "post": {
+        "tags": [
+          "Upgrade"
+        ],
+        "summary": "System upgrade",
+        "description": "Performs system upgrade.",
+        "operationId": "systemUpgrade",
+        "requestBody": {
+          "description": "Stream of metadata and data. First message of the stream has to be `metadata`. Additional messages of the stream have to be `data`.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemUpgradeRequestRest"
+              },
+              "example": {
+                "data": [
+                  [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    0,
+                    0
+                  ]
+                ],
+                "metadata": {
+                  "disable_cleanup": false,
+                  "discard_settings": false,
+                  "hash": "fcdb4b423f4e5283afa249d762ef6aef150e91fccd810d43e5e719d14512dec7",
+                  "size": 16
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful response."
+          },
+          "409": {
+            "description": "Another system task is already in progress."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/v1/version/": {
+      "get": {
+        "tags": [
+          "Version"
+        ],
+        "summary": "Get API version",
+        "description": "Returns current API version with informations about major, minor and patch version numbers.",
+        "operationId": "getApiVersion",
+        "responses": {
+          "200": {
+            "description": "Major version number - breaking changesMinor version number - backwards compatible changesPatch version number - bug fix changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiVersion"
+                },
+                "example": {
+                  "major": 1,
+                  "minor": 3,
+                  "patch": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiVersion": {
+        "type": "object",
+        "required": [
+          "major",
+          "minor",
+          "patch"
+        ],
+        "properties": {
+          "major": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "minor": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "patch": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "ApplyContractKeyRequest": {
+        "type": "object",
+        "required": [
+          "contract_key"
+        ],
+        "properties": {
+          "contract_key": {
+            "type": "string",
+            "description": "Licence contract key string"
+          }
+        }
+      },
+      "ApplyContractKeyResponse": {
+        "type": "object",
+        "required": [
+          "successful"
+        ],
+        "properties": {
+          "successful": {
+            "type": "boolean",
+            "description": "Flag if custom license was successfully installed"
+          }
+        }
+      },
+      "AutoPauseMode": {
+        "type": "object",
+        "description": "Automatic pause mode starts with fans going with last fan speed used for mining and slowly decreases speed down to 0%"
+      },
+      "AutoUpgradeSchedule": {
+        "type": "object",
+        "properties": {
+          "schedule_type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScheduleType"
+              }
+            ]
+          }
+        }
+      },
+      "BasesPoints": {
+        "type": "object",
+        "description": "Structure representing Basis Points",
+        "required": [
+          "bsp"
+        ],
+        "properties": {
+          "bsp": {
+            "type": "integer",
+            "format": "int32",
+            "description": "A basis point is one hundredth of 1 percentage point.\nFor example: 1bps = 0.01%, 250bps = 2.5%",
+            "minimum": 0
+          }
+        }
+      },
+      "BooleanConstraint": {
+        "type": "object",
+        "required": [
+          "default"
+        ],
+        "properties": {
+          "default": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BosVersion": {
+        "type": "object",
+        "description": "Structure to handle BOS version",
+        "required": [
+          "current",
+          "major",
+          "bos_plus"
+        ],
+        "properties": {
+          "bos_plus": {
+            "type": "boolean"
+          },
+          "current": {
+            "type": "string"
+          },
+          "major": {
+            "type": "string"
+          }
+        }
+      },
+      "Component": {
+        "type": "object",
+        "required": [
+          "name",
+          "index"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CoolingAutoMode": {
+        "type": "object",
+        "description": "The temperature control modes.\nMiner software tries to regulate the fan speed so that miner temperature is approximately at the target temperature.\nThe allowed temperature range is 0-200 degree Celsius.",
+        "properties": {
+          "dangerous_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature",
+                "description": "Temperature threshold at which BOSMiner shuts down in order to prevent overheating and damaging the miner."
+              }
+            ]
+          },
+          "hot_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature",
+                "description": "Temperature threshold at which the fans start to run at 100%."
+              }
+            ]
+          },
+          "max_fan_speed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Maximum fan speed expressed as a value between 0 and 100. max_fan_speed must be greater than min_fan_speed.",
+            "minimum": 0
+          },
+          "min_fan_speed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Minimum fan speed expressed as a value between 0 and 100. min_fan_speed must be less than max_fan_speed.",
+            "minimum": 0
+          },
+          "minimum_required_fans": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Minimum number of fans required to have BOSminer operational.",
+            "minimum": 0
+          },
+          "pause_mode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PauseMode",
+                "description": "Pause mode used for fans when the miner is paused"
+              }
+            ]
+          },
+          "target_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature",
+                "description": "Temperature that the miner will try to maintain"
+              }
+            ]
+          }
+        }
+      },
+      "CoolingConfiguration": {
+        "type": "object",
+        "properties": {
+          "minimum_required_fans": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Minimum number of fans required to have BOSminer operational.",
+            "deprecated": true,
+            "minimum": 0
+          },
+          "mode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CoolingConfigurationMode"
+              }
+            ]
+          }
+        }
+      },
+      "CoolingConfigurationMode": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "auto"
+            ],
+            "properties": {
+              "auto": {
+                "$ref": "#/components/schemas/CoolingAutoMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "manual"
+            ],
+            "properties": {
+              "manual": {
+                "$ref": "#/components/schemas/CoolingManualMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "disabled"
+            ],
+            "properties": {
+              "disabled": {
+                "$ref": "#/components/schemas/CoolingDisabledMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "immersion"
+            ],
+            "properties": {
+              "immersion": {
+                "$ref": "#/components/schemas/CoolingImmersionMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "hydro"
+            ],
+            "properties": {
+              "hydro": {
+                "$ref": "#/components/schemas/CoolingHydroMode"
+              }
+            }
+          }
+        ]
+      },
+      "CoolingConstraints": {
+        "type": "object",
+        "required": [
+          "default_cooling_mode"
+        ],
+        "properties": {
+          "dangerous_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TemperatureConstraints"
+              }
+            ]
+          },
+          "default_cooling_mode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "default_fan_pause_mode": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "default_fan_pause_runtime": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "fan_pause_runtime_limited_duration_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "fan_speed_ratio": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DoubleConstraints"
+              }
+            ]
+          },
+          "hot_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TemperatureConstraints"
+              }
+            ]
+          },
+          "max_fan_speed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UInt32Constraints"
+              }
+            ]
+          },
+          "min_fan_speed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UInt32Constraints"
+              }
+            ]
+          },
+          "minimum_required_fans": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UInt32Constraints"
+              }
+            ]
+          },
+          "pause_cooldown_fan_speed_ratio": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DoubleConstraints"
+              }
+            ]
+          },
+          "target_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TemperatureConstraints"
+              }
+            ]
+          }
+        }
+      },
+      "CoolingDisabledMode": {
+        "type": "object",
+        "description": "Disable temperature control. May be dangerous.\nDEPRECATED: Since Braiins OS 24.XX it is not possible to disable cooling mode.",
+        "properties": {
+          "fan_speed_ratio": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "User defined fan speed expressed as a ratio between 0.0 and 1.0\nwhere 0.0 means completely turned off and\n1.0 means running at full speed possible"
+          }
+        }
+      },
+      "CoolingHydroMode": {
+        "type": "object",
+        "properties": {
+          "dangerous_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature"
+              }
+            ]
+          },
+          "hot_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature"
+              }
+            ]
+          },
+          "target_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature"
+              }
+            ]
+          }
+        }
+      },
+      "CoolingImmersionMode": {
+        "type": "object",
+        "properties": {
+          "dangerous_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature"
+              }
+            ]
+          },
+          "hot_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature"
+              }
+            ]
+          },
+          "target_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature"
+              }
+            ]
+          }
+        }
+      },
+      "CoolingManualMode": {
+        "type": "object",
+        "description": "Fans are kept at a fixed, user-defined speed, no matter the temperature.",
+        "properties": {
+          "dangerous_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature",
+                "description": "Temperature threshold at which BOSMiner shuts down in order to prevent overheating and damaging the miner."
+              }
+            ]
+          },
+          "fan_speed_ratio": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "User defined fan speed expressed as a ratio between 0.0 and 1.0\nwhere 0.0 means completely turned off and\n1.0 means running at full speed possible"
+          },
+          "hot_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature",
+                "description": "Temperature threshold at which the fans start to run at 100%."
+              }
+            ]
+          },
+          "minimum_required_fans": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Minimum number of fans required to have BOSminer operational.",
+            "minimum": 0
+          },
+          "pause_mode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PauseMode",
+                "description": "Pause mode"
+              }
+            ]
+          },
+          "target_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature",
+                "description": "Temperature that the miner will try to maintain when power scaling is enabled"
+              }
+            ]
+          }
+        }
+      },
+      "DPSTargetTarget": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Power target settings for Dynamic Performance Scaling",
+            "required": [
+              "powertarget"
+            ],
+            "properties": {
+              "powertarget": {
+                "$ref": "#/components/schemas/DpsPowerTarget",
+                "description": "Power target settings for Dynamic Performance Scaling"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Hashrate target settings for Dynamic Performance Scaling",
+            "required": [
+              "hashratetarget"
+            ],
+            "properties": {
+              "hashratetarget": {
+                "$ref": "#/components/schemas/DpsHashrateTarget",
+                "description": "Hashrate target settings for Dynamic Performance Scaling"
+              }
+            }
+          }
+        ]
+      },
+      "DailySchedule": {
+        "type": "object",
+        "properties": {
+          "time": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpgradeTime"
+              }
+            ]
+          }
+        }
+      },
+      "Dhcp": {
+        "type": "object"
+      },
+      "DoubleConstraints": {
+        "type": "object",
+        "required": [
+          "default",
+          "min",
+          "max"
+        ],
+        "properties": {
+          "default": {
+            "type": "number",
+            "format": "double"
+          },
+          "max": {
+            "type": "number",
+            "format": "double"
+          },
+          "min": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "DpsConfiguration": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Flag if Dynamic Performance Scaling is enabled"
+          },
+          "hashrate_step": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate",
+                "description": "Dynamic Performance Scaling hashrate step"
+              }
+            ]
+          },
+          "min_hashrate_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate",
+                "description": "Dynamic Performance Scaling minimal hashrate target"
+              }
+            ]
+          },
+          "min_power_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Dynamic Performance Scaling minimal power target"
+              }
+            ]
+          },
+          "mode": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Dynamic Performance Scaling mode"
+          },
+          "on_start_target_percent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Initial target for Dynamic Performance Scaling in percent",
+            "minimum": 0
+          },
+          "power_step": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Dynamic Performance Scaling power step"
+              }
+            ]
+          },
+          "shutdown_duration": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Hours",
+                "description": "Dynamic Performance Scaling shutdown duration"
+              }
+            ]
+          },
+          "shutdown_enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Flag if shutdown for Dynamic Performance Scaling is enabled"
+          }
+        }
+      },
+      "DpsConstraints": {
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "enabled": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BooleanConstraint",
+                "description": "Dynamic Performance Scaling enabled default value"
+              }
+            ]
+          },
+          "hashrate_step": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HashrateConstraints",
+                "description": "Dynamic Performance Scaling hashrate step constraints"
+              }
+            ]
+          },
+          "min_hashrate_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HashrateConstraints",
+                "description": "Dynamic Performance Scaling minimal hashrate target constraints"
+              }
+            ]
+          },
+          "min_power_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PowerConstraints",
+                "description": "Dynamic Performance Scaling minimal power target constraints"
+              }
+            ]
+          },
+          "mode": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Dynamic Performance Scaling default mode"
+          },
+          "on_start_target_percent": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UInt32Constraints",
+                "description": "Initial target for Dynamic Performance Scaling in percent"
+              }
+            ]
+          },
+          "power_step": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PowerConstraints",
+                "description": "Dynamic Performance Scaling power step constraints"
+              }
+            ]
+          },
+          "shutdown_duration": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DurationConstraints",
+                "description": "Dynamic Performance Scaling shutdown duration constraints"
+              }
+            ]
+          },
+          "shutdown_enabled": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BooleanConstraint",
+                "description": "Dynamic Performance Scaling enabled shutdown default value"
+              }
+            ]
+          }
+        }
+      },
+      "DpsHashrateTarget": {
+        "type": "object",
+        "properties": {
+          "hashrate_step": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate",
+                "description": "Dynamic Performance Scaling hashrate step"
+              }
+            ]
+          },
+          "min_hashrate_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate",
+                "description": "Dynamic Performance Scaling minimal hashrate target"
+              }
+            ]
+          }
+        }
+      },
+      "DpsPowerTarget": {
+        "type": "object",
+        "properties": {
+          "min_power_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Dynamic Performance Scaling minimal power target"
+              }
+            ]
+          },
+          "power_step": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Dynamic Performance Scaling power step"
+              }
+            ]
+          }
+        }
+      },
+      "DpsTarget": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DPSTargetTarget"
+              }
+            ]
+          }
+        }
+      },
+      "DurationConstraints": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Hours"
+              }
+            ]
+          },
+          "max": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Hours"
+              }
+            ]
+          },
+          "min": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Hours"
+              }
+            ]
+          }
+        }
+      },
+      "EnableHashboardsResponse": {
+        "type": "object",
+        "required": [
+          "hashboards"
+        ],
+        "properties": {
+          "hashboards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HashboardEnableState"
+            },
+            "description": "Hashboards enable state"
+          }
+        }
+      },
+      "ErrorCode": {
+        "type": "object",
+        "required": [
+          "code",
+          "reason",
+          "hint"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ExpiredLicense": {
+        "type": "object",
+        "required": [
+          "type",
+          "contract_name"
+        ],
+        "properties": {
+          "contract_name": {
+            "type": "string",
+            "description": "Contract name"
+          },
+          "dev_fee": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BasesPoints",
+                "description": "Defines how much DevFee should be generated by the device."
+              }
+            ]
+          },
+          "type": {
+            "type": "integer",
+            "format": "int32",
+            "description": "License type"
+          }
+        }
+      },
+      "FanState": {
+        "type": "object",
+        "description": "Structure which contain info about one specific miner fan.",
+        "required": [
+          "rpm"
+        ],
+        "properties": {
+          "position": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Fan positions/ID",
+            "minimum": 0
+          },
+          "rpm": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Actual fan RPM (Revolutions/Rotation Per Minute)",
+            "minimum": 0
+          },
+          "target_speed_ratio": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Actual fan speed ratio(PWM) in range 0.0 - 1.0"
+          }
+        }
+      },
+      "FixedShareRatio": {
+        "type": "object",
+        "description": "Structure for fixed share ratio load balance strategy\nFixed share ratio is value between 0.0 to 1.0 where 1.0 represents that all work is\ngenerated from the group",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "Frequency": {
+        "type": "object",
+        "required": [
+          "hertz"
+        ],
+        "properties": {
+          "hertz": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "FrequencyConstraints": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Frequency"
+              }
+            ]
+          },
+          "max": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Frequency"
+              }
+            ]
+          },
+          "min": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Frequency"
+              }
+            ]
+          }
+        }
+      },
+      "GetAutoUpgradeStatusResponse": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "last_execution": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              }
+            ]
+          },
+          "next_execution": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              }
+            ]
+          },
+          "schedule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AutoUpgradeSchedule"
+              }
+            ]
+          }
+        }
+      },
+      "GetConstraintsResponse": {
+        "type": "object",
+        "properties": {
+          "cooling_constraints": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CoolingConstraints",
+                "description": "Cooling constraints"
+              }
+            ]
+          },
+          "dps_constraints": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DpsConstraints",
+                "description": "Dynamic Performance scaling constraints"
+              }
+            ]
+          },
+          "hashboards_constraints": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HashboardConstraints",
+                "description": "Hashboard constraints"
+              }
+            ]
+          },
+          "tuner_constraints": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TunerConstraints",
+                "description": "Tuner constraints"
+              }
+            ]
+          }
+        }
+      },
+      "GetCoolingStateResponse": {
+        "type": "object",
+        "description": "Response to get current fan states and\ntemperature measurements",
+        "required": [
+          "fans"
+        ],
+        "properties": {
+          "fans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FanState"
+            },
+            "description": "All Fans state"
+          },
+          "highest_temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TemperatureSensor",
+                "description": "Sensor with current highest temperature"
+              }
+            ]
+          }
+        }
+      },
+      "GetErrorsResponse": {
+        "type": "object",
+        "required": [
+          "errors"
+        ],
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MinerError"
+            },
+            "description": "Array of errors"
+          }
+        }
+      },
+      "GetHashboardsResponse": {
+        "type": "object",
+        "required": [
+          "hashboards"
+        ],
+        "properties": {
+          "hashboards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Hashboard"
+            },
+            "description": "All HB details"
+          }
+        }
+      },
+      "GetLicenseStateResponse": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/State"
+              }
+            ]
+          }
+        }
+      },
+      "GetMinerConfigurationResponse": {
+        "type": "object",
+        "description": "Structure to return miner configuration",
+        "required": [
+          "pool_groups"
+        ],
+        "properties": {
+          "dps": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DpsConfiguration",
+                "description": "DPS configuration"
+              }
+            ]
+          },
+          "hashboard_config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HashboardPerformanceConfiguration",
+                "description": "Hashchain configuration"
+              }
+            ]
+          },
+          "pool_groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PoolGroupConfiguration"
+            },
+            "description": "Pool groups configuration"
+          },
+          "temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CoolingConfiguration",
+                "description": "Cooling configuration"
+              }
+            ]
+          },
+          "tuner": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TunerConfiguration",
+                "description": "Tuner configuration"
+              }
+            ]
+          }
+        }
+      },
+      "GetMinerDetailsResponse": {
+        "type": "object",
+        "description": "Structure to handle system details",
+        "required": [
+          "uid",
+          "platform",
+          "bos_mode",
+          "hostname",
+          "mac_address",
+          "system_uptime",
+          "bosminer_uptime_s",
+          "system_uptime_s",
+          "status",
+          "kernel_version",
+          "control_board_soc_family"
+        ],
+        "properties": {
+          "bos_mode": {
+            "type": "integer",
+            "format": "int32",
+            "description": "BOS Mode"
+          },
+          "bos_version": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BosVersion",
+                "description": "OS Version"
+              }
+            ]
+          },
+          "bosminer_uptime_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Bosminer uptime. `0` means bosminer is not running",
+            "minimum": 0
+          },
+          "control_board_soc_family": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Control board soc family"
+          },
+          "hostname": {
+            "type": "string",
+            "description": "Hostname"
+          },
+          "kernel_version": {
+            "type": "string",
+            "description": "Kernel version"
+          },
+          "mac_address": {
+            "type": "string",
+            "description": "MAC address"
+          },
+          "miner_identity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MinerIdentity",
+                "description": "Miner identity"
+              }
+            ]
+          },
+          "platform": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Miner platform"
+          },
+          "psu_info": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PsuInfo",
+                "description": "PSU details"
+              }
+            ]
+          },
+          "serial_number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Miner serial number"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Miner status"
+          },
+          "sticker_hashrate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate",
+                "description": "Miner hashrate declared by manufacturer"
+              }
+            ]
+          },
+          "system_uptime": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Deprecated: Use system_uptime_s",
+            "deprecated": true,
+            "minimum": 0
+          },
+          "system_uptime_s": {
+            "type": "integer",
+            "format": "int64",
+            "description": "System uptime",
+            "minimum": 0
+          },
+          "uid": {
+            "type": "string",
+            "description": "Miner ID"
+          }
+        }
+      },
+      "GetMinerStatsResponse": {
+        "type": "object",
+        "properties": {
+          "miner_stats": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WorkSolverStats",
+                "description": "Miner hashrate statistics"
+              }
+            ]
+          },
+          "pool_stats": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PoolStats",
+                "description": "Aggregate pool statistic"
+              }
+            ]
+          },
+          "power_stats": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MinerPowerStats",
+                "description": "Miner power stats"
+              }
+            ]
+          }
+        }
+      },
+      "GetMinerStatusResponse": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "GetNetworkInfoResponse": {
+        "type": "object",
+        "description": "Response message for GetCurrentNetworkConfiguration\nRepresents the current network configuration for the default network interface.\nOnly IPv4 is supported.",
+        "required": [
+          "name",
+          "dns_servers",
+          "networks"
+        ],
+        "properties": {
+          "default_gateway": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Default gateway/route for the interface"
+          },
+          "dns_servers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of configured DNS servers"
+          },
+          "hostname": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Miner hostname"
+          },
+          "mac_address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "MAC address of the network interface"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the network interface"
+          },
+          "networks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IpNetwork"
+            },
+            "description": "List of assigned IP addresses"
+          },
+          "protocol": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Network protocol"
+          }
+        }
+      },
+      "GetSupportArchive": {
+        "type": "object",
+        "required": [
+          "format"
+        ],
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/SupportArchiveFormat"
+          }
+        }
+      },
+      "GetTunerStateResponse": {
+        "type": "object",
+        "description": "Response with the current tuner details",
+        "required": [
+          "overall_tuner_state"
+        ],
+        "properties": {
+          "mode_state": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModeState"
+              }
+            ]
+          },
+          "overall_tuner_state": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tuner state"
+          }
+        }
+      },
+      "GigaHashrate": {
+        "type": "object",
+        "required": [
+          "gigahash_per_second"
+        ],
+        "properties": {
+          "gigahash_per_second": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "Hashboard": {
+        "type": "object",
+        "description": "Structure to handle HB details",
+        "required": [
+          "id",
+          "enabled"
+        ],
+        "properties": {
+          "board_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Hashboard board name"
+          },
+          "board_temp": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature",
+                "description": "Board temperature"
+              }
+            ]
+          },
+          "chip_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Hashboard chip type"
+          },
+          "chips_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Number of chips",
+            "minimum": 0
+          },
+          "current_frequency": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Frequency",
+                "description": "Current HB frequency in Hz"
+              }
+            ]
+          },
+          "current_voltage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Voltage",
+                "description": "Current HB voltage in volts"
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Flag if HB is enabled"
+          },
+          "highest_chip_temp": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TemperatureSensor",
+                "description": "Highest chip temperature"
+              }
+            ]
+          },
+          "highest_outlet_temp": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature",
+                "description": "Highest outlet temperature"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "description": "Hashboard ID"
+          },
+          "lowest_inlet_temp": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature",
+                "description": "Lowest inlet temperature"
+              }
+            ]
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Hashboard model"
+          },
+          "serial_number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Hashboard serial number"
+          },
+          "stats": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WorkSolverStats",
+                "description": "Hashboard stats"
+              }
+            ]
+          }
+        }
+      },
+      "HashboardConfig": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Flag if HB si enabled"
+          },
+          "frequency": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Frequency",
+                "description": "Hashboard frequency"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "description": "Hashboard id"
+          },
+          "voltage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Voltage",
+                "description": "Hashboard voltage"
+              }
+            ]
+          }
+        }
+      },
+      "HashboardConstraints": {
+        "type": "object",
+        "required": [
+          "hashboard_ids"
+        ],
+        "properties": {
+          "enabled": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BooleanConstraint",
+                "description": "Default value for flag if hashboards are enabled"
+              }
+            ]
+          },
+          "frequency": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FrequencyConstraints",
+                "description": "HB frequency constraints"
+              }
+            ]
+          },
+          "hashboard_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of possible HB indices"
+          },
+          "quick_ramping_time_s": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UInt32Constraints",
+                "description": "Quick ramping time constraints in seconds. Used in curtailments"
+              }
+            ]
+          },
+          "voltage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VoltageConstraints",
+                "description": "HB frequency constraints"
+              }
+            ]
+          }
+        }
+      },
+      "HashboardEnableState": {
+        "type": "object",
+        "required": [
+          "id",
+          "is_enabled"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Hashboard ID"
+          },
+          "is_enabled": {
+            "type": "boolean",
+            "description": "Flag if hashboard is enabled or not"
+          }
+        }
+      },
+      "HashboardPerformanceConfiguration": {
+        "type": "object",
+        "required": [
+          "hashboards"
+        ],
+        "properties": {
+          "global_frequency": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Frequency",
+                "description": "Common frequency for all HB"
+              }
+            ]
+          },
+          "global_voltage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Voltage",
+                "description": "Common voltage for all HB"
+              }
+            ]
+          },
+          "hashboards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HashboardConfig"
+            },
+            "description": "Per hashboard frequency/voltage. It has higher priority than global one"
+          },
+          "quick_ramping_time_down_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Quick ramping time down in seconds. Used in curtailments",
+            "minimum": 0
+          },
+          "quick_ramping_time_up_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Quick ramping time up in seconds. Used in curtailments",
+            "minimum": 0
+          }
+        }
+      },
+      "HashboardPerformanceSettings": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "frequency": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Frequency",
+                "description": "Hashboard frequency"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "description": "Hashboard id"
+          },
+          "voltage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Voltage",
+                "description": "Hashboard voltage"
+              }
+            ]
+          }
+        }
+      },
+      "HashrateConstraints": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate"
+              }
+            ]
+          },
+          "max": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate"
+              }
+            ]
+          },
+          "min": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate"
+              }
+            ]
+          }
+        }
+      },
+      "HashrateTargetMode": {
+        "type": "object",
+        "properties": {
+          "hashrate_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate",
+                "description": "Hashrate target"
+              }
+            ]
+          }
+        }
+      },
+      "HashrateTargetModeState": {
+        "type": "object",
+        "properties": {
+          "current_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate",
+                "description": "Current hashrate target"
+              }
+            ]
+          },
+          "profile": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HashrateTargetProfile",
+                "description": "Currently used profile"
+              }
+            ]
+          }
+        }
+      },
+      "HashrateTargetProfile": {
+        "type": "object",
+        "description": "Structure to handle hashrate target profile",
+        "properties": {
+          "created": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Timestamp",
+                "description": "Creation timestamp"
+              }
+            ]
+          },
+          "estimated_power_consumption": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Estimated power consumption"
+              }
+            ]
+          },
+          "measured_hashrate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate",
+                "description": "Measured hashrate"
+              }
+            ]
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate",
+                "description": "Tuned hashrate target"
+              }
+            ]
+          }
+        }
+      },
+      "Hours": {
+        "type": "object",
+        "required": [
+          "hours"
+        ],
+        "properties": {
+          "hours": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "IpNetwork": {
+        "type": "object",
+        "required": [
+          "address",
+          "netmask"
+        ],
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "netmask": {
+            "type": "string"
+          }
+        }
+      },
+      "LimitedLicense": {
+        "type": "object"
+      },
+      "ListTargetProfilesRequest": {
+        "type": "object"
+      },
+      "LoadBalanceStrategy": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "quota"
+            ],
+            "properties": {
+              "quota": {
+                "$ref": "#/components/schemas/Quota"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "fixedshareratio"
+            ],
+            "properties": {
+              "fixedshareratio": {
+                "$ref": "#/components/schemas/FixedShareRatio"
+              }
+            }
+          }
+        ],
+        "description": "Group load balance strategy"
+      },
+      "LoginRequest": {
+        "type": "object",
+        "description": "Request for login action.",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "description": "Response for login action.",
+        "required": [
+          "token",
+          "timeout_s"
+        ],
+        "properties": {
+          "timeout_s": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Authentication token validity/timeout in seconds.\nToken validity refreshed to this value with each request.",
+            "minimum": 0
+          },
+          "token": {
+            "type": "string",
+            "description": "Token to be used for authentication"
+          }
+        }
+      },
+      "ManualPauseMode": {
+        "type": "object",
+        "description": "Manual pause mode runs with defined fixed fans speed and either turns off after a certain period of time\nor runs indefinitely according to fan_runtime settings",
+        "properties": {
+          "fan_pause_runtime": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Controls how long fans run at the fixed speed before turning off.<br>\n1 = FAN_PAUSE_RUNTIME_LIMITED - fans run for a limited duration (see `fan_pause_runtime_limited_duration_s` in `CoolingConstraints`) then turn off<br>\n2 = FAN_PAUSE_RUNTIME_INDEFINITE - fans run indefinitely at the fixed speed until miner is resumed"
+          },
+          "pause_cooldown_fan_speed_ratio": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "User defined pause cooldown fan speed expressed as a ratio between 0.0 and 1.0\nwhere 0.0 means completely turned off and\n1.0 means running at full speed possible"
+          }
+        }
+      },
+      "ManualPerformanceMode": {
+        "type": "object",
+        "required": [
+          "hashboards"
+        ],
+        "properties": {
+          "global_frequency": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Frequency",
+                "description": "Global hashboard frequency"
+              }
+            ]
+          },
+          "global_voltage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Voltage",
+                "description": "Global hashboard voltage"
+              }
+            ]
+          },
+          "hashboards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HashboardPerformanceSettings"
+            },
+            "description": "Per hashboard frequency/voltage. It has higher priority than global one"
+          }
+        }
+      },
+      "MegaHashrate": {
+        "type": "object",
+        "required": [
+          "megahash_per_second"
+        ],
+        "properties": {
+          "megahash_per_second": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "MinerError": {
+        "type": "object",
+        "required": [
+          "timestamp",
+          "message",
+          "error_codes",
+          "components"
+        ],
+        "properties": {
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Component"
+            }
+          },
+          "error_codes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErrorCode"
+            }
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        }
+      },
+      "MinerIdentity": {
+        "type": "object",
+        "required": [
+          "brand",
+          "model",
+          "name",
+          "miner_model"
+        ],
+        "properties": {
+          "brand": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "miner_model": {
+            "type": "string"
+          },
+          "model": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Deprecated: Use miner_model instead.\nThis field is no longer supported.",
+            "deprecated": true
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "MinerPowerStats": {
+        "type": "object",
+        "properties": {
+          "approximated_consumption": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Miner approximated power consumption."
+              }
+            ]
+          },
+          "efficiency": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PowerEfficiency",
+                "description": "Miner power efficiency"
+              }
+            ]
+          }
+        }
+      },
+      "ModeState": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "powertargetmodestate"
+            ],
+            "properties": {
+              "powertargetmodestate": {
+                "$ref": "#/components/schemas/PowerTargetModeState"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "hashratetargetmodestate"
+            ],
+            "properties": {
+              "hashratetargetmodestate": {
+                "$ref": "#/components/schemas/HashrateTargetModeState"
+              }
+            }
+          }
+        ]
+      },
+      "MonthlySchedule": {
+        "type": "object",
+        "properties": {
+          "day_of_month": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Artificially limited to 1-28 to cover all months",
+            "minimum": 0
+          },
+          "time": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpgradeTime"
+              }
+            ]
+          }
+        }
+      },
+      "NetworkConfiguration": {
+        "type": "object",
+        "required": [
+          "hostname"
+        ],
+        "properties": {
+          "hostname": {
+            "type": "string",
+            "description": "Hostname"
+          },
+          "protocol": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/NetworkConfigurationProtocol",
+                "description": "Network protocol"
+              }
+            ]
+          }
+        }
+      },
+      "NetworkConfigurationProtocol": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "dhcp"
+            ],
+            "properties": {
+              "dhcp": {
+                "$ref": "#/components/schemas/Dhcp"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "static"
+            ],
+            "properties": {
+              "static": {
+                "$ref": "#/components/schemas/Static"
+              }
+            }
+          }
+        ],
+        "description": "Network protocol"
+      },
+      "NoneLicense": {
+        "type": "object",
+        "required": [
+          "time_to_restricted"
+        ],
+        "properties": {
+          "time_to_restricted": {
+            "type": "integer",
+            "format": "int32",
+            "description": "BOS Initialization timeout - number of seconds elapsed since bosminer start\ni.e., number of seconds BOS will start mining in restricted mode burning 5% of hashrate\nFor more, see Section 3.10 of <https://braiins.com/os/plus/license>",
+            "minimum": 0
+          }
+        }
+      },
+      "PauseMode": {
+        "type": "object",
+        "description": "Pause mode to control fans behaviour after you pause the miner",
+        "properties": {
+          "mode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PauseModeMode"
+              }
+            ]
+          }
+        }
+      },
+      "PauseModeMode": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "auto"
+            ],
+            "properties": {
+              "auto": {
+                "$ref": "#/components/schemas/AutoPauseMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "manual"
+            ],
+            "properties": {
+              "manual": {
+                "$ref": "#/components/schemas/ManualPauseMode"
+              }
+            }
+          }
+        ]
+      },
+      "PerformanceModeMode": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "manualmode"
+            ],
+            "properties": {
+              "manualmode": {
+                "$ref": "#/components/schemas/ManualPerformanceMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "tunermode"
+            ],
+            "properties": {
+              "tunermode": {
+                "$ref": "#/components/schemas/TunerPerformanceMode"
+              }
+            }
+          }
+        ]
+      },
+      "Pool": {
+        "type": "object",
+        "description": "Structure handle information about configured pool",
+        "required": [
+          "uid",
+          "url",
+          "user",
+          "enabled",
+          "alive",
+          "active"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "Flag if pool is active (running)"
+          },
+          "alive": {
+            "type": "boolean",
+            "description": "Flag if pool is alive"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Flag if pool connection is enabled"
+          },
+          "stats": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PoolStats",
+                "description": "Pool stats"
+              }
+            ]
+          },
+          "uid": {
+            "type": "string",
+            "description": "Pool connection id"
+          },
+          "url": {
+            "type": "string",
+            "description": "Pool connection URL"
+          },
+          "user": {
+            "type": "string",
+            "description": "Pool connection user"
+          }
+        }
+      },
+      "PoolConfiguration": {
+        "type": "object",
+        "description": "Structure handle information about configured pool",
+        "required": [
+          "url",
+          "user"
+        ],
+        "properties": {
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Flag if pool connection is enabled"
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pool connection password if set"
+          },
+          "uid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pool connection id<br>\nIf this struct is used when creating a new Pool Configuration, this field must not be specified (it will be generated)<br>\nIf this struct is used when updating an existing configuration, this field must be specified and represents unique id of pool which will be updated"
+          },
+          "url": {
+            "type": "string",
+            "description": "Pool connection URL"
+          },
+          "user": {
+            "type": "string",
+            "description": "Pool connection user"
+          }
+        }
+      },
+      "PoolGroup": {
+        "type": "object",
+        "description": "Structure handle all pool group details",
+        "required": [
+          "name",
+          "pools",
+          "uid"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Group name"
+          },
+          "pools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Pool"
+            },
+            "description": "Group pools"
+          },
+          "strategy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Strategy",
+                "description": "Load balancing strategy"
+              }
+            ]
+          },
+          "uid": {
+            "type": "string",
+            "description": "Group id"
+          }
+        }
+      },
+      "PoolGroupConfiguration": {
+        "type": "object",
+        "description": "Structure handle configured mining group",
+        "required": [
+          "name",
+          "pools"
+        ],
+        "properties": {
+          "load_balance_strategy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LoadBalanceStrategy",
+                "description": "Group load balance strategy"
+              }
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "Group name"
+          },
+          "pools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PoolConfiguration"
+            },
+            "description": "Group pools"
+          },
+          "uid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Group id<br>\ngRPC: If this struct is used when creating a new Pool Group, this field must not be specified (it will be generated)<br>\ngRPC: If this struct is used when updating an existing Pool Group, this field must be specified and represents unique id of Pool group which will be updated<br>\nREST: If this struct is used when creating a new Pool Group, this field must not be specified (it will be generated)<br>\nREST: If this struct is used when updating an existing Pool Group, this field must not be specified, uid in URL must be specified and represents unique id of Pool group which will be updated"
+          }
+        }
+      },
+      "PoolStats": {
+        "type": "object",
+        "description": "Structure handle pool statistics",
+        "required": [
+          "accepted_shares",
+          "rejected_shares",
+          "stale_shares",
+          "last_difficulty",
+          "best_share",
+          "generated_work",
+          "best_share_str"
+        ],
+        "properties": {
+          "accepted_shares": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Accepted shares",
+            "minimum": 0
+          },
+          "best_share": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Best share (deprecated: may overflow for values > 2^64-1, use best_share_str instead)",
+            "deprecated": true,
+            "minimum": 0
+          },
+          "best_share_str": {
+            "type": "string",
+            "description": "Best share as decimal string"
+          },
+          "generated_work": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Generated work",
+            "minimum": 0
+          },
+          "last_difficulty": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Last difficulty",
+            "minimum": 0
+          },
+          "last_share_time": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Timestamp",
+                "description": "Last share time"
+              }
+            ]
+          },
+          "rejected_shares": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Rejected shares",
+            "minimum": 0
+          },
+          "stale_shares": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Stale shares",
+            "minimum": 0
+          }
+        }
+      },
+      "Power": {
+        "type": "object",
+        "required": [
+          "watt"
+        ],
+        "properties": {
+          "watt": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "PowerConstraints": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power"
+              }
+            ]
+          },
+          "max": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power"
+              }
+            ]
+          },
+          "min": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power"
+              }
+            ]
+          }
+        }
+      },
+      "PowerEfficiency": {
+        "type": "object",
+        "required": [
+          "joule_per_terahash"
+        ],
+        "properties": {
+          "joule_per_terahash": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PowerTargetMode": {
+        "type": "object",
+        "properties": {
+          "power_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Power target"
+              }
+            ]
+          }
+        }
+      },
+      "PowerTargetModeState": {
+        "type": "object",
+        "properties": {
+          "current_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Current power target"
+              }
+            ]
+          },
+          "profile": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PowerTargetProfile",
+                "description": "current power target profile"
+              }
+            ]
+          }
+        }
+      },
+      "PowerTargetProfile": {
+        "type": "object",
+        "description": "Structure to handle power target profile",
+        "properties": {
+          "created": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Timestamp",
+                "description": "Creation timestamp"
+              }
+            ]
+          },
+          "estimated_power_consumption": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Estimated power consumption"
+              }
+            ]
+          },
+          "measured_hashrate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate",
+                "description": "Measured hashrate"
+              }
+            ]
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Tuned power target"
+              }
+            ]
+          }
+        }
+      },
+      "PsuInfo": {
+        "type": "object",
+        "properties": {
+          "fw_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "PSU firmware version identifier",
+            "minimum": 0
+          },
+          "max_voltage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Voltage",
+                "description": "Maximal voltage that can be set in volts"
+              }
+            ]
+          },
+          "min_voltage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Voltage",
+                "description": "Minimal voltage that can be set in volts"
+              }
+            ]
+          },
+          "model_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PSU model/version name in human-readable form (e.g. \"APW121215b\")"
+          },
+          "serial_number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PSU serial number (e.g. \"DGAH335BDJDJG0782\")"
+          },
+          "version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "PSU hardware version identifier",
+            "minimum": 0
+          }
+        }
+      },
+      "QuickRampingResponse": {
+        "type": "object",
+        "required": [
+          "up_s",
+          "down_s"
+        ],
+        "properties": {
+          "down_s": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quick ramping time down in seconds when PAUSING the miner. Sets how fast the miner will power off. Used in curtailments",
+            "minimum": 0
+          },
+          "up_s": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quick ramping time up in seconds when RESUMING the miner. Sets how fast the miner will power up. Used in curtailments",
+            "minimum": 0
+          }
+        }
+      },
+      "Quota": {
+        "type": "object",
+        "description": "Structure for quota load balance strategy",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "RealHashrate": {
+        "type": "object",
+        "description": "Structure which contains HB real hashrate stats.",
+        "properties": {
+          "last_15m": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate"
+              }
+            ]
+          },
+          "last_15s": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate"
+              }
+            ]
+          },
+          "last_1h": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate"
+              }
+            ]
+          },
+          "last_1m": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate"
+              }
+            ]
+          },
+          "last_24h": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate"
+              }
+            ]
+          },
+          "last_30m": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate"
+              }
+            ]
+          },
+          "last_30s": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate"
+              }
+            ]
+          },
+          "last_5m": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate"
+              }
+            ]
+          },
+          "last_5s": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate"
+              }
+            ]
+          },
+          "since_restart": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate"
+              }
+            ]
+          }
+        }
+      },
+      "ScheduleType": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "daily"
+            ],
+            "properties": {
+              "daily": {
+                "$ref": "#/components/schemas/DailySchedule"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "weekly"
+            ],
+            "properties": {
+              "weekly": {
+                "$ref": "#/components/schemas/WeeklySchedule"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "monthly"
+            ],
+            "properties": {
+              "monthly": {
+                "$ref": "#/components/schemas/MonthlySchedule"
+              }
+            }
+          }
+        ]
+      },
+      "SetCoolingModeRequestMode": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "auto"
+            ],
+            "properties": {
+              "auto": {
+                "$ref": "#/components/schemas/CoolingAutoMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "manual"
+            ],
+            "properties": {
+              "manual": {
+                "$ref": "#/components/schemas/CoolingManualMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "immersion"
+            ],
+            "properties": {
+              "immersion": {
+                "$ref": "#/components/schemas/CoolingImmersionMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "hydro"
+            ],
+            "properties": {
+              "hydro": {
+                "$ref": "#/components/schemas/CoolingHydroMode"
+              }
+            }
+          }
+        ],
+        "description": "Cooling mode to set. If the cooling mode is changed, all fields that aren't relevant to the new mode are reset to default values.\nIf the cooling mode values are updated, the new values are applied to the current mode."
+      },
+      "SetCoolingModeResponseMode": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "auto"
+            ],
+            "properties": {
+              "auto": {
+                "$ref": "#/components/schemas/CoolingAutoMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "manual"
+            ],
+            "properties": {
+              "manual": {
+                "$ref": "#/components/schemas/CoolingManualMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "immersion"
+            ],
+            "properties": {
+              "immersion": {
+                "$ref": "#/components/schemas/CoolingImmersionMode"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "hydro"
+            ],
+            "properties": {
+              "hydro": {
+                "$ref": "#/components/schemas/CoolingHydroMode"
+              }
+            }
+          }
+        ],
+        "description": "The resulting cooling mode"
+      },
+      "SetDpsRequestRest": {
+        "type": "object",
+        "properties": {
+          "enable": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Flag if Dynamic Performance Scaling should be enabled"
+          },
+          "enable_shutdown": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Flag if shutdown for Dynamic Performance Scaling should be enabled"
+          },
+          "mode": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Dynamic Performance Scaling mode"
+          },
+          "on_start_target_percent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Initial target for Dynamic Performance Scaling in percent",
+            "minimum": 0
+          },
+          "save_action": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Save action (deprecated, value is ignored)",
+            "deprecated": true
+          },
+          "shutdown_duration": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Hours",
+                "description": "Dynamic Performance Scaling shutdown duration"
+              }
+            ]
+          },
+          "target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DpsTarget",
+                "description": "Dynamic Performance Scaling target"
+              }
+            ]
+          }
+        }
+      },
+      "SetDpsResponse": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Flag if Dynamic Performance Scaling is enabled"
+          },
+          "hashrate_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DpsHashrateTarget",
+                "description": "Dynamic Performance Scaling hashrate target"
+              }
+            ]
+          },
+          "mode": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Dynamic Performance Scaling mode"
+          },
+          "on_start_target_percent": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Initial target for Dynamic Performance Scaling in percent",
+            "minimum": 0
+          },
+          "power_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DpsPowerTarget",
+                "description": "Dynamic Performance Scaling Power target"
+              }
+            ]
+          },
+          "shutdown_duration": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Hours",
+                "description": "Dynamic Performance Scaling shutdown duration"
+              }
+            ]
+          },
+          "shutdown_enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Flag if shutdown for Dynamic Performance Scaling should be enabled"
+          }
+        }
+      },
+      "SetNetworkConfigurationRequest": {
+        "type": "object",
+        "properties": {
+          "hostname": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Hostname. Existing value will be preserved if this field is not set."
+          },
+          "protocol": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SetNetworkConfigurationRequestProtocol",
+                "description": "Network protocol. Existing value will be preserved if this field is not set."
+              }
+            ]
+          }
+        }
+      },
+      "SetNetworkConfigurationRequestProtocol": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "dhcp"
+            ],
+            "properties": {
+              "dhcp": {
+                "$ref": "#/components/schemas/Dhcp"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "static"
+            ],
+            "properties": {
+              "static": {
+                "$ref": "#/components/schemas/Static"
+              }
+            }
+          }
+        ],
+        "description": "Network protocol. Existing value will be preserved if this field is not set."
+      },
+      "SetPasswordRequest": {
+        "type": "object",
+        "description": "Request for set password action.",
+        "properties": {
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SetQuickRampingRequestRest": {
+        "type": "object",
+        "required": [
+          "up_s",
+          "down_s"
+        ],
+        "properties": {
+          "down_s": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "up_s": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "SetRelativeTargetRequestRest": {
+        "type": "object",
+        "required": [
+          "percentage",
+          "reference"
+        ],
+        "properties": {
+          "percentage": {
+            "type": "number",
+            "format": "double",
+            "description": "Percentage value to set (e.g., 85.5 for 85.5%)"
+          },
+          "reference": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Reference point from which the percentage is calculated<br>\n1 = nominal - use nominal (sticker) power/hashrate target as the reference<br>\n2 = min - use minimal power/hashrate target as the reference<br>\n3 = max - use maximal power/hashrate target as the reference<br>\n4 = current - use current power/hashrate target as the reference<br>"
+          }
+        }
+      },
+      "State": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "properties": {
+              "none": {
+                "$ref": "#/components/schemas/NoneLicense"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "limited"
+            ],
+            "properties": {
+              "limited": {
+                "$ref": "#/components/schemas/LimitedLicense"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "valid"
+            ],
+            "properties": {
+              "valid": {
+                "$ref": "#/components/schemas/ValidLicense"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "expired"
+            ],
+            "properties": {
+              "expired": {
+                "$ref": "#/components/schemas/ExpiredLicense"
+              }
+            }
+          }
+        ]
+      },
+      "Static": {
+        "type": "object",
+        "required": [
+          "address",
+          "netmask",
+          "gateway",
+          "dns_servers"
+        ],
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "IP address"
+          },
+          "dns_servers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "DNS servers"
+          },
+          "gateway": {
+            "type": "string",
+            "description": "Gateway"
+          },
+          "netmask": {
+            "type": "string",
+            "description": "Netmask"
+          }
+        }
+      },
+      "Strategy": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "quota"
+            ],
+            "properties": {
+              "quota": {
+                "$ref": "#/components/schemas/Quota"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "fixedshareratio"
+            ],
+            "properties": {
+              "fixedshareratio": {
+                "$ref": "#/components/schemas/FixedShareRatio"
+              }
+            }
+          }
+        ],
+        "description": "Load balancing strategy"
+      },
+      "SupportArchiveFormat": {
+        "type": "string",
+        "description": "Enumeration for support archive format",
+        "enum": [
+          "unspecified",
+          "zip",
+          "bos",
+          "zipencrypted"
+        ]
+      },
+      "SystemUpgradeMetadata": {
+        "type": "object",
+        "required": [
+          "size",
+          "hash",
+          "discard_settings",
+          "disable_cleanup"
+        ],
+        "properties": {
+          "disable_cleanup": {
+            "type": "boolean",
+            "description": "Flag if should disable cleanup of directory, in which uploaded firmware is stored (default is false and do cleanup)"
+          },
+          "discard_settings": {
+            "type": "boolean",
+            "description": "Flag if should discard settings (default is false and keep settings)"
+          },
+          "hash": {
+            "type": "string",
+            "description": "Firmware hash (SHA256 hex encoded)"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Firmware size (bytes)",
+            "minimum": 0
+          }
+        }
+      },
+      "SystemUpgradeRequestRest": {
+        "type": "object",
+        "required": [
+          "metadata",
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 0
+              }
+            }
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/SystemUpgradeMetadata"
+          }
+        }
+      },
+      "Temperature": {
+        "type": "object",
+        "required": [
+          "degree_c"
+        ],
+        "properties": {
+          "degree_c": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "TemperatureConstraints": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature"
+              }
+            ]
+          },
+          "max": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature"
+              }
+            ]
+          },
+          "min": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature"
+              }
+            ]
+          }
+        }
+      },
+      "TemperatureSensor": {
+        "type": "object",
+        "required": [
+          "location"
+        ],
+        "properties": {
+          "id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Sensor id",
+            "minimum": 0
+          },
+          "location": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Sensor location"
+          },
+          "temperature": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Temperature",
+                "description": "Temperature"
+              }
+            ]
+          }
+        }
+      },
+      "TeraHashrate": {
+        "type": "object",
+        "required": [
+          "terahash_per_second"
+        ],
+        "properties": {
+          "terahash_per_second": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "Timestamp": {
+        "type": "object",
+        "description": "Custom version of google.protobuf.Timestamp\nIt is used only during compilation to replace google.protobuf.Timestamp to\nenable traits for de/serialization and for generating documentation",
+        "required": [
+          "seconds",
+          "nanos"
+        ],
+        "properties": {
+          "nanos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seconds": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "TunerConfiguration": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Flag if tuner is enabled"
+          },
+          "hashrate_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TeraHashrate",
+                "description": "Tuner hashrate target"
+              }
+            ]
+          },
+          "power_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Power",
+                "description": "Tuner power target"
+              }
+            ]
+          },
+          "tuner_mode": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Tuner mode"
+          }
+        }
+      },
+      "TunerConstraints": {
+        "type": "object",
+        "required": [
+          "default_mode"
+        ],
+        "properties": {
+          "default_mode": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Default tuner mode"
+          },
+          "enabled": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BooleanConstraint",
+                "description": "Tuner enabled enabled default value"
+              }
+            ]
+          },
+          "hashrate_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HashrateConstraints",
+                "description": "Tuner hashrate target mode constraints"
+              }
+            ]
+          },
+          "power_target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PowerConstraints",
+                "description": "Tuner power target mode constraints"
+              }
+            ]
+          }
+        }
+      },
+      "TunerPerformanceMode": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TunerPerformanceModeTarget"
+              }
+            ]
+          }
+        }
+      },
+      "TunerPerformanceModeTarget": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Tuner power target",
+            "required": [
+              "powertarget"
+            ],
+            "properties": {
+              "powertarget": {
+                "$ref": "#/components/schemas/PowerTargetMode",
+                "description": "Tuner power target"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Tuner hashrate target",
+            "required": [
+              "hashratetarget"
+            ],
+            "properties": {
+              "hashratetarget": {
+                "$ref": "#/components/schemas/HashrateTargetMode",
+                "description": "Tuner hashrate target"
+              }
+            }
+          }
+        ]
+      },
+      "UInt32Constraints": {
+        "type": "object",
+        "required": [
+          "default",
+          "min",
+          "max"
+        ],
+        "properties": {
+          "default": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "max": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "min": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "UpdateAutoUpgradeConfigRequest": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "schedule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AutoUpgradeSchedule"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateHashboards": {
+        "type": "object",
+        "required": [
+          "hashboard_ids",
+          "enable"
+        ],
+        "properties": {
+          "enable": {
+            "type": "boolean"
+          },
+          "hashboard_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "UpgradeTime": {
+        "type": "object",
+        "required": [
+          "hours",
+          "minutes"
+        ],
+        "properties": {
+          "hours": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Hours of day in 24 hour format. Must be from 0 to 23.",
+            "minimum": 0
+          },
+          "minutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes of hour of day. Must be from 0 to 59.",
+            "minimum": 0
+          },
+          "seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Seconds of minutes of the time. Can be from 0 to 59.",
+            "minimum": 0
+          }
+        }
+      },
+      "ValidLicense": {
+        "type": "object",
+        "required": [
+          "type",
+          "contract_name",
+          "time_to_restricted"
+        ],
+        "properties": {
+          "contract_name": {
+            "type": "string",
+            "description": "Contract name"
+          },
+          "dev_fee": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BasesPoints",
+                "description": "Defines how much DevFee should be generated by the device."
+              }
+            ]
+          },
+          "time_to_restricted": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Current license expiration - number of seconds since the moment the license was received\ni.e., number of seconds BOS will start mining in restricted mode burning 15% of hashrate",
+            "minimum": 0
+          },
+          "type": {
+            "type": "integer",
+            "format": "int32",
+            "description": "License type"
+          }
+        }
+      },
+      "Voltage": {
+        "type": "object",
+        "required": [
+          "volt"
+        ],
+        "properties": {
+          "volt": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "VoltageConstraints": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Voltage"
+              }
+            ]
+          },
+          "max": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Voltage"
+              }
+            ]
+          },
+          "min": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Voltage"
+              }
+            ]
+          }
+        }
+      },
+      "WeeklySchedule": {
+        "type": "object",
+        "properties": {
+          "day_of_week": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "time": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpgradeTime"
+              }
+            ]
+          }
+        }
+      },
+      "WorkSolverStats": {
+        "type": "object",
+        "description": "Structure to handle HB state",
+        "required": [
+          "found_blocks",
+          "best_share",
+          "best_share_str"
+        ],
+        "properties": {
+          "best_share": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Best share (deprecated: may overflow for values > 2^64-1, use best_share_str instead)",
+            "deprecated": true,
+            "minimum": 0
+          },
+          "best_share_str": {
+            "type": "string",
+            "description": "Best share as decimal string"
+          },
+          "error_hashrate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MegaHashrate",
+                "description": "Error hashrate"
+              }
+            ]
+          },
+          "found_blocks": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Found blocks",
+            "minimum": 0
+          },
+          "nominal_hashrate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GigaHashrate",
+                "description": "Nominal hashrate"
+              }
+            ]
+          },
+          "real_hashrate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RealHashrate",
+                "description": "Real hashrate"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

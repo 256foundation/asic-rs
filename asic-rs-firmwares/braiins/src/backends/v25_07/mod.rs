@@ -321,9 +321,9 @@ impl GetHashboards for BraiinsV2507 {
         for board in hashboards.iter_mut() {
             let Some(chain) = chains_array.iter().find(|c| {
                 c.pointer("/id")
-                    .and_then(|v| v.as_u64())
-                    .map(|id| id as u8 == board.position)
-                    .unwrap_or(false)
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| s.parse::<u8>().ok())
+                    .is_some_and(|id| id == board.position + 1)
             }) else {
                 continue;
             };
