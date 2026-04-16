@@ -1,5 +1,9 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
+use crate::{
+    backends::v21_09::{graphql::BraiinsGraphQLAPI, rpc::BraiinsRPCAPI, web::BraiinsWebAPI},
+    firmware::BraiinsFirmware,
+};
 use anyhow;
 use asic_rs_core::{
     config::{
@@ -25,19 +29,9 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use serde_json::{Value, json};
-use web::BraiinsWebAPI;
-
-use crate::{
-    backends::v21_09::{graphql::BraiinsGraphQLAPI, rpc::BraiinsRPCAPI},
-    firmware::BraiinsFirmware,
-};
-
-pub mod graphql;
-pub mod rpc;
-pub mod web;
 
 #[derive(Debug)]
-pub struct BraiinsV2109 {
+pub struct BraiinsV2503 {
     pub ip: IpAddr,
     pub rpc: BraiinsRPCAPI,
     pub graphql: BraiinsGraphQLAPI,
@@ -45,10 +39,10 @@ pub struct BraiinsV2109 {
     pub device_info: DeviceInfo,
 }
 
-impl BraiinsV2109 {
+impl BraiinsV2503 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
-        BraiinsV2109 {
+        BraiinsV2503 {
             ip,
             rpc: BraiinsRPCAPI::new(ip),
             graphql: BraiinsGraphQLAPI::new(ip, auth.clone()),
@@ -59,7 +53,7 @@ impl BraiinsV2109 {
 }
 
 #[async_trait]
-impl APIClient for BraiinsV2109 {
+impl APIClient for BraiinsV2503 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
@@ -70,20 +64,20 @@ impl APIClient for BraiinsV2109 {
     }
 }
 
-impl GetConfigsLocations for BraiinsV2109 {
+impl GetConfigsLocations for BraiinsV2503 {
     #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }
 }
 
-impl CollectConfigs for BraiinsV2109 {
+impl CollectConfigs for BraiinsV2503 {
     fn get_config_collector(&self) -> ConfigCollector<'_> {
         ConfigCollector::new(self)
     }
 }
 
-impl GetDataLocations for BraiinsV2109 {
+impl GetDataLocations for BraiinsV2503 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const GQL_SYSTEM: MinerCommand = MinerCommand::GraphQL {
             command: r#"{
@@ -116,7 +110,7 @@ impl GetDataLocations for BraiinsV2109 {
                                 name
                                 realHashrate { mhs5S }
                                 nominalMhs
-                                hwDetails { chips frequencyMhz voltageV }
+                                hwDetails { chips frequencyMhz voltageV hbSerialNumber }
                                 temperatures { name degreesC }
                             }
                         }
@@ -291,53 +285,53 @@ impl GetDataLocations for BraiinsV2109 {
     }
 }
 
-impl GetIP for BraiinsV2109 {
+impl GetIP for BraiinsV2503 {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
 
-impl GetDeviceInfo for BraiinsV2109 {
+impl GetDeviceInfo for BraiinsV2503 {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info.clone()
     }
 }
 
-impl CollectData for BraiinsV2109 {
+impl CollectData for BraiinsV2503 {
     fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self)
     }
 }
 
 #[async_trait]
-impl GetMAC for BraiinsV2109 {
+impl GetMAC for BraiinsV2503 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         data.extract::<String>(DataField::Mac)
             .and_then(|s| MacAddr::from_str(&s).ok())
     }
 }
 
-impl GetHostname for BraiinsV2109 {
+impl GetHostname for BraiinsV2503 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
     }
 }
 
-impl GetApiVersion for BraiinsV2109 {
+impl GetApiVersion for BraiinsV2503 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
     }
 }
 
-impl GetFirmwareVersion for BraiinsV2109 {
+impl GetFirmwareVersion for BraiinsV2503 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
 
-impl GetControlBoardVersion for BraiinsV2109 {}
+impl GetControlBoardVersion for BraiinsV2503 {}
 
-impl GetHashboards for BraiinsV2109 {
+impl GetHashboards for BraiinsV2503 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
             .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
@@ -388,6 +382,10 @@ impl GetHashboards for BraiinsV2109 {
                 }
             }
 
+            board.serial_number = solver
+                .pointer("/hwDetails/hbSerialNumber")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
             board.working_chips = solver
                 .pointer("/hwDetails/chips")
                 .and_then(|v| v.as_u64())
@@ -407,7 +405,7 @@ impl GetHashboards for BraiinsV2109 {
     }
 }
 
-impl GetHashrate for BraiinsV2109 {
+impl GetHashrate for BraiinsV2503 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
             value: f,
@@ -417,7 +415,7 @@ impl GetHashrate for BraiinsV2109 {
     }
 }
 
-impl GetExpectedHashrate for BraiinsV2109 {
+impl GetExpectedHashrate for BraiinsV2503 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
             value: f,
@@ -427,7 +425,7 @@ impl GetExpectedHashrate for BraiinsV2109 {
     }
 }
 
-impl GetFans for BraiinsV2109 {
+impl GetFans for BraiinsV2503 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let mut fans: Vec<FanData> = Vec::new();
 
@@ -450,30 +448,30 @@ impl GetFans for BraiinsV2109 {
     }
 }
 
-impl GetPsuFans for BraiinsV2109 {}
+impl GetPsuFans for BraiinsV2503 {}
 
-impl GetFluidTemperature for BraiinsV2109 {}
+impl GetFluidTemperature for BraiinsV2503 {}
 
-impl GetWattage for BraiinsV2109 {
+impl GetWattage for BraiinsV2503 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
 
-impl GetTuningTarget for BraiinsV2109 {
+impl GetTuningTarget for BraiinsV2503 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
             .map(TuningTarget::Power)
     }
 }
 
-impl GetLightFlashing for BraiinsV2109 {
+impl GetLightFlashing for BraiinsV2503 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)
     }
 }
 
-impl GetMessages for BraiinsV2109 {
+impl GetMessages for BraiinsV2503 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages: Vec<MinerMessage> = Vec::new();
 
@@ -506,19 +504,19 @@ impl GetMessages for BraiinsV2109 {
     }
 }
 
-impl GetUptime for BraiinsV2109 {
+impl GetUptime for BraiinsV2503 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
-impl GetIsMining for BraiinsV2109 {
+impl GetIsMining for BraiinsV2503 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.get(&DataField::IsMining).is_some_and(|v| !v.is_null())
     }
 }
 
-impl GetPools for BraiinsV2109 {
+impl GetPools for BraiinsV2503 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let mut pools: Vec<PoolGroupData> = Vec::new();
 
@@ -592,10 +590,10 @@ impl GetPools for BraiinsV2109 {
     }
 }
 
-impl GetSerialNumber for BraiinsV2109 {}
+impl GetSerialNumber for BraiinsV2503 {}
 
 #[async_trait]
-impl SetFaultLight for BraiinsV2109 {
+impl SetFaultLight for BraiinsV2503 {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         let mutation = r#"mutation ($enable: Boolean!) {
             bos {
@@ -619,7 +617,7 @@ impl SetFaultLight for BraiinsV2109 {
 }
 
 #[async_trait]
-impl SetPowerLimit for BraiinsV2109 {
+impl SetPowerLimit for BraiinsV2503 {
     async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
         let mutation = r#"mutation ($limit: Int!) {
             bosminer {
@@ -653,7 +651,7 @@ impl SetPowerLimit for BraiinsV2109 {
 }
 
 #[async_trait]
-impl Restart for BraiinsV2109 {
+impl Restart for BraiinsV2503 {
     async fn restart(&self) -> anyhow::Result<bool> {
         let mutation = r#"mutation {
             bos {
@@ -676,7 +674,7 @@ impl Restart for BraiinsV2109 {
 }
 
 #[async_trait]
-impl Pause for BraiinsV2109 {
+impl Pause for BraiinsV2503 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let mutation = r#"mutation {
@@ -700,7 +698,7 @@ impl Pause for BraiinsV2109 {
 }
 
 #[async_trait]
-impl Resume for BraiinsV2109 {
+impl Resume for BraiinsV2503 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let mutation = r#"mutation {
@@ -724,7 +722,7 @@ impl Resume for BraiinsV2109 {
 }
 
 #[async_trait]
-impl SupportsPoolsConfig for BraiinsV2109 {
+impl SupportsPoolsConfig for BraiinsV2503 {
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
         Ok(self
             .get_pools()
@@ -809,26 +807,26 @@ impl SupportsPoolsConfig for BraiinsV2109 {
 }
 
 #[async_trait]
-impl SupportsScalingConfig for BraiinsV2109 {
+impl SupportsScalingConfig for BraiinsV2503 {
     fn supports_scaling_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl UpgradeFirmware for BraiinsV2109 {
+impl UpgradeFirmware for BraiinsV2503 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
     }
 }
 
-impl HasDefaultAuth for BraiinsV2109 {
+impl HasDefaultAuth for BraiinsV2503 {
     fn default_auth() -> MinerAuth {
         MinerAuth::new("root", "")
     }
 }
 
-impl HasAuth for BraiinsV2109 {
+impl HasAuth for BraiinsV2503 {
     fn set_auth(&mut self, auth: MinerAuth) {
         self.web.set_auth(auth.clone());
         self.graphql.set_auth(auth);
@@ -836,181 +834,15 @@ impl HasAuth for BraiinsV2109 {
 }
 
 #[async_trait]
-impl SupportsTuningConfig for BraiinsV2109 {
+impl SupportsTuningConfig for BraiinsV2503 {
     fn supports_tuning_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsFanConfig for BraiinsV2109 {
+impl SupportsFanConfig for BraiinsV2503 {
     fn supports_fan_config(&self) -> bool {
         false
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use asic_rs_core::test::api::MockAPIClient;
-    use asic_rs_makes_antminer::models::AntMinerModel;
-
-    use super::*;
-    use crate::test::json::v21_09::{
-        GQL_BOARDS_COMMAND, GQL_POOLS_COMMAND, GQL_SYSTEM_COMMAND, VERSION_COMMAND,
-        WEB_NET_CONF_COMMAND,
-    };
-
-    #[tokio::test]
-    async fn test_braiins_os() {
-        let miner = BraiinsV2109::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S9);
-
-        let mut results = HashMap::new();
-
-        let gql_system_command = MinerCommand::GraphQL {
-            command: r#"{
-                bos {
-                    hostname
-                    faultLight
-                    info { version { full } }
-                    uptime { durationS }
-                }
-                bosminer {
-                    info {
-                        workSolver {
-                            realHashrate { mhs5S }
-                            nominalMhs
-                        }
-                        fans { name speed rpm }
-                        summary {
-                            power { limitW approxConsumptionW }
-                        }
-                    }
-                }
-            }"#,
-        };
-        let gql_boards_command = MinerCommand::GraphQL {
-            command: r#"{
-                bosminer {
-                    info {
-                        workSolver {
-                            childSolvers {
-                                name
-                                realHashrate { mhs5S }
-                                nominalMhs
-                                hwDetails { chips frequencyMhz voltageV }
-                                temperatures { name degreesC }
-                            }
-                        }
-                    }
-                }
-            }"#,
-        };
-        let gql_pools_command = MinerCommand::GraphQL {
-            command: r#"{
-                bosminer {
-                    config {
-                        ... on BosminerConfig {
-                            groups {
-                                id
-                                strategy {
-                                    ... on QuotaStrategy {
-                                        quota
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    info {
-                        poolGroups {
-                            name
-                            pools {
-                                url
-                                user
-                                status
-                                active
-                                shares { acceptedSolutions rejectedSolutions }
-                            }
-                        }
-                    }
-                }
-            }"#,
-        };
-        let rpc_version_command = MinerCommand::RPC {
-            command: "version",
-            parameters: None,
-        };
-        let web_net_conf_command = MinerCommand::WebAPI {
-            command: "admin/network/iface_status/lan",
-            parameters: None,
-        };
-
-        results.insert(
-            gql_system_command,
-            Value::from_str(GQL_SYSTEM_COMMAND).unwrap(),
-        );
-        results.insert(
-            gql_boards_command,
-            Value::from_str(GQL_BOARDS_COMMAND).unwrap(),
-        );
-        results.insert(
-            gql_pools_command,
-            Value::from_str(GQL_POOLS_COMMAND).unwrap(),
-        );
-        results.insert(
-            rpc_version_command,
-            Value::from_str(VERSION_COMMAND).unwrap(),
-        );
-        results.insert(
-            web_net_conf_command,
-            Value::from_str(WEB_NET_CONF_COMMAND).unwrap(),
-        );
-
-        let mock_api = MockAPIClient::new(results);
-
-        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
-        let data = collector.collect_all().await;
-
-        let miner_data = miner.parse_data(data);
-
-        assert_eq!(miner_data.ip.to_string(), "127.0.0.1".to_owned());
-        assert_eq!(
-            miner_data.mac,
-            Some(MacAddr::from_str("01:23:45:67:89:10").unwrap())
-        );
-        assert_eq!(miner_data.hostname, Some("miner-60726c".to_owned()));
-        assert_eq!(
-            miner_data.firmware_version,
-            Some("2022-09-13-0-11012d53-22.08-plus".to_owned())
-        );
-        assert_eq!(miner_data.hashboards.len(), 3);
-        assert_eq!(miner_data.total_chips, Some(189));
-        assert_eq!(miner_data.light_flashing, Some(false));
-        assert_eq!(miner_data.fans.len(), 2);
-        assert_eq!(miner_data.wattage, Some(Power::from_watts(735.0)));
-        assert_eq!(
-            miner_data.tuning_target,
-            Some(TuningTarget::Power(Power::from_watts(900.0)))
-        );
-        assert_eq!(
-            miner_data.expected_hashrate.unwrap(),
-            HashRate {
-                value: 7.24240252323,
-                unit: HashRateUnit::TeraHash,
-                algo: "SHA256".to_string(),
-            }
-        );
-        assert_eq!(
-            miner_data.hashrate.unwrap(),
-            HashRate {
-                value: 7.160208944955902,
-                unit: HashRateUnit::TeraHash,
-                algo: "SHA256".to_string(),
-            }
-        );
-        assert_eq!(miner_data.pools.len(), 2);
-        assert_eq!(miner_data.pools[0].len(), 1);
-        assert_eq!(miner_data.pools[1].len(), 1);
-        assert_eq!(miner_data.pools[0].quota, 1);
-        assert_eq!(miner_data.pools[1].quota, 1);
     }
 }
