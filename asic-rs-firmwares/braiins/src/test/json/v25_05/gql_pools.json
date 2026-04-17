@@ -1,1 +1,55 @@
-{"data":{"bosminer":{"config":{"groups":[{"id":"0","strategy":{"quota":1}}]},"info":{"poolGroups":[{"name":"foremanGroup","pools":[{"active":true,"shares":{"acceptedSolutions":92875,"rejectedSolutions":164},"status":"ALIVE","url":"stratum+tcp://example.pool.com:3333","user":"asic_rs.test"},{"active":false,"shares":{"acceptedSolutions":18,"rejectedSolutions":0},"status":"ALIVE","url":"stratum+tcp://example.pool2.com:3333","user":"asic_rs.test"},{"active":false,"shares":{"acceptedSolutions":6,"rejectedSolutions":0},"status":"ALIVE","url":"stratum+tcp://stratum.braiins.com:3333","user":"ICM"}]}]}}}}
+{
+  "data": {
+    "bosminer": {
+      "config": {
+        "groups": [
+          {
+            "id": "0",
+            "strategy": {
+              "quota": 1
+            }
+          }
+        ]
+      },
+      "info": {
+        "poolGroups": [
+          {
+            "name": "foremanGroup",
+            "pools": [
+              {
+                "active": true,
+                "shares": {
+                  "acceptedSolutions": 92875,
+                  "rejectedSolutions": 164
+                },
+                "status": "ALIVE",
+                "url": "stratum+tcp://example.pool.com:3333",
+                "user": "asic_rs.test"
+              },
+              {
+                "active": false,
+                "shares": {
+                  "acceptedSolutions": 18,
+                  "rejectedSolutions": 0
+                },
+                "status": "ALIVE",
+                "url": "stratum+tcp://example.pool2.com:3333",
+                "user": "asic_rs.test"
+              },
+              {
+                "active": false,
+                "shares": {
+                  "acceptedSolutions": 6,
+                  "rejectedSolutions": 0
+                },
+                "status": "ALIVE",
+                "url": "stratum+tcp://stratum.braiins.com:3333",
+                "user": "ICM"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

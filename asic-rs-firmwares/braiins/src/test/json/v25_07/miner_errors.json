@@ -1,0 +1,52 @@
+{
+  "errors": [
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-22T05:43:43.268950Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-22T05:44:14.317114Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-27T08:12:38.813916Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2015-01-01T00:00:37.638808Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2015-01-01T00:00:47.652530Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2015-01-01T00:01:10.020560Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2015-01-01T00:01:10.019820Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-04-08T08:03:18.155033Z"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "bos_mode": 4,
+  "bos_version": {
+    "bos_plus": true,
+    "current": "2025-08-06-0-3881c51d-25.07-plus",
+    "major": "2022-09-13-0-11012d53-22.08-plus"
+  },
+  "bosminer_uptime_s": 69685,
+  "control_board_soc_family": 3,
+  "hostname": "Antminer",
+  "kernel_version": "4.9.113",
+  "mac_address": "02:ee:da:a9:b6:4a",
+  "miner_identity": {
+    "brand": 1,
+    "miner_model": "Antminer S19 XP",
+    "model": 18,
+    "name": "Antminer S19 XP"
+  },
+  "platform": 4,
+  "psu_info": {
+    "fw_version": null,
+    "max_voltage": {
+      "volt": 15.2
+    },
+    "min_voltage": {
+      "volt": 11.96
+    },
+    "model_name": "APW121215d/e",
+    "serial_number": null,
+    "version": 117
+  },
+  "serial_number": null,
+  "status": 2,
+  "sticker_hashrate": {
+    "gigahash_per_second": 141000.0
+  },
+  "system_uptime": 69725,
+  "system_uptime_s": 69725,
+  "uid": "uUTHH0m8zu3DAak8"
+}

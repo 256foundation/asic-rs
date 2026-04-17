@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Default",
+    "pools": [
+      {
+        "active": true,
+        "alive": true,
+        "enabled": true,
+        "stats": {
+          "accepted_shares": 848,
+          "best_share": 499065300,
+          "best_share_str": "499065300",
+          "generated_work": 1787364554,
+          "last_difficulty": 524288,
+          "last_share_time": {
+            "nanos": 557322685,
+            "seconds": 1776445677
+          },
+          "rejected_shares": 0,
+          "stale_shares": 0
+        },
+        "uid": "r7ZTdqnV8s8JtY82",
+        "url": "stratum+tcp://example.pool.com:3333",
+        "user": "asic_rs.test"
+      },
+      {
+        "active": false,
+        "alive": true,
+        "enabled": true,
+        "stats": {
+          "accepted_shares": 0,
+          "best_share": 0,
+          "best_share_str": "0",
+          "generated_work": 0,
+          "last_difficulty": 262144,
+          "last_share_time": null,
+          "rejected_shares": 0,
+          "stale_shares": 0
+        },
+        "uid": "voc1A31EwtMcyFzC",
+        "url": "stratum+tcp://example.pool2.com:3333",
+        "user": "asic_rs.test"
+      }
+    ],
+    "strategy": {
+      "quota": {
+        "value": 1
+      }
+    },
+    "uid": "0"
+  }
+]

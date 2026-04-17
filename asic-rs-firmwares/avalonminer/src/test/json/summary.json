@@ -1,43 +1,45 @@
 {
-    "STATUS": [{
-            "STATUS": "S",
-            "When": 1753431516,
-            "Code": 11,
-            "Msg": "Summary",
-            "Description": "cgminer 4.11.1"
-        }
-    ],
-    "SUMMARY": [{
-            "Elapsed": 37714,
-            "MHS av": 44539601.86,
-            "MHS 5s": 0.00,
-            "MHS 1m": 0.00,
-            "MHS 5m": 0.06,
-            "Found Blocks": 0,
-            "MHS 15m": 52686.37,
-            "Getworks": 675,
-            "Accepted": 890,
-            "Rejected": 2,
-            "Hardware Errors": 0,
-            "Utility": 1.42,
-            "Discarded": 0,
-            "Stale": 0,
-            "Get Failures": 0,
-            "Local Work": 191427,
-            "Remote Failures": 0,
-            "Network Blocks": 68,
-            "Total MH": 1679772288024.0000,
-            "Work Utility": 623462.20,
-            "Difficulty Accepted": 368550176.00000000,
-            "Difficulty Rejected": 786432.00000000,
-            "Difficulty Stale": 0E-8,
-            "Best Share": 354914572,
-            "Device Hardware%": 0.0000,
-            "Device Rejected%": 0.2007,
-            "Pool Rejected%": 0.2129,
-            "Pool Stale%": 0.0000,
-            "Last getwork": 0
-        }
-    ],
-    "id": 1
+  "STATUS": [
+    {
+      "Code": 11,
+      "Description": "cgminer 4.11.1",
+      "Msg": "Summary",
+      "STATUS": "S",
+      "When": 1753431516
+    }
+  ],
+  "SUMMARY": [
+    {
+      "Accepted": 890,
+      "Best Share": 354914572,
+      "Device Hardware%": 0.0,
+      "Device Rejected%": 0.2007,
+      "Difficulty Accepted": 368550176.0,
+      "Difficulty Rejected": 786432.0,
+      "Difficulty Stale": 0.0,
+      "Discarded": 0,
+      "Elapsed": 37714,
+      "Found Blocks": 0,
+      "Get Failures": 0,
+      "Getworks": 675,
+      "Hardware Errors": 0,
+      "Last getwork": 0,
+      "Local Work": 191427,
+      "MHS 15m": 52686.37,
+      "MHS 1m": 0.0,
+      "MHS 5m": 0.06,
+      "MHS 5s": 0.0,
+      "MHS av": 44539601.86,
+      "Network Blocks": 68,
+      "Pool Rejected%": 0.2129,
+      "Pool Stale%": 0.0,
+      "Rejected": 2,
+      "Remote Failures": 0,
+      "Stale": 0,
+      "Total MH": 1679772288024.0,
+      "Utility": 1.42,
+      "Work Utility": 623462.2
+    }
+  ],
+  "id": 1
 }

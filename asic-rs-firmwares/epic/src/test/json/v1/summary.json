@@ -1,1 +1,175 @@
-{"Status":{"Operating State":"Mining","Last Command":null,"Last Command Result":null,"Last Error":null},"Hostname":"cminer32092035","PresetInfo":{"Target Power":3000},"Software":"PowerPlay-BMS v1.5.13","OS Type":"umcOS","Mining":{"Coin":"BTC","Algorithm":"SHA-256"},"Stratum":{"Config Id":0,"Current Pool":"mine.ocean.xyz:3334","Current User":"randomuser.randomworker-0x81x19","IsPoolConnected":true,"Average Latency":0.038288616,"Worker Unique Id":true,"Worker Unique Id Variant":"IpAddress"},"Session":{"Startup Timestamp":1755111589,"Startup String":"Wed, 13 Aug 2025 18:59:49 +0000","Uptime":23170,"Last Work Timestamp":1755134725,"Last Work Timer":34,"WorkReceived":641,"Active HBs":2,"Average MHs":90071990.0,"LastAverageMHs":{"Hashrate":94763240.0,"Timestamp":1755129600},"Accepted":1862,"Rejected":2,"Submitted":1864,"Last Accepted Share Timestamp":1755134734,"Last Accepted Share Timer":25,"Difficulty":262144.0},"HBs":[{"Index":1,"Input Voltage":12.6,"Output Voltage":0.0,"Input Current":0.0,"Output Current":0.0,"Input Power":0.0,"Output Power":0.0,"Temperature":67.0,"Core Clock":[],"Hashrate":[49440724.0,103.1,0.8],"Core Clock Avg":487.5},{"Index":2,"Input Voltage":12.6,"Output Voltage":0.0,"Input Current":0.0,"Output Current":0.0,"Input Power":0.0,"Output Power":0.0,"Temperature":64.312,"Core Clock":[],"Hashrate":[49925124.0,104.1,0.8],"Core Clock Avg":487.5}],"HBStatus":[{"Index":0,"Enabled":false,"Detected":true},{"Index":1,"Enabled":true,"Detected":true},{"Index":2,"Enabled":true,"Detected":true}],"Fans":{"Fans Speed":100,"Fan Mode":{"Auto":{"Target Temperature":60,"Idle Speed":20}},"Minimum Working Fans":0},"Fans Rpm":{"Fans Speed 1":5971,"Fans Speed 2":0,"Fans Speed 3":5942,"Fans Speed 4":5745,"Fans Speed 5":null,"Fans Speed 6":null,"Fans Speed 7":null,"Fans Speed 8":null,"Fans Speed 9":null,"Fans Speed 10":null,"Fans Speed 11":null,"Fans Speed 12":null},"Misc":{"Locate Miner State":false,"Shutdown Temp":85.0,"Critical Temp":100.0},"StratumConfigs":[{"pool":"stratum+tcp://mine.ocean.xyz:3334","login":"randomuser.randomworker","password":"password"}],"PerpetualTune":{"Running":true,"Algorithm":{"VoltageOptimizer":{"Optimized":false,"Target":143,"Throttle Target":null,"Min Throttle Target":50,"Throttle Step":5,"Unit":"TH/s"}}},"Power Supply Stats":{"Input Voltage":0.0,"Output Voltage":12.595,"Input Current":0.0,"Output Current":0.0,"Input Power":2166.6174,"Output Power":0.0,"Target Voltage":12600},"HwConfig":{"Boards Target Clock":[{"Index":1,"Data":485.0},{"Index":2,"Data":485.0}]},"IdleOnConnectionLost":true,"Overdrive":false,"Disable Board On Failure":true,"Enable Boards On Idle":false,"Last License Error":null}
+{
+  "Disable Board On Failure": true,
+  "Enable Boards On Idle": false,
+  "Fans": {
+    "Fan Mode": {
+      "Auto": {
+        "Idle Speed": 20,
+        "Target Temperature": 60
+      }
+    },
+    "Fans Speed": 100,
+    "Minimum Working Fans": 0
+  },
+  "Fans Rpm": {
+    "Fans Speed 1": 5971,
+    "Fans Speed 10": null,
+    "Fans Speed 11": null,
+    "Fans Speed 12": null,
+    "Fans Speed 2": 0,
+    "Fans Speed 3": 5942,
+    "Fans Speed 4": 5745,
+    "Fans Speed 5": null,
+    "Fans Speed 6": null,
+    "Fans Speed 7": null,
+    "Fans Speed 8": null,
+    "Fans Speed 9": null
+  },
+  "HBStatus": [
+    {
+      "Detected": true,
+      "Enabled": false,
+      "Index": 0
+    },
+    {
+      "Detected": true,
+      "Enabled": true,
+      "Index": 1
+    },
+    {
+      "Detected": true,
+      "Enabled": true,
+      "Index": 2
+    }
+  ],
+  "HBs": [
+    {
+      "Core Clock": [],
+      "Core Clock Avg": 487.5,
+      "Hashrate": [
+        49440724.0,
+        103.1,
+        0.8
+      ],
+      "Index": 1,
+      "Input Current": 0.0,
+      "Input Power": 0.0,
+      "Input Voltage": 12.6,
+      "Output Current": 0.0,
+      "Output Power": 0.0,
+      "Output Voltage": 0.0,
+      "Temperature": 67.0
+    },
+    {
+      "Core Clock": [],
+      "Core Clock Avg": 487.5,
+      "Hashrate": [
+        49925124.0,
+        104.1,
+        0.8
+      ],
+      "Index": 2,
+      "Input Current": 0.0,
+      "Input Power": 0.0,
+      "Input Voltage": 12.6,
+      "Output Current": 0.0,
+      "Output Power": 0.0,
+      "Output Voltage": 0.0,
+      "Temperature": 64.312
+    }
+  ],
+  "Hostname": "cminer32092035",
+  "HwConfig": {
+    "Boards Target Clock": [
+      {
+        "Data": 485.0,
+        "Index": 1
+      },
+      {
+        "Data": 485.0,
+        "Index": 2
+      }
+    ]
+  },
+  "IdleOnConnectionLost": true,
+  "Last License Error": null,
+  "Mining": {
+    "Algorithm": "SHA-256",
+    "Coin": "BTC"
+  },
+  "Misc": {
+    "Critical Temp": 100.0,
+    "Locate Miner State": false,
+    "Shutdown Temp": 85.0
+  },
+  "OS Type": "umcOS",
+  "Overdrive": false,
+  "PerpetualTune": {
+    "Algorithm": {
+      "VoltageOptimizer": {
+        "Min Throttle Target": 50,
+        "Optimized": false,
+        "Target": 143,
+        "Throttle Step": 5,
+        "Throttle Target": null,
+        "Unit": "TH/s"
+      }
+    },
+    "Running": true
+  },
+  "Power Supply Stats": {
+    "Input Current": 0.0,
+    "Input Power": 2166.6174,
+    "Input Voltage": 0.0,
+    "Output Current": 0.0,
+    "Output Power": 0.0,
+    "Output Voltage": 12.595,
+    "Target Voltage": 12600
+  },
+  "PresetInfo": {
+    "Target Power": 3000
+  },
+  "Session": {
+    "Accepted": 1862,
+    "Active HBs": 2,
+    "Average MHs": 90071990.0,
+    "Difficulty": 262144.0,
+    "Last Accepted Share Timer": 25,
+    "Last Accepted Share Timestamp": 1755134734,
+    "Last Work Timer": 34,
+    "Last Work Timestamp": 1755134725,
+    "LastAverageMHs": {
+      "Hashrate": 94763240.0,
+      "Timestamp": 1755129600
+    },
+    "Rejected": 2,
+    "Startup String": "Wed, 13 Aug 2025 18:59:49 +0000",
+    "Startup Timestamp": 1755111589,
+    "Submitted": 1864,
+    "Uptime": 23170,
+    "WorkReceived": 641
+  },
+  "Software": "PowerPlay-BMS v1.5.13",
+  "Status": {
+    "Last Command": null,
+    "Last Command Result": null,
+    "Last Error": null,
+    "Operating State": "Mining"
+  },
+  "Stratum": {
+    "Average Latency": 0.038288616,
+    "Config Id": 0,
+    "Current Pool": "mine.ocean.xyz:3334",
+    "Current User": "randomuser.randomworker-0x81x19",
+    "IsPoolConnected": true,
+    "Worker Unique Id": true,
+    "Worker Unique Id Variant": "IpAddress"
+  },
+  "StratumConfigs": [
+    {
+      "login": "randomuser.randomworker",
+      "password": "password",
+      "pool": "stratum+tcp://mine.ocean.xyz:3334"
+    }
+  ]
+}

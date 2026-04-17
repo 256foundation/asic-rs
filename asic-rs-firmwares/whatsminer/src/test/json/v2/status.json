@@ -1,1 +1,15 @@
-{"STATUS":"S","When":1773953446,"Code":131,"Msg":{"mineroff":"false","mineroff_reason":"","mineroff_time":"","FirmwareVersion":"20240624.18.REL","power_mode":"low","power_limit_set":"3600","hash_percent":"0"},"Description":""}
+{
+  "Code": 131,
+  "Description": "",
+  "Msg": {
+    "FirmwareVersion": "20240624.18.REL",
+    "hash_percent": "0",
+    "mineroff": "false",
+    "mineroff_reason": "",
+    "mineroff_time": "",
+    "power_limit_set": "3600",
+    "power_mode": "low"
+  },
+  "STATUS": "S",
+  "When": 1773953446
+}

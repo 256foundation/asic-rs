@@ -1,1 +1,10 @@
-{"Code":131,"Description":"whatsminer v1.4.0","Msg":{"api_ver":"whatsminer v1.4.0","fw_ver":"20210322.22.REL"},"STATUS":"S","When":1761064196}
+{
+  "Code": 131,
+  "Description": "whatsminer v1.4.0",
+  "Msg": {
+    "api_ver": "whatsminer v1.4.0",
+    "fw_ver": "20210322.22.REL"
+  },
+  "STATUS": "S",
+  "When": 1761064196
+}

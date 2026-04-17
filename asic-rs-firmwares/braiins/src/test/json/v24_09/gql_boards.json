@@ -1,0 +1,78 @@
+{
+  "data": {
+    "bosminer": {
+      "info": {
+        "workSolver": {
+          "childSolvers": [
+            {
+              "hwDetails": {
+                "chips": 65,
+                "frequencyMhz": 582.535867,
+                "voltageV": 13.44928
+              },
+              "name": "1",
+              "nominalMhs": 77244255.96419999,
+              "realHashrate": {
+                "mhs5S": 74099684.0691387
+              },
+              "temperatures": [
+                {
+                  "degreesC": 56.4375,
+                  "name": "Board"
+                },
+                {
+                  "degreesC": 71.4375,
+                  "name": "Chip"
+                }
+              ]
+            },
+            {
+              "hwDetails": {
+                "chips": 65,
+                "frequencyMhz": 611.121011,
+                "voltageV": 13.44928
+              },
+              "name": "2",
+              "nominalMhs": 81034646.0586,
+              "realHashrate": {
+                "mhs5S": 82520210.09943742
+              },
+              "temperatures": [
+                {
+                  "degreesC": 53.375,
+                  "name": "Board"
+                },
+                {
+                  "degreesC": 68.375,
+                  "name": "Chip"
+                }
+              ]
+            },
+            {
+              "hwDetails": {
+                "chips": 65,
+                "frequencyMhz": 611.121011,
+                "voltageV": 13.44928
+              },
+              "name": "3",
+              "nominalMhs": 81034646.0586,
+              "realHashrate": {
+                "mhs5S": 74457705.937424
+              },
+              "temperatures": [
+                {
+                  "degreesC": 52.9375,
+                  "name": "Board"
+                },
+                {
+                  "degreesC": 67.9375,
+                  "name": "Chip"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,1 +1,12 @@
-{"Code":131,"Description":"whatsminer v1.4.0","Msg":{"hw_version":"","model":"P21-12-3600-E","name":"P21","sw_version":"102220.009"},"STATUS":"S","When":1761064196}
+{
+  "Code": 131,
+  "Description": "whatsminer v1.4.0",
+  "Msg": {
+    "hw_version": "",
+    "model": "P21-12-3600-E",
+    "name": "P21",
+    "sw_version": "102220.009"
+  },
+  "STATUS": "S",
+  "When": 1761064196
+}

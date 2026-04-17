@@ -1,1 +1,83 @@
-{"DEVS":[{"ASC":0,"Accepted":1804,"Chip Frequency":600,"Chip Temp Avg":71.5,"Chip Temp Max":80.0,"Chip Temp Min":62.0,"Device Elapsed":25000,"Effective Chips":135,"Enabled":"Y","Factory GHS":42000,"Fan Speed In":5400,"Fan Speed Out":5280,"Frequency":600.0,"ID":0,"MHS av":41500000.0,"Name":"SM","PCB SN":"BHM5CSD1302803K30001","Rejected":0,"Slot":0,"Status":"Alive","Temperature":65.0},{"ASC":1,"Accepted":1804,"Chip Frequency":600,"Chip Temp Avg":72.0,"Chip Temp Max":81.0,"Chip Temp Min":63.0,"Device Elapsed":25000,"Effective Chips":135,"Enabled":"Y","Factory GHS":42000,"Fan Speed In":5400,"Fan Speed Out":5280,"Frequency":600.0,"ID":1,"MHS av":41800000.0,"Name":"SM","PCB SN":"BHM5CSD1302803K30002","Rejected":0,"Slot":1,"Status":"Alive","Temperature":66.0},{"ASC":2,"Accepted":1804,"Chip Frequency":600,"Chip Temp Avg":73.5,"Chip Temp Max":81.0,"Chip Temp Min":62.5,"Device Elapsed":25000,"Effective Chips":135,"Enabled":"Y","Factory GHS":42000,"Fan Speed In":5400,"Fan Speed Out":5280,"Frequency":600.0,"ID":2,"MHS av":41700000.0,"Name":"SM","PCB SN":"BHM5CSD1302803K30003","Rejected":0,"Slot":2,"Status":"Alive","Temperature":67.0}],"STATUS":[{"Code":9,"Description":"cgminer 4.9.2","Msg":"3 ASC(s)","STATUS":"S","When":1773871985}],"id":1}
+{
+  "DEVS": [
+    {
+      "ASC": 0,
+      "Accepted": 1804,
+      "Chip Frequency": 600,
+      "Chip Temp Avg": 71.5,
+      "Chip Temp Max": 80.0,
+      "Chip Temp Min": 62.0,
+      "Device Elapsed": 25000,
+      "Effective Chips": 135,
+      "Enabled": "Y",
+      "Factory GHS": 42000,
+      "Fan Speed In": 5400,
+      "Fan Speed Out": 5280,
+      "Frequency": 600.0,
+      "ID": 0,
+      "MHS av": 41500000.0,
+      "Name": "SM",
+      "PCB SN": "BHM5CSD1302803K30001",
+      "Rejected": 0,
+      "Slot": 0,
+      "Status": "Alive",
+      "Temperature": 65.0
+    },
+    {
+      "ASC": 1,
+      "Accepted": 1804,
+      "Chip Frequency": 600,
+      "Chip Temp Avg": 72.0,
+      "Chip Temp Max": 81.0,
+      "Chip Temp Min": 63.0,
+      "Device Elapsed": 25000,
+      "Effective Chips": 135,
+      "Enabled": "Y",
+      "Factory GHS": 42000,
+      "Fan Speed In": 5400,
+      "Fan Speed Out": 5280,
+      "Frequency": 600.0,
+      "ID": 1,
+      "MHS av": 41800000.0,
+      "Name": "SM",
+      "PCB SN": "BHM5CSD1302803K30002",
+      "Rejected": 0,
+      "Slot": 1,
+      "Status": "Alive",
+      "Temperature": 66.0
+    },
+    {
+      "ASC": 2,
+      "Accepted": 1804,
+      "Chip Frequency": 600,
+      "Chip Temp Avg": 73.5,
+      "Chip Temp Max": 81.0,
+      "Chip Temp Min": 62.5,
+      "Device Elapsed": 25000,
+      "Effective Chips": 135,
+      "Enabled": "Y",
+      "Factory GHS": 42000,
+      "Fan Speed In": 5400,
+      "Fan Speed Out": 5280,
+      "Frequency": 600.0,
+      "ID": 2,
+      "MHS av": 41700000.0,
+      "Name": "SM",
+      "PCB SN": "BHM5CSD1302803K30003",
+      "Rejected": 0,
+      "Slot": 2,
+      "Status": "Alive",
+      "Temperature": 67.0
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 9,
+      "Description": "cgminer 4.9.2",
+      "Msg": "3 ASC(s)",
+      "STATUS": "S",
+      "When": 1773871985
+    }
+  ],
+  "id": 1
+}

@@ -1,0 +1,340 @@
+{
+  "errors": [
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-04-08T08:03:18.331768Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-04-08T08:16:43.987101Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-04-10T08:09:33.628112Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-04-10T08:09:55.661376Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-15T05:12:48.011541Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-17T11:47:19.489940Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-17T11:47:50.533409Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-17T11:48:11.566803Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-17T11:48:45.618706Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-02-17T11:48:58.073883Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-02-17T11:49:29.112960Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-17T11:49:41.121966Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-02-17T11:49:50.133321Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-02-17T11:50:24.181672Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-17T11:51:10.243485Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-02-17T11:51:19.248745Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-02-17T11:52:48.362675Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-17T11:53:34.423823Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-02-17T11:55:12.540968Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-17T11:57:27.714458Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-02-17T11:59:05.839748Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-17T12:03:45.176481Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-02-17T12:05:23.309746Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-02-17T12:13:55.958452Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-02-17T12:15:34.088608Z"
+    },
+    {
+      "components": [],
+      "error_codes": [
+        {
+          "code": "H2",
+          "hint": "Usually a sign of voltage glitch on the hashboard, the issue will often resolve itself. If it happens frequently, conditions of the hashboard might have changed. Remove tuned profiles. If the hashboard is in bad shape, lowering power/hashrate target can also help.",
+          "reason": "Hashboard stopped sending hashes"
+        }
+      ],
+      "message": "Tuner error: Stage 4: {ERR:H2} Stage 4: Zero MCR on hashboards [Address(1), Address(2), Address(3)]",
+      "timestamp": "2026-02-25T00:44:34.830251Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "PSU detection: Failed to detect PSU version with any known protocol",
+      "timestamp": "2026-03-13T12:59:23.928317Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T17:47:24.456366Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T17:47:55.492144Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T17:48:16.523227Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T17:48:50.556403Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T17:49:09.683700Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T17:49:40.719498Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T17:49:45.728829Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T17:50:01.758154Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T17:50:35.800407Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T17:51:14.849718Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T17:51:30.869660Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T17:52:59.986636Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T17:53:39.015886Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T17:55:24.151175Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T17:57:32.303682Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T17:59:17.434448Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T18:03:49.779545Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T18:05:34.912361Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T18:14:00.526557Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T18:15:45.663284Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T18:30:27.775694Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T18:32:12.919129Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-14T18:57:05.758573Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"mine.ocean.xyz\", 3334)",
+      "timestamp": "2026-03-14T18:58:50.892242Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-22T05:43:42.672269Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-22T05:44:13.710895Z"
+    },
+    {
+      "components": [],
+      "error_codes": [
+        {
+          "code": "V2",
+          "hint": "The voltage measured by the hashboard was significantly lower than expected. Either overcurrent protection on PSU disabled the power to hashboard or there's a short circuit somewhere between PSU and hashboard that makes the voltage significantly lower. Replace broken hashboards or set a lower power target/hashrate target. Another reason for short circuit could be a bad connection of the power rail to the hashboard, like loose screws, or faulty PSU. Please try to tighten the screws and check the PSU.",
+          "reason": "Overcurrent protection triggered or short circuit"
+        }
+      ],
+      "message": "Tuner error: Stage 4: Stage 4: PSU shut down during the experiment: {ERR:V2} LOW VOLTAGE - measured voltage 0.20612244897959262 V - PSU overcurrent protection switched voltage off or short circuit",
+      "timestamp": "2026-04-01T23:19:08.286665Z"
+    }
+  ]
+}

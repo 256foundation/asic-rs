@@ -1,1 +1,45 @@
-{"code":0,"desc":"get.miner.status","msg":{"edevs":[{"chip-temp-avg":74.0,"chip-temp-max":80.0,"chip-temp-min":68.0,"effective-chips":75,"factory-hash":60.35,"freq":625.0,"hash-average":57.1,"hash-realtime":57.2,"id":0,"status":"alive"},{"chip-temp-avg":75.0,"chip-temp-max":82.0,"chip-temp-min":69.0,"effective-chips":75,"factory-hash":60.35,"freq":625.0,"hash-average":56.8,"hash-realtime":57.0,"id":1,"status":"alive"},{"chip-temp-avg":76.0,"chip-temp-max":81.0,"chip-temp-min":70.0,"effective-chips":75,"factory-hash":60.35,"freq":625.0,"hash-average":56.9,"hash-realtime":57.1,"id":2,"status":"alive"}]},"when":1773869570}
+{
+  "code": 0,
+  "desc": "get.miner.status",
+  "msg": {
+    "edevs": [
+      {
+        "chip-temp-avg": 74.0,
+        "chip-temp-max": 80.0,
+        "chip-temp-min": 68.0,
+        "effective-chips": 75,
+        "factory-hash": 60.35,
+        "freq": 625.0,
+        "hash-average": 57.1,
+        "hash-realtime": 57.2,
+        "id": 0,
+        "status": "alive"
+      },
+      {
+        "chip-temp-avg": 75.0,
+        "chip-temp-max": 82.0,
+        "chip-temp-min": 69.0,
+        "effective-chips": 75,
+        "factory-hash": 60.35,
+        "freq": 625.0,
+        "hash-average": 56.8,
+        "hash-realtime": 57.0,
+        "id": 1,
+        "status": "alive"
+      },
+      {
+        "chip-temp-avg": 76.0,
+        "chip-temp-max": 81.0,
+        "chip-temp-min": 70.0,
+        "effective-chips": 75,
+        "factory-hash": 60.35,
+        "freq": 625.0,
+        "hash-average": 56.9,
+        "hash-realtime": 57.1,
+        "id": 2,
+        "status": "alive"
+      }
+    ]
+  },
+  "when": 1773869570
+}

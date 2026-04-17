@@ -1,27 +1,29 @@
 {
-    "STATUS": [{
-            "STATUS": "S",
-            "When": 1753432244,
-            "Code": 22,
-            "Msg": "CGMiner versions",
-            "Description": "cgminer 4.11.1"
-        }
-    ],
-    "VERSION": [{
-            "CGMiner": "4.11.1",
-            "API": "3.7",
-            "PROD": "Avalon Q",
-            "MODEL": "Q",
-            "HWTYPE": "Q_MM1v1_X1",
-            "SWTYPE": "MM319",
-            "LVERSION": "25052801_14a19a2",
-            "BVERSION": "25052801_14a19a2",
-            "CGVERSION": "25052801_14a19a2",
-            "HBMCUVERSION": "Q_hb_v1.1",
-            "FANMCUVERSION": "Q_fb_v1.2",
-            "DNA": "01234567890123456789012345678901",
-            "MAC": "AA:BB:CC:DD:EE:FF"
-        }
-    ],
-    "id": 1
+  "STATUS": [
+    {
+      "Code": 22,
+      "Description": "cgminer 4.11.1",
+      "Msg": "CGMiner versions",
+      "STATUS": "S",
+      "When": 1753432244
+    }
+  ],
+  "VERSION": [
+    {
+      "API": "3.7",
+      "BVERSION": "25052801_14a19a2",
+      "CGMiner": "4.11.1",
+      "CGVERSION": "25052801_14a19a2",
+      "DNA": "01234567890123456789012345678901",
+      "FANMCUVERSION": "Q_fb_v1.2",
+      "HBMCUVERSION": "Q_hb_v1.1",
+      "HWTYPE": "Q_MM1v1_X1",
+      "LVERSION": "25052801_14a19a2",
+      "MAC": "AA:BB:CC:DD:EE:FF",
+      "MODEL": "Q",
+      "PROD": "Avalon Q",
+      "SWTYPE": "MM319"
+    }
+  ],
+  "id": 1
 }

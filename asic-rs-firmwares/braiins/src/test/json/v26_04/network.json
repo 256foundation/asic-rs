@@ -1,0 +1,16 @@
+{
+  "default_gateway": "10.102.0.1",
+  "dns_servers": [
+    "127.0.0.1"
+  ],
+  "hostname": "Antminer",
+  "mac_address": "02:8f:77:ec:e7:e0",
+  "name": "eth0",
+  "networks": [
+    {
+      "address": "10.102.0.173",
+      "netmask": "255.255.255.0"
+    }
+  ],
+  "protocol": 1
+}

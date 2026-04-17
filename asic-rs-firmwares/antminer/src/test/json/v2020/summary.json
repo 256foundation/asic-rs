@@ -1,1 +1,43 @@
-{"STATUS": [{"STATUS": "S", "When": 1755615295, "Code": 11, "Msg": "Summary", "Description": "cgminer 1.0.0"}], "SUMMARY": [{"Elapsed": 50474, "GHS 5s": 110566.89, "GHS av": 111834.85, "GHS 30m": 111878.26, "Found Blocks": 0, "Getwork": 3957, "Accepted": 4057, "Rejected": 11, "Hardware Errors": 562, "Utility": 4.82, "Discarded": 4528177, "Stale": 1, "Get Failures": 1, "Local Work": 4532155, "Remote Failures": 0, "Network Blocks": 82, "Total MH": 5643633754730.0, "Work Utility": 1554353.85, "Difficulty Accepted": 1305083904.0, "Difficulty Rejected": 2490368.0, "Difficulty Stale": 0.0, "Best Share": 12904207043, "Device Hardware%": 0.0, "Device Rejected%": 0.0, "Pool Rejected%": 0.0, "Pool Stale%": 0.0, "Last getwork": 1755615295}], "id": 1}
+{
+  "STATUS": [
+    {
+      "Code": 11,
+      "Description": "cgminer 1.0.0",
+      "Msg": "Summary",
+      "STATUS": "S",
+      "When": 1755615295
+    }
+  ],
+  "SUMMARY": [
+    {
+      "Accepted": 4057,
+      "Best Share": 12904207043,
+      "Device Hardware%": 0.0,
+      "Device Rejected%": 0.0,
+      "Difficulty Accepted": 1305083904.0,
+      "Difficulty Rejected": 2490368.0,
+      "Difficulty Stale": 0.0,
+      "Discarded": 4528177,
+      "Elapsed": 50474,
+      "Found Blocks": 0,
+      "GHS 30m": 111878.26,
+      "GHS 5s": 110566.89,
+      "GHS av": 111834.85,
+      "Get Failures": 1,
+      "Getwork": 3957,
+      "Hardware Errors": 562,
+      "Last getwork": 1755615295,
+      "Local Work": 4532155,
+      "Network Blocks": 82,
+      "Pool Rejected%": 0.0,
+      "Pool Stale%": 0.0,
+      "Rejected": 11,
+      "Remote Failures": 0,
+      "Stale": 1,
+      "Total MH": 5643633754730.0,
+      "Utility": 4.82,
+      "Work Utility": 1554353.85
+    }
+  ],
+  "id": 1
+}

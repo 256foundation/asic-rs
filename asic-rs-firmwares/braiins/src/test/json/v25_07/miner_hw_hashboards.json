@@ -1,0 +1,223 @@
+{
+  "hashboards": [
+    {
+      "board_name": "BHB56801",
+      "board_temp": {
+        "degree_c": 55.5
+      },
+      "chip_type": "BM1366",
+      "chips_count": 110,
+      "current_frequency": {
+        "hertz": 486704545.0
+      },
+      "current_voltage": {
+        "volt": 12.93826530612245
+      },
+      "enabled": true,
+      "highest_chip_temp": {
+        "id": 1,
+        "location": 1,
+        "temperature": {
+          "degree_c": 70.5
+        }
+      },
+      "highest_outlet_temp": {
+        "degree_c": 55.5
+      },
+      "id": "1",
+      "lowest_inlet_temp": {
+        "degree_c": 41.0
+      },
+      "model": "BHB56801",
+      "serial_number": "NGSBYPDBCJBAG8562",
+      "stats": {
+        "best_share": 776342690,
+        "error_hashrate": {
+          "megahash_per_second": 0.0
+        },
+        "found_blocks": 0,
+        "nominal_hashrate": {
+          "gigahash_per_second": 47980.850153652005
+        },
+        "real_hashrate": {
+          "last_15m": {
+            "gigahash_per_second": 48215.70105902884
+          },
+          "last_15s": {
+            "gigahash_per_second": 48687.802557632494
+          },
+          "last_1h": {
+            "gigahash_per_second": 47946.832481041885
+          },
+          "last_1m": {
+            "gigahash_per_second": 48815.80137715294
+          },
+          "last_24h": {
+            "gigahash_per_second": 37835.060470015924
+          },
+          "last_30m": {
+            "gigahash_per_second": 48123.23603255816
+          },
+          "last_30s": {
+            "gigahash_per_second": 48245.03890086119
+          },
+          "last_5m": {
+            "gigahash_per_second": 48097.065811210654
+          },
+          "last_5s": {
+            "gigahash_per_second": 50137.72942148807
+          },
+          "since_restart": {
+            "gigahash_per_second": 46462.76325540718
+          }
+        }
+      }
+    },
+    {
+      "board_name": "BHB56801",
+      "board_temp": {
+        "degree_c": 52.0
+      },
+      "chip_type": "BM1366",
+      "chips_count": 110,
+      "current_frequency": {
+        "hertz": 461931818.0
+      },
+      "current_voltage": {
+        "volt": 12.93826530612245
+      },
+      "enabled": true,
+      "highest_chip_temp": {
+        "id": 2,
+        "location": 1,
+        "temperature": {
+          "degree_c": 67.0
+        }
+      },
+      "highest_outlet_temp": {
+        "degree_c": 52.0
+      },
+      "id": "2",
+      "lowest_inlet_temp": {
+        "degree_c": 40.0
+      },
+      "model": "BHB56801",
+      "serial_number": "NGSBYPDBCJBAG8567",
+      "stats": {
+        "best_share": 452989225,
+        "error_hashrate": {
+          "megahash_per_second": 0.0
+        },
+        "found_blocks": 0,
+        "nominal_hashrate": {
+          "gigahash_per_second": 45572.479616802004
+        },
+        "real_hashrate": {
+          "last_15m": {
+            "gigahash_per_second": 45360.01658850486
+          },
+          "last_15s": {
+            "gigahash_per_second": 46494.994319737394
+          },
+          "last_1h": {
+            "gigahash_per_second": 45400.77854159201
+          },
+          "last_1m": {
+            "gigahash_per_second": 46122.95984268281
+          },
+          "last_24h": {
+            "gigahash_per_second": 36008.87855287175
+          },
+          "last_30m": {
+            "gigahash_per_second": 45298.39932159557
+          },
+          "last_30s": {
+            "gigahash_per_second": 45907.9032442107
+          },
+          "last_5m": {
+            "gigahash_per_second": 45295.13464915326
+          },
+          "last_5s": {
+            "gigahash_per_second": 47859.278339866236
+          },
+          "since_restart": {
+            "gigahash_per_second": 43704.46134930704
+          }
+        }
+      }
+    },
+    {
+      "board_name": "BHB56801",
+      "board_temp": {
+        "degree_c": 54.0
+      },
+      "chip_type": "BM1366",
+      "chips_count": 110,
+      "current_frequency": {
+        "hertz": 500000000.0
+      },
+      "current_voltage": {
+        "volt": 12.93826530612245
+      },
+      "enabled": true,
+      "highest_chip_temp": {
+        "id": 3,
+        "location": 1,
+        "temperature": {
+          "degree_c": 69.0
+        }
+      },
+      "highest_outlet_temp": {
+        "degree_c": 54.0
+      },
+      "id": "3",
+      "lowest_inlet_temp": {
+        "degree_c": 41.5
+      },
+      "model": "BHB56801",
+      "serial_number": "NGSBYPDBCJBBA0309",
+      "stats": {
+        "best_share": 348644778,
+        "error_hashrate": {
+          "megahash_per_second": 0.0
+        },
+        "found_blocks": 0,
+        "nominal_hashrate": {
+          "gigahash_per_second": 49323.268520412006
+        },
+        "real_hashrate": {
+          "last_15m": {
+            "gigahash_per_second": 49200.024196644525
+          },
+          "last_15s": {
+            "gigahash_per_second": 47854.482708603326
+          },
+          "last_1h": {
+            "gigahash_per_second": 49232.17014587882
+          },
+          "last_1m": {
+            "gigahash_per_second": 49225.760703946995
+          },
+          "last_24h": {
+            "gigahash_per_second": 38970.81525908702
+          },
+          "last_30m": {
+            "gigahash_per_second": 49220.70304591217
+          },
+          "last_30s": {
+            "gigahash_per_second": 48896.16372768428
+          },
+          "last_5m": {
+            "gigahash_per_second": 49019.094950243234
+          },
+          "last_5s": {
+            "gigahash_per_second": 50362.690141466795
+          },
+          "since_restart": {
+            "gigahash_per_second": 48070.38870508103
+          }
+        }
+      }
+    }
+  ]
+}

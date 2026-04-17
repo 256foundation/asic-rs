@@ -1,22 +1,24 @@
 {
-    "STATUS": [{
-            "STATUS": "S",
-            "When": 1753432344,
-            "Code": 33,
-            "Msg": "CGMiner config",
-            "Description": "cgminer 4.11.1"
-        }
-    ],
-    "CONFIG": [{
-            "ASC Count": 1,
-            "PGA Count": 0,
-            "Pool Count": 1,
-            "Strategy": "Failover",
-            "Log Interval": 5,
-            "Device Code": "AVALON",
-            "OS": "Linux",
-            "Hotplug": "None"
-        }
-    ],
-    "id": 1
+  "CONFIG": [
+    {
+      "ASC Count": 1,
+      "Device Code": "AVALON",
+      "Hotplug": "None",
+      "Log Interval": 5,
+      "OS": "Linux",
+      "PGA Count": 0,
+      "Pool Count": 1,
+      "Strategy": "Failover"
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 33,
+      "Description": "cgminer 4.11.1",
+      "Msg": "CGMiner config",
+      "STATUS": "S",
+      "When": 1753432344
+    }
+  ],
+  "id": 1
 }

@@ -1,40 +1,42 @@
 {
-    "STATUS": [{
-            "STATUS": "S",
-            "When": 1753431960,
-            "Code": 9,
-            "Msg": "1 ASC(s)",
-            "Description": "cgminer 4.11.1"
-        }
-    ],
-    "DEVS": [{
-            "ASC": 0,
-            "Name": "AVALON",
-            "ID": 0,
-            "Enabled": "Y",
-            "Status": "Alive",
-            "Temperature": 0.00,
-            "MHS av": 44046770.26,
-            "MHS 5s": 0.00,
-            "MHS 1m": 0.00,
-            "MHS 5m": 0.02,
-            "MHS 15m": 32370.32,
-            "Accepted": 890,
-            "Rejected": 2,
-            "Hardware Errors": 0,
-            "Utility": 1.40,
-            "Last Share Pool": 0,
-            "Last Share Time": 31279,
-            "Total MH": 1679772288024.0000,
-            "Diff1 Work": 391888896,
-            "Difficulty Accepted": 368550176.00000000,
-            "Difficulty Rejected": 786432.00000000,
-            "Last Share Difficulty": 524288.00000000,
-            "Last Valid Work": 1753425248,
-            "Device Hardware%": 0.0000,
-            "Device Rejected%": 0.2007,
-            "Device Elapsed": 38136
-        }
-    ],
-    "id": 1
+  "DEVS": [
+    {
+      "ASC": 0,
+      "Accepted": 890,
+      "Device Elapsed": 38136,
+      "Device Hardware%": 0.0,
+      "Device Rejected%": 0.2007,
+      "Diff1 Work": 391888896,
+      "Difficulty Accepted": 368550176.0,
+      "Difficulty Rejected": 786432.0,
+      "Enabled": "Y",
+      "Hardware Errors": 0,
+      "ID": 0,
+      "Last Share Difficulty": 524288.0,
+      "Last Share Pool": 0,
+      "Last Share Time": 31279,
+      "Last Valid Work": 1753425248,
+      "MHS 15m": 32370.32,
+      "MHS 1m": 0.0,
+      "MHS 5m": 0.02,
+      "MHS 5s": 0.0,
+      "MHS av": 44046770.26,
+      "Name": "AVALON",
+      "Rejected": 2,
+      "Status": "Alive",
+      "Temperature": 0.0,
+      "Total MH": 1679772288024.0,
+      "Utility": 1.4
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 9,
+      "Description": "cgminer 4.11.1",
+      "Msg": "1 ASC(s)",
+      "STATUS": "S",
+      "When": 1753431960
+    }
+  ],
+  "id": 1
 }

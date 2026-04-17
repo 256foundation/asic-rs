@@ -1,15 +1,17 @@
 {
-    "STATUS": [{
-            "STATUS": "S",
-            "When": 1753431749,
-            "Code": 70,
-            "Msg": "CGMiner stats",
-            "Description": "cgminer 4.11.1"
-        }
-    ],
-    "STATS": [{
-            "MM ID0:Summary": "'STATS':{Ver[Q-25052801_14a19a2] LVer[25052801_14a19a2] BVer[25052801_14a19a2] HashMcu0Ver[Q_hb_v1.1] FanMcuVer[Q_fb_v1.2] CPU[K230] FW[Release] DNA[<DELETED>] STATE[2] MEMFREE[67896] NETFAIL[0 0 0 0 0 0 0 0] SSID[] RSSI[0] NetDevType[0] SYSTEMSTATU[Work: In Idle, Hash Board: 1] Elapsed[37977] BOOTBY[0x01.00000000] LW[16987598] MH[0] DHW[0] HW[0] DH[2.449%] ITemp[26] HBITemp[27] HBOTemp[27] TMax[0] TAvg[0] TarT[65] Fan1[0] Fan2[0] Fan3[0] Fan4[0] FanR[0%] SoftOffTime[1753425250] SoftOnTime[1753425190] Filter[19145] FanErr[0] SoloAllowed[1] PS[0 1221 4 0 0 2245 146] PCOMM_E[0] GHSspd[0.00] DHspd[0.000%] GHSmm[55032.79] GHSavg[44350.83] WU[619573.88] Freq[282.86] MGHS[44350.83] TA[160] Core[A3197S] BIN[36] PING[17] SoftOFF[4] ECHU[0] ECMM[0] PLL0[8843 5769 5098 4610] SF0[258 276 297 318] CRC[0] COMCRC[0] ATA0[800-65-2264-258-20] LcdOnoff[1] Activation[0] WORKMODE[0] WORKLEVEL[0] MPO[800] CALIALL[7] ADJ[1] Nonce Mask[25]}"
-        }
-    ],
-    "id": 1
+  "STATS": [
+    {
+      "MM ID0:Summary": "'STATS':{Ver[Q-25052801_14a19a2] LVer[25052801_14a19a2] BVer[25052801_14a19a2] HashMcu0Ver[Q_hb_v1.1] FanMcuVer[Q_fb_v1.2] CPU[K230] FW[Release] DNA[<DELETED>] STATE[2] MEMFREE[67896] NETFAIL[0 0 0 0 0 0 0 0] SSID[] RSSI[0] NetDevType[0] SYSTEMSTATU[Work: In Idle, Hash Board: 1] Elapsed[37977] BOOTBY[0x01.00000000] LW[16987598] MH[0] DHW[0] HW[0] DH[2.449%] ITemp[26] HBITemp[27] HBOTemp[27] TMax[0] TAvg[0] TarT[65] Fan1[0] Fan2[0] Fan3[0] Fan4[0] FanR[0%] SoftOffTime[1753425250] SoftOnTime[1753425190] Filter[19145] FanErr[0] SoloAllowed[1] PS[0 1221 4 0 0 2245 146] PCOMM_E[0] GHSspd[0.00] DHspd[0.000%] GHSmm[55032.79] GHSavg[44350.83] WU[619573.88] Freq[282.86] MGHS[44350.83] TA[160] Core[A3197S] BIN[36] PING[17] SoftOFF[4] ECHU[0] ECMM[0] PLL0[8843 5769 5098 4610] SF0[258 276 297 318] CRC[0] COMCRC[0] ATA0[800-65-2264-258-20] LcdOnoff[1] Activation[0] WORKMODE[0] WORKLEVEL[0] MPO[800] CALIALL[7] ADJ[1] Nonce Mask[25]}"
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 70,
+      "Description": "cgminer 4.11.1",
+      "Msg": "CGMiner stats",
+      "STATUS": "S",
+      "When": 1753431749
+    }
+  ],
+  "id": 1
 }

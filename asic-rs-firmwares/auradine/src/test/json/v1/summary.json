@@ -1,29 +1,29 @@
 {
   "STATUS": [
     {
-      "STATUS": "S",
-      "When": 1685118419,
       "Code": 11,
+      "Description": "GCMiner-2023-05.24-0ce5e7cc93a3815240fa189d0beb44b8c834936c",
       "Msg": "Summary",
-      "Description": "GCMiner-2023-05.24-0ce5e7cc93a3815240fa189d0beb44b8c834936c"
+      "STATUS": "S",
+      "When": 1685118419
     }
   ],
   "SUMMARY": [
     {
-      "Elapsed": 56696,
-      "MHS av": 7970630.042671183,
-      "MHS 5s": 20599767.1774699,
-      "MHS 1m": 10256844.54901739,
-      "MHS 5m": 8778584.71373768,
-      "MHS 15m": 8245002.419711528,
       "Accepted": 3310,
-      "Rejected": 1,
-      "Hardware Errors": 0,
-      "Utility": 3.5035376205973425,
-      "Total MH": 451890758070,
       "Difficulty Accepted": 829210624,
       "Difficulty Rejected": 32768,
-      "Last getwork": 0
+      "Elapsed": 56696,
+      "Hardware Errors": 0,
+      "Last getwork": 0,
+      "MHS 15m": 8245002.419711528,
+      "MHS 1m": 10256844.54901739,
+      "MHS 5m": 8778584.71373768,
+      "MHS 5s": 20599767.1774699,
+      "MHS av": 7970630.042671183,
+      "Rejected": 1,
+      "Total MH": 451890758070,
+      "Utility": 3.5035376205973425
     }
   ],
   "id": 1

@@ -1,25 +1,25 @@
 {
-  "STATUS": [
-    {
-      "STATUS": "S",
-      "When": 1681497182,
-      "Code": 570,
-      "Msg": "PSU status",
-      "Description": "GCMiner-2023-04.14-a2b42b45e25194dcdf799c07cbb51d18c6c7ed51"
-    }
-  ],
   "PSU": [
     {
-      "VoutSet": "11.50V",
-      "Vin": "245.00V",
-      "Iin": "0.28A",
-      "Vout": "11.53V",
-      "Iout": "0.00A",
       "FanSpeed1": "4052.00 RPM",
       "FanSpeed2": "4144.00 RPM",
-      "PowerOut": "0.00W",
+      "Iin": "0.28A",
+      "Iout": "0.00A",
+      "PoutMax": "3452.00W",
       "PowerIn": "58.94W",
-      "PoutMax": "3452.00W"
+      "PowerOut": "0.00W",
+      "Vin": "245.00V",
+      "Vout": "11.53V",
+      "VoutSet": "11.50V"
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 570,
+      "Description": "GCMiner-2023-04.14-a2b42b45e25194dcdf799c07cbb51d18c6c7ed51",
+      "Msg": "PSU status",
+      "STATUS": "S",
+      "When": 1681497182
     }
   ],
   "id": 1

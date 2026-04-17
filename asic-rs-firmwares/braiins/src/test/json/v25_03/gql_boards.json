@@ -1,1 +1,105 @@
-{"data":{"bosminer":{"info":{"workSolver":{"childSolvers":[{"hwDetails":{"chips":55,"frequencyMhz":766.136363,"hbSerialNumber":"NGSBYT0BEJCJD0CHY","voltageV":12.945725},"name":"1","nominalMhs":86356825.58999999,"realHashrate":{"mhs5S":83918106.33861414},"temperatures":[{"degreesC":60.0,"name":"Max Board"},{"degreesC":75.0,"name":"Max Chip"},{"degreesC":39.0,"name":"Inlet"},{"degreesC":60.0,"name":"Outlet"}]},{"hwDetails":{"chips":55,"frequencyMhz":768.068181,"hbSerialNumber":"NGSBYT0BEJCJD0BP5","voltageV":12.945725},"name":"2","nominalMhs":86405595.41304,"realHashrate":{"mhs5S":83283681.99310651},"temperatures":[{"degreesC":58.5,"name":"Max Board"},{"degreesC":73.5,"name":"Max Chip"},{"degreesC":39.5,"name":"Inlet"},{"degreesC":58.5,"name":"Outlet"}]},{"hwDetails":{"chips":55,"frequencyMhz":768.068181,"hbSerialNumber":"NGSBYT0BEJCJD0BG4","voltageV":12.945725},"name":"3","nominalMhs":86428018.1832,"realHashrate":{"mhs5S":83301159.58088903},"temperatures":[{"degreesC":57.5,"name":"Max Board"},{"degreesC":72.5,"name":"Max Chip"},{"degreesC":39.5,"name":"Inlet"},{"degreesC":57.5,"name":"Outlet"}]}]}}}}}
+{
+  "data": {
+    "bosminer": {
+      "info": {
+        "workSolver": {
+          "childSolvers": [
+            {
+              "hwDetails": {
+                "chips": 55,
+                "frequencyMhz": 766.136363,
+                "hbSerialNumber": "NGSBYT0BEJCJD0CHY",
+                "voltageV": 12.945725
+              },
+              "name": "1",
+              "nominalMhs": 86356825.58999999,
+              "realHashrate": {
+                "mhs5S": 83918106.33861414
+              },
+              "temperatures": [
+                {
+                  "degreesC": 60.0,
+                  "name": "Max Board"
+                },
+                {
+                  "degreesC": 75.0,
+                  "name": "Max Chip"
+                },
+                {
+                  "degreesC": 39.0,
+                  "name": "Inlet"
+                },
+                {
+                  "degreesC": 60.0,
+                  "name": "Outlet"
+                }
+              ]
+            },
+            {
+              "hwDetails": {
+                "chips": 55,
+                "frequencyMhz": 768.068181,
+                "hbSerialNumber": "NGSBYT0BEJCJD0BP5",
+                "voltageV": 12.945725
+              },
+              "name": "2",
+              "nominalMhs": 86405595.41304,
+              "realHashrate": {
+                "mhs5S": 83283681.99310651
+              },
+              "temperatures": [
+                {
+                  "degreesC": 58.5,
+                  "name": "Max Board"
+                },
+                {
+                  "degreesC": 73.5,
+                  "name": "Max Chip"
+                },
+                {
+                  "degreesC": 39.5,
+                  "name": "Inlet"
+                },
+                {
+                  "degreesC": 58.5,
+                  "name": "Outlet"
+                }
+              ]
+            },
+            {
+              "hwDetails": {
+                "chips": 55,
+                "frequencyMhz": 768.068181,
+                "hbSerialNumber": "NGSBYT0BEJCJD0BG4",
+                "voltageV": 12.945725
+              },
+              "name": "3",
+              "nominalMhs": 86428018.1832,
+              "realHashrate": {
+                "mhs5S": 83301159.58088903
+              },
+              "temperatures": [
+                {
+                  "degreesC": 57.5,
+                  "name": "Max Board"
+                },
+                {
+                  "degreesC": 72.5,
+                  "name": "Max Chip"
+                },
+                {
+                  "degreesC": 39.5,
+                  "name": "Inlet"
+                },
+                {
+                  "degreesC": 57.5,
+                  "name": "Outlet"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

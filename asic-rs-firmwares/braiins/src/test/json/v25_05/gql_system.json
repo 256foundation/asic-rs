@@ -1,1 +1,54 @@
-{"data":{"bos":{"faultLight":false,"hostname":"Antminer","info":{"version":{"full":"2025-06-25-0-45f356ea-25.05.1-plus"}},"uptime":{"durationS":693609}},"bosminer":{"info":{"fans":[{"name":"0","rpm":6421,"speed":100},{"name":"1","rpm":6391,"speed":100},{"name":"2","rpm":6061,"speed":100},{"name":"3","rpm":6331,"speed":100}],"summary":{"power":{"approxConsumptionW":3698,"limitW":3878}},"workSolver":{"nominalMhs":216722441.99088,"realHashrate":{"mhs5S":205749605.59787723}}}}}}
+{
+  "data": {
+    "bos": {
+      "faultLight": false,
+      "hostname": "Antminer",
+      "info": {
+        "version": {
+          "full": "2025-06-25-0-45f356ea-25.05.1-plus"
+        }
+      },
+      "uptime": {
+        "durationS": 693609
+      }
+    },
+    "bosminer": {
+      "info": {
+        "fans": [
+          {
+            "name": "0",
+            "rpm": 6421,
+            "speed": 100
+          },
+          {
+            "name": "1",
+            "rpm": 6391,
+            "speed": 100
+          },
+          {
+            "name": "2",
+            "rpm": 6061,
+            "speed": 100
+          },
+          {
+            "name": "3",
+            "rpm": 6331,
+            "speed": 100
+          }
+        ],
+        "summary": {
+          "power": {
+            "approxConsumptionW": 3698,
+            "limitW": 3878
+          }
+        },
+        "workSolver": {
+          "nominalMhs": 216722441.99088,
+          "realHashrate": {
+            "mhs5S": 205749605.59787723
+          }
+        }
+      }
+    }
+  }
+}

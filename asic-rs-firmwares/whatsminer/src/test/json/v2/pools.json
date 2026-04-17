@@ -1,1 +1,44 @@
-{"POOLS":[{"Accepted":5412,"POOL":1,"Priority":0,"Rejected":0,"Status":"Alive","Stratum Active":true,"URL":"stratum+tcp://btc.example.pool:3333","User":"asic-rs.test"},{"Accepted":0,"POOL":2,"Priority":1,"Rejected":0,"Status":"Alive","Stratum Active":false,"URL":"stratum+tcp://btc2.example.pool:3333","User":"asic-rs.test"},{"Accepted":0,"POOL":3,"Priority":2,"Rejected":0,"Status":"Alive","Stratum Active":false,"URL":"stratum+tcp://btc3.example.pool:3333","User":"asic-rs.test"}],"STATUS":[{"Code":7,"Description":"cgminer 4.9.2","Msg":"3 Pool(s)","STATUS":"S","When":1773871985}],"id":1}
+{
+  "POOLS": [
+    {
+      "Accepted": 5412,
+      "POOL": 1,
+      "Priority": 0,
+      "Rejected": 0,
+      "Status": "Alive",
+      "Stratum Active": true,
+      "URL": "stratum+tcp://btc.example.pool:3333",
+      "User": "asic-rs.test"
+    },
+    {
+      "Accepted": 0,
+      "POOL": 2,
+      "Priority": 1,
+      "Rejected": 0,
+      "Status": "Alive",
+      "Stratum Active": false,
+      "URL": "stratum+tcp://btc2.example.pool:3333",
+      "User": "asic-rs.test"
+    },
+    {
+      "Accepted": 0,
+      "POOL": 3,
+      "Priority": 2,
+      "Rejected": 0,
+      "Status": "Alive",
+      "Stratum Active": false,
+      "URL": "stratum+tcp://btc3.example.pool:3333",
+      "User": "asic-rs.test"
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 7,
+      "Description": "cgminer 4.9.2",
+      "Msg": "3 Pool(s)",
+      "STATUS": "S",
+      "When": 1773871985
+    }
+  ],
+  "id": 1
+}

@@ -1,1 +1,30 @@
-{"code":0,"desc":"get.miner.status","msg":{"pools":[{"account":"asic-rs.test","pool-priority":0,"status":"alive","stratum-active":true,"url":"stratum+tcp://btc.example.pool:3333"},{"account":"asic-rs.test","pool-priority":1,"status":"alive","stratum-active":false,"url":"stratum+tcp://btc2.example.pool:3333"},{"account":"asic-rs.test","pool-priority":2,"status":"alive","stratum-active":false,"url":"stratum+tcp://btc3.example.pool:3333"}]},"when":1773869570}
+{
+  "code": 0,
+  "desc": "get.miner.status",
+  "msg": {
+    "pools": [
+      {
+        "account": "asic-rs.test",
+        "pool-priority": 0,
+        "status": "alive",
+        "stratum-active": true,
+        "url": "stratum+tcp://btc.example.pool:3333"
+      },
+      {
+        "account": "asic-rs.test",
+        "pool-priority": 1,
+        "status": "alive",
+        "stratum-active": false,
+        "url": "stratum+tcp://btc2.example.pool:3333"
+      },
+      {
+        "account": "asic-rs.test",
+        "pool-priority": 2,
+        "status": "alive",
+        "stratum-active": false,
+        "url": "stratum+tcp://btc3.example.pool:3333"
+      }
+    ]
+  },
+  "when": 1773869570
+}

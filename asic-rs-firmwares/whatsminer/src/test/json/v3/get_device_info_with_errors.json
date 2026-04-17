@@ -1,1 +1,61 @@
-{"code":0,"desc":"get.device.info","msg":{"error-code":[{"218":"2024-06-15 10:30:00"},{"541":"Slot 1 error reading chip id.","reason":"hashboard"}],"miner":{"board-num":"3","chipdata0":"K8EC374-2426 BINVE6-197806A","chipdata1":"K8EC371-2426 BINVE6-197806A","chipdata2":"K8EA379-2426 BINVE6-197806A","detect-hash-rate":"61434:53890:65727","fast-boot":"disable","hash-board":"K40","hash-percent":"0","miner-sn":"BTM3CS40HD24083100000000000000000","pcbsn0":"BKM3CSE1404807K42757","pcbsn1":"BKM3CSE1404812K43675","pcbsn2":"BKM3CSE1404807K42762","pool-strategy":"FAILOVER","type":"M60S_VK40","working":"true"},"network":{"dns":"172.16.2.1","gateway":"172.16.2.1","hostname":"WhatsMiner","ip":"172.16.2.58","mac":"CE:02:01:00:8C:36","netmask":"255.255.255.0","proto":"dhcp"},"power":{"fanspeed":6344,"hwversion":"RT0159","mode":"1","model":"P221B","sn":"1436B2429603097","swversion":"230224.220429","type":"P221B","vendor":"1"},"salt":"uhCiDyVj","system":{"api":"3.0.2","apiswitch":"1","control-board-version":"CB6V10","fwversion":"20251209.16.Rel2","ledstatus":"auto","platform":"H616"}},"when":1773869570}
+{
+  "code": 0,
+  "desc": "get.device.info",
+  "msg": {
+    "error-code": [
+      {
+        "218": "2024-06-15 10:30:00"
+      },
+      {
+        "541": "Slot 1 error reading chip id.",
+        "reason": "hashboard"
+      }
+    ],
+    "miner": {
+      "board-num": "3",
+      "chipdata0": "K8EC374-2426 BINVE6-197806A",
+      "chipdata1": "K8EC371-2426 BINVE6-197806A",
+      "chipdata2": "K8EA379-2426 BINVE6-197806A",
+      "detect-hash-rate": "61434:53890:65727",
+      "fast-boot": "disable",
+      "hash-board": "K40",
+      "hash-percent": "0",
+      "miner-sn": "BTM3CS40HD24083100000000000000000",
+      "pcbsn0": "BKM3CSE1404807K42757",
+      "pcbsn1": "BKM3CSE1404812K43675",
+      "pcbsn2": "BKM3CSE1404807K42762",
+      "pool-strategy": "FAILOVER",
+      "type": "M60S_VK40",
+      "working": "true"
+    },
+    "network": {
+      "dns": "172.16.2.1",
+      "gateway": "172.16.2.1",
+      "hostname": "WhatsMiner",
+      "ip": "172.16.2.58",
+      "mac": "CE:02:01:00:8C:36",
+      "netmask": "255.255.255.0",
+      "proto": "dhcp"
+    },
+    "power": {
+      "fanspeed": 6344,
+      "hwversion": "RT0159",
+      "mode": "1",
+      "model": "P221B",
+      "sn": "1436B2429603097",
+      "swversion": "230224.220429",
+      "type": "P221B",
+      "vendor": "1"
+    },
+    "salt": "uhCiDyVj",
+    "system": {
+      "api": "3.0.2",
+      "apiswitch": "1",
+      "control-board-version": "CB6V10",
+      "fwversion": "20251209.16.Rel2",
+      "ledstatus": "auto",
+      "platform": "H616"
+    }
+  },
+  "when": 1773869570
+}

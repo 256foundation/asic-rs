@@ -1,19 +1,19 @@
 {
-  "STATUS": [
-    {
-      "STATUS": "S",
-      "When": 1671667240,
-      "Code": 530,
-      "Msg": "Total LEDs 2",
-      "Description": "GCMiner-2022-12.21-38b82d1466eedb609a7920339f8baa83b78a93c2"
-    }
-  ],
   "LED": [
     {
       "Code": 2,
       "LED1": 1,
       "LED2": 1,
       "Msg": "Normal"
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 530,
+      "Description": "GCMiner-2022-12.21-38b82d1466eedb609a7920339f8baa83b78a93c2",
+      "Msg": "Total LEDs 2",
+      "STATUS": "S",
+      "When": 1671667240
     }
   ],
   "id": 1

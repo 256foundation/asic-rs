@@ -1,1 +1,11 @@
-{"Code":131,"Description":"","Msg":{"api_ver":"2.0.5","fw_ver":"20230803.11.REL","platform":"H616"},"STATUS":"S","When":1773871985}
+{
+  "Code": 131,
+  "Description": "",
+  "Msg": {
+    "api_ver": "2.0.5",
+    "fw_ver": "20230803.11.REL",
+    "platform": "H616"
+  },
+  "STATUS": "S",
+  "When": 1773871985
+}
