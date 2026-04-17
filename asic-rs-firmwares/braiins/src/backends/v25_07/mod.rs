@@ -734,3 +734,246 @@ impl SupportsFanConfig for BraiinsV2507 {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use asic_rs_core::{data::collector::DataCollector, test::api::MockAPIClient};
+    use asic_rs_makes_antminer::models::AntMinerModel;
+    use macaddr::MacAddr;
+    use measurements::Power;
+
+    use super::*;
+    use crate::test::json::v25_07::{
+        WEB_COOLING_STATE_COMMAND as V07_COOLING, WEB_HASHBOARDS_COMMAND as V07_BOARDS,
+        WEB_LOCATE_COMMAND as V07_LOCATE, WEB_MINER_DETAILS_COMMAND as V07_DETAILS,
+        WEB_MINER_ERRORS_COMMAND as V07_ERRORS, WEB_MINER_STATS_COMMAND as V07_STATS,
+        WEB_NETWORK_COMMAND as V07_NETWORK, WEB_PERFORMANCE_TUNER_STATE_COMMAND as V07_TUNER,
+        WEB_POOLS_COMMAND as V07_POOLS, WEB_VERSION_COMMAND as V07_VERSION,
+    };
+    use crate::test::json::v25_11::{
+        WEB_COOLING_STATE_COMMAND as V11_COOLING, WEB_HASHBOARDS_COMMAND as V11_BOARDS,
+        WEB_LOCATE_COMMAND as V11_LOCATE, WEB_MINER_DETAILS_COMMAND as V11_DETAILS,
+        WEB_MINER_ERRORS_COMMAND as V11_ERRORS, WEB_MINER_STATS_COMMAND as V11_STATS,
+        WEB_NETWORK_COMMAND as V11_NETWORK, WEB_PERFORMANCE_TUNER_STATE_COMMAND as V11_TUNER,
+        WEB_POOLS_COMMAND as V11_POOLS, WEB_VERSION_COMMAND as V11_VERSION,
+    };
+
+    #[tokio::test]
+    async fn test_braiins_v25_07() {
+        let miner = BraiinsV2507::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+
+        let mut results = HashMap::new();
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "network",
+                parameters: None,
+            },
+            Value::from_str(V07_NETWORK).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "version",
+                parameters: None,
+            },
+            Value::from_str(V07_VERSION).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/details",
+                parameters: None,
+            },
+            Value::from_str(V07_DETAILS).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/stats",
+                parameters: None,
+            },
+            Value::from_str(V07_STATS).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "performance/tuner-state",
+                parameters: None,
+            },
+            Value::from_str(V07_TUNER).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/errors",
+                parameters: None,
+            },
+            Value::from_str(V07_ERRORS).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "pools",
+                parameters: None,
+            },
+            Value::from_str(V07_POOLS).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "cooling/state",
+                parameters: None,
+            },
+            Value::from_str(V07_COOLING).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/hw/hashboards",
+                parameters: None,
+            },
+            Value::from_str(V07_BOARDS).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "actions/locate",
+                parameters: None,
+            },
+            Value::from_str(V07_LOCATE).unwrap(),
+        );
+
+        let mock_api = MockAPIClient::new(results);
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let miner_data = miner.parse_data(collector.collect_all().await);
+
+        assert_eq!(miner_data.ip.to_string(), "127.0.0.1");
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("02:ee:da:a9:b6:4a").unwrap())
+        );
+        assert_eq!(miner_data.hostname, Some("Antminer".to_owned()));
+        assert_eq!(miner_data.api_version, Some("1.0.0".to_owned()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("2025-08-06-0-3881c51d-25.07-plus".to_owned())
+        );
+        assert_eq!(miner_data.serial_number, None);
+        assert_eq!(miner_data.hashboards.len(), 3);
+        assert_eq!(miner_data.fans.len(), 4);
+        assert_eq!(miner_data.light_flashing, Some(false));
+        assert!(miner_data.is_mining);
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(3137.0)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(3031.0)))
+        );
+        assert_eq!(miner_data.pools.len(), 1);
+        assert_eq!(miner_data.pools[0].len(), 2);
+        assert!(miner_data.hashrate.is_some());
+        assert!(miner_data.expected_hashrate.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_braiins_v25_11() {
+        let miner = BraiinsV2507::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+
+        let mut results = HashMap::new();
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "network",
+                parameters: None,
+            },
+            Value::from_str(V11_NETWORK).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "version",
+                parameters: None,
+            },
+            Value::from_str(V11_VERSION).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/details",
+                parameters: None,
+            },
+            Value::from_str(V11_DETAILS).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/stats",
+                parameters: None,
+            },
+            Value::from_str(V11_STATS).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "performance/tuner-state",
+                parameters: None,
+            },
+            Value::from_str(V11_TUNER).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/errors",
+                parameters: None,
+            },
+            Value::from_str(V11_ERRORS).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "pools",
+                parameters: None,
+            },
+            Value::from_str(V11_POOLS).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "cooling/state",
+                parameters: None,
+            },
+            Value::from_str(V11_COOLING).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/hw/hashboards",
+                parameters: None,
+            },
+            Value::from_str(V11_BOARDS).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "actions/locate",
+                parameters: None,
+            },
+            Value::from_str(V11_LOCATE).unwrap(),
+        );
+
+        let mock_api = MockAPIClient::new(results);
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let miner_data = miner.parse_data(collector.collect_all().await);
+
+        assert_eq!(miner_data.ip.to_string(), "127.0.0.1");
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("90:34:86:54:14:c0").unwrap())
+        );
+        assert_eq!(miner_data.hostname, Some("Antminer".to_owned()));
+        assert_eq!(miner_data.api_version, Some("1.1.0".to_owned()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("2025-11-21-0-eb658dcd-25.11-plus".to_owned())
+        );
+        assert_eq!(
+            miner_data.serial_number,
+            Some("YNAHEAUBCJCBA03GL".to_owned())
+        );
+        assert_eq!(miner_data.hashboards.len(), 3);
+        assert_eq!(miner_data.fans.len(), 4);
+        assert_eq!(miner_data.light_flashing, Some(false));
+        assert!(miner_data.is_mining);
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(2472.0)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(2431.0)))
+        );
+        assert_eq!(miner_data.pools.len(), 1);
+        assert_eq!(miner_data.pools[0].len(), 2);
+        assert!(miner_data.hashrate.is_some());
+        assert!(miner_data.expected_hashrate.is_some());
+    }
+}

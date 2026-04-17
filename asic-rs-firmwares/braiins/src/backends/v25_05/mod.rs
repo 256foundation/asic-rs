@@ -851,3 +851,159 @@ impl SupportsFanConfig for BraiinsV2505 {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use asic_rs_core::{data::collector::DataCollector, test::api::MockAPIClient};
+    use asic_rs_makes_antminer::models::AntMinerModel;
+    use macaddr::MacAddr;
+    use measurements::Power;
+
+    use super::*;
+    use crate::test::json::v25_05::{
+        GQL_BOARDS_COMMAND, GQL_EVENTS_COMMAND, GQL_POOLS_COMMAND, GQL_SYSTEM_COMMAND,
+        VERSION_COMMAND, WEB_NET_CONF_COMMAND,
+    };
+
+    /// GQL responses from real miners include a "data" wrapper that the real
+    /// GraphQL client strips before returning. Strip it here to match.
+    fn gql(raw: &str) -> Value {
+        Value::from_str(raw).unwrap()["data"].clone()
+    }
+
+    #[tokio::test]
+    async fn test_braiins_v25_05() {
+        let miner = BraiinsV2505::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S21Plus);
+
+        let mut results = HashMap::new();
+        results.insert(
+            MinerCommand::GraphQL {
+                command: r#"{
+                bos {
+                    hostname
+                    faultLight
+                    info { version { full } }
+                    uptime { durationS }
+                }
+                bosminer {
+                    info {
+                        workSolver {
+                            realHashrate { mhs5S }
+                            nominalMhs
+                        }
+                        fans { name speed rpm }
+                        summary {
+                            power { limitW approxConsumptionW }
+                        }
+                    }
+                }
+            }"#,
+            },
+            gql(GQL_SYSTEM_COMMAND),
+        );
+        results.insert(
+            MinerCommand::GraphQL {
+                command: r#"{
+                bosminer {
+                    info {
+                        workSolver {
+                            childSolvers {
+                                name
+                                realHashrate { mhs5S }
+                                nominalMhs
+                                hwDetails { chips frequencyMhz voltageV hbSerialNumber }
+                                temperatures { name degreesC }
+                            }
+                        }
+                    }
+                }
+            }"#,
+            },
+            gql(GQL_BOARDS_COMMAND),
+        );
+        results.insert(
+            MinerCommand::GraphQL {
+                command: r#"{
+                bosminer {
+                    config {
+                        ... on BosminerConfig {
+                            groups {
+                                id
+                                strategy {
+                                    ... on QuotaStrategy {
+                                        quota
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    info {
+                        poolGroups {
+                            name
+                            pools {
+                                url
+                                user
+                                status
+                                active
+                                shares { acceptedSolutions rejectedSolutions }
+                            }
+                        }
+                    }
+                }
+            }"#,
+            },
+            gql(GQL_POOLS_COMMAND),
+        );
+        results.insert(
+            MinerCommand::GraphQL {
+                command: "{ events { appeals { kind timestamp message } } }",
+            },
+            gql(GQL_EVENTS_COMMAND),
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "version",
+                parameters: None,
+            },
+            Value::from_str(VERSION_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "admin/network/iface_status/lan",
+                parameters: None,
+            },
+            Value::from_str(WEB_NET_CONF_COMMAND).unwrap(),
+        );
+
+        let mock_api = MockAPIClient::new(results);
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let miner_data = miner.parse_data(collector.collect_all().await);
+
+        assert_eq!(miner_data.ip.to_string(), "127.0.0.1");
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("02:b7:87:ee:7f:f5").unwrap())
+        );
+        assert_eq!(miner_data.hostname, Some("Antminer".to_owned()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("2025-06-25-0-45f356ea-25.05.1-plus".to_owned())
+        );
+        assert_eq!(miner_data.light_flashing, Some(false));
+        assert_eq!(miner_data.hashboards.len(), 3);
+        assert_eq!(miner_data.fans.len(), 4);
+        assert!(miner_data.is_mining);
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(3698.0)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(3878.0)))
+        );
+        assert_eq!(miner_data.pools.len(), 1);
+        assert_eq!(miner_data.pools[0].len(), 3);
+        assert_eq!(miner_data.pools[0].quota, 1);
+        assert!(miner_data.hashrate.is_some());
+        assert!(miner_data.expected_hashrate.is_some());
+    }
+}

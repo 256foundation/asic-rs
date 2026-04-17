@@ -726,3 +726,135 @@ impl SupportsFanConfig for BraiinsV2604 {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use asic_rs_core::{data::collector::DataCollector, test::api::MockAPIClient};
+    use asic_rs_makes_antminer::models::AntMinerModel;
+    use macaddr::MacAddr;
+    use measurements::Power;
+
+    use super::*;
+    use crate::test::json::v26_04::{
+        WEB_COOLING_STATE_COMMAND, WEB_HASHBOARDS_COMMAND, WEB_LOCATE_COMMAND,
+        WEB_MINER_DETAILS_COMMAND, WEB_MINER_ERRORS_COMMAND, WEB_MINER_STATS_COMMAND,
+        WEB_NETWORK_COMMAND, WEB_PERFORMANCE_TUNER_STATE_COMMAND, WEB_POOLS_COMMAND,
+        WEB_VERSION_COMMAND,
+    };
+
+    #[tokio::test]
+    async fn test_braiins_v26_04() {
+        let miner = BraiinsV2604::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S21Pro);
+
+        let mut results = HashMap::new();
+
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "network",
+                parameters: None,
+            },
+            Value::from_str(WEB_NETWORK_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "version",
+                parameters: None,
+            },
+            Value::from_str(WEB_VERSION_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/details",
+                parameters: None,
+            },
+            Value::from_str(WEB_MINER_DETAILS_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/stats",
+                parameters: None,
+            },
+            Value::from_str(WEB_MINER_STATS_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "performance/tuner-state",
+                parameters: None,
+            },
+            Value::from_str(WEB_PERFORMANCE_TUNER_STATE_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/errors",
+                parameters: None,
+            },
+            Value::from_str(WEB_MINER_ERRORS_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "pools",
+                parameters: None,
+            },
+            Value::from_str(WEB_POOLS_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "cooling/state",
+                parameters: None,
+            },
+            Value::from_str(WEB_COOLING_STATE_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "miner/hw/hashboards",
+                parameters: None,
+            },
+            Value::from_str(WEB_HASHBOARDS_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "actions/locate",
+                parameters: None,
+            },
+            Value::from_str(WEB_LOCATE_COMMAND).unwrap(),
+        );
+
+        let mock_api = MockAPIClient::new(results);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect_all().await;
+
+        let miner_data = miner.parse_data(data);
+
+        assert_eq!(miner_data.ip.to_string(), "127.0.0.1");
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("02:8f:77:ec:e7:e0").unwrap())
+        );
+        assert_eq!(miner_data.hostname, Some("Antminer".to_owned()));
+        assert_eq!(miner_data.api_version, Some("1.3.0".to_owned()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("2026-04-14-0-912d084c-26.04-plus".to_owned())
+        );
+        assert_eq!(
+            miner_data.serial_number,
+            Some("THQGFKUBDJIAH0E9G".to_owned())
+        );
+        assert_eq!(miner_data.hashboards.len(), 3);
+        assert_eq!(miner_data.fans.len(), 4);
+        assert_eq!(miner_data.light_flashing, Some(false));
+        assert!(miner_data.is_mining);
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(3480.0)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(3500.0)))
+        );
+        assert_eq!(miner_data.pools.len(), 1);
+        assert_eq!(miner_data.pools[0].len(), 2);
+        assert!(miner_data.hashrate.is_some());
+        assert!(miner_data.expected_hashrate.is_some());
+    }
+}
