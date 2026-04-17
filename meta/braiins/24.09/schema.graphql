@@ -1,0 +1,1105 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: SubscriptionRoot
+}
+
+# Indicates that an Input Object is a OneOf Input Object (and thus requires
+#                         exactly one of its field be provided)
+directive @oneOf on INPUT_OBJECT
+
+type Appeal {
+  id: ID!
+  kind: AppealKind!
+  timestamp: Timestamp!
+  message: String!
+}
+
+enum AppealKind {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+type AppealRemoveError {
+  message: String!
+}
+
+union AppealRemoveResult = VoidResult | AppealRemoveError
+
+type AttributeError implements Error {
+  message: String!
+}
+
+type Auth {
+  login(username: String!, password: String!): AuthResult!
+  logout: AuthResult!
+  extend: AuthResult!
+}
+
+type AuthError implements Error {
+  message: String!
+}
+
+union AuthResult = VoidResult | AuthError
+
+type Autotuning {
+  enabled: Boolean
+  mode: TunerMode
+  powerTarget: Int
+  hashrateTarget: Float
+}
+
+type AutotuningError implements Error {
+  message: String!
+  mode: String
+  powerTarget: String
+  hashrateTarget: String
+  performanceScaling: PerformanceScalingError
+}
+
+input AutotuningIn {
+  mode: TunerMode
+  powerTarget: Int
+  hashrateTarget: Float
+  performanceScaling: PerformanceScalingSetter
+  hashChains: [HashChainAutotuningSetter!]
+}
+
+type AutotuningMetadata {
+  enabled: BooleanMetadata!
+  modes: [TunerMode!]!
+  modeDefault: TunerMode!
+  powerTarget: UsizeMetadata!
+  hashrateTarget: FloatMetadata!
+}
+
+type AutotuningOut {
+  hashChains: [HashChain!]!
+  autotuning: Autotuning
+  performanceScaling: PerformanceScaling
+}
+
+union AutotuningResult = AutotuningOut | AutotuningError | AttributeError
+
+type BacklightError {
+  message: String!
+}
+
+type BacklightOk {
+  value: Boolean!
+}
+
+union BacklightResult = BacklightOk | BacklightError
+
+type BooleanMetadata {
+  default: Boolean!
+}
+
+type BosError implements Error {
+  message: String!
+}
+
+type BosFaultLight {
+  enabled: Boolean!
+}
+
+type BosInfo {
+  mode: BosMode!
+  version: BosVersion!
+}
+
+type BosManager {
+  # BOS management ID
+  managementId: String
+
+  # timestamp of last obtained configuration
+  lastModified: Timestamp
+}
+
+enum BosMode {
+  SD
+  NAND
+  EMMC
+}
+
+type BosMutation {
+  reboot: BosResult!
+  system: BosSystemMutation!
+  network: BosNetworkConfigMutation!
+  setPassword(newPassword: String): BosResult!
+  setHostname(hostname: String!): HostnameResult!
+  autoUpgrade(value: Boolean!): BosResult!
+  setFaultLight(enable: Boolean!): BosFaultLight!
+  setTimezone(timezone: String!): BosResult!
+  upgrade(hash: String!): BosResult!
+  factoryReset: BosResult!
+}
+
+union BosNetworkConfig = Dhcp | StaticIp
+
+type BosNetworkConfigMutation {
+  setDhcp: DhcpResult!
+  setStaticIp(
+    address: String!
+    netmask: String!
+    gateway: String!
+    dnsServers: [String!]!
+  ): StaticIpResult!
+}
+
+type BosQuery {
+  hostname: String
+  macAddress: String
+  uptime: BosUptime
+  logTargets: [LogTarget!]!
+  log(target: LogTarget!): [String!]!
+  errors: [ErrorEntry!]!
+  hwid: String
+  info: BosInfo!
+  manager: BosManager
+  autoUpgrade: Boolean
+  network: BosNetworkConfig!
+  faultLight: Boolean!
+  timezone: TimezoneData!
+  timezoneList: [TimezoneData!]!
+  checkForUpgrade: CheckUpgradeResult
+}
+
+union BosResult = VoidResult | BosError
+
+type BosSystemError {
+  message: String!
+}
+
+type BosSystemMutation {
+  callCommand(commandName: String!, args: [String!]!): BosSystemResult!
+}
+
+union BosSystemResult = CmdOk | BosSystemError
+
+type BosUptime {
+  # system up since Unix timestamp (epoch)
+  since: Timestamp!
+
+  # how long the system has been running in seconds
+  durationS: Int!
+}
+
+type BosVersion {
+  full: String!
+  isPlus: Boolean!
+}
+
+type BosminerConfig {
+  hashChainGlobal: HashChainGlobal
+  tempControl: TempControl
+  fanControl: FanControl
+  modelDetection: ModelDetection
+  autotuning: Autotuning
+  performanceScaling: PerformanceScaling
+  management: Management
+  groups: [GroupConfig!]!
+  hashChains: [HashChain!]!
+}
+
+type BosminerConfigError implements Error {
+  message: String!
+}
+
+union BosminerConfigResult = BosminerConfig | BosminerConfigError
+
+type BosminerConfigurator {
+  addGroupWithQuota(name: String!, quota: Int): GroupResult!
+  addGroupWithFixedShareRatio(name: String!, ratio: Float!): GroupResult!
+  removeGroup(id: ID!): GroupListResult!
+  updateGroups(groups: [Group!]!): GroupListResult!
+  group(id: ID!): GroupConfiguratorResult!
+  updateTempAndFans(input: TempAndFansIn!, apply: Boolean!): TempAndFansResult!
+  updatePerformance(input: PerformanceIn!, apply: Boolean!): PerformanceResult!
+  updateAutotuning(input: AutotuningIn!, apply: Boolean!): AutotuningResult!
+}
+
+type BosminerError {
+  message: String!
+}
+
+type BosminerInfo {
+  modelName: String!
+  poolGroups: [GroupInfo!]!
+  summary: SummaryInfo!
+  workSolver: WorkSolverInfo!
+  fans: [FanInfo!]
+  tempCtrl: TempCtrlInfo
+}
+
+type BosminerInfoSample {
+  timestamp: Timestamp!
+  poolGroups: [GroupInfo!]
+  summary: SummaryInfo
+  workSolver: WorkSolverInfo
+  fans: [FanInfo!]
+  tempCtrl: TempCtrlInfo
+}
+
+union BosminerInfoSubscriptionResult =
+    BosminerInfoSample
+  | BosminerInfoUnavailable
+
+type BosminerInfoUnavailable {
+  message: String!
+}
+
+union BosminerLicenseSubscriptionResult = LicenseOk | LicenseError
+
+type BosminerMetadata {
+  pool: PoolMetadata!
+  group: GroupMetadata!
+  hashChain: HashChainMetadata
+  tempControl: TempControlMetadata
+  fanControl: FanControlMetadata
+  autotuning: AutotuningMetadata
+  performanceScaling: PerformanceScalingMetadata
+  display: DisplayMetadata
+  upgradeDurationSec: Int
+}
+
+type BosminerMutation {
+  config: BosminerConfigurator!
+  start: BosminerResult!
+  stop: BosminerResult!
+  restart: BosminerResult!
+}
+
+type BosminerQuery {
+  info: BosminerInfo!
+  uptime: BosminerUptime
+  metadata: BosminerMetadata!
+  config: BosminerConfigResult!
+  defaultDevfeeRatio: Float!
+}
+
+union BosminerResult = VoidResult | BosminerError
+
+type BosminerUptime {
+  # BOSminer up since Unix timestamp (epoch)
+  # NOTE: this has been added to be consistent with BOS uptime but it should be used
+  # with cautious because it can return incorrect timestamp when a system time is not
+  # correctly synchronized (it can be also used for detection of this condition)
+  since: Timestamp!
+
+  # how long the BOSminer has been running in seconds
+  durationS: Int!
+}
+
+union CheckUpgradeResult = UpgradeDetail | BosError
+
+type CmdOk {
+  message: String!
+}
+
+type Component {
+  name: String!
+  index: Int!
+}
+
+enum DashboardDensity {
+  DEFAULT
+  COMPACT
+}
+
+type Dhcp {
+  void: Void!
+}
+
+type DhcpError {
+  message: String!
+}
+
+union DhcpResult = VoidResult | DhcpError
+
+type DisplayError {
+  message: String!
+}
+
+type DisplayMetadata {
+  brightness: UsizeMetadata!
+  resolution: ResolutionMetadata!
+  theme: DisplayThemeMetadata!
+  colors: StringMetadata!
+}
+
+type DisplayMutation {
+  enableBacklight(value: Boolean!): DisplayResult!
+  nightMode(enabled: Boolean!, interval: TimeInterval): DisplayResult!
+  changeScreen(screen: Screen!): VoidResult!
+  setTimeSystem(timeSystem: TimeSystem!): VoidResult!
+  setBrightness(value: Int!): DisplayResult!
+}
+
+type DisplayNightModeQuery {
+  enabled: Boolean!
+  from: TimeOut!
+  to: TimeOut!
+}
+
+type DisplayQuery {
+  backlightEnabled: BacklightResult!
+  nightMode: DisplayNightModeQuery!
+  currentScreen: Screen!
+  timeSystem: TimeSystem!
+  brightness: Int!
+}
+
+union DisplayResult = VoidResult | DisplayError
+
+enum DisplayThemeMetadata {
+  BMM_100
+  BMM_101
+}
+
+union DownloadUpgradeResult = UpgradeProgress | UpgradeHash | UpgradeError
+
+type DynamicPerformanceScaling {
+  status: DynamicPerformanceScalingStatus!
+  statusMessage: String!
+}
+
+enum DynamicPerformanceScalingStatus {
+  DISABLED
+  INITIAL_POWER_TARGET
+  LOWERED_POWER_TARGET
+  INITIAL_HASHRATE_TARGET
+  LOWERED_HASHRATE_TARGET
+  MINING_SHUTDOWN
+}
+
+interface Error {
+  message: String!
+}
+
+type ErrorCode {
+  code: String!
+  reason: String!
+  hint: String!
+}
+
+type ErrorEntry {
+  timestamp: String!
+  message: String!
+  errorCodes: [ErrorCode!]!
+  components: [Component!]!
+}
+
+type EventMutation {
+  removeAppeal(id: ID!): AppealRemoveResult!
+}
+
+type EventQuery {
+  appeals: [Appeal!]!
+}
+
+union EventSubscriptionResult = Appeal | RemoveAppeal
+
+type ExpiredLicense {
+  type: LicenseType!
+  contractName: String!
+  devfeeRatio: Float!
+}
+
+type FanControl {
+  speed: Int
+  minFans: Int
+  minFanRpm: Int
+  immersionModeEnabled: Boolean
+}
+
+type FanControlMetadata {
+  speed: UsizeMetadata!
+  minFans: UsizeMetadata!
+  immersionModeEnabled: BooleanMetadata
+}
+
+type FanInfo {
+  name: String!
+  speed: Int!
+  rpm: Int!
+}
+
+type FixedShareRatioStrategy {
+  fixedShareRatio: Float!
+}
+
+type FloatMetadata {
+  default: Float!
+  min: Float
+  max: Float
+  step: Float
+  unit: String
+}
+
+input Group {
+  id: ID
+  name: String
+  quota: Int
+  fixedShareRatio: Float
+  pools: [PoolConfigIn!]
+}
+
+type GroupConfig {
+  id: ID!
+  name: String!
+  strategy: LoadBalanceStrategy
+  pools: [PoolConfig!]!
+}
+
+type GroupConfigurator {
+  update(name: String): GroupResult!
+  setQuota(quota: Int): GroupResult!
+  setFixedShareRatio(ratio: Float!): GroupResult!
+  addPool(
+    enabled: Boolean
+    url: String!
+    user: String!
+    password: String
+  ): PoolResult!
+  removePool(id: ID!): PoolListResult!
+  movePool(id: ID!, idTo: ID!): PoolListResult!
+  movePoolByOffset(id: ID!, offset: Int!): PoolListResult!
+  pool(id: ID!): PoolConfiguratorResult!
+}
+
+type GroupConfiguratorError implements Error {
+  message: String!
+}
+
+union GroupConfiguratorResult = GroupConfigurator | AttributeError
+
+type GroupInfo {
+  name: String!
+  pools: [PoolInfo!]!
+}
+
+type GroupList {
+  groups: [GroupConfig!]!
+}
+
+type GroupListError implements Error {
+  message: String!
+  emptyName: String
+  duplicateNames: [String!]!
+  zeroStrategies: String
+  fixedShareRatioSum: String
+  missingQuota: String
+  noSpaceForQuota: String
+  poolRecordErrors: [PoolRecordError!]!
+}
+
+union GroupListResult = GroupList | GroupListError | AttributeError
+
+type GroupMetadata {
+  strategyDefault: LoadBalanceStrategy!
+  name: StringMetadata!
+}
+
+type GroupRecordError implements Error {
+  message: String!
+  name: String
+  strategy: String
+}
+
+union GroupResult = GroupConfig | GroupRecordError
+
+type HashChain {
+  name: String!
+  enabled: Boolean
+
+  # HashChain frequency in Mhz
+  frequency: Float
+  voltage: Float
+}
+
+input HashChainAutotuningSetter {
+  name: String!
+  enabled: Boolean
+}
+
+type HashChainError {
+  name: String!
+  frequency: String
+  voltage: String
+}
+
+type HashChainGlobal {
+  asicBoost: Boolean
+  frequency: Float
+  voltage: Float
+}
+
+type HashChainMetadata {
+  indexNames: [String!]!
+  voltagePerHashChain: Boolean!
+  enabled: BooleanMetadata!
+  asicBoost: BooleanMetadata
+  frequency: FloatMetadata!
+  voltage: FloatMetadata!
+}
+
+input HashChainSetter {
+  name: String!
+  enabled: Boolean
+  frequency: Float
+  voltage: Float
+}
+
+type HostnameError implements Error {
+  message: String!
+}
+
+type HostnameOk {
+  message: String!
+}
+
+union HostnameResult = HostnameOk | HostnameError
+
+type HwDetails {
+  chips: Int
+  frequencyMhz: Float
+  voltageV: Float
+}
+
+type IoError implements Error {
+  message: String!
+  exception: String!
+}
+
+enum Language {
+  CHINESE
+  CZECH
+  ENGLISH
+  PERSIAN
+  RUSSIAN
+  SPANISH
+}
+
+type LanguageLabel {
+  id: Language!
+  label: String!
+}
+
+type LicenseError {
+  message: String!
+}
+
+type LicenseOk {
+  licenseState: LicenseState!
+}
+
+union LicenseState =
+    NoneLicense
+  | LimitedLicense
+  | ValidLicense
+  | ExpiredLicense
+
+enum LicenseType {
+  UNKNOWN
+  STANDARD
+  CUSTOM
+}
+
+type LimitedLicense {
+  limited: Boolean!
+}
+
+# Link in UI
+type Link {
+  # Localized link label
+  label: String!
+
+  # Target link address (without hostname and protocol)
+  href: String!
+}
+
+union LoadBalanceStrategy = QuotaStrategy | FixedShareRatioStrategy
+
+enum LogTarget {
+  DMESG
+  SYSLOG
+  BOSMINER
+  BOSER
+  MONITOR
+}
+
+type Management {
+  telemetryEnabled: Boolean
+  telemetrySubmitPeriodSecs: Int
+}
+
+enum MinerStatus {
+  NOT_STARTED
+  NORMAL
+  PAUSED
+  SUSPENDED
+  RESTRICTED
+}
+
+type ModelDetection {
+  useConfigFallback: Boolean
+}
+
+type Mutation {
+  auth: Auth!
+  events: EventMutation!
+  storage: StorageMutation!
+  bos: BosMutation!
+  bosminer: BosminerMutation!
+  display: DisplayMutation!
+}
+
+type NoneLicense {
+  secondsToRestricted: Int!
+}
+
+type PerformanceError implements Error {
+  message: String!
+  globalFrequency: String
+  globalVoltage: String
+  hashChains: [HashChainError!]
+}
+
+input PerformanceIn {
+  asicBoost: Boolean
+  globalFrequency: Float
+  globalVoltage: Float
+  hashChains: [HashChainSetter!]
+}
+
+type PerformanceOut {
+  hashChainGlobal: HashChainGlobal
+  hashChains: [HashChain!]!
+}
+
+union PerformanceResult = PerformanceOut | PerformanceError | AttributeError
+
+type PerformanceScaling {
+  enabled: Boolean
+  powerStep: Int
+  minPowerTarget: Int
+  hashrateStep: Float
+  minHashrateTarget: Float
+  shutdownEnabled: Boolean
+  shutdownDuration: Float
+}
+
+type PerformanceScalingError {
+  powerStep: String
+  minPowerTarget: String
+  hashrateStep: String
+  minHashrateTarget: String
+  shutdownDuration: String
+}
+
+type PerformanceScalingMetadata {
+  enabled: BooleanMetadata!
+  powerStep: UsizeMetadata!
+  minPowerTarget: UsizeMetadata!
+  hashrateStep: FloatMetadata!
+  minHashrateTarget: FloatMetadata!
+  shutdownEnabled: BooleanMetadata!
+  shutdownDuration: FloatMetadata!
+}
+
+input PerformanceScalingSetter {
+  enabled: Boolean
+  powerStep: Int
+  minPowerTarget: Int
+  hashrateStep: Float
+  minHashrateTarget: Float
+  shutdownEnabled: Boolean
+  shutdownDuration: Float
+}
+
+type PoolConfig {
+  id: ID!
+  enabled: Boolean
+  url: String!
+  user: String!
+  password: String
+}
+
+input PoolConfigIn {
+  enabled: Boolean
+  url: String!
+  user: String!
+  password: String
+}
+
+type PoolConfigurator {
+  update(
+    enabled: Boolean
+    url: String
+    user: String
+    password: String
+  ): PoolResult!
+  removePassword: PoolResult!
+}
+
+type PoolConfiguratorError implements Error {
+  message: String!
+}
+
+union PoolConfiguratorResult = PoolConfigurator | PoolConfiguratorError
+
+type PoolInfo {
+  url: String!
+  user: String!
+  status: PoolStatus!
+  active: Boolean!
+  shares: SharesInfo!
+  lastDifficulty: Float!
+  generatedWork: Int!
+  bestShare: Int!
+}
+
+type PoolList {
+  pools: [PoolConfig!]!
+}
+
+type PoolListError implements Error {
+  message: String!
+}
+
+union PoolListResult = PoolList | PoolListError | AttributeError
+
+type PoolMetadata {
+  enabled: BooleanMetadata!
+  url: StringMetadata!
+  user: StringMetadata!
+  password: StringMetadata!
+}
+
+type PoolRecordError implements Error {
+  index: Int
+  message: String!
+  invalidUrl: String
+  invalidUser: String
+}
+
+union PoolResult = PoolConfig | PoolRecordError
+
+enum PoolStatus {
+  DISABLED
+  DEAD
+  ALIVE
+}
+
+type PowerInfo {
+  limitW: Int
+  approxConsumptionW: Int
+  chipConsumptionW: Int
+  efficiencyWMhs: Float
+}
+
+type PublicStorage {
+  preferredLanguage: Language
+  webTheme: WebTheme
+  dashboardDensity: DashboardDensity
+}
+
+type Query {
+  events: EventQuery!
+  storage: StorageQuery!
+  bos: BosQuery!
+  bosminer: BosminerQuery!
+  languages: [LanguageLabel!]!
+  ui: UiQuery!
+  display: DisplayQuery
+}
+
+type QuotaStrategy {
+  quota: Int!
+}
+
+type RealHashrate {
+  mhsAv: Float!
+  mhs5S: Float!
+  mhs15S: Float!
+  mhs30S: Float!
+  mhs1M: Float!
+  mhs5M: Float!
+  mhs15M: Float!
+  mhs30M: Float!
+  mhs1H: Float!
+  mhs24H: Float!
+  mhsSinceRestart: Float!
+}
+
+type ReleaseInfo {
+  version: String!
+  description: String!
+}
+
+type RemoveAppeal {
+  id: ID!
+}
+
+type ResolutionMetadata {
+  width: UsizeMetadata!
+  height: UsizeMetadata!
+}
+
+enum Screen {
+  CLOCK
+  BITCOIN
+  GEEK
+}
+
+type SharesInfo {
+  acceptedDifficulty: Int!
+  acceptedSolutions: Int!
+  rejectedDifficulty: Int!
+  rejectedSolutions: Int!
+  rejectedRatio: Float!
+  staleDifficulty: Int!
+  staleSolutions: Int!
+  staleRatio: Float!
+}
+
+type StaticIp {
+  address: String!
+  netmask: String!
+  gateway: String!
+  dnsServers: [String!]!
+}
+
+type StaticIpError {
+  message: String!
+  address: String
+  netmask: String
+  gateway: String
+  dnsServers: [String]!
+}
+
+union StaticIpResult = VoidResult | StaticIpError
+
+type StorageData {
+  public: PublicStorage!
+}
+
+input StorageIn {
+  preferredLanguage: Language
+  webTheme: WebTheme
+  dashboardDensity: DashboardDensity
+}
+
+type StorageMutation {
+  update(input: StorageIn!): StorageResult!
+}
+
+type StorageQuery {
+  public: PublicStorage!
+}
+
+union StorageResult = StorageData | IoError
+
+type StringMetadata {
+  default: String
+  minLength: Int
+  maxLength: Int
+}
+
+type SubscriptionRoot {
+  event: EventSubscriptionResult!
+  bosminerInfo: BosminerInfoSubscriptionResult!
+  license: BosminerLicenseSubscriptionResult!
+  minerStatus: MinerStatus!
+  downloadFirmware(hash: String!): DownloadUpgradeResult!
+}
+
+type SummaryInfo {
+  realHashrate: RealHashrate!
+  poolStatus: PoolStatus!
+  shares: SharesInfo!
+  foundBlocks: Int!
+  bestShare: Int!
+  power: PowerInfo
+  tunerStatus: TunerStatus
+  dynamicPerformanceScaling: DynamicPerformanceScaling
+  temperature: Temperature
+}
+
+type TempAndFansError implements Error {
+  message: String!
+  targetTemp: String
+  hotTemp: String
+  dangerousTemp: String
+  immersionModeEnabled: String
+  speed: String
+  minFans: String
+}
+
+input TempAndFansIn {
+  mode: TempControlMode
+  targetTemp: Float
+  hotTemp: Float
+  dangerousTemp: Float
+  immersionModeEnabled: Boolean
+  speed: Int
+  minFans: Int
+}
+
+type TempAndFansOut {
+  tempControl: TempControl
+  fanControl: FanControl
+}
+
+union TempAndFansResult = TempAndFansOut | TempAndFansError | AttributeError
+
+type TempControl {
+  mode: TempControlMode
+  targetTemp: Float
+  hotTemp: Float
+  dangerousTemp: Float
+  coldTemp: Float
+}
+
+type TempControlMetadata {
+  modeDefault: TempControlMode!
+  targetTemp: FloatMetadata!
+  hotTemp: FloatMetadata!
+  dangerousTemp: FloatMetadata!
+}
+
+enum TempControlMode {
+  AUTO
+  MANUAL
+  DISABLED
+}
+
+type TempCtrlInfo {
+  targetC: Float
+  hotC: Float
+  dangerousC: Float
+}
+
+type Temperature {
+  name: String!
+  degreesC: Float!
+}
+
+input TimeIn {
+  hour: Int!
+  minute: Int!
+}
+
+input TimeInterval {
+  from: TimeIn!
+  to: TimeIn!
+}
+
+type TimeOut {
+  hour: Int!
+  minute: Int!
+}
+
+enum TimeSystem {
+  HOUR_12
+  HOUR_24
+}
+
+scalar Timestamp
+
+type TimezoneData {
+  label: String!
+  offset: String!
+}
+
+type TunerInfo {
+  status: TunerStatus!
+  statusMessages: [String!]!
+  loadedProfileTimestamp: Timestamp
+  iteration: Int!
+  uptimeS: Int!
+  stageDurationS: Int!
+}
+
+enum TunerMode {
+  POWER_TARGET
+  HASHRATE_TARGET
+}
+
+enum TunerStatus {
+  DISABLED
+  STABLE
+  RUNNING
+  FAILED
+}
+
+# UI Graphql Query
+type UiQuery {
+  # Links for the configuration section
+  configLinks: [Link!]!
+
+  # Link for the system section
+  systemLinks: [Link!]!
+}
+
+type UpgradeDetail {
+  hash: String!
+  version: String!
+  releaseDate: String!
+  description: String!
+  previousReleases: [ReleaseInfo!]!
+  sizeBytes: Int!
+}
+
+type UpgradeError {
+  message: String!
+}
+
+type UpgradeHash {
+  hash: String!
+}
+
+type UpgradeProgress {
+  downloadedBytes: Int!
+}
+
+type UsizeMetadata {
+  default: Int!
+  min: Int
+  max: Int
+  unit: String
+}
+
+type ValidLicense {
+  type: LicenseType!
+  contractName: String!
+  devfeeRatio: Float!
+  secondsToRestricted: Int!
+}
+
+scalar Void
+
+type VoidResult {
+  void: Void!
+}
+
+enum WebTheme {
+  LIGHT
+  DARK
+  AUTO
+}
+
+type WorkSolverInfo {
+  name: String!
+  nominalMhs: Float!
+  realHashrate: RealHashrate!
+  hwErrorMhs15M: Float!
+  hwDetails: HwDetails
+  power: PowerInfo
+  tuner: TunerInfo
+  temperatures: [Temperature!]
+  childSolvers: [WorkSolverInfo!]
+}
