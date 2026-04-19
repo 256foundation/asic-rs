@@ -1,0 +1,52 @@
+[
+  {
+    "name": "foremanGroup",
+    "pools": [
+      {
+        "active": true,
+        "alive": true,
+        "enabled": true,
+        "stats": {
+          "accepted_shares": 10460,
+          "best_share": 776342690,
+          "generated_work": 17787650048,
+          "last_difficulty": 262144,
+          "last_share_time": {
+            "nanos": 734524252,
+            "seconds": 1776446524
+          },
+          "rejected_shares": 18,
+          "stale_shares": 0
+        },
+        "uid": "bCY9U0ZakyIy9PUH",
+        "url": "stratum+tcp://example.pool.com:3333",
+        "user": "asic_rs.test"
+      },
+      {
+        "active": false,
+        "alive": true,
+        "enabled": true,
+        "stats": {
+          "accepted_shares": 4,
+          "best_share": 970725,
+          "generated_work": 6094848,
+          "last_difficulty": 262144,
+          "last_share_time": {
+            "nanos": 885836537,
+            "seconds": 1776395827
+          },
+          "rejected_shares": 0,
+          "stale_shares": 0
+        },
+        "uid": "LidwqnzarwVMXDZt",
+        "url": "stratum+tcp://example.pool2.com:3333",
+        "user": "asic_rs.test"
+      }
+    ],
+    "strategy": {
+      "quota": {
+        "value": 1
+      }
+    }
+  }
+]

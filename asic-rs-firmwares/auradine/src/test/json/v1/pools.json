@@ -1,46 +1,46 @@
 {
-  "STATUS": [
-    {
-      "STATUS": "S",
-      "When": 1647971699,
-      "Code": 7,
-      "Msg": "3 Pool(s)",
-      "Description": "GCMiner-0.5-devsbXXX"
-    }
-  ],
   "POOLS": [
     {
+      "Accepted": 10,
       "POOL": 0,
-      "URL": "stratum+tcp://btc.viabtc.io:3333",
-      "Status": "Alive",
       "Priority": 0,
       "Quota": 1,
-      "Accepted": 10,
       "Rejected": 1,
-      "User": "username.suffix",
-      "Stratum Active": true
+      "Status": "Alive",
+      "Stratum Active": true,
+      "URL": "stratum+tcp://btc.viabtc.io:3333",
+      "User": "username.suffix"
     },
     {
+      "Accepted": 0,
       "POOL": 1,
-      "URL": "stratum+tcp://stratum.slushpool.com:3333",
-      "Status": "Dead",
       "Priority": 1,
       "Quota": 1,
-      "Accepted": 0,
       "Rejected": 0,
-      "User": "username.suffix",
-      "Stratum Active": false
+      "Status": "Dead",
+      "Stratum Active": false,
+      "URL": "stratum+tcp://stratum.slushpool.com:3333",
+      "User": "username.suffix"
     },
     {
+      "Accepted": 0,
       "POOL": 2,
-      "URL": "stratum+tcp://stratum.slushpool.com:3333",
-      "Status": "Dead",
       "Priority": 2,
       "Quota": 1,
-      "Accepted": 0,
       "Rejected": 0,
-      "User": "username.suffix",
-      "Stratum Active": false
+      "Status": "Dead",
+      "Stratum Active": false,
+      "URL": "stratum+tcp://stratum.slushpool.com:3333",
+      "User": "username.suffix"
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 7,
+      "Description": "GCMiner-0.5-devsbXXX",
+      "Msg": "3 Pool(s)",
+      "STATUS": "S",
+      "When": 1647971699
     }
   ],
   "id": 1

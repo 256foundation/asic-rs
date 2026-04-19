@@ -1,1 +1,39 @@
-{"STATUS": [{"STATUS": "S", "When": 1755615295, "Code": 9, "Msg": "1 ASC(s)", "Description": "cgminer 1.0.0"}], "DEVS": [{"ASC": 0, "Name": "BTM_SOC", "ID": 0, "Enabled": "Y", "Status": "Alive", "Tenperature": 0.0, "MHS av": 0.0, "MHS 5s": 0.0, "Accepted": 4057, "Rejected": 11, "Hardware Errors": 0, "Utility": 0.0, "Last Share Pool": 0, "Last Share Time": 1755615292, "Total MH": 0.0, "Diff1 Work": 0, "Difficulty Accepted": 1305083904, "Difficulty Rejected": 2490368, "Last Share Difficulty": 1755615292, "Last Valid Work": 1755615292, "Device Hardware%": 0.0, "Device Rejected%": 0.0, "Device Elapsed": 50474}], "id": 1}
+{
+  "DEVS": [
+    {
+      "ASC": 0,
+      "Accepted": 4057,
+      "Device Elapsed": 50474,
+      "Device Hardware%": 0.0,
+      "Device Rejected%": 0.0,
+      "Diff1 Work": 0,
+      "Difficulty Accepted": 1305083904,
+      "Difficulty Rejected": 2490368,
+      "Enabled": "Y",
+      "Hardware Errors": 0,
+      "ID": 0,
+      "Last Share Difficulty": 1755615292,
+      "Last Share Pool": 0,
+      "Last Share Time": 1755615292,
+      "Last Valid Work": 1755615292,
+      "MHS 5s": 0.0,
+      "MHS av": 0.0,
+      "Name": "BTM_SOC",
+      "Rejected": 11,
+      "Status": "Alive",
+      "Tenperature": 0.0,
+      "Total MH": 0.0,
+      "Utility": 0.0
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 9,
+      "Description": "cgminer 1.0.0",
+      "Msg": "1 ASC(s)",
+      "STATUS": "S",
+      "When": 1755615295
+    }
+  ],
+  "id": 1
+}

@@ -1,0 +1,66 @@
+{
+  "miner_stats": {
+    "best_share": 499065300,
+    "best_share_str": "499065300",
+    "error_hashrate": {
+      "megahash_per_second": 0.0
+    },
+    "found_blocks": 0,
+    "nominal_hashrate": {
+      "gigahash_per_second": 252597.58314720003
+    },
+    "real_hashrate": {
+      "last_15m": {
+        "gigahash_per_second": 245405.6536543818
+      },
+      "last_15s": {
+        "gigahash_per_second": 246571.99035534085
+      },
+      "last_1h": {
+        "gigahash_per_second": 249251.15156214434
+      },
+      "last_1m": {
+        "gigahash_per_second": 247350.7543407177
+      },
+      "last_24h": {
+        "gigahash_per_second": 19713.35267761372
+      },
+      "last_30m": {
+        "gigahash_per_second": 248034.2070730178
+      },
+      "last_30s": {
+        "gigahash_per_second": 249038.33761692888
+      },
+      "last_5m": {
+        "gigahash_per_second": 242856.0192064252
+      },
+      "last_5s": {
+        "gigahash_per_second": 248186.67720002498
+      },
+      "since_restart": {
+        "gigahash_per_second": 244601.2757139522
+      }
+    }
+  },
+  "pool_stats": {
+    "accepted_shares": 848,
+    "best_share": 499065300,
+    "best_share_str": "499065300",
+    "generated_work": 1787364554,
+    "last_difficulty": 524288,
+    "last_share_time": {
+      "nanos": 557334061,
+      "seconds": 1776445677
+    },
+    "rejected_shares": 0,
+    "stale_shares": 0
+  },
+  "power_stats": {
+    "approximated_consumption": {
+      "watt": 3480
+    },
+    "efficiency": {
+      "joule_per_terahash": 14.068677738906132
+    }
+  }
+}

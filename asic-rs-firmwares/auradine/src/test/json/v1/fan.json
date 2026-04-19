@@ -1,37 +1,37 @@
 {
-  "STATUS": [
-    {
-      "STATUS": "S",
-      "When": 1685118277,
-      "Code": 510,
-      "Msg": "Total fans: 4",
-      "Description": "GCMiner-2023-05.24-0ce5e7cc93a3815240fa189d0beb44b8c834936c"
-    }
-  ],
   "Fan": [
     {
       "ID": 1,
+      "Max": 7700,
       "Speed": 7080,
-      "Target": 7000,
-      "Max": 7700
+      "Target": 7000
     },
     {
       "ID": 2,
+      "Max": 7700,
       "Speed": 7020,
-      "Target": 7000,
-      "Max": 7700
+      "Target": 7000
     },
     {
       "ID": 3,
+      "Max": 7700,
       "Speed": 7100,
-      "Target": 7000,
-      "Max": 7700
+      "Target": 7000
     },
     {
       "ID": 4,
+      "Max": 7700,
       "Speed": 7020,
-      "Target": 7000,
-      "Max": 7700
+      "Target": 7000
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 510,
+      "Description": "GCMiner-2023-05.24-0ce5e7cc93a3815240fa189d0beb44b8c834936c",
+      "Msg": "Total fans: 4",
+      "STATUS": "S",
+      "When": 1685118277
     }
   ],
   "id": 1

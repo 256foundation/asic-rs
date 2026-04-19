@@ -1,1 +1,36 @@
-{"STATUS":[{"Code":11,"Description":"cgminer 4.9.2","Msg":"Summary","STATUS":"S","When":1773871985}],"SUMMARY":[{"Accepted":5412,"Best Share":82000000,"Chip Temp Avg":72.5,"Chip Temp Max":81.0,"Chip Temp Min":62.0,"Elapsed":25000,"Env Temp":28.5,"Factory GHS":126000,"Fan Speed In":5400,"Fan Speed Out":5280,"HS RT":124500000.0,"Hash Stable":true,"MAC":"D4:01:02:03:04:05","MHS av":125000000.0,"Pool Rejected%":0.0,"Power":3200,"Power Limit":3300,"Power Mode":"Normal","Target Freq":600,"Uptime":25500}],"id":1}
+{
+  "STATUS": [
+    {
+      "Code": 11,
+      "Description": "cgminer 4.9.2",
+      "Msg": "Summary",
+      "STATUS": "S",
+      "When": 1773871985
+    }
+  ],
+  "SUMMARY": [
+    {
+      "Accepted": 5412,
+      "Best Share": 82000000,
+      "Chip Temp Avg": 72.5,
+      "Chip Temp Max": 81.0,
+      "Chip Temp Min": 62.0,
+      "Elapsed": 25000,
+      "Env Temp": 28.5,
+      "Factory GHS": 126000,
+      "Fan Speed In": 5400,
+      "Fan Speed Out": 5280,
+      "HS RT": 124500000.0,
+      "Hash Stable": true,
+      "MAC": "D4:01:02:03:04:05",
+      "MHS av": 125000000.0,
+      "Pool Rejected%": 0.0,
+      "Power": 3200,
+      "Power Limit": 3300,
+      "Power Mode": "Normal",
+      "Target Freq": 600,
+      "Uptime": 25500
+    }
+  ],
+  "id": 1
+}

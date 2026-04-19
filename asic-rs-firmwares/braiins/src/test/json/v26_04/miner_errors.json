@@ -1,0 +1,812 @@
+{
+  "errors": [
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-20T21:27:28.454727Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-20T21:27:28.477767Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-20T21:27:28.485822Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-20T21:27:28.510482Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-20T21:27:28.522354Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-20T21:27:28.752191Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-20T21:27:28.763463Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-20T21:27:28.792359Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-20T21:27:28.800152Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-20T21:27:28.826011Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-20T21:27:28.836480Z"
+    },
+    {
+      "components": [],
+      "error_codes": [
+        {
+          "code": "V2",
+          "hint": "The voltage measured by the hashboard was significantly lower than expected. Either overcurrent protection on PSU disabled the power to hashboard or there's a short circuit somewhere between PSU and hashboard that makes the voltage significantly lower. Replace broken hashboards or set a lower power target/hashrate target. Another reason for short circuit could be a bad connection of the power rail to the hashboard, like loose screws, or faulty PSU. Please try to tighten the screws and check the PSU.",
+          "reason": "Overcurrent protection triggered or short circuit"
+        }
+      ],
+      "message": "Tuner error: Stage 4: Stage 4: PSU shut down during the experiment: {ERR:V2} LOW VOLTAGE - measured voltage 0 V - PSU overcurrent protection switched voltage off or short circuit",
+      "timestamp": "2026-03-20T21:27:30.060042Z"
+    },
+    {
+      "components": [],
+      "error_codes": [
+        {
+          "code": "H1",
+          "hint": "NoPIC miners are powering hashboards all the time and there's no way to disable them in software (they'll have consumption at least 300 W and will heat up even when disabled). If you want to override this behavior, then check `allow_disabling_hashboards_on_nopic_miners = true` option in bosminer-experimental.toml",
+          "reason": "DISABLING hashboards not allowed on NoPIC miners"
+        }
+      ],
+      "message": "{ERR:H1} Hashboard 1 has a problem, but this is a NoPIC miner and bosminer can't disable it individually for safety reasons",
+      "timestamp": "2026-03-20T21:29:36.532926Z"
+    },
+    {
+      "components": [
+        {
+          "index": 1,
+          "name": "Hashboard"
+        }
+      ],
+      "error_codes": [],
+      "message": "Tuner error: Disabled hashboard 1 {HB:1}: Hashchip: number of responses 0 of read_register(reg=0x0) doesn't match chip count 65: reply 0x0 missing",
+      "timestamp": "2026-03-20T21:29:36.546611Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-22T05:43:43.224456Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-03-22T05:44:14.265915Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: No such device or address (os error 6)",
+      "timestamp": "2026-03-22T15:42:24.772038Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:24.795224Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:25.175814Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:25.199160Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:25.221868Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:25.507924Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:25.534071Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:25.559800Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:25.818740Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:25.843129Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:25.869094Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:26.245273Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:26.268097Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:26.290878Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:26.586371Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:26.610801Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:26.635706Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:26.896164Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:26.920601Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:26.944852Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:27.314720Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:27.339513Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:27.363972Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:27.662695Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:27.686976Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:27.710959Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:27.971359Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:27.994215Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:28.016867Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:28.390289Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:28.416365Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:28.442660Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:28.735802Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:28.761645Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:28.787263Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:29.041260Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:29.063954Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:29.086679Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:29.468423Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:29.493836Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:29.521817Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:29.815327Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:29.840944Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:29.868422Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:30.110929Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:30.133531Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:30.156235Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:30.548307Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:30.572341Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:30.595040Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:30.894037Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:30.916811Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:30.939424Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:31.179861Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:31.203083Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:31.226158Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:31.619069Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:31.642070Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:31.664677Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:31.963936Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:31.987094Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:32.009502Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:32.249510Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:32.272458Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:32.295180Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:32.688722Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:32.711660Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:32.734257Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:33.033399Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:33.056275Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:33.078890Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:33.320372Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:33.343055Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:33.365741Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:33.757577Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:33.780635Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:33.803418Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:34.102704Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:34.125599Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:34.148246Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:34.389535Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:34.412459Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:34.435045Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:34.827291Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:34.852478Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:34.875377Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:35.172332Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:35.199045Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:35.225175Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:35.460185Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:35.485896Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.4[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-22T15:42:35.493486Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:35.517814Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.8[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-22T15:42:35.526474Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:35.899656Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.1[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-22T15:42:35.905765Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:35.928126Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.4[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-22T15:42:35.933942Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:35.956383Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb1.8[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-22T15:42:35.962227Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:36.251568Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.1[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-22T15:42:36.259133Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:36.283477Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.4[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-22T15:42:36.293757Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:36.321073Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb2.8[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-22T15:42:36.330371Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: read failed: Setting pointer register to 0x00 for I2c read of 1 bytes",
+      "timestamp": "2026-03-22T15:42:36.555075Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Sensor hb3.1[TMP451]: Too many sensor errors, disabling sensor",
+      "timestamp": "2026-03-22T15:42:36.562482Z"
+    },
+    {
+      "components": [],
+      "error_codes": [
+        {
+          "code": "V2",
+          "hint": "The voltage measured by the hashboard was significantly lower than expected. Either overcurrent protection on PSU disabled the power to hashboard or there's a short circuit somewhere between PSU and hashboard that makes the voltage significantly lower. Replace broken hashboards or set a lower power target/hashrate target. Another reason for short circuit could be a bad connection of the power rail to the hashboard, like loose screws, or faulty PSU. Please try to tighten the screws and check the PSU.",
+          "reason": "Overcurrent protection triggered or short circuit"
+        }
+      ],
+      "message": "Tuner error: Stage 4: Stage 4: PSU shut down during the experiment: {ERR:V2} LOW VOLTAGE - measured voltage 0 V - PSU overcurrent protection switched voltage off or short circuit",
+      "timestamp": "2026-03-22T15:42:41.913991Z"
+    },
+    {
+      "components": [],
+      "error_codes": [
+        {
+          "code": "H1",
+          "hint": "NoPIC miners are powering hashboards all the time and there's no way to disable them in software (they'll have consumption at least 300 W and will heat up even when disabled). If you want to override this behavior, then check `allow_disabling_hashboards_on_nopic_miners = true` option in bosminer-experimental.toml",
+          "reason": "DISABLING hashboards not allowed on NoPIC miners"
+        }
+      ],
+      "message": "{ERR:H1} Hashboard 1 has a problem, but this is a NoPIC miner and bosminer can't disable it individually for safety reasons",
+      "timestamp": "2026-03-22T15:45:15.391553Z"
+    },
+    {
+      "components": [
+        {
+          "index": 1,
+          "name": "Hashboard"
+        }
+      ],
+      "error_codes": [],
+      "message": "Tuner error: Disabled hashboard 1 {HB:1}: Hashchip: number of responses 0 of read_register(reg=0x0) doesn't match chip count 65: reply 0x0 missing",
+      "timestamp": "2026-03-22T15:45:15.397457Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-04-08T08:03:17.860785Z"
+    },
+    {
+      "components": [],
+      "error_codes": [],
+      "message": "Failed to resolve (\"a830bcc3.bos.braiins.com\", 3336)",
+      "timestamp": "2026-04-08T08:16:48.007413Z"
+    }
+  ]
+}

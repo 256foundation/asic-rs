@@ -1,28 +1,26 @@
 {
   "STATUS": [
     {
-      "STATUS": "S",
-      "When": 1775782219,
       "Code": 590,
+      "Description": "2.2.0",
       "Msg": "System temperature",
-      "Description": "2.2.0"
+      "STATUS": "S",
+      "When": 1775782219
     }
   ],
   "Temperature": [
     {
-      "ID": 0,
-      "Name": "Control Board",
       "BoardTemp": [
         {
           "ID": 0,
           "Temperature": 24.9375
         }
       ],
-      "ChipTemp": null
+      "ChipTemp": null,
+      "ID": 0,
+      "Name": "Control Board"
     },
     {
-      "ID": 1,
-      "Name": "Hash Board 1",
       "BoardTemp": [
         {
           "ID": 0,
@@ -58,11 +56,11 @@
           "ID": 2,
           "Temperature": 45.029410400390645
         }
-      ]
+      ],
+      "ID": 1,
+      "Name": "Hash Board 1"
     },
     {
-      "ID": 2,
-      "Name": "Hash Board 2",
       "BoardTemp": [
         {
           "ID": 0,
@@ -98,11 +96,11 @@
           "ID": 2,
           "Temperature": 48.220855712890625
         }
-      ]
+      ],
+      "ID": 2,
+      "Name": "Hash Board 2"
     },
     {
-      "ID": 3,
-      "Name": "Hash Board 3",
       "BoardTemp": [
         {
           "ID": 0,
@@ -138,7 +136,9 @@
           "ID": 2,
           "Temperature": 50.21550903320315
         }
-      ]
+      ],
+      "ID": 3,
+      "Name": "Hash Board 3"
     }
   ],
   "id": 1

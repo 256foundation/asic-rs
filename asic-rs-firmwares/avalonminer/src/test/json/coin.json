@@ -1,19 +1,21 @@
 {
-    "STATUS": [{
-            "STATUS": "S",
-            "When": 1753431105,
-            "Code": 78,
-            "Msg": "CGMiner coin",
-            "Description": "cgminer 4.11.1"
-        }
-    ],
-    "COIN": [{
-            "Hash Method": "sha256",
-            "Current Block Time": 37310.178978,
-            "Current Block Hash": "00000000000000000001d0ccaffecb937ee444cb056356abc59b906666607cf1",
-            "LP": true,
-            "Network Difficulty": 126271255279306.98437500
-        }
-    ],
-    "id": 1
+  "COIN": [
+    {
+      "Current Block Hash": "00000000000000000001d0ccaffecb937ee444cb056356abc59b906666607cf1",
+      "Current Block Time": 37310.178978,
+      "Hash Method": "sha256",
+      "LP": true,
+      "Network Difficulty": 126271255279306.98
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 78,
+      "Description": "cgminer 4.11.1",
+      "Msg": "CGMiner coin",
+      "STATUS": "S",
+      "When": 1753431105
+    }
+  ],
+  "id": 1
 }

@@ -1,0 +1,22 @@
+{
+  "mode_state": {
+    "powertargetmodestate": {
+      "current_target": {
+        "watt": 3500
+      },
+      "profile": {
+        "created": null,
+        "estimated_power_consumption": {
+          "watt": 3480
+        },
+        "measured_hashrate": {
+          "gigahash_per_second": 252597.58314720003
+        },
+        "target": {
+          "watt": 3500
+        }
+      }
+    }
+  },
+  "overall_tuner_state": 5
+}

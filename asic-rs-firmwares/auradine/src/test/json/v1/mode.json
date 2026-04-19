@@ -1,19 +1,19 @@
 {
-  "STATUS": [
-    {
-      "STATUS": "S",
-      "When": 1703715266,
-      "Code": 540,
-      "Msg": "Operating mode: 'normal', sleep: 'false'",
-      "Description": "FluxOS-2023-12.27-9bf070ee4408866329c93a70f2dfdc6248938aaa"
-    }
-  ],
   "Mode": [
     {
       "Mode": "custom",
+      "Power": 2000,
       "Sleep": "off",
-      "Ths": 160,
-      "Power": 2000
+      "Ths": 160
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 540,
+      "Description": "FluxOS-2023-12.27-9bf070ee4408866329c93a70f2dfdc6248938aaa",
+      "Msg": "Operating mode: 'normal', sleep: 'false'",
+      "STATUS": "S",
+      "When": 1703715266
     }
   ],
   "id": 1

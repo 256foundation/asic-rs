@@ -1,0 +1,226 @@
+{
+  "hashboards": [
+    {
+      "board_name": "A3HB70601",
+      "board_temp": {
+        "degree_c": 50.375
+      },
+      "chip_type": "BM1370",
+      "chips_count": 65,
+      "current_frequency": {
+        "hertz": 625865384.0
+      },
+      "current_voltage": {
+        "volt": 13.738724999999999
+      },
+      "enabled": true,
+      "highest_chip_temp": {
+        "id": 1,
+        "location": 1,
+        "temperature": {
+          "degree_c": 65.375
+        }
+      },
+      "highest_outlet_temp": {
+        "degree_c": 50.375
+      },
+      "id": "1",
+      "lowest_inlet_temp": {
+        "degree_c": 35.625
+      },
+      "model": "A3HB70601",
+      "serial_number": "THQGYSCBDJIAH11S3",
+      "stats": {
+        "best_share": 499065300,
+        "best_share_str": "499065300",
+        "error_hashrate": {
+          "megahash_per_second": 0.0
+        },
+        "found_blocks": 0,
+        "nominal_hashrate": {
+          "gigahash_per_second": 83433.20451864
+        },
+        "real_hashrate": {
+          "last_15m": {
+            "gigahash_per_second": 81312.73975533179
+          },
+          "last_15s": {
+            "gigahash_per_second": 83199.47489686459
+          },
+          "last_1h": {
+            "gigahash_per_second": 82766.98657129939
+          },
+          "last_1m": {
+            "gigahash_per_second": 81347.9502098183
+          },
+          "last_24h": {
+            "gigahash_per_second": 6530.297341694392
+          },
+          "last_30m": {
+            "gigahash_per_second": 82417.06112042218
+          },
+          "last_30s": {
+            "gigahash_per_second": 83248.83877103015
+          },
+          "last_5m": {
+            "gigahash_per_second": 80257.8272549758
+          },
+          "last_5s": {
+            "gigahash_per_second": 83168.43130521843
+          },
+          "since_restart": {
+            "gigahash_per_second": 78437.45639502372
+          }
+        }
+      }
+    },
+    {
+      "board_name": "A3HB70601",
+      "board_temp": {
+        "degree_c": 48.5625
+      },
+      "chip_type": "BM1370",
+      "chips_count": 65,
+      "current_frequency": {
+        "hertz": 635384615.0
+      },
+      "current_voltage": {
+        "volt": 13.738724999999999
+      },
+      "enabled": true,
+      "highest_chip_temp": {
+        "id": 2,
+        "location": 1,
+        "temperature": {
+          "degree_c": 63.5625
+        }
+      },
+      "highest_outlet_temp": {
+        "degree_c": 48.5625
+      },
+      "id": "2",
+      "lowest_inlet_temp": {
+        "degree_c": 36.625
+      },
+      "model": "A3HB70601",
+      "serial_number": "THQGYSCBDJIAH120Z",
+      "stats": {
+        "best_share": 402356269,
+        "best_share_str": "402356269",
+        "error_hashrate": {
+          "megahash_per_second": 0.0
+        },
+        "found_blocks": 0,
+        "nominal_hashrate": {
+          "gigahash_per_second": 84668.40701136
+        },
+        "real_hashrate": {
+          "last_15m": {
+            "gigahash_per_second": 82417.09638714515
+          },
+          "last_15s": {
+            "gigahash_per_second": 83381.75980270535
+          },
+          "last_1h": {
+            "gigahash_per_second": 83685.03929080871
+          },
+          "last_1m": {
+            "gigahash_per_second": 84529.12132906471
+          },
+          "last_24h": {
+            "gigahash_per_second": 6610.7373069606865
+          },
+          "last_30m": {
+            "gigahash_per_second": 83227.47390143464
+          },
+          "last_30s": {
+            "gigahash_per_second": 84218.43561968603
+          },
+          "last_5m": {
+            "gigahash_per_second": 81968.75149274516
+          },
+          "last_5s": {
+            "gigahash_per_second": 86699.32552387427
+          },
+          "since_restart": {
+            "gigahash_per_second": 77928.97537164367
+          }
+        }
+      }
+    },
+    {
+      "board_name": "A3HB70601",
+      "board_temp": {
+        "degree_c": 48.5
+      },
+      "chip_type": "BM1370",
+      "chips_count": 65,
+      "current_frequency": {
+        "hertz": 634423076.0
+      },
+      "current_voltage": {
+        "volt": 13.738724999999999
+      },
+      "enabled": true,
+      "highest_chip_temp": {
+        "id": 3,
+        "location": 1,
+        "temperature": {
+          "degree_c": 63.5
+        }
+      },
+      "highest_outlet_temp": {
+        "degree_c": 48.5
+      },
+      "id": "3",
+      "lowest_inlet_temp": {
+        "degree_c": 35.125
+      },
+      "model": "A3HB70601",
+      "serial_number": "THQGYSCBDJIAH12AD",
+      "stats": {
+        "best_share": 473289285,
+        "best_share_str": "473289285",
+        "error_hashrate": {
+          "megahash_per_second": 0.0
+        },
+        "found_blocks": 0,
+        "nominal_hashrate": {
+          "gigahash_per_second": 84495.9716172
+        },
+        "real_hashrate": {
+          "last_15m": {
+            "gigahash_per_second": 81623.4266617398
+          },
+          "last_15s": {
+            "gigahash_per_second": 81387.01514106822
+          },
+          "last_1h": {
+            "gigahash_per_second": 82811.6243519556
+          },
+          "last_1m": {
+            "gigahash_per_second": 80532.23907359612
+          },
+          "last_24h": {
+            "gigahash_per_second": 6574.761388307337
+          },
+          "last_30m": {
+            "gigahash_per_second": 82383.71000160564
+          },
+          "last_30s": {
+            "gigahash_per_second": 80322.45215654754
+          },
+          "last_5m": {
+            "gigahash_per_second": 80493.09733638566
+          },
+          "last_5s": {
+            "gigahash_per_second": 84138.26274583308
+          },
+          "since_restart": {
+            "gigahash_per_second": 89460.21506399127
+          }
+        }
+      }
+    }
+  ]
+}

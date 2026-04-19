@@ -1,17 +1,17 @@
 {
-  "STATUS": [
-    {
-      "STATUS": "S",
-      "When": 1708622703,
-      "Code": 104,
-      "Msg": "ASC count",
-      "Description": "FluxOS-2024-06.11-d37c5dd4a7f8e4837e63dc99e577620cb5e9361d"
-    }
-  ],
   "ASCCount": [
     {
-      "BoardCount": 3,
-      "AsicCount": 396
+      "AsicCount": 396,
+      "BoardCount": 3
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 104,
+      "Description": "FluxOS-2024-06.11-d37c5dd4a7f8e4837e63dc99e577620cb5e9361d",
+      "Msg": "ASC count",
+      "STATUS": "S",
+      "When": 1708622703
     }
   ],
   "id": 1

@@ -1,11 +1,11 @@
 {
   "STATUS": [
     {
-      "STATUS": "I",
-      "When": 1753434816,
       "Code": 118,
+      "Description": "cgminer 4.11.1",
       "Msg": "ASC 0 set info: success softoff:1753434821",
-      "Description": "cgminer 4.11.1"
+      "STATUS": "I",
+      "When": 1753434816
     }
   ],
   "id": 1

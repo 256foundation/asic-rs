@@ -1,0 +1,1009 @@
+use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
+
+use anyhow;
+use asic_rs_core::{
+    config::{
+        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        pools::PoolGroupConfig,
+    },
+    data::{
+        board::BoardData,
+        collector::{
+            DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
+        },
+        command::MinerCommand,
+        device::{DeviceInfo, HashAlgorithm},
+        fan::FanData,
+        hashrate::{HashRate, HashRateUnit},
+        message::{MessageSeverity, MinerMessage},
+        miner::TuningTarget,
+        pool::{PoolData, PoolGroupData, PoolURL},
+    },
+    traits::{miner::*, model::MinerModel},
+};
+use async_trait::async_trait;
+use macaddr::MacAddr;
+use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
+use serde_json::{Value, json};
+
+use crate::{
+    backends::v21_09::{graphql::BraiinsGraphQLAPI, rpc::BraiinsRPCAPI, web::BraiinsWebAPI},
+    firmware::BraiinsFirmware,
+};
+
+#[derive(Debug)]
+pub struct BraiinsV2505 {
+    pub ip: IpAddr,
+    pub rpc: BraiinsRPCAPI,
+    pub graphql: BraiinsGraphQLAPI,
+    pub web: BraiinsWebAPI,
+    pub device_info: DeviceInfo,
+}
+
+impl BraiinsV2505 {
+    pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
+        let auth = Self::default_auth();
+        BraiinsV2505 {
+            ip,
+            rpc: BraiinsRPCAPI::new(ip),
+            graphql: BraiinsGraphQLAPI::new(ip, auth.clone()),
+            web: BraiinsWebAPI::new(ip, auth),
+            device_info: DeviceInfo::new(model, BraiinsFirmware::default(), HashAlgorithm::SHA256),
+        }
+    }
+}
+
+#[async_trait]
+impl APIClient for BraiinsV2505 {
+    async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
+        match command {
+            MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
+            MinerCommand::GraphQL { .. } => self.graphql.get_api_result(command).await,
+            MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
+            _ => Err(anyhow::anyhow!("Unsupported command type for Braiins API")),
+        }
+    }
+}
+
+impl GetConfigsLocations for BraiinsV2505 {
+    #[allow(unused_variables)]
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        vec![]
+    }
+}
+
+impl CollectConfigs for BraiinsV2505 {
+    fn get_config_collector(&self) -> ConfigCollector<'_> {
+        ConfigCollector::new(self)
+    }
+}
+
+impl GetDataLocations for BraiinsV2505 {
+    fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
+        const GQL_SYSTEM: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                bos {
+                    hostname
+                    faultLight
+                    info { version { full } }
+                    uptime { durationS }
+                }
+                bosminer {
+                    info {
+                        workSolver {
+                            realHashrate { mhs5S }
+                            nominalMhs
+                        }
+                        fans { name speed rpm }
+                        summary {
+                            power { limitW approxConsumptionW }
+                        }
+                    }
+                }
+            }"#,
+        };
+        const GQL_BOARDS: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    info {
+                        workSolver {
+                            childSolvers {
+                                name
+                                realHashrate { mhs5S }
+                                nominalMhs
+                                hwDetails { chips frequencyMhz voltageV hbSerialNumber }
+                                temperatures { name degreesC }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        };
+        const GQL_POOLS: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    config {
+                        ... on BosminerConfig {
+                            groups {
+                                id
+                                strategy {
+                                    ... on QuotaStrategy {
+                                        quota
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    info {
+                        poolGroups {
+                            name
+                            pools {
+                                url
+                                user
+                                status
+                                active
+                                shares { acceptedSolutions rejectedSolutions }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        };
+        const RPC_VERSION: MinerCommand = MinerCommand::RPC {
+            command: "version",
+            parameters: None,
+        };
+        const WEB_NET_CONF: MinerCommand = MinerCommand::WebAPI {
+            command: "admin/network/iface_status/lan",
+            parameters: None,
+        };
+
+        match data_field {
+            DataField::ApiVersion => vec![(
+                RPC_VERSION,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/VERSION/0/API"),
+                    tag: None,
+                },
+            )],
+            DataField::FirmwareVersion => vec![(
+                GQL_SYSTEM,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bos/info/version/full"),
+                    tag: None,
+                },
+            )],
+            DataField::Hostname => vec![(
+                GQL_SYSTEM,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bos/hostname"),
+                    tag: None,
+                },
+            )],
+            DataField::Mac => vec![(
+                WEB_NET_CONF,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/0/macaddr"),
+                    tag: None,
+                },
+            )],
+            DataField::LightFlashing => vec![(
+                GQL_SYSTEM,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bos/faultLight"),
+                    tag: None,
+                },
+            )],
+            DataField::Uptime => vec![(
+                GQL_SYSTEM,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bos/uptime/durationS"),
+                    tag: None,
+                },
+            )],
+            DataField::Hashrate => vec![(
+                GQL_SYSTEM,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/info/workSolver/realHashrate/mhs5S"),
+                    tag: None,
+                },
+            )],
+            DataField::ExpectedHashrate => vec![(
+                GQL_SYSTEM,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/info/workSolver/nominalMhs"),
+                    tag: None,
+                },
+            )],
+            DataField::Hashboards => vec![(
+                GQL_BOARDS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/info/workSolver/childSolvers"),
+                    tag: None,
+                },
+            )],
+            DataField::Fans => vec![(
+                GQL_SYSTEM,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/info/fans"),
+                    tag: None,
+                },
+            )],
+            DataField::Pools => vec![(
+                GQL_POOLS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer"),
+                    tag: None,
+                },
+            )],
+            DataField::Wattage => vec![(
+                GQL_SYSTEM,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/info/summary/power/approxConsumptionW"),
+                    tag: None,
+                },
+            )],
+            DataField::TuningTarget => vec![(
+                GQL_SYSTEM,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/info/summary/power/limitW"),
+                    tag: None,
+                },
+            )],
+            DataField::IsMining => vec![(
+                GQL_SYSTEM,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/info/workSolver"),
+                    tag: None,
+                },
+            )],
+            DataField::Messages => vec![(
+                MinerCommand::GraphQL {
+                    command: "{ events { appeals { kind timestamp message } } }",
+                },
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/events/appeals"),
+                    tag: None,
+                },
+            )],
+            _ => vec![],
+        }
+    }
+}
+
+impl GetIP for BraiinsV2505 {
+    fn get_ip(&self) -> IpAddr {
+        self.ip
+    }
+}
+
+impl GetDeviceInfo for BraiinsV2505 {
+    fn get_device_info(&self) -> DeviceInfo {
+        self.device_info.clone()
+    }
+}
+
+impl CollectData for BraiinsV2505 {
+    fn get_collector(&self) -> DataCollector<'_> {
+        DataCollector::new(self)
+    }
+}
+
+#[async_trait]
+impl GetMAC for BraiinsV2505 {
+    fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
+        data.extract::<String>(DataField::Mac)
+            .and_then(|s| MacAddr::from_str(&s).ok())
+    }
+}
+
+impl GetHostname for BraiinsV2505 {
+    fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+        data.extract::<String>(DataField::Hostname)
+    }
+}
+
+impl GetApiVersion for BraiinsV2505 {
+    fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+        data.extract::<String>(DataField::ApiVersion)
+    }
+}
+
+impl GetFirmwareVersion for BraiinsV2505 {
+    fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+        data.extract::<String>(DataField::FirmwareVersion)
+    }
+}
+
+impl GetControlBoardVersion for BraiinsV2505 {}
+
+impl GetHashboards for BraiinsV2505 {
+    fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
+        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
+            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
+            .collect();
+
+        let Some(solvers_array) = data.get(&DataField::Hashboards).and_then(|v| v.as_array())
+        else {
+            return hashboards;
+        };
+
+        for board in hashboards.iter_mut() {
+            let Some(solver) = solvers_array.get(board.position as usize) else {
+                continue;
+            };
+
+            board.hashrate = solver
+                .pointer("/realHashrate/mhs5S")
+                .and_then(|v| v.as_f64())
+                .map(|f| {
+                    HashRate {
+                        value: f,
+                        unit: HashRateUnit::MegaHash,
+                        algo: "SHA256".to_string(),
+                    }
+                    .as_unit(HashRateUnit::default())
+                });
+            board.expected_hashrate = solver.get("nominalMhs").and_then(|v| v.as_f64()).map(|f| {
+                HashRate {
+                    value: f,
+                    unit: HashRateUnit::MegaHash,
+                    algo: "SHA256".to_string(),
+                }
+                .as_unit(HashRateUnit::default())
+            });
+
+            // Temperature names changed to SCREAMING_SNAKE_CASE in 25.05 and now include
+            // distinct INLET and OUTLET entries alongside MAX_BOARD and MAX_CHIP.
+            if let Some(temps_array) = solver.get("temperatures").and_then(|v| v.as_array()) {
+                for temp in temps_array {
+                    let name = temp
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_ascii_lowercase();
+                    let degrees = temp.get("degreesC").and_then(|v| v.as_f64());
+                    if name.contains("board") {
+                        board.board_temperature = degrees.map(Temperature::from_celsius);
+                    } else if name.contains("inlet") {
+                        board.intake_temperature = degrees.map(Temperature::from_celsius);
+                    } else if name.contains("outlet") {
+                        board.outlet_temperature = degrees.map(Temperature::from_celsius);
+                    }
+                }
+            }
+
+            board.serial_number = solver
+                .pointer("/hwDetails/hbSerialNumber")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            board.working_chips = solver
+                .pointer("/hwDetails/chips")
+                .and_then(|v| v.as_u64())
+                .map(|u| u as u16);
+            board.voltage = solver
+                .pointer("/hwDetails/voltageV")
+                .and_then(|v| v.as_f64())
+                .map(Voltage::from_volts);
+            board.frequency = solver
+                .pointer("/hwDetails/frequencyMhz")
+                .and_then(|v| v.as_f64())
+                .map(Frequency::from_megahertz);
+            board.active = board.hashrate.as_ref().map(|hr| hr.value > 0.0);
+        }
+
+        hashboards
+    }
+}
+
+impl GetHashrate for BraiinsV2505 {
+    fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
+        data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
+            value: f,
+            unit: HashRateUnit::MegaHash,
+            algo: "SHA256".to_string(),
+        })
+    }
+}
+
+impl GetExpectedHashrate for BraiinsV2505 {
+    fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
+            value: f,
+            unit: HashRateUnit::MegaHash,
+            algo: "SHA256".to_string(),
+        })
+    }
+}
+
+impl GetFans for BraiinsV2505 {
+    fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
+        let mut fans: Vec<FanData> = Vec::new();
+
+        if let Some(fans_data) = data.get(&DataField::Fans)
+            && let Some(fans_array) = fans_data.as_array()
+        {
+            for idx in 0..self.device_info.hardware.fans.unwrap_or(0) {
+                if let Some(fan) = fans_array.get(idx as usize)
+                    && let Some(rpm) = fan.get("rpm").and_then(|v| v.as_i64())
+                {
+                    fans.push(FanData {
+                        position: idx as i16,
+                        rpm: Some(AngularVelocity::from_rpm(rpm as f64)),
+                    });
+                }
+            }
+        }
+
+        fans
+    }
+}
+
+impl GetPsuFans for BraiinsV2505 {}
+
+impl GetFluidTemperature for BraiinsV2505 {}
+
+impl GetWattage for BraiinsV2505 {
+    fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
+        data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
+    }
+}
+
+impl GetTuningTarget for BraiinsV2505 {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        data.extract_map::<f64, _>(DataField::TuningTarget, Power::from_watts)
+            .map(TuningTarget::Power)
+    }
+}
+
+impl GetLightFlashing for BraiinsV2505 {
+    fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
+        data.extract::<bool>(DataField::LightFlashing)
+    }
+}
+
+impl GetMessages for BraiinsV2505 {
+    fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
+        let mut messages: Vec<MinerMessage> = Vec::new();
+
+        if let Some(appeals_data) = data.get(&DataField::Messages)
+            && let Some(appeals_array) = appeals_data.as_array()
+        {
+            for appeal in appeals_array {
+                let timestamp = appeal
+                    .get("timestamp")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0) as u32;
+
+                let message = appeal
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Unknown")
+                    .to_string();
+
+                let severity = match appeal.get("kind").and_then(|v| v.as_str()) {
+                    Some(k) if k.eq_ignore_ascii_case("error") => MessageSeverity::Error,
+                    Some(k) if k.eq_ignore_ascii_case("warning") => MessageSeverity::Warning,
+                    _ => MessageSeverity::Info,
+                };
+
+                messages.push(MinerMessage::new(timestamp, 0, message, severity));
+            }
+        }
+
+        messages
+    }
+}
+
+impl GetUptime for BraiinsV2505 {
+    fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
+        data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
+    }
+}
+
+impl GetIsMining for BraiinsV2505 {
+    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
+        data.get(&DataField::IsMining).is_some_and(|v| !v.is_null())
+    }
+}
+
+impl GetPools for BraiinsV2505 {
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
+        let mut pools: Vec<PoolGroupData> = Vec::new();
+
+        if let Some(groups_data) = data.get(&DataField::Pools)
+            && let Some(groups_array) = groups_data
+                .pointer("/info/poolGroups")
+                .and_then(|v| v.as_array())
+        {
+            let config_groups = groups_data
+                .pointer("/config/groups")
+                .and_then(|v| v.as_array());
+
+            let mut idx = 0u16;
+            for (group_idx, group) in groups_array.iter().enumerate() {
+                let mut group_pools: Vec<PoolData> = Vec::new();
+                if let Some(pools_array) = group.get("pools").and_then(|v| v.as_array()) {
+                    for pool in pools_array {
+                        let url = pool
+                            .get("url")
+                            .and_then(|v| v.as_str())
+                            .map(String::from)
+                            .map(PoolURL::from);
+
+                        let user = pool.get("user").and_then(|v| v.as_str()).map(String::from);
+
+                        let accepted_shares = pool
+                            .pointer("/shares/acceptedSolutions")
+                            .and_then(|v| v.as_u64());
+                        let rejected_shares = pool
+                            .pointer("/shares/rejectedSolutions")
+                            .and_then(|v| v.as_u64());
+
+                        let active = pool.get("active").and_then(|v| v.as_bool());
+                        let alive = pool
+                            .get("status")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s == "Running" || s == "Active");
+
+                        group_pools.push(PoolData {
+                            position: Some(idx),
+                            url,
+                            accepted_shares,
+                            rejected_shares,
+                            active,
+                            alive,
+                            user,
+                        });
+                        idx += 1;
+                    }
+                }
+
+                let quota = config_groups
+                    .and_then(|cg| cg.get(group_idx))
+                    .and_then(|cg| cg.pointer("/strategy/quota"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(1) as u32;
+
+                pools.push(PoolGroupData {
+                    name: group
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    quota,
+                    pools: group_pools,
+                });
+            }
+        }
+
+        pools
+    }
+}
+
+impl GetSerialNumber for BraiinsV2505 {}
+
+#[async_trait]
+impl SetFaultLight for BraiinsV2505 {
+    async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
+        let mutation = r#"mutation ($enable: Boolean!) {
+            bos {
+                setFaultLight(
+                    enable: $enable
+                ) {
+                    enabled
+                }
+            }
+        }"#;
+        let variables = json!({ "enable": fault });
+        Ok(self
+            .graphql
+            .send_command(mutation, true, Some(variables))
+            .await
+            .is_ok())
+    }
+    fn supports_set_fault_light(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
+impl SetPowerLimit for BraiinsV2505 {
+    async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
+        let mutation = r#"mutation ($limit: Int!) {
+            bosminer {
+                config {
+                    updateAutotuning(
+                        input: {
+                            powerTarget: $limit
+                        },
+                        apply: true
+                    ) {
+                        ... on AutotuningOut {
+                            autotuning {
+                                powerTarget,
+                                enabled
+                            }
+                        }
+                    }
+                }
+            }
+        }"#;
+        let variables = json!({ "limit": limit.as_watts() as u64 });
+        Ok(self
+            .graphql
+            .send_command(mutation, true, Some(variables))
+            .await
+            .is_ok())
+    }
+    fn supports_set_power_limit(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
+impl Restart for BraiinsV2505 {
+    async fn restart(&self) -> anyhow::Result<bool> {
+        let mutation = r#"mutation {
+            bos {
+                reboot {
+                    ... on VoidResult {
+                        void
+                    }
+                }
+            }
+        }"#;
+        Ok(self
+            .graphql
+            .send_command(mutation, true, None)
+            .await
+            .is_ok())
+    }
+    fn supports_restart(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
+impl Pause for BraiinsV2505 {
+    #[allow(unused_variables)]
+    async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        let mutation = r#"mutation {
+            bosminer {
+                stop {
+                    ... on VoidResult {
+                        void
+                    }
+                }
+            }
+        }"#;
+        Ok(self
+            .graphql
+            .send_command(mutation, true, None)
+            .await
+            .is_ok())
+    }
+    fn supports_pause(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
+impl Resume for BraiinsV2505 {
+    #[allow(unused_variables)]
+    async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
+        let mutation = r#"mutation {
+            bosminer {
+                start {
+                    ... on VoidResult {
+                        void
+                    }
+                }
+            }
+        }"#;
+        Ok(self
+            .graphql
+            .send_command(mutation, true, None)
+            .await
+            .is_ok())
+    }
+    fn supports_resume(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
+impl SupportsPoolsConfig for BraiinsV2505 {
+    async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
+        Ok(self
+            .get_pools()
+            .await
+            .iter()
+            .map(|g| g.clone().into())
+            .collect())
+    }
+
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
+        let mutation = r#"mutation ($groups: [Group!]!) {
+            bosminer {
+                config {
+                    updateGroups(groups: $groups) {
+                        ... on GroupList {
+                            groups { id }
+                        }
+                        ... on GroupListError {
+                            message
+                        }
+                    }
+                }
+            }
+        }"#;
+
+        let groups: Vec<Value> = config
+            .iter()
+            .map(|group| {
+                let pools: Vec<Value> = group
+                    .pools
+                    .iter()
+                    .map(|pool| {
+                        json!({
+                            "url": pool.url.to_string(),
+                            "user": pool.username.as_str(),
+                            "password": pool.password.as_str(),
+                        })
+                    })
+                    .collect();
+                json!({
+                    "name": group.name,
+                    "quota": group.quota,
+                    "pools": pools,
+                })
+            })
+            .collect();
+
+        let variables = json!({ "groups": groups });
+        let result = self
+            .graphql
+            .send_command(mutation, true, Some(variables))
+            .await?;
+
+        if result
+            .pointer("/bosminer/config/updateGroups/message")
+            .is_some()
+        {
+            return Ok(false);
+        }
+
+        let restart_mutation = r#"mutation {
+            bosminer {
+                restart {
+                    ... on BosminerError {
+                        message
+                    }
+                }
+            }
+        }"#;
+
+        Ok(self
+            .graphql
+            .send_command(restart_mutation, true, None)
+            .await
+            .is_ok())
+    }
+
+    fn supports_pools_config(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
+impl SupportsScalingConfig for BraiinsV2505 {
+    fn supports_scaling_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl UpgradeFirmware for BraiinsV2505 {
+    fn supports_upgrade_firmware(&self) -> bool {
+        false
+    }
+}
+
+impl HasDefaultAuth for BraiinsV2505 {
+    fn default_auth() -> MinerAuth {
+        MinerAuth::new("root", "")
+    }
+}
+
+impl HasAuth for BraiinsV2505 {
+    fn set_auth(&mut self, auth: MinerAuth) {
+        self.web.set_auth(auth.clone());
+        self.graphql.set_auth(auth);
+    }
+}
+
+#[async_trait]
+impl SupportsTuningConfig for BraiinsV2505 {
+    fn supports_tuning_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+impl SupportsFanConfig for BraiinsV2505 {
+    fn supports_fan_config(&self) -> bool {
+        false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use asic_rs_core::{data::collector::DataCollector, test::api::MockAPIClient};
+    use asic_rs_makes_antminer::models::AntMinerModel;
+    use macaddr::MacAddr;
+    use measurements::Power;
+
+    use super::*;
+    use crate::test::json::v25_05::{
+        GQL_BOARDS_COMMAND, GQL_EVENTS_COMMAND, GQL_POOLS_COMMAND, GQL_SYSTEM_COMMAND,
+        VERSION_COMMAND, WEB_NET_CONF_COMMAND,
+    };
+
+    /// GQL responses from real miners include a "data" wrapper that the real
+    /// GraphQL client strips before returning. Strip it here to match.
+    fn gql(raw: &str) -> Value {
+        Value::from_str(raw).unwrap()["data"].clone()
+    }
+
+    #[tokio::test]
+    async fn test_braiins_v25_05() {
+        let miner = BraiinsV2505::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S21Plus);
+
+        let mut results = HashMap::new();
+        results.insert(
+            MinerCommand::GraphQL {
+                command: r#"{
+                bos {
+                    hostname
+                    faultLight
+                    info { version { full } }
+                    uptime { durationS }
+                }
+                bosminer {
+                    info {
+                        workSolver {
+                            realHashrate { mhs5S }
+                            nominalMhs
+                        }
+                        fans { name speed rpm }
+                        summary {
+                            power { limitW approxConsumptionW }
+                        }
+                    }
+                }
+            }"#,
+            },
+            gql(GQL_SYSTEM_COMMAND),
+        );
+        results.insert(
+            MinerCommand::GraphQL {
+                command: r#"{
+                bosminer {
+                    info {
+                        workSolver {
+                            childSolvers {
+                                name
+                                realHashrate { mhs5S }
+                                nominalMhs
+                                hwDetails { chips frequencyMhz voltageV hbSerialNumber }
+                                temperatures { name degreesC }
+                            }
+                        }
+                    }
+                }
+            }"#,
+            },
+            gql(GQL_BOARDS_COMMAND),
+        );
+        results.insert(
+            MinerCommand::GraphQL {
+                command: r#"{
+                bosminer {
+                    config {
+                        ... on BosminerConfig {
+                            groups {
+                                id
+                                strategy {
+                                    ... on QuotaStrategy {
+                                        quota
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    info {
+                        poolGroups {
+                            name
+                            pools {
+                                url
+                                user
+                                status
+                                active
+                                shares { acceptedSolutions rejectedSolutions }
+                            }
+                        }
+                    }
+                }
+            }"#,
+            },
+            gql(GQL_POOLS_COMMAND),
+        );
+        results.insert(
+            MinerCommand::GraphQL {
+                command: "{ events { appeals { kind timestamp message } } }",
+            },
+            gql(GQL_EVENTS_COMMAND),
+        );
+        results.insert(
+            MinerCommand::RPC {
+                command: "version",
+                parameters: None,
+            },
+            Value::from_str(VERSION_COMMAND).unwrap(),
+        );
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "admin/network/iface_status/lan",
+                parameters: None,
+            },
+            Value::from_str(WEB_NET_CONF_COMMAND).unwrap(),
+        );
+
+        let mock_api = MockAPIClient::new(results);
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let miner_data = miner.parse_data(collector.collect_all().await);
+
+        assert_eq!(miner_data.ip.to_string(), "127.0.0.1");
+        assert_eq!(
+            miner_data.mac,
+            Some(MacAddr::from_str("02:b7:87:ee:7f:f5").unwrap())
+        );
+        assert_eq!(miner_data.hostname, Some("Antminer".to_owned()));
+        assert_eq!(
+            miner_data.firmware_version,
+            Some("2025-06-25-0-45f356ea-25.05.1-plus".to_owned())
+        );
+        assert_eq!(miner_data.light_flashing, Some(false));
+        assert_eq!(miner_data.hashboards.len(), 3);
+        assert_eq!(miner_data.fans.len(), 4);
+        assert!(miner_data.is_mining);
+        assert_eq!(miner_data.wattage, Some(Power::from_watts(3698.0)));
+        assert_eq!(
+            miner_data.tuning_target,
+            Some(TuningTarget::Power(Power::from_watts(3878.0)))
+        );
+        assert_eq!(miner_data.pools.len(), 1);
+        assert_eq!(miner_data.pools[0].len(), 3);
+        assert_eq!(miner_data.pools[0].quota, 1);
+        assert!(miner_data.hashrate.is_some());
+        assert!(miner_data.expected_hashrate.is_some());
+    }
+}

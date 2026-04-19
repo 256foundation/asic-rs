@@ -1,40 +1,40 @@
 {
-  "STATUS": [
-    {
-      "STATUS": "S",
-      "When": 1685118068,
-      "Code": 9,
-      "Msg": "3 Dev(s)",
-      "Description": "GCMiner-2023-05.24-0ce5e7cc93a3815240fa189d0beb44b8c834936c"
-    }
-  ],
   "DEVS": [
     {
       "DEV": 1,
-      "Name": "ASICBoard",
-      "ID": 1,
       "Enabled": true,
+      "ID": 1,
+      "MHS 5s": 6800000.0,
+      "Name": "ASICBoard",
       "Status": "Alive",
-      "Temperature": 28.25,
-      "MHS 5s": 6800000.0
+      "Temperature": 28.25
     },
     {
       "DEV": 2,
-      "Name": "ASICBoard",
-      "ID": 2,
       "Enabled": true,
+      "ID": 2,
+      "MHS 5s": 6900000.0,
+      "Name": "ASICBoard",
       "Status": "Alive",
-      "Temperature": 29.06,
-      "MHS 5s": 6900000.0
+      "Temperature": 29.06
     },
     {
       "DEV": 3,
-      "Name": "ASICBoard",
-      "ID": 3,
       "Enabled": true,
+      "ID": 3,
+      "MHS 5s": 7000000.0,
+      "Name": "ASICBoard",
       "Status": "Alive",
-      "Temperature": 30.12,
-      "MHS 5s": 7000000.0
+      "Temperature": 30.12
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 9,
+      "Description": "GCMiner-2023-05.24-0ce5e7cc93a3815240fa189d0beb44b8c834936c",
+      "Msg": "3 Dev(s)",
+      "STATUS": "S",
+      "When": 1685118068
     }
   ],
   "id": 1

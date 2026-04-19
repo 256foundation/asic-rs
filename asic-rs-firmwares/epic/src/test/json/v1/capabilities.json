@@ -1,1 +1,108 @@
-{"Model":"AntMiner S19 XP","Model Subtype":"BHB56801","Chip Type":"BM1366","Board Serial Numbers":["YNAHYPDBCJEBC0D6S","YNAHYPDBCJEBC0C6R"],"Control Board Version":{"somBoardVersion":"7.1.0","carrierBoardVersion":"4.1.0","cpuSerial":"002000353232510933363631","cpuHardware":"STM32 (Device Tree Support)"},"Default Clock":485,"Default Voltage":12900,"Default Hashrate":143,"Chips Per Bank":10,"Max HBs":3,"Max Clock Configs":1,"Coins":["BTC"],"Display":["ClksAndVoltage","ShutdownTemp","PerpetualTune"],"Tune Presets":[{"voltage":12300,"clk":272,"hashrate":80.0,"power":1700},{"voltage":12500,"clk":337,"hashrate":100.0,"power":2200},{"voltage":12600,"clk":407,"hashrate":120.0,"power":2700},{"voltage":12900,"clk":482,"hashrate":142.0,"power":3350},{"voltage":13100,"clk":525,"hashrate":154.0,"power":3850},{"voltage":13500,"clk":575,"hashrate":169.0,"power":4400}],"PerpetualTune":[{"algorithm":"VoltageOptimizer","name":"Voltage Optimizer","description":"Maintain the target hashrate by perpetually adjusting voltage for efficiency. The system automatically throttles down the user-specified target hashrate when the rig temperature is within 2°C of the shutdown temperature. Conversely, the target is throttled up to the user-defined hashrate when the rig temperature is 7°C lower than the shutdown temperature.","min":60,"max":300},{"algorithm":"ChipTune","name":"Chip Tune","description":"Maintain the target hashrate by adjusting individual chip clocks to squeeze more performance while perpetually optimizing voltage for efficiency.","min":60,"max":300},{"algorithm":"BoardTune","name":"Board Tune","description":"Maintain the target hashrate by perpetually adjusting board clocks to improve performance while optimizing voltage for efficiency. The system automatically throttles down the user-specified target hashrate when the rig temperature is within 2°C of the shutdown temperature. Conversely, the target is throttled up to the user-defined hashrate when the rig temperature is 7°C lower than the shutdown temperature. Tunes faster than chiptune while providing improved performance compared to Voltage Optimizer.","min":60,"max":300}],"Temp Sensor Info":{"Type":"Board","Count":2},"Psu Info":{"PSU Type":118,"FW":25,"Min Vout":11877,"Max Vout":15182},"Performance Estimator":{"Chip Count":110,"Hashes Per Second Per Chip":894.0},"Voltage Estimator":{"Slope":0.0041,"Y Intercept":11.0}}
+{
+  "Board Serial Numbers": [
+    "YNAHYPDBCJEBC0D6S",
+    "YNAHYPDBCJEBC0C6R"
+  ],
+  "Chip Type": "BM1366",
+  "Chips Per Bank": 10,
+  "Coins": [
+    "BTC"
+  ],
+  "Control Board Version": {
+    "carrierBoardVersion": "4.1.0",
+    "cpuHardware": "STM32 (Device Tree Support)",
+    "cpuSerial": "002000353232510933363631",
+    "somBoardVersion": "7.1.0"
+  },
+  "Default Clock": 485,
+  "Default Hashrate": 143,
+  "Default Voltage": 12900,
+  "Display": [
+    "ClksAndVoltage",
+    "ShutdownTemp",
+    "PerpetualTune"
+  ],
+  "Max Clock Configs": 1,
+  "Max HBs": 3,
+  "Model": "AntMiner S19 XP",
+  "Model Subtype": "BHB56801",
+  "Performance Estimator": {
+    "Chip Count": 110,
+    "Hashes Per Second Per Chip": 894.0
+  },
+  "PerpetualTune": [
+    {
+      "algorithm": "VoltageOptimizer",
+      "description": "Maintain the target hashrate by perpetually adjusting voltage for efficiency. The system automatically throttles down the user-specified target hashrate when the rig temperature is within 2\u00b0C of the shutdown temperature. Conversely, the target is throttled up to the user-defined hashrate when the rig temperature is 7\u00b0C lower than the shutdown temperature.",
+      "max": 300,
+      "min": 60,
+      "name": "Voltage Optimizer"
+    },
+    {
+      "algorithm": "ChipTune",
+      "description": "Maintain the target hashrate by adjusting individual chip clocks to squeeze more performance while perpetually optimizing voltage for efficiency.",
+      "max": 300,
+      "min": 60,
+      "name": "Chip Tune"
+    },
+    {
+      "algorithm": "BoardTune",
+      "description": "Maintain the target hashrate by perpetually adjusting board clocks to improve performance while optimizing voltage for efficiency. The system automatically throttles down the user-specified target hashrate when the rig temperature is within 2\u00b0C of the shutdown temperature. Conversely, the target is throttled up to the user-defined hashrate when the rig temperature is 7\u00b0C lower than the shutdown temperature. Tunes faster than chiptune while providing improved performance compared to Voltage Optimizer.",
+      "max": 300,
+      "min": 60,
+      "name": "Board Tune"
+    }
+  ],
+  "Psu Info": {
+    "FW": 25,
+    "Max Vout": 15182,
+    "Min Vout": 11877,
+    "PSU Type": 118
+  },
+  "Temp Sensor Info": {
+    "Count": 2,
+    "Type": "Board"
+  },
+  "Tune Presets": [
+    {
+      "clk": 272,
+      "hashrate": 80.0,
+      "power": 1700,
+      "voltage": 12300
+    },
+    {
+      "clk": 337,
+      "hashrate": 100.0,
+      "power": 2200,
+      "voltage": 12500
+    },
+    {
+      "clk": 407,
+      "hashrate": 120.0,
+      "power": 2700,
+      "voltage": 12600
+    },
+    {
+      "clk": 482,
+      "hashrate": 142.0,
+      "power": 3350,
+      "voltage": 12900
+    },
+    {
+      "clk": 525,
+      "hashrate": 154.0,
+      "power": 3850,
+      "voltage": 13100
+    },
+    {
+      "clk": 575,
+      "hashrate": 169.0,
+      "power": 4400,
+      "voltage": 13500
+    }
+  ],
+  "Voltage Estimator": {
+    "Slope": 0.0041,
+    "Y Intercept": 11.0
+  }
+}

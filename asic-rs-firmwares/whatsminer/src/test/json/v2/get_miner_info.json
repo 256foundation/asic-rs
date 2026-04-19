@@ -1,1 +1,11 @@
-{"Code":131,"Description":"","Msg":{"mac":"D4:01:02:03:04:05","hostname":"WhatsMiner","ledstat":"auto"},"STATUS":"S","When":1773871985}
+{
+  "Code": 131,
+  "Description": "",
+  "Msg": {
+    "hostname": "WhatsMiner",
+    "ledstat": "auto",
+    "mac": "D4:01:02:03:04:05"
+  },
+  "STATUS": "S",
+  "When": 1773871985
+}

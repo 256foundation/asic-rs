@@ -1,1 +1,34 @@
-{"code":0,"desc":"get.miner.status","msg":{"summary":{"Debug":"","board-temperature":[41.1,40.1,41.5],"bootup-time":1323,"chip-temp-avg":75.5,"chip-temp-max":82.0,"chip-temp-min":68.0,"elapsed":50000,"environment-temperature":28.5,"factory-hash":181.051,"fan-speed-in":5400,"fan-speed-out":5280,"freq-avg":625,"hash-15min":170.5,"hash-1min":171.2,"hash-average":170.8,"hash-realtime":171.259,"power-5min":3100.0,"power-limit":3600,"power-rate":17.6,"power-realtime":3156.0,"up-freq-finish":1}},"when":1773869570}
+{
+  "code": 0,
+  "desc": "get.miner.status",
+  "msg": {
+    "summary": {
+      "Debug": "",
+      "board-temperature": [
+        41.1,
+        40.1,
+        41.5
+      ],
+      "bootup-time": 1323,
+      "chip-temp-avg": 75.5,
+      "chip-temp-max": 82.0,
+      "chip-temp-min": 68.0,
+      "elapsed": 50000,
+      "environment-temperature": 28.5,
+      "factory-hash": 181.051,
+      "fan-speed-in": 5400,
+      "fan-speed-out": 5280,
+      "freq-avg": 625,
+      "hash-15min": 170.5,
+      "hash-1min": 171.2,
+      "hash-average": 170.8,
+      "hash-realtime": 171.259,
+      "power-5min": 3100.0,
+      "power-limit": 3600,
+      "power-rate": 17.6,
+      "power-realtime": 3156.0,
+      "up-freq-finish": 1
+    }
+  },
+  "when": 1773869570
+}

@@ -1,1 +1,13 @@
-{"Code":131,"Description":"","Msg":{"fan_speed":"6000","hw_version":"","model":"P222B","name":"P222B","sw_version":"230208.220429"},"STATUS":"S","When":1773871985}
+{
+  "Code": 131,
+  "Description": "",
+  "Msg": {
+    "fan_speed": "6000",
+    "hw_version": "",
+    "model": "P222B",
+    "name": "P222B",
+    "sw_version": "230208.220429"
+  },
+  "STATUS": "S",
+  "When": 1773871985
+}

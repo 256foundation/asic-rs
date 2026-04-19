@@ -1,0 +1,40 @@
+{
+  "bos_mode": 4,
+  "bos_version": {
+    "bos_plus": true,
+    "current": "2026-04-14-0-912d084c-26.04-plus",
+    "major": "2022-09-13-0-11012d53-22.08-plus"
+  },
+  "bosminer_uptime_s": 7039,
+  "control_board_soc_family": 3,
+  "hostname": "Antminer",
+  "kernel_version": "4.9.113",
+  "mac_address": "02:8f:77:ec:e7:e0",
+  "miner_identity": {
+    "brand": 1,
+    "miner_model": "Antminer S21 Pro",
+    "model": 0,
+    "name": "Antminer S21 Pro"
+  },
+  "platform": 4,
+  "psu_info": {
+    "fw_version": 6920,
+    "max_voltage": {
+      "volt": 15.0
+    },
+    "min_voltage": {
+      "volt": 12.0
+    },
+    "model_name": "APW171215a/c",
+    "serial_number": "OLTT335BCAJBE3545",
+    "version": 193
+  },
+  "serial_number": "THQGFKUBDJIAH0E9G",
+  "status": 2,
+  "sticker_hashrate": {
+    "gigahash_per_second": 234000.0
+  },
+  "system_uptime": 7206,
+  "system_uptime_s": 7206,
+  "uid": "fxdfDhot1inFQPSi"
+}

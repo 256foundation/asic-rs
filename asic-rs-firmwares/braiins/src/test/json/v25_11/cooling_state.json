@@ -1,0 +1,31 @@
+{
+  "fans": [
+    {
+      "position": 0,
+      "rpm": 5879,
+      "target_speed_ratio": 1.0
+    },
+    {
+      "position": 1,
+      "rpm": 5819,
+      "target_speed_ratio": 1.0
+    },
+    {
+      "position": 2,
+      "rpm": 5909,
+      "target_speed_ratio": 1.0
+    },
+    {
+      "position": 3,
+      "rpm": 5909,
+      "target_speed_ratio": 1.0
+    }
+  ],
+  "highest_temperature": {
+    "id": null,
+    "location": 1,
+    "temperature": {
+      "degree_c": 71.5
+    }
+  }
+}

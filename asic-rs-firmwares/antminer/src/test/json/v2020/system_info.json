@@ -1,16 +1,16 @@
 {
-  "minertype": "Antminer S21",
-  "nettype": "DHCP",
-  "netdevice": "eth0",
-  "macaddr": "02:55:97:22:3M:72",
+  "dnsservers": "",
+  "firmware_type": "Release",
+  "gateway": "",
   "hostname": "Antminer",
   "ipaddress": "192.168.1.100",
+  "macaddr": "02:55:97:22:3M:72",
+  "minertype": "Antminer S21",
+  "netdevice": "eth0",
   "netmask": "255.255.255.0",
-  "gateway": "",
-  "dnsservers": "",
-  "system_mode": "GNU/Linux",
-  "system_kernel_version": "Linux 4.9.113 #1 SMP PREEMPT Thu Oct 9 18:55:45 CST 2025",
+  "nettype": "DHCP",
+  "serinum": "THQING0BDJAB024NF",
   "system_filesystem_version": "FR-1.12(251009-S21)",
-  "firmware_type": "Release",
-  "serinum": "THQING0BDJAB024NF"
+  "system_kernel_version": "Linux 4.9.113 #1 SMP PREEMPT Thu Oct 9 18:55:45 CST 2025",
+  "system_mode": "GNU/Linux"
 }

@@ -32,9 +32,9 @@ use crate::{
     firmware::BraiinsFirmware,
 };
 
-mod graphql;
-mod rpc;
-mod web;
+pub mod graphql;
+pub mod rpc;
+pub mod web;
 
 #[derive(Debug)]
 pub struct BraiinsV2109 {

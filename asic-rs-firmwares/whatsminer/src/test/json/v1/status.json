@@ -1,1 +1,10 @@
-{"STATUS":"S","When":1773930539,"Code":131,"Msg":{"btmineroff":"false","Firmware Version":"'20220919.15.REL'"},"Description":"whatsminer v1.4.0"}
+{
+  "Code": 131,
+  "Description": "whatsminer v1.4.0",
+  "Msg": {
+    "Firmware Version": "'20220919.15.REL'",
+    "btmineroff": "false"
+  },
+  "STATUS": "S",
+  "When": 1773930539
+}

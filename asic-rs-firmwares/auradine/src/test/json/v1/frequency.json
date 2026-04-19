@@ -1,67 +1,67 @@
 {
-  "STATUS": [
-    {
-      "STATUS": "S",
-      "When": 1775782219,
-      "Code": 640,
-      "Msg": "System frequency",
-      "Description": "2.2.0"
-    }
-  ],
   "Frequency": [
     {
+      "ChipFrequency": [
+        {
+          "Frequency": 281.25,
+          "ID": 0
+        },
+        {
+          "Frequency": 247.5,
+          "ID": 1
+        },
+        {
+          "Frequency": 268.75,
+          "ID": 2
+        }
+      ],
       "ID": 1,
-      "Name": "Hash Board 1",
-      "ChipFrequency": [
-        {
-          "ID": 0,
-          "Frequency": 281.25
-        },
-        {
-          "ID": 1,
-          "Frequency": 247.5
-        },
-        {
-          "ID": 2,
-          "Frequency": 268.75
-        }
-      ]
+      "Name": "Hash Board 1"
     },
     {
+      "ChipFrequency": [
+        {
+          "Frequency": 327.5,
+          "ID": 0
+        },
+        {
+          "Frequency": 323.75,
+          "ID": 1
+        },
+        {
+          "Frequency": 328.75,
+          "ID": 2
+        }
+      ],
       "ID": 2,
-      "Name": "Hash Board 2",
-      "ChipFrequency": [
-        {
-          "ID": 0,
-          "Frequency": 327.5
-        },
-        {
-          "ID": 1,
-          "Frequency": 323.75
-        },
-        {
-          "ID": 2,
-          "Frequency": 328.75
-        }
-      ]
+      "Name": "Hash Board 2"
     },
     {
-      "ID": 3,
-      "Name": "Hash Board 3",
       "ChipFrequency": [
         {
-          "ID": 0,
-          "Frequency": 391.25
+          "Frequency": 391.25,
+          "ID": 0
         },
         {
-          "ID": 1,
-          "Frequency": 352.5
+          "Frequency": 352.5,
+          "ID": 1
         },
         {
-          "ID": 2,
-          "Frequency": 166.25
+          "Frequency": 166.25,
+          "ID": 2
         }
-      ]
+      ],
+      "ID": 3,
+      "Name": "Hash Board 3"
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 640,
+      "Description": "2.2.0",
+      "Msg": "System frequency",
+      "STATUS": "S",
+      "When": 1775782219
     }
   ],
   "id": 1
