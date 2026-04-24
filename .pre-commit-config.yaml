@@ -44,3 +44,20 @@ repos:
         args: ["--config-file=pyproject.toml"]
         additional_dependencies: [pydantic==2.12.5]
         pass_filenames: false
+  - repo: local
+    hooks:
+      - id: cargo-test
+        name: cargo test
+        entry: cargo test --all --locked --exclude asic-rs-pydantic --exclude asic-rs-pydantic-macros
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      - id: python-test
+        name: python tests
+        entry: python scripts/run_python_tests.py
+        language: python
+        additional_dependencies: [uv]
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
