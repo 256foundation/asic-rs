@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub(crate) mod v21_09;
 pub(crate) mod v24_09;
 pub(crate) mod v25_03;
