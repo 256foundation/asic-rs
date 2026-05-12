@@ -65,7 +65,7 @@ pub struct EPicFirmware {}
 
 impl Display for EPicFirmware {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ePIC")
+        write!(f, "UMC OS")
     }
 }
 
