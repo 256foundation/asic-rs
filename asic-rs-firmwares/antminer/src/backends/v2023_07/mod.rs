@@ -37,7 +37,7 @@ mod rpc;
 pub(crate) mod web;
 
 #[derive(Debug)]
-pub struct AntMinerV2020 {
+pub struct AntMinerV202307 {
     pub ip: IpAddr,
     pub rpc: AntMinerRPCAPI,
     pub web: AntMinerWebAPI,
@@ -63,24 +63,10 @@ impl Display for MinerMode {
     }
 }
 
-fn miner_conf_mode_matches(conf: &Value, mode: MinerMode) -> bool {
-    let expected = mode.to_string();
-    ["miner-mode", "bitmain-work-mode"]
-        .iter()
-        .filter_map(|key| conf.get(key))
-        .any(|value| {
-            value
-                .as_str()
-                .map(|mode| mode == expected)
-                .or_else(|| value.as_i64().map(|mode| mode.to_string() == expected))
-                .unwrap_or(false)
-        })
-}
-
-impl AntMinerV2020 {
+impl AntMinerV202307 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
-        AntMinerV2020 {
+        AntMinerV202307 {
             ip,
             rpc: AntMinerRPCAPI::new(ip),
             web: AntMinerWebAPI::new(ip, auth),
@@ -181,7 +167,7 @@ impl AntMinerV2020 {
 }
 
 #[async_trait]
-impl APIClient for AntMinerV2020 {
+impl APIClient for AntMinerV202307 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
@@ -191,7 +177,7 @@ impl APIClient for AntMinerV2020 {
     }
 }
 
-impl GetConfigsLocations for AntMinerV2020 {
+impl GetConfigsLocations for AntMinerV202307 {
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         const WEB_GET_MINER_CONF: MinerCommand = MinerCommand::WebAPI {
             command: "get_miner_conf",
@@ -211,13 +197,13 @@ impl GetConfigsLocations for AntMinerV2020 {
     }
 }
 
-impl CollectConfigs for AntMinerV2020 {
+impl CollectConfigs for AntMinerV202307 {
     fn get_config_collector(&self) -> ConfigCollector<'_> {
         ConfigCollector::new(self)
     }
 }
 
-impl GetDataLocations for AntMinerV2020 {
+impl GetDataLocations for AntMinerV202307 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const RPC_VERSION: MinerCommand = MinerCommand::RPC {
             command: "version",
@@ -408,50 +394,50 @@ impl GetDataLocations for AntMinerV2020 {
     }
 }
 
-impl GetIP for AntMinerV2020 {
+impl GetIP for AntMinerV202307 {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
 
-impl GetDeviceInfo for AntMinerV2020 {
+impl GetDeviceInfo for AntMinerV202307 {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info.clone()
     }
 }
 
-impl CollectData for AntMinerV2020 {
+impl CollectData for AntMinerV202307 {
     fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self)
     }
 }
 
-impl GetMAC for AntMinerV2020 {
+impl GetMAC for AntMinerV202307 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         data.extract::<String>(DataField::Mac)
             .and_then(|s| MacAddr::from_str(&s).ok())
     }
 }
 
-impl GetHostname for AntMinerV2020 {
+impl GetHostname for AntMinerV202307 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
     }
 }
 
-impl GetApiVersion for AntMinerV2020 {
+impl GetApiVersion for AntMinerV202307 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
     }
 }
 
-impl GetFirmwareVersion for AntMinerV2020 {
+impl GetFirmwareVersion for AntMinerV202307 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
 
-impl GetHashboards for AntMinerV2020 {
+impl GetHashboards for AntMinerV202307 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
             .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
@@ -506,7 +492,7 @@ impl GetHashboards for AntMinerV2020 {
     }
 }
 
-impl GetHashrate for AntMinerV2020 {
+impl GetHashrate for AntMinerV202307 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| {
             HashRate {
@@ -519,7 +505,7 @@ impl GetHashrate for AntMinerV2020 {
     }
 }
 
-impl GetExpectedHashrate for AntMinerV2020 {
+impl GetExpectedHashrate for AntMinerV202307 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| {
             HashRate {
@@ -532,7 +518,7 @@ impl GetExpectedHashrate for AntMinerV2020 {
     }
 }
 
-impl GetFans for AntMinerV2020 {
+impl GetFans for AntMinerV202307 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let mut fans: Vec<FanData> = Vec::new();
 
@@ -554,7 +540,7 @@ impl GetFans for AntMinerV2020 {
     }
 }
 
-impl GetLightFlashing for AntMinerV2020 {
+impl GetLightFlashing for AntMinerV202307 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing).or_else(|| {
             data.extract::<String>(DataField::LightFlashing)
@@ -563,13 +549,13 @@ impl GetLightFlashing for AntMinerV2020 {
     }
 }
 
-impl GetUptime for AntMinerV2020 {
+impl GetUptime for AntMinerV202307 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
-impl GetIsMining for AntMinerV2020 {
+impl GetIsMining for AntMinerV202307 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
             .map(|status| {
@@ -584,7 +570,7 @@ impl GetIsMining for AntMinerV2020 {
     }
 }
 
-impl GetPools for AntMinerV2020 {
+impl GetPools for AntMinerV202307 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let Some(pools_data) = data.get(&DataField::Pools) else {
             return vec![];
@@ -640,13 +626,13 @@ impl GetPools for AntMinerV2020 {
     }
 }
 
-impl GetSerialNumber for AntMinerV2020 {
+impl GetSerialNumber for AntMinerV202307 {
     fn parse_serial_number(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::SerialNumber)
     }
 }
 
-impl GetControlBoardVersion for AntMinerV2020 {
+impl GetControlBoardVersion for AntMinerV202307 {
     fn parse_control_board_version(
         &self,
         data: &HashMap<DataField, Value>,
@@ -660,7 +646,7 @@ impl GetControlBoardVersion for AntMinerV2020 {
     }
 }
 
-impl GetWattage for AntMinerV2020 {
+impl GetWattage for AntMinerV202307 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         if let Some(stats_data) = data.get(&DataField::Wattage) {
             if let Some(chain_power) = stats_data.get("chain_power")
@@ -686,9 +672,9 @@ impl GetWattage for AntMinerV2020 {
     }
 }
 
-impl GetTuningTarget for AntMinerV2020 {}
+impl GetTuningTarget for AntMinerV202307 {}
 
-impl GetFluidTemperature for AntMinerV2020 {
+impl GetFluidTemperature for AntMinerV202307 {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
         // For S21+ Hyd models, use inlet/outlet temperature average
         if self.device_info.model.to_string().contains("S21+ Hyd")
@@ -722,9 +708,9 @@ impl GetFluidTemperature for AntMinerV2020 {
     }
 }
 
-impl GetPsuFans for AntMinerV2020 {}
+impl GetPsuFans for AntMinerV202307 {}
 
-impl GetMessages for AntMinerV2020 {
+impl GetMessages for AntMinerV202307 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages = Vec::new();
 
@@ -758,7 +744,7 @@ impl GetMessages for AntMinerV2020 {
 }
 
 #[async_trait]
-impl SetFaultLight for AntMinerV2020 {
+impl SetFaultLight for AntMinerV202307 {
     fn supports_set_fault_light(&self) -> bool {
         true
     }
@@ -770,14 +756,14 @@ impl SetFaultLight for AntMinerV2020 {
 }
 
 #[async_trait]
-impl SetPowerLimit for AntMinerV2020 {
+impl SetPowerLimit for AntMinerV202307 {
     fn supports_set_power_limit(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsPoolsConfig for AntMinerV2020 {
+impl SupportsPoolsConfig for AntMinerV202307 {
     fn parse_pools_config(
         &self,
         data: &HashMap<ConfigField, Value>,
@@ -858,7 +844,7 @@ impl SupportsPoolsConfig for AntMinerV2020 {
 }
 
 #[async_trait]
-impl Restart for AntMinerV2020 {
+impl Restart for AntMinerV202307 {
     fn supports_restart(&self) -> bool {
         true
     }
@@ -868,7 +854,7 @@ impl Restart for AntMinerV2020 {
 }
 
 #[async_trait]
-impl Pause for AntMinerV2020 {
+impl Pause for AntMinerV202307 {
     fn supports_pause(&self) -> bool {
         true
     }
@@ -877,19 +863,19 @@ impl Pause for AntMinerV2020 {
         let pre = self.web.get_miner_conf().await?;
 
         if pre.get("miner-mode").is_some() {
-            self.web
+            return Ok(self
+                .web
                 .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
-                .await?;
-            let post = self.web.get_miner_conf().await?;
-            return Ok(miner_conf_mode_matches(&post, MinerMode::Sleep));
+                .await
+                .is_ok());
         }
 
         if pre.get("bitmain-work-mode").is_some() {
-            self.web
+            return Ok(self
+                .web
                 .set_miner_conf(json!({"bitmain-work-mode": MinerMode::Sleep.to_string()}))
-                .await?;
-            let post = self.web.get_miner_conf().await?;
-            return Ok(miner_conf_mode_matches(&post, MinerMode::Sleep));
+                .await
+                .is_ok());
         }
 
         Ok(false)
@@ -897,7 +883,7 @@ impl Pause for AntMinerV2020 {
 }
 
 #[async_trait]
-impl Resume for AntMinerV2020 {
+impl Resume for AntMinerV202307 {
     fn supports_resume(&self) -> bool {
         true
     }
@@ -906,19 +892,19 @@ impl Resume for AntMinerV2020 {
         let pre = self.web.get_miner_conf().await?;
 
         if pre.get("miner-mode").is_some() {
-            self.web
+            return Ok(self
+                .web
                 .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))
-                .await?;
-            let post = self.web.get_miner_conf().await?;
-            return Ok(miner_conf_mode_matches(&post, MinerMode::Normal));
+                .await
+                .is_ok());
         }
 
         if pre.get("bitmain-work-mode").is_some() {
-            self.web
+            return Ok(self
+                .web
                 .set_miner_conf(json!({"bitmain-work-mode": MinerMode::Normal.to_string()}))
-                .await?;
-            let post = self.web.get_miner_conf().await?;
-            return Ok(miner_conf_mode_matches(&post, MinerMode::Normal));
+                .await
+                .is_ok());
         }
 
         Ok(false)
@@ -926,14 +912,14 @@ impl Resume for AntMinerV2020 {
 }
 
 #[async_trait]
-impl SupportsScalingConfig for AntMinerV2020 {
+impl SupportsScalingConfig for AntMinerV202307 {
     fn supports_scaling_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl UpgradeFirmware for AntMinerV2020 {
+impl UpgradeFirmware for AntMinerV202307 {
     async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
         let miner = self.get_miner_type_info().await?;
         let image = image.resolve_for_miner(&miner)?;
@@ -946,27 +932,27 @@ impl UpgradeFirmware for AntMinerV2020 {
     }
 }
 
-impl HasDefaultAuth for AntMinerV2020 {
+impl HasDefaultAuth for AntMinerV202307 {
     fn default_auth() -> MinerAuth {
         MinerAuth::new("root", "root")
     }
 }
 
-impl HasAuth for AntMinerV2020 {
+impl HasAuth for AntMinerV202307 {
     fn set_auth(&mut self, auth: MinerAuth) {
         self.web.set_auth(auth);
     }
 }
 
 #[async_trait]
-impl SupportsTuningConfig for AntMinerV2020 {
+impl SupportsTuningConfig for AntMinerV202307 {
     fn supports_tuning_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsFanConfig for AntMinerV2020 {
+impl SupportsFanConfig for AntMinerV202307 {
     fn supports_fan_config(&self) -> bool {
         false
     }
@@ -987,7 +973,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_antminer() {
-        let miner = AntMinerV2020::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19Pro);
+        let miner = AntMinerV202307::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19Pro);
 
         let mut results = HashMap::new();
 

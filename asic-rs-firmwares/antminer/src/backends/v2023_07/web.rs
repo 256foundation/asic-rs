@@ -100,22 +100,10 @@ impl AntMinerWebAPI {
         parameters: Option<Value>,
         method: Method,
     ) -> Result<Value> {
-        self.send_web_command_with_timeout(command, _privileged, parameters, method, self.timeout)
-            .await
-    }
-
-    async fn send_web_command_with_timeout(
-        &self,
-        command: &str,
-        _privileged: bool,
-        parameters: Option<Value>,
-        method: Method,
-        timeout: Duration,
-    ) -> Result<Value> {
         let url = format!("http://{}:{}/cgi-bin/{}.cgi", self.ip, self.port, command);
 
         let response = self
-            .execute_web_request(&url, &method, parameters.clone(), timeout)
+            .execute_web_request(&url, &method, parameters.clone())
             .await?;
 
         let status = response.status();
@@ -132,14 +120,13 @@ impl AntMinerWebAPI {
         url: &str,
         method: &Method,
         parameters: Option<Value>,
-        timeout: Duration,
     ) -> Result<Response> {
         let client = self.client()?;
 
         let response = match *method {
             Method::GET => client
                 .get(url)
-                .timeout(timeout)
+                .timeout(self.timeout)
                 .send_digest_auth((
                     self.auth.username.as_str(),
                     self.auth.password.expose_secret(),
@@ -151,7 +138,7 @@ impl AntMinerWebAPI {
                 client
                     .post(url)
                     .json(&data)
-                    .timeout(timeout)
+                    .timeout(self.timeout)
                     .send_digest_auth((
                         self.auth.username.as_str(),
                         self.auth.password.expose_secret(),
@@ -171,14 +158,8 @@ impl AntMinerWebAPI {
     }
 
     pub async fn set_miner_conf(&self, conf: Value) -> Result<Value> {
-        self.send_web_command_with_timeout(
-            "set_miner_conf",
-            false,
-            Some(conf),
-            Method::POST,
-            self.timeout.max(Duration::from_secs(30)),
-        )
-        .await
+        self.send_web_command("set_miner_conf", false, Some(conf), Method::POST)
+            .await
     }
 
     pub async fn blink(&self, blink: bool) -> Result<Value> {
