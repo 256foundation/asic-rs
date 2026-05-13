@@ -861,21 +861,60 @@ impl Pause for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;
+        let target = MinerMode::Sleep.to_string();
 
-        if pre.get("miner-mode").is_some() {
-            return Ok(self
-                .web
-                .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
-                .await
-                .is_ok());
+        // If the device already reports sleep mode on both possible keys, we're done.
+        let already_sleep = pre
+            .get("miner-mode")
+            .or_else(|| pre.get("bitmain-work-mode"))
+            .and_then(|v| v.as_str())
+            .map(|s| s == target)
+            .unwrap_or(false);
+        if already_sleep {
+            return Ok(true);
         }
 
-        if pre.get("bitmain-work-mode").is_some() {
-            return Ok(self
+        let has_mode_key = pre.get("miner-mode").is_some();
+        let has_bitmain_key = pre.get("bitmain-work-mode").is_some();
+
+        if !has_mode_key && !has_bitmain_key {
+            return Ok(false);
+        }
+
+        // Always try `miner-mode` first: on older stock firmware (e.g. S19j Pro Dec 2022)
+        // get_miner_conf reports `bitmain-work-mode` but set_miner_conf only responds to
+        // `miner-mode`. Newer firmware that uses `miner-mode` natively also accepts this.
+        if self
+            .web
+            .set_miner_conf(json!({"miner-mode": target}))
+            .await
+            .is_ok()
+        {
+            let post = self.web.get_miner_conf().await?;
+            let applied = post
+                .get("miner-mode")
+                .or_else(|| post.get("bitmain-work-mode"))
+                .and_then(|v| v.as_str())
+                .map(|s| s == target)
+                .unwrap_or(false);
+            if applied {
+                return Ok(true);
+            }
+        }
+
+        // Fall back to `bitmain-work-mode` for firmware that does not accept `miner-mode`.
+        if has_bitmain_key {
+            let _ = self
                 .web
-                .set_miner_conf(json!({"bitmain-work-mode": MinerMode::Sleep.to_string()}))
-                .await
-                .is_ok());
+                .set_miner_conf(json!({"bitmain-work-mode": target}))
+                .await;
+            let post = self.web.get_miner_conf().await?;
+            return Ok(post
+                .get("bitmain-work-mode")
+                .or_else(|| post.get("miner-mode"))
+                .and_then(|v| v.as_str())
+                .map(|s| s == target)
+                .unwrap_or(false));
         }
 
         Ok(false)
@@ -890,21 +929,55 @@ impl Resume for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;
+        let target = MinerMode::Normal.to_string();
 
-        if pre.get("miner-mode").is_some() {
-            return Ok(self
-                .web
-                .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))
-                .await
-                .is_ok());
+        let already_normal = pre
+            .get("miner-mode")
+            .or_else(|| pre.get("bitmain-work-mode"))
+            .and_then(|v| v.as_str())
+            .map(|s| s == target)
+            .unwrap_or(false);
+        if already_normal {
+            return Ok(true);
         }
 
-        if pre.get("bitmain-work-mode").is_some() {
-            return Ok(self
+        let has_mode_key = pre.get("miner-mode").is_some();
+        let has_bitmain_key = pre.get("bitmain-work-mode").is_some();
+
+        if !has_mode_key && !has_bitmain_key {
+            return Ok(false);
+        }
+
+        if self
+            .web
+            .set_miner_conf(json!({"miner-mode": target}))
+            .await
+            .is_ok()
+        {
+            let post = self.web.get_miner_conf().await?;
+            let applied = post
+                .get("miner-mode")
+                .or_else(|| post.get("bitmain-work-mode"))
+                .and_then(|v| v.as_str())
+                .map(|s| s == target)
+                .unwrap_or(false);
+            if applied {
+                return Ok(true);
+            }
+        }
+
+        if has_bitmain_key {
+            let _ = self
                 .web
-                .set_miner_conf(json!({"bitmain-work-mode": MinerMode::Normal.to_string()}))
-                .await
-                .is_ok());
+                .set_miner_conf(json!({"bitmain-work-mode": target}))
+                .await;
+            let post = self.web.get_miner_conf().await?;
+            return Ok(post
+                .get("bitmain-work-mode")
+                .or_else(|| post.get("miner-mode"))
+                .and_then(|v| v.as_str())
+                .map(|s| s == target)
+                .unwrap_or(false));
         }
 
         Ok(false)
@@ -1045,6 +1118,155 @@ mod tests {
                 algo: "SHA256".to_string(),
             }
         );
+    }
+
+    mod pause_resume {
+        #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+        use std::collections::VecDeque;
+        use std::net::IpAddr;
+        use std::sync::{Arc, Mutex};
+
+        use asic_rs_core::traits::miner::{MinerAuth, Pause, Resume};
+        use asic_rs_makes_antminer::models::AntMinerModel;
+        use serde_json::{Value, json};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        use super::super::AntMinerV2020;
+        use super::super::web::AntMinerWebAPI;
+
+        /// Spawns a minimal HTTP/1.1 server that pops responses from a queue in order.
+        async fn mock_server(responses: Vec<Value>) -> u16 {
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let port = listener.local_addr().unwrap().port();
+            let queue: Arc<Mutex<VecDeque<Value>>> =
+                Arc::new(Mutex::new(VecDeque::from(responses)));
+
+            tokio::spawn(async move {
+                loop {
+                    let Ok((mut stream, _)) = listener.accept().await else {
+                        return;
+                    };
+                    let q = queue.clone();
+                    tokio::spawn(async move {
+                        let mut buf = [0u8; 8192];
+                        let _ = stream.read(&mut buf).await;
+                        let body =
+                            q.lock().unwrap().pop_front().unwrap_or_else(|| json!({}));
+                        let body_str = body.to_string();
+                        let resp = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                            body_str.len(),
+                            body_str
+                        );
+                        let _ = stream.write_all(resp.as_bytes()).await;
+                    });
+                }
+            });
+
+            port
+        }
+
+        fn miner_on_port(port: u16) -> AntMinerV2020 {
+            let ip: IpAddr = "127.0.0.1".parse().unwrap();
+            let mut m = AntMinerV2020::new(ip, AntMinerModel::S19Pro);
+            m.web = AntMinerWebAPI::new_with_port(ip, port, MinerAuth::new("root", "root"));
+            m
+        }
+
+        // --- pause() ---
+
+        #[tokio::test]
+        async fn pause_already_sleeping_bitmain_key() {
+            let port = mock_server(vec![json!({"bitmain-work-mode": "1"})]).await;
+            assert!(miner_on_port(port).pause(None).await.unwrap());
+        }
+
+        #[tokio::test]
+        async fn pause_already_sleeping_miner_mode_key() {
+            let port = mock_server(vec![json!({"miner-mode": "1"})]).await;
+            assert!(miner_on_port(port).pause(None).await.unwrap());
+        }
+
+        #[tokio::test]
+        async fn pause_no_mode_key_returns_false() {
+            let port = mock_server(vec![json!({"freq": "550"})]).await;
+            assert!(!miner_on_port(port).pause(None).await.unwrap());
+        }
+
+        #[tokio::test]
+        async fn pause_miner_mode_key_write_succeeds() {
+            // Newer firmware: has miner-mode key, write applies on first try.
+            let port = mock_server(vec![
+                json!({"miner-mode": "0"}),             // initial get_miner_conf → normal
+                json!({"code": "M000", "msg": "ok"}),   // set_miner_conf response
+                json!({"miner-mode": "1"}),             // verification get_miner_conf → sleep!
+            ])
+            .await;
+            assert!(miner_on_port(port).pause(None).await.unwrap());
+        }
+
+        #[tokio::test]
+        async fn pause_bitmain_key_miner_mode_fails_fallback_succeeds() {
+            // Older firmware (S19j Pro Dec 2022): bitmain-work-mode key reported,
+            // miner-mode write accepted (200) but does not apply; fallback to
+            // bitmain-work-mode write succeeds.
+            let port = mock_server(vec![
+                json!({"bitmain-work-mode": "0"}),      // initial get → normal
+                json!({"code": "M000", "msg": "ok"}),   // set miner-mode: "1" → HTTP 200 but ignored
+                json!({"bitmain-work-mode": "0"}),      // verify → still normal (miner-mode didn't stick)
+                json!({"code": "M000", "msg": "ok"}),   // set bitmain-work-mode: "1"
+                json!({"bitmain-work-mode": "1"}),      // final verify → sleep applied!
+            ])
+            .await;
+            assert!(miner_on_port(port).pause(None).await.unwrap());
+        }
+
+        // --- resume() ---
+
+        #[tokio::test]
+        async fn resume_already_normal_bitmain_key() {
+            let port = mock_server(vec![json!({"bitmain-work-mode": "0"})]).await;
+            assert!(miner_on_port(port).resume(None).await.unwrap());
+        }
+
+        #[tokio::test]
+        async fn resume_already_normal_miner_mode_key() {
+            let port = mock_server(vec![json!({"miner-mode": "0"})]).await;
+            assert!(miner_on_port(port).resume(None).await.unwrap());
+        }
+
+        #[tokio::test]
+        async fn resume_no_mode_key_returns_false() {
+            let port = mock_server(vec![json!({"freq": "550"})]).await;
+            assert!(!miner_on_port(port).resume(None).await.unwrap());
+        }
+
+        #[tokio::test]
+        async fn resume_miner_mode_key_write_succeeds() {
+            // Miner is sleeping; resume transitions it back to normal mode.
+            let port = mock_server(vec![
+                json!({"miner-mode": "1"}),             // initial get → sleeping
+                json!({"code": "M000", "msg": "ok"}),   // set miner-mode: "0"
+                json!({"miner-mode": "0"}),             // verify → normal!
+            ])
+            .await;
+            assert!(miner_on_port(port).resume(None).await.unwrap());
+        }
+
+        #[tokio::test]
+        async fn resume_bitmain_key_miner_mode_fails_fallback_succeeds() {
+            let port = mock_server(vec![
+                json!({"bitmain-work-mode": "1"}),      // initial get → sleeping
+                json!({"code": "M000", "msg": "ok"}),   // set miner-mode: "0" → 200 but no effect
+                json!({"bitmain-work-mode": "1"}),      // verify → still sleeping
+                json!({"code": "M000", "msg": "ok"}),   // set bitmain-work-mode: "0"
+                json!({"bitmain-work-mode": "0"}),      // final verify → normal!
+            ])
+            .await;
+            assert!(miner_on_port(port).resume(None).await.unwrap());
+        }
     }
 
     #[tokio::test]

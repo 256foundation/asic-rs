@@ -27,5 +27,8 @@ crc32fast.workspace = true
 
 pyo3 = {workspace = true, optional = true}
 
+[dev-dependencies]
+httpmock.workspace = true
+
 [features]
 python = ["dep:pyo3", "asic-rs-core/python"]

@@ -75,6 +75,17 @@ impl AntMinerWebAPI {
         self.auth = auth;
     }
 
+    #[cfg(test)]
+    pub fn new_with_port(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
+        Self {
+            ip,
+            port,
+            client: OnceCell::new(),
+            timeout: Duration::from_secs(5),
+            auth,
+        }
+    }
+
     pub fn with_timeout(ip: IpAddr, timeout: Duration, auth: MinerAuth) -> Self {
         let mut client = Self::new(ip, auth);
         client.port = 80;
@@ -121,12 +132,23 @@ impl AntMinerWebAPI {
         method: &Method,
         parameters: Option<Value>,
     ) -> Result<Response> {
+        self.execute_web_request_with_timeout(url, method, parameters, self.timeout)
+            .await
+    }
+
+    async fn execute_web_request_with_timeout(
+        &self,
+        url: &str,
+        method: &Method,
+        parameters: Option<Value>,
+        timeout: Duration,
+    ) -> Result<Response> {
         let client = self.client()?;
 
         let response = match *method {
             Method::GET => client
                 .get(url)
-                .timeout(self.timeout)
+                .timeout(timeout)
                 .send_digest_auth((
                     self.auth.username.as_str(),
                     self.auth.password.expose_secret(),
@@ -138,7 +160,7 @@ impl AntMinerWebAPI {
                 client
                     .post(url)
                     .json(&data)
-                    .timeout(self.timeout)
+                    .timeout(timeout)
                     .send_digest_auth((
                         self.auth.username.as_str(),
                         self.auth.password.expose_secret(),
@@ -158,8 +180,19 @@ impl AntMinerWebAPI {
     }
 
     pub async fn set_miner_conf(&self, conf: Value) -> Result<Value> {
-        self.send_web_command("set_miner_conf", false, Some(conf), Method::POST)
-            .await
+        let url = format!("http://{}:{}/cgi-bin/set_miner_conf.cgi", self.ip, self.port);
+        // Some firmware versions take >20s to respond; floor at 35s.
+        let timeout = self.timeout.max(Duration::from_secs(35));
+        let response = self
+            .execute_web_request_with_timeout(&url, &Method::POST, Some(conf), timeout)
+            .await?;
+        let status = response.status();
+        if status.is_success() {
+            let json_data = response.json().await.map_err(|e| anyhow!(e.to_string()))?;
+            Ok(json_data)
+        } else {
+            bail!("HTTP request failed with status code {}", status);
+        }
     }
 
     pub async fn blink(&self, blink: bool) -> Result<Value> {
