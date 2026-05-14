@@ -1,5 +1,7 @@
 use std::{net::IpAddr, path::PathBuf, sync::Arc, time::Duration};
 
+use super::typing::{PyAwaitable, future_into_py};
+use asic_rs_core::data::collector::DataField;
 use asic_rs_core::{
     config::{
         fan::FanConfig, pools::PoolGroupConfig as PoolGroup, scaling::ScalingConfig,
@@ -23,8 +25,6 @@ use pyo3::{
     prelude::*,
 };
 use tokio::sync::RwLock;
-
-use super::typing::{PyAwaitable, future_into_py};
 
 #[pyclass(module = "asic_rs")]
 pub(crate) struct Miner {
@@ -206,11 +206,19 @@ impl Miner {
     }
 
     // Data functions
-    pub fn get_data<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<MinerData>> {
+    #[pyo3(signature = (exclude: "list[DataField] | None" = None))]
+    pub fn get_data<'a>(
+        &self,
+        py: Python<'a>,
+        exclude: Option<Vec<DataField>>,
+    ) -> PyResult<PyAwaitable<MinerData>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
             let inner = inner.read().await;
-            Ok(inner.get_data().await)
+            match exclude {
+                None => Ok(inner.get_data().await),
+                Some(excl) => Ok(inner.get_data_filtered(excl).await),
+            }
         })
     }
     pub fn get_mac<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {

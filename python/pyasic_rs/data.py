@@ -7,6 +7,7 @@ from pyasic_rs.asic_rs import MessageSeverity
 from pyasic_rs.asic_rs import MiningMode
 from pyasic_rs.asic_rs import PoolData, PoolGroupData, PoolScheme, PoolURL
 from pyasic_rs.asic_rs import TuningTargetMode, TuningTargetPower, TuningTargetHashRate
+from pyasic_rs.asic_rs import DataField
 
 __all__ = [
     "BoardData",
@@ -27,5 +28,6 @@ __all__ = [
     "PoolURL",
     "TuningTargetMode",
     "TuningTargetPower",
-    "TuningTargetHashRate"
+    "TuningTargetHashRate",
+    "DataField",
 ]

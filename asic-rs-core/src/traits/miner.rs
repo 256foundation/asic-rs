@@ -6,6 +6,7 @@ use macaddr::MacAddr;
 use measurements::{Power, Temperature};
 use reqwest::Method;
 use serde_json::Value;
+use strum::IntoEnumIterator;
 use tracing;
 
 use crate::{
@@ -137,6 +138,10 @@ pub trait GetMinerData:
     /// Asynchronously retrieves standardized information about a miner,
     /// returning it as a `MinerData` struct.
     async fn get_data(&self) -> MinerData;
+    /// Asynchronously retrieves standardized information about a miner,
+    /// returning it as a `MinerData` struct.  Removes and data fields
+    /// that are added to the exclude list to save data.
+    async fn get_data_filtered(&self, exclude: Vec<DataField>) -> MinerData;
     fn parse_data(&self, data: HashMap<DataField, Value>) -> MinerData;
 }
 
@@ -190,10 +195,16 @@ impl<
 > GetMinerData for T
 {
     async fn get_data(&self) -> MinerData {
+        self.get_data_filtered(Vec::new()).await
+    }
+    async fn get_data_filtered(&self, exclude: Vec<DataField>) -> MinerData {
         let mut collector = self.get_collector();
-        let data = collector.collect_all().await;
+        let mut all_fields = DataField::iter().collect::<Vec<_>>();
+        all_fields.retain(|x| !exclude.contains(x));
+        let data = collector.collect(all_fields.as_slice()).await;
         self.parse_data(data)
     }
+
     fn parse_data(&self, data: HashMap<DataField, Value>) -> MinerData {
         let schema_version = env!("CARGO_PKG_VERSION").to_string();
         let timestamp = unix_timestamp_secs();

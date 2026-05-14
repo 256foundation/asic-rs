@@ -1,7 +1,8 @@
-use std::collections::{HashMap, HashSet};
-
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 use serde_json::{Value, json};
-use strum::{EnumIter, IntoEnumIterator};
+use std::collections::{HashMap, HashSet};
+use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 use crate::{
     data::command::MinerCommand,
@@ -9,57 +10,84 @@ use crate::{
 };
 
 /// Represents the individual pieces of data that can be queried from a miner device.
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Copy, EnumIter)]
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Copy, EnumIter, Display, EnumString)]
 pub enum DataField {
     /// Schema version of the miner data.
+    #[cfg_attr(feature = "python", pydantic(value = "Schema"))]
     SchemaVersion,
     /// Timestamp of when the data was collected.
+    #[cfg_attr(feature = "python", pydantic(value = "Timestamp"))]
     Timestamp,
     /// IP address of the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "Ip"))]
     Ip,
     /// MAC address of the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "Mac"))]
     Mac,
     /// Information about the miner's device.
+    #[cfg_attr(feature = "python", pydantic(value = "DeviceInfo"))]
     DeviceInfo,
     /// Serial number of the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "SerialNumber"))]
     SerialNumber,
     /// Hostname assigned to the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "Hostname"))]
     Hostname,
     /// Version of the miner's API.
+    #[cfg_attr(feature = "python", pydantic(value = "ApiVersion"))]
     ApiVersion,
     /// Firmware version of the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "FirmwareVersion"))]
     FirmwareVersion,
     /// Control board version of the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "ControlBoardVersion"))]
     ControlBoardVersion,
     /// Details about the hashboards (e.g., temperatures, chips, etc.).
+    #[cfg_attr(feature = "python", pydantic(value = "Hashboards"))]
     Hashboards,
     /// Current hashrate reported by the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "Hashrate"))]
     Hashrate,
     /// Expected hashrate for the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "ExpectedHashrate"))]
     ExpectedHashrate,
     /// Fan speed or fan configuration.
+    #[cfg_attr(feature = "python", pydantic(value = "Fans"))]
     Fans,
     /// PSU fan speed or configuration.
+    #[cfg_attr(feature = "python", pydantic(value = "PsuFans"))]
     PsuFans,
     /// Average temperature reported by the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "AverageTemperature"))]
     AverageTemperature,
     /// Fluid temperature reported by the miner.
+    #[cfg_attr(feature = "python", pydantic(value = "FluidTemperature"))]
     FluidTemperature,
     /// Current power consumption in watts.
+    #[cfg_attr(feature = "python", pydantic(value = "Wattage"))]
     Wattage,
     /// Configured tuning target (power or hashrate).
+    #[cfg_attr(feature = "python", pydantic(value = "TuningTarget"))]
     TuningTarget,
     /// Efficiency of the miner (e.g., J/TH).
+    #[cfg_attr(feature = "python", pydantic(value = "Efficiency"))]
     Efficiency,
     /// Whether the fault or alert light is flashing.
+    #[cfg_attr(feature = "python", pydantic(value = "LightFlashing"))]
     LightFlashing,
     /// Messages reported by the miner (e.g., errors or warnings).
+    #[cfg_attr(feature = "python", pydantic(value = "Messages"))]
     Messages,
     /// Uptime in seconds.
+    #[cfg_attr(feature = "python", pydantic(value = "Uptime"))]
     Uptime,
     /// Whether the miner is currently hashing.
+    #[cfg_attr(feature = "python", pydantic(value = "IsMining"))]
     IsMining,
     /// Pool configuration (addresses, statuses, etc.).
+    #[cfg_attr(feature = "python", pydantic(value = "Pools"))]
     Pools,
 }
 
