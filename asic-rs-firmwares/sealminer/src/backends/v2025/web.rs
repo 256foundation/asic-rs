@@ -124,6 +124,7 @@ impl WebAPIClient for SealMinerWebAPI {
     }
 }
 
+#[allow(dead_code)]
 impl SealMinerWebAPI {
     pub async fn reboot(&self) -> anyhow::Result<Value> {
         self.send_command("reboot", false, None, Method::GET).await
