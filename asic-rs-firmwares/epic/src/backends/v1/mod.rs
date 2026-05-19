@@ -1378,9 +1378,19 @@ impl Resume for PowerPlayV1 {
     }
 }
 
+#[async_trait]
 impl ChangePassword for PowerPlayV1 {
+    async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
+        let success = self.web.change_password(password).await?;
+        if success {
+            let username = self.web.username().to_string();
+            self.set_auth(MinerAuth::new(username, password));
+        }
+        Ok(success)
+    }
+
     fn supports_change_password(&self) -> bool {
-        false
+        true
     }
 }
 

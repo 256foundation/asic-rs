@@ -90,6 +90,10 @@ impl PowerPlayWebAPI {
         self.auth = auth;
     }
 
+    pub fn username(&self) -> &str {
+        &self.auth.username
+    }
+
     fn build_client() -> Result<Client, PowerPlayError> {
         Client::builder()
             .timeout(Duration::from_secs(10))
@@ -163,6 +167,17 @@ impl PowerPlayWebAPI {
         }
 
         Ok(result)
+    }
+
+    pub async fn change_password(&self, password: &str) -> anyhow::Result<bool> {
+        self.send_command(
+            "password",
+            true,
+            Some(json!({ "param": password })),
+            Method::POST,
+        )
+        .await
+        .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
     }
 
     /// Execute the actual HTTP request
