@@ -6,7 +6,7 @@ use anyhow;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
-use serde_json::Value;
+use serde_json::{Value, json};
 use tokio::sync::RwLock;
 
 /// VNish WebAPI client
@@ -85,6 +85,10 @@ impl VnishWebAPI {
         self.auth = auth;
         // Clear cached bearer token to force re-authentication with new creds
         *self.bearer_token.get_mut() = None;
+    }
+
+    pub fn username(&self) -> &str {
+        &self.auth.username
     }
 
     fn build_client() -> Result<Client, VnishError> {
@@ -223,6 +227,17 @@ impl VnishWebAPI {
     pub async fn set_settings(&self, settings: Value) -> anyhow::Result<Value> {
         self.send_command("settings", true, Some(settings), Method::POST)
             .await
+    }
+
+    pub async fn change_password(&self, password: &str) -> anyhow::Result<bool> {
+        let settings = json!({
+            "password": {
+                "current": self.auth.password.expose_secret(),
+                "pw": password,
+            },
+        });
+
+        self.set_settings(settings).await.map(|_| true)
     }
 }
 
