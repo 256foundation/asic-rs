@@ -134,24 +134,22 @@ impl GetDataLocations for Bitaxe290 {
                     tag: None,
                 },
             )],
-            DataField::Hashboards => vec![
-                (
-                    WEB_SYSTEM_INFO,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some(""),
-                        tag: None,
-                    },
-                ),
-                (
-                    WEB_ASIC_INFO,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some(""),
-                        tag: None,
-                    },
-                ),
-            ],
+            DataField::Hashboards => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
+                    tag: None,
+                },
+            )],
+            DataField::Chips => vec![(
+                WEB_ASIC_INFO,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
+                    tag: None,
+                },
+            )],
             DataField::Hashrate => vec![(
                 WEB_SYSTEM_INFO,
                 DataExtractor {
@@ -263,6 +261,7 @@ impl GetHashboards for Bitaxe290 {
         let Some(api_data) = data.get(&DataField::Hashboards) else {
             return vec![board];
         };
+        let chip_data = data.get(&DataField::Chips);
 
         board.hashrate = api_data.get("hashRate").and_then(|v| v.as_f64()).map(|f| {
             HashRate {
@@ -301,18 +300,20 @@ impl GetHashboards for Bitaxe290 {
             .get("frequency")
             .and_then(|v| v.as_f64())
             .map(Frequency::from_megahertz);
-        board.chips = vec![ChipData {
-            position: 0,
-            temperature: api_data
-                .get("temp")
-                .and_then(|v| v.as_f64())
-                .map(Temperature::from_celsius),
-            voltage: board.voltage,
-            frequency: board.frequency,
-            tuned: Some(true),
-            working: Some(true),
-            hashrate: board.hashrate.clone(),
-        }];
+        if let Some(chip_data) = chip_data {
+            board.chips = vec![ChipData {
+                position: 0,
+                temperature: chip_data
+                    .get("temp")
+                    .and_then(|v| v.as_f64())
+                    .map(Temperature::from_celsius),
+                voltage: board.voltage,
+                frequency: board.frequency,
+                tuned: Some(true),
+                working: Some(true),
+                hashrate: board.hashrate.clone(),
+            }];
+        }
         board.active = Some(true);
 
         vec![board]

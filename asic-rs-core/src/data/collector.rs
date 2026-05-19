@@ -48,7 +48,7 @@ pub enum DataField {
     #[cfg_attr(feature = "python", pydantic(value = "Hashboards"))]
     Hashboards,
     /// Details about each chip on each hashboard (e.g., temperatures, frequency, etc.).
-    #[cfg_attr(feature = "python", pydantic(value = "CHIPS"))]
+    #[cfg_attr(feature = "python", pydantic(value = "Chips"))]
     Chips,
     /// Current hashrate reported by the miner.
     #[cfg_attr(feature = "python", pydantic(value = "Hashrate"))]

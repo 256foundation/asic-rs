@@ -358,6 +358,32 @@ impl GetDataLocations for AuradineV1 {
                     },
                 ),
             ],
+            DataField::Chips => vec![
+                (
+                    WEB_TEMPERATURE,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/Temperature"),
+                        tag: Some("temperature"),
+                    },
+                ),
+                (
+                    WEB_VOLTAGE,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/Voltage"),
+                        tag: Some("voltage"),
+                    },
+                ),
+                (
+                    WEB_FREQUENCY,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/Frequency"),
+                        tag: Some("frequency"),
+                    },
+                ),
+            ],
             DataField::Hashrate => vec![(
                 RPC_SUMMARY,
                 DataExtractor {
@@ -571,6 +597,7 @@ impl GetControlBoardVersion for AuradineV1 {
 impl GetHashboards for AuradineV1 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let api_data = data.get(&DataField::Hashboards);
+        let chip_data = data.get(&DataField::Chips);
 
         let chips_per_board = api_data
             .and_then(|count_data| count_data.get("asccount"))
@@ -663,6 +690,11 @@ impl GetHashboards for AuradineV1 {
                     .map(str::to_string);
                 hashboard.active = board.get("Enabled").and_then(Value::as_bool);
                 hashboard.tuned = hashboard.active;
+                hashboard.working_chips = match (hashboard.active, hashboard.expected_chips) {
+                    (Some(true), Some(expected_chips)) => Some(expected_chips),
+                    (Some(false), _) => Some(0),
+                    _ => None,
+                };
             }
         }
 
@@ -679,10 +711,6 @@ impl GetHashboards for AuradineV1 {
                 }
             }
         }
-
-        let mut chip_maps: Vec<BTreeMap<u16, ChipData>> = (0..usize::from(board_count))
-            .map(|_| BTreeMap::new())
-            .collect();
 
         if let Some(temperature_boards) = api_data.get("temperature").and_then(Value::as_array) {
             for temp_board in temperature_boards {
@@ -721,6 +749,84 @@ impl GetHashboards for AuradineV1 {
                         hashboard.board_temperature = Some(Temperature::from_celsius(avg));
                     }
                 }
+            }
+        }
+
+        if let Some(voltage_boards) = api_data.get("voltage").and_then(Value::as_array) {
+            for voltage_board in voltage_boards {
+                let Some(id) = voltage_board.get("ID").and_then(Value::as_u64) else {
+                    continue;
+                };
+                let Some(position) = Self::board_position_from_id(id) else {
+                    continue;
+                };
+                let Some(hashboard) = hashboards.get_mut(position) else {
+                    continue;
+                };
+                let Some(chip_voltages) =
+                    voltage_board.get("ChipVoltage").and_then(Value::as_array)
+                else {
+                    continue;
+                };
+
+                let voltages: Vec<f64> = chip_voltages
+                    .iter()
+                    .filter_map(|chip| chip.get("Voltage").and_then(Value::as_f64))
+                    .filter(|voltage| *voltage > 0.0)
+                    .collect();
+                if !voltages.is_empty() {
+                    let avg_voltage = voltages.iter().sum::<f64>() / voltages.len() as f64;
+                    hashboard.voltage = Some(Voltage::from_volts(avg_voltage));
+                }
+            }
+        }
+
+        if let Some(frequency_boards) = api_data.get("frequency").and_then(Value::as_array) {
+            for frequency_board in frequency_boards {
+                let Some(id) = frequency_board.get("ID").and_then(Value::as_u64) else {
+                    continue;
+                };
+                let Some(position) = Self::board_position_from_id(id) else {
+                    continue;
+                };
+                let Some(hashboard) = hashboards.get_mut(position) else {
+                    continue;
+                };
+                let Some(chip_frequencies) = frequency_board
+                    .get("ChipFrequency")
+                    .and_then(Value::as_array)
+                else {
+                    continue;
+                };
+
+                let frequencies: Vec<f64> = chip_frequencies
+                    .iter()
+                    .filter_map(|chip| chip.get("Frequency").and_then(Value::as_f64))
+                    .filter(|frequency| *frequency > 0.0)
+                    .collect();
+                if !frequencies.is_empty() {
+                    let avg_frequency = frequencies.iter().sum::<f64>() / frequencies.len() as f64;
+                    hashboard.frequency = Some(Frequency::from_megahertz(avg_frequency));
+                }
+            }
+        }
+
+        let Some(chip_data) = chip_data else {
+            return hashboards;
+        };
+
+        let mut chip_maps: Vec<BTreeMap<u16, ChipData>> = (0..usize::from(board_count))
+            .map(|_| BTreeMap::new())
+            .collect();
+
+        if let Some(temperature_boards) = chip_data.get("temperature").and_then(Value::as_array) {
+            for temp_board in temperature_boards {
+                let Some(id) = temp_board.get("ID").and_then(Value::as_u64) else {
+                    continue;
+                };
+                let Some(position) = Self::board_position_from_id(id) else {
+                    continue;
+                };
 
                 let Some(chip_temps) = temp_board.get("ChipTemp").and_then(Value::as_array) else {
                     continue;
@@ -744,7 +850,7 @@ impl GetHashboards for AuradineV1 {
             }
         }
 
-        if let Some(voltage_boards) = api_data.get("voltage").and_then(Value::as_array) {
+        if let Some(voltage_boards) = chip_data.get("voltage").and_then(Value::as_array) {
             for voltage_board in voltage_boards {
                 let Some(id) = voltage_board.get("ID").and_then(Value::as_u64) else {
                     continue;
@@ -778,7 +884,7 @@ impl GetHashboards for AuradineV1 {
             }
         }
 
-        if let Some(frequency_boards) = api_data.get("frequency").and_then(Value::as_array) {
+        if let Some(frequency_boards) = chip_data.get("frequency").and_then(Value::as_array) {
             for frequency_board in frequency_boards {
                 let Some(id) = frequency_board.get("ID").and_then(Value::as_u64) else {
                     continue;
@@ -825,58 +931,6 @@ impl GetHashboards for AuradineV1 {
 
             if hashboard.expected_chips.is_none() {
                 hashboard.expected_chips = u16::try_from(hashboard.chips.len()).ok();
-            }
-
-            let working_chip_count = hashboard
-                .chips
-                .iter()
-                .filter(|chip| {
-                    chip.working.unwrap_or_else(|| {
-                        chip.temperature
-                            .map(|t| t.as_celsius() > 0.0)
-                            .unwrap_or(false)
-                            || chip.voltage.map(|v| v.as_volts() > 0.0).unwrap_or(false)
-                            || chip
-                                .frequency
-                                .map(|f| f.as_megahertz() > 0.0)
-                                .unwrap_or(false)
-                    })
-                })
-                .count() as u16;
-
-            hashboard.working_chips = if let Some(expected_chips) = hashboard.expected_chips {
-                if !hashboard.chips.is_empty()
-                    && hashboard.chips.len() < usize::from(expected_chips)
-                {
-                    Some(match hashboard.active {
-                        Some(false) => 0,
-                        _ => expected_chips,
-                    })
-                } else {
-                    Some(working_chip_count)
-                }
-            } else {
-                Some(working_chip_count)
-            };
-
-            let voltages: Vec<f64> = hashboard
-                .chips
-                .iter()
-                .filter_map(|chip| chip.voltage.map(|v| v.as_volts()))
-                .collect();
-            if !voltages.is_empty() {
-                let avg_voltage = voltages.iter().sum::<f64>() / voltages.len() as f64;
-                hashboard.voltage = Some(Voltage::from_volts(avg_voltage));
-            }
-
-            let frequencies: Vec<f64> = hashboard
-                .chips
-                .iter()
-                .filter_map(|chip| chip.frequency.map(|f| f.as_megahertz()))
-                .collect();
-            if !frequencies.is_empty() {
-                let avg_frequency = frequencies.iter().sum::<f64>() / frequencies.len() as f64;
-                hashboard.frequency = Some(Frequency::from_megahertz(avg_frequency));
             }
         }
 
@@ -1440,6 +1494,35 @@ mod tests {
         );
 
         let mock_api = MockAPIClient::new(results);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect(&[DataField::Hashboards]).await;
+        assert!(!data.contains_key(&DataField::Chips));
+        let hashboards_without_chips = miner.parse_hashboards(&data);
+        assert!(hashboards_without_chips[0].chips.is_empty());
+        assert_eq!(hashboards_without_chips[0].working_chips, Some(132));
+        assert!(hashboards_without_chips[0].voltage.is_some());
+        assert!(hashboards_without_chips[0].frequency.is_some());
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector
+            .collect(&[DataField::Hashboards, DataField::Chips])
+            .await;
+        let hashboards_with_chips = miner.parse_hashboards(&data);
+        assert_eq!(hashboards_with_chips[0].chips.len(), 3);
+        assert_eq!(
+            hashboards_without_chips[0].working_chips,
+            hashboards_with_chips[0].working_chips
+        );
+        assert_eq!(
+            hashboards_without_chips[0].voltage,
+            hashboards_with_chips[0].voltage
+        );
+        assert_eq!(
+            hashboards_without_chips[0].frequency,
+            hashboards_with_chips[0].frequency
+        );
+
         let mut collector = DataCollector::new_with_client(&miner, &mock_api);
         let data = collector.collect_all().await;
 

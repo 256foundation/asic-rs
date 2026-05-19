@@ -513,6 +513,14 @@ impl GetDataLocations for MaraV1 {
                     },
                 ),
             ],
+            DataField::Chips => vec![(
+                WEB_DETAILS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/hashboard_infos"),
+                    tag: Some("chip_data"),
+                },
+            )],
             DataField::Wattage => vec![(
                 WEB_BRIEF,
                 DataExtractor {
@@ -702,13 +710,17 @@ impl GetHashboards for MaraV1 {
             return hashboards;
         };
 
-        let chip_data = api_data.pointer("/chip_data").and_then(|v| v.as_array());
+        let hb_infos = api_data.pointer("/chip_data").and_then(|v| v.as_array());
+        let chip_data = data
+            .get(&DataField::Chips)
+            .and_then(|v| v.pointer("/chip_data"))
+            .and_then(|v| v.as_array());
         let hb_temps = api_data.pointer("/hb_temps").and_then(|v| v.as_array());
 
         for board in hashboards.iter_mut() {
             let idx = board.position as usize;
 
-            let Some(hb) = chip_data.and_then(|arr| {
+            let Some(hb) = hb_infos.and_then(|arr| {
                 arr.iter()
                     .find(|e| e.get("index").and_then(|v| v.as_u64()) == Some(idx as u64))
             }) else {
@@ -765,10 +777,15 @@ impl GetHashboards for MaraV1 {
                 .get("serial_number")
                 .and_then(|v| v.as_str())
                 .map(str::to_string);
-            board.chips = hb
-                .get("asic_infos")
-                .map(Self::parse_chip_data)
-                .unwrap_or_default();
+            if let Some(chip_hb) = chip_data.and_then(|arr| {
+                arr.iter()
+                    .find(|e| e.get("index").and_then(|v| v.as_u64()) == Some(idx as u64))
+            }) {
+                board.chips = chip_hb
+                    .get("asic_infos")
+                    .map(Self::parse_chip_data)
+                    .unwrap_or_default();
+            }
             board.voltage = hb
                 .get("voltage")
                 .and_then(|v| v.as_f64())

@@ -327,24 +327,22 @@ impl GetDataLocations for AvalonQMiner {
                     tag: None,
                 },
             )],
-            DataField::Hashboards => vec![
-                (
-                    RPC_STATS,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some("/STATS/0/HBinfo"),
-                        tag: None,
-                    },
-                ),
-                (
-                    RPC_STATS,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some("/STATS/0/MM ID0:Summary/STATS"),
-                        tag: Some("summary"),
-                    },
-                ),
-            ],
+            DataField::Hashboards => vec![(
+                RPC_STATS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/STATS/0/MM ID0:Summary/STATS"),
+                    tag: Some("summary"),
+                },
+            )],
+            DataField::Chips => vec![(
+                RPC_STATS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/STATS/0/HBinfo"),
+                    tag: None,
+                },
+            )],
             DataField::AverageTemperature => vec![(
                 RPC_STATS,
                 DataExtractor {
@@ -468,16 +466,25 @@ impl GetHashboards for AvalonQMiner {
             .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
             .collect();
 
-        let hb_info = data.get(&DataField::Hashboards).and_then(|v| v.as_object());
+        let hb_info = data.get(&DataField::Chips).and_then(|v| v.as_object());
         let summary = data
             .get(&DataField::Hashboards)
             .and_then(|v| v.get("summary"));
+
+        fn summary_f64(summary: &Value, key: &str, idx: usize) -> Option<f64> {
+            let value = summary.get(key)?;
+            value
+                .as_array()
+                .and_then(|arr| arr.get(idx))
+                .unwrap_or(value)
+                .as_f64()
+        }
 
         for board in hashboards.iter_mut() {
             let idx = board.position as usize;
 
             if let Some(summary) = summary {
-                board.hashrate = summary["MGHS"][idx].as_f64().map(|r| {
+                board.hashrate = summary_f64(summary, "MGHS", idx).map(|r| {
                     HashRate {
                         value: r,
                         unit: HashRateUnit::GigaHash,
@@ -486,14 +493,19 @@ impl GetHashboards for AvalonQMiner {
                     .as_unit(HashRateUnit::default())
                 });
 
-                board.board_temperature = summary["HBITemp"][idx]
-                    .as_f64()
-                    .map(Temperature::from_celsius);
+                board.board_temperature =
+                    summary_f64(summary, "HBITemp", idx).map(Temperature::from_celsius);
 
-                board.intake_temperature = summary["ITemp"][idx]
-                    .as_f64()
-                    .map(Temperature::from_celsius);
+                board.intake_temperature =
+                    summary_f64(summary, "ITemp", idx).map(Temperature::from_celsius);
             }
+
+            board.active = board.hashrate.as_ref().map(|h| h.value > 0.0);
+            board.working_chips = match (board.active, board.expected_chips) {
+                (Some(true), Some(expected_chips)) => Some(expected_chips),
+                (Some(false), _) => Some(0),
+                _ => None,
+            };
 
             if let Some(hb_info) = hb_info {
                 let key = format!("HB{idx}");
@@ -526,9 +538,6 @@ impl GetHashboards for AvalonQMiner {
                         ..Default::default()
                     })
                     .collect();
-
-                board.working_chips = Some(board.chips.len() as u16);
-                board.active = Some(!board.chips.is_empty());
             }
         }
 
@@ -717,6 +726,29 @@ mod tests {
         results.insert(version_cmd, Value::from_str(VERSION_COMMAND)?);
 
         let mock_api = MockAPIClient::new(results);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect(&[DataField::Hashboards]).await;
+        assert!(!data.contains_key(&DataField::Chips));
+        let hashboards_without_chips = miner.parse_hashboards(&data);
+        assert!(hashboards_without_chips[0].chips.is_empty());
+        assert!(hashboards_without_chips[0].hashrate.is_some());
+        assert_eq!(hashboards_without_chips[0].working_chips, Some(160));
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector
+            .collect(&[DataField::Hashboards, DataField::Chips])
+            .await;
+        let hashboards_with_chips = miner.parse_hashboards(&data);
+        assert_eq!(hashboards_with_chips[0].chips.len(), 160);
+        assert_eq!(
+            hashboards_without_chips[0].hashrate,
+            hashboards_with_chips[0].hashrate
+        );
+        assert_eq!(
+            hashboards_without_chips[0].working_chips,
+            hashboards_with_chips[0].working_chips
+        );
 
         let mut collector = DataCollector::new_with_client(&miner, &mock_api);
         let data = collector.collect_all().await;

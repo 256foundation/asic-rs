@@ -341,6 +341,14 @@ impl GetDataLocations for AvalonAMiner {
                     tag: None,
                 },
             )],
+            DataField::Chips => vec![(
+                RPC_STATS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/STATS/0/MM ID0"),
+                    tag: None,
+                },
+            )],
             DataField::Wattage => vec![(
                 RPC_STATS,
                 DataExtractor {
@@ -468,6 +476,7 @@ impl GetHashboards for AvalonAMiner {
         let Some(hb_info) = data.get(&DataField::Hashboards).and_then(|v| v.as_object()) else {
             return hashboards;
         };
+        let chip_info = data.get(&DataField::Chips).and_then(|v| v.as_object());
 
         for board in hashboards.iter_mut() {
             let idx = board.position as usize;
@@ -500,46 +509,52 @@ impl GetHashboards for AvalonAMiner {
                 .and_then(|v| v.as_f64())
                 .map(Temperature::from_celsius);
 
-            let chip_temps: Vec<f64> = hb_info
-                .get(&format!("PVT_T{idx}"))
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
-                .unwrap_or_default();
+            board.active = board.hashrate.as_ref().map(|h| h.value > 0.0);
+            board.working_chips = match (board.active, board.expected_chips) {
+                (Some(true), Some(expected_chips)) => Some(expected_chips),
+                (Some(false), _) => Some(0),
+                _ => None,
+            };
 
-            let chip_volts: Vec<f64> = hb_info
-                .get(&format!("PVT_V{idx}"))
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
-                .unwrap_or_default();
+            if let Some(chip_info) = chip_info {
+                let chip_temps: Vec<f64> = chip_info
+                    .get(&format!("PVT_T{idx}"))
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
+                    .unwrap_or_default();
 
-            let chip_works: Vec<f64> = hb_info
-                .get(&format!("MW{idx}"))
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
-                .unwrap_or_default();
+                let chip_volts: Vec<f64> = chip_info
+                    .get(&format!("PVT_V{idx}"))
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
+                    .unwrap_or_default();
 
-            let max_len = chip_temps.len().max(chip_volts.len()).max(chip_works.len());
+                let chip_works: Vec<f64> = chip_info
+                    .get(&format!("MW{idx}"))
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
+                    .unwrap_or_default();
 
-            for pos in 0..max_len {
-                let temp = chip_temps.get(pos).copied().unwrap_or(0.0);
-                let volt = chip_volts.get(pos).copied().unwrap_or(0.0);
-                let work = chip_works.get(pos).copied().unwrap_or(0.0);
+                let max_len = chip_temps.len().max(chip_volts.len()).max(chip_works.len());
 
-                if temp == 0.0 {
-                    continue;
+                for pos in 0..max_len {
+                    let temp = chip_temps.get(pos).copied().unwrap_or(0.0);
+                    let volt = chip_volts.get(pos).copied().unwrap_or(0.0);
+                    let work = chip_works.get(pos).copied().unwrap_or(0.0);
+
+                    if temp == 0.0 {
+                        continue;
+                    }
+
+                    board.chips.push(ChipData {
+                        position: pos as u16,
+                        temperature: Some(Temperature::from_celsius(temp)),
+                        voltage: Some(Voltage::from_millivolts(volt)),
+                        working: Some(work > 0.0),
+                        ..Default::default()
+                    });
                 }
-
-                board.chips.push(ChipData {
-                    position: pos as u16,
-                    temperature: Some(Temperature::from_celsius(temp)),
-                    voltage: Some(Voltage::from_millivolts(volt)),
-                    working: Some(work > 0.0),
-                    ..Default::default()
-                });
             }
-
-            board.working_chips = Some(board.chips.len() as u16);
-            board.active = Some(!board.chips.is_empty());
         }
 
         hashboards
@@ -715,6 +730,29 @@ mod tests {
         results.insert(stats_cmd, Value::from_str(AVALON_A_STATS_PARSED)?);
 
         let mock_api = MockAPIClient::new(results);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect(&[DataField::Hashboards]).await;
+        assert!(!data.contains_key(&DataField::Chips));
+        let hashboards_without_chips = miner.parse_hashboards(&data);
+        assert!(hashboards_without_chips[0].chips.is_empty());
+        assert!(hashboards_without_chips[0].hashrate.is_some());
+        assert_eq!(hashboards_without_chips[0].working_chips, Some(120));
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector
+            .collect(&[DataField::Hashboards, DataField::Chips])
+            .await;
+        let hashboards_with_chips = miner.parse_hashboards(&data);
+        assert_eq!(hashboards_with_chips[0].chips.len(), 120);
+        assert_eq!(
+            hashboards_without_chips[0].hashrate,
+            hashboards_with_chips[0].hashrate
+        );
+        assert_eq!(
+            hashboards_without_chips[0].working_chips,
+            hashboards_with_chips[0].working_chips
+        );
 
         let mut collector = DataCollector::new_with_client(&miner, &mock_api);
         let data = collector.collect_all().await;

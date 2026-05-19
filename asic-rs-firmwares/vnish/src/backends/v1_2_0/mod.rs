@@ -221,6 +221,14 @@ impl GetDataLocations for VnishV120 {
                     },
                 ),
             ],
+            DataField::Chips => vec![(
+                WEB_CHAINS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
+                    tag: None,
+                },
+            )],
             DataField::Pools => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
@@ -314,6 +322,7 @@ impl GetHashboards for VnishV120 {
         let Some(all_chains) = data.get(&DataField::Hashboards).and_then(|v| v.as_array()) else {
             return Vec::new();
         };
+        let chip_chains = data.get(&DataField::Chips).and_then(|v| v.as_array());
 
         let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0)
             as usize)
@@ -386,49 +395,55 @@ impl GetHashboards for VnishV120 {
                 .and_then(|v| v.as_str())
                 .map(String::from)
                 .or_else(|| data.extract::<String>(DataField::SerialNumber));
-            board.chips = chain
-                .pointer("/chips")
-                .and_then(|v| v.as_array())
-                .map(|chips_arr| {
-                    chips_arr
-                        .iter()
-                        .enumerate()
-                        .map(|(idx, chip)| {
-                            let hashrate =
-                                chip.pointer("/hr")
-                                    .and_then(|v| v.as_f64())
-                                    .map(|f| HashRate {
-                                        value: f,
-                                        unit: HashRateUnit::GigaHash,
-                                        algo: "SHA256".to_string(),
+            if let Some(chip_chain) = chip_chains.and_then(|chains| {
+                chains
+                    .iter()
+                    .find(|c| c.pointer("/id").and_then(|v| v.as_u64()) == Some(id))
+            }) {
+                board.chips = chip_chain
+                    .pointer("/chips")
+                    .and_then(|v| v.as_array())
+                    .map(|chips_arr| {
+                        chips_arr
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, chip)| {
+                                let hashrate =
+                                    chip.pointer("/hr").and_then(|v| v.as_f64()).map(|f| {
+                                        HashRate {
+                                            value: f,
+                                            unit: HashRateUnit::GigaHash,
+                                            algo: "SHA256".to_string(),
+                                        }
                                     });
-                            let working = hashrate.as_ref().map(|hr| hr.value > 0.0);
-                            ChipData {
-                                position: chip
-                                    .pointer("/id")
-                                    .and_then(|v| v.as_u64())
-                                    .unwrap_or(idx as u64)
-                                    as u16,
-                                hashrate,
-                                temperature: chip
-                                    .pointer("/temp")
-                                    .and_then(|v| v.as_f64())
-                                    .map(Temperature::from_celsius),
-                                voltage: chip
-                                    .pointer("/volt")
-                                    .and_then(|v| v.as_i64())
-                                    .map(|v| Voltage::from_millivolts(v as f64)),
-                                frequency: chip
-                                    .pointer("/freq")
-                                    .and_then(|v| v.as_i64())
-                                    .map(|f| Frequency::from_megahertz(f as f64)),
-                                tuned: None,
-                                working,
-                            }
-                        })
-                        .collect()
-                })
-                .unwrap_or_default();
+                                let working = hashrate.as_ref().map(|hr| hr.value > 0.0);
+                                ChipData {
+                                    position: chip
+                                        .pointer("/id")
+                                        .and_then(|v| v.as_u64())
+                                        .unwrap_or(idx as u64)
+                                        as u16,
+                                    hashrate,
+                                    temperature: chip
+                                        .pointer("/temp")
+                                        .and_then(|v| v.as_f64())
+                                        .map(Temperature::from_celsius),
+                                    voltage: chip
+                                        .pointer("/volt")
+                                        .and_then(|v| v.as_i64())
+                                        .map(|v| Voltage::from_millivolts(v as f64)),
+                                    frequency: chip
+                                        .pointer("/freq")
+                                        .and_then(|v| v.as_i64())
+                                        .map(|f| Frequency::from_megahertz(f as f64)),
+                                    tuned: None,
+                                    working,
+                                }
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
+            }
             board.voltage = chain
                 .pointer("/voltage")
                 .and_then(|v| v.as_i64())
