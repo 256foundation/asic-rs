@@ -504,6 +504,12 @@ impl Resume for Bitaxe290 {
     }
 }
 
+impl ChangePassword for Bitaxe290 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for Bitaxe290 {
     fn supports_scaling_config(&self) -> bool {

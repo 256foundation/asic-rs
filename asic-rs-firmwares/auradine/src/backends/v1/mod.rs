@@ -1263,6 +1263,12 @@ impl Resume for AuradineV1 {
     }
 }
 
+impl ChangePassword for AuradineV1 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for AuradineV1 {
     fn supports_scaling_config(&self) -> bool {

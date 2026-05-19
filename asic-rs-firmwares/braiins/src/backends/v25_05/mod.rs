@@ -727,6 +727,12 @@ impl Resume for BraiinsV2505 {
     }
 }
 
+impl ChangePassword for BraiinsV2505 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsPoolsConfig for BraiinsV2505 {
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {

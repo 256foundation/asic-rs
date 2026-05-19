@@ -704,6 +704,12 @@ impl Resume for SealMinerV2025 {
     }
 }
 
+impl ChangePassword for SealMinerV2025 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsPoolsConfig for SealMinerV2025 {
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {

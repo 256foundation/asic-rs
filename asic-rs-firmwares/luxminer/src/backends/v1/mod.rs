@@ -1169,6 +1169,12 @@ impl Resume for LuxMinerV1 {
     }
 }
 
+impl ChangePassword for LuxMinerV1 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for LuxMinerV1 {
     fn supports_scaling_config(&self) -> bool {

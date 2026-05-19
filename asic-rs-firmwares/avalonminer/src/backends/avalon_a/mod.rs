@@ -165,6 +165,13 @@ impl Resume for AvalonAMiner {
         true
     }
 }
+
+impl ChangePassword for AvalonAMiner {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SetFaultLight for AvalonAMiner {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {

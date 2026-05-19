@@ -925,6 +925,12 @@ impl Resume for AntMinerV2020 {
     }
 }
 
+impl ChangePassword for AntMinerV2020 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for AntMinerV2020 {
     fn supports_scaling_config(&self) -> bool {

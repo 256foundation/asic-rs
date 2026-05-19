@@ -1,5 +1,7 @@
 use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::Duration};
 
+use self::firmware::AntMinerFirmwareImageExt;
+use crate::firmware::AntMinerStockFirmware;
 use anyhow;
 use asic_rs_core::{
     config::{
@@ -28,9 +30,6 @@ use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::AntMinerRPCAPI;
 use serde_json::{Value, json};
 use web::AntMinerWebAPI;
-
-use self::firmware::AntMinerFirmwareImageExt;
-use crate::firmware::AntMinerStockFirmware;
 
 mod firmware;
 mod rpc;
@@ -908,6 +907,12 @@ impl Resume for AntMinerV202307 {
         }
 
         Ok(false)
+    }
+}
+
+impl ChangePassword for AntMinerV202307 {
+    fn supports_change_password(&self) -> bool {
+        false
     }
 }
 

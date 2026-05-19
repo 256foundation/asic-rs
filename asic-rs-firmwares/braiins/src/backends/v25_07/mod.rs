@@ -695,6 +695,12 @@ impl Resume for BraiinsV2507 {
     }
 }
 
+impl ChangePassword for BraiinsV2507 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for BraiinsV2507 {
     fn supports_scaling_config(&self) -> bool {

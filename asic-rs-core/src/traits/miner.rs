@@ -50,9 +50,15 @@ impl<
 {
 }
 
-pub trait HasMinerControl: SetFaultLight + SetPowerLimit + Restart + Resume + Pause {}
+pub trait HasMinerControl:
+    SetFaultLight + SetPowerLimit + Restart + Resume + Pause + ChangePassword
+{
+}
 
-impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause> HasMinerControl for T {}
+impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause + ChangePassword> HasMinerControl
+    for T
+{
+}
 
 pub trait SupportsConfigs:
     CollectConfigs
@@ -702,6 +708,15 @@ pub trait Resume {
         anyhow::bail!("Resuming mining is not supported on this platform");
     }
     fn supports_resume(&self) -> bool;
+}
+
+#[async_trait]
+pub trait ChangePassword {
+    #[allow(unused_variables)]
+    async fn change_password(&self, password: &str) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting password is not supported on this platform");
+    }
+    fn supports_change_password(&self) -> bool;
 }
 
 #[async_trait]

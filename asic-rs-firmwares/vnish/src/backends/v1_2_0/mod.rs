@@ -730,6 +730,12 @@ impl Resume for VnishV120 {
     }
 }
 
+impl ChangePassword for VnishV120 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for VnishV120 {
     fn supports_scaling_config(&self) -> bool {

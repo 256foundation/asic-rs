@@ -498,6 +498,12 @@ impl Resume for NerdAxeV1 {
     }
 }
 
+impl ChangePassword for NerdAxeV1 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for NerdAxeV1 {
     fn supports_scaling_config(&self) -> bool {

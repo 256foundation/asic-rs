@@ -1378,6 +1378,12 @@ impl Resume for PowerPlayV1 {
     }
 }
 
+impl ChangePassword for PowerPlayV1 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl UpgradeFirmware for PowerPlayV1 {
     async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {

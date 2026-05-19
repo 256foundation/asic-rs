@@ -721,6 +721,12 @@ impl Resume for WhatsMinerV2 {
     }
 }
 
+impl ChangePassword for WhatsMinerV2 {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for WhatsMinerV2 {
     fn supports_scaling_config(&self) -> bool {

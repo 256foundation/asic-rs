@@ -160,6 +160,13 @@ impl Resume for AvalonQMiner {
         true
     }
 }
+
+impl ChangePassword for AvalonQMiner {
+    fn supports_change_password(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SetFaultLight for AvalonQMiner {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
