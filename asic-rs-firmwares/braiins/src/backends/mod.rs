@@ -26,6 +26,7 @@ impl MinerConstructor for Braiins {
             Some(ref v) if *v >= Version::new(25, 7, 0) => Box::new(BraiinsV2507::new(ip, model)),
             Some(ref v) if *v >= Version::new(25, 5, 0) => Box::new(BraiinsV2505::new(ip, model)),
             Some(ref v) if *v >= Version::new(25, 3, 0) => Box::new(BraiinsV2503::new(ip, model)),
+            Some(ref v) if *v >= Version::new(24, 9, 0) => Box::new(BraiinsV2109::new(ip, model)),
             _ => Box::new(BraiinsV2109::new(ip, model)),
         }
     }

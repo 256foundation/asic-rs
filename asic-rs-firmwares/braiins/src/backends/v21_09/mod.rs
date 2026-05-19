@@ -745,9 +745,14 @@ impl ReadLogs for BraiinsV2109 {
     }
 }
 
+#[async_trait]
 impl FactoryReset for BraiinsV2109 {
+    async fn factory_reset(&self) -> anyhow::Result<bool> {
+        self.graphql.factory_reset().await
+    }
+
     fn supports_factory_reset(&self) -> bool {
-        false
+        true
     }
 }
 

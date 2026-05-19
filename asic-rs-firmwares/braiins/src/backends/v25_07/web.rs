@@ -156,6 +156,18 @@ impl BraiinsWebAPI {
         Ok(response.status().is_success())
     }
 
+    pub async fn factory_reset(&self) -> anyhow::Result<bool> {
+        self.ensure_authenticated().await?;
+
+        let url = format!(
+            "http://{}:{}/api/v1/actions/factory-reset",
+            self.ip, self.port
+        );
+        let response = self.execute_request(&url, &Method::PUT, None).await?;
+
+        Ok(response.status().is_success())
+    }
+
     /// Execute the actual HTTP request
     async fn execute_request(
         &self,

@@ -187,6 +187,26 @@ impl BraiinsGraphQLAPI {
         Ok(result.pointer("/bos/setPassword/message").is_none()
             && result.pointer("/bos/setPassword").is_some())
     }
+
+    pub async fn factory_reset(&self) -> anyhow::Result<bool> {
+        let mutation = r#"mutation {
+            bos {
+                factoryReset {
+                    ... on VoidResult {
+                        void
+                    }
+                    ... on BosError {
+                        message
+                    }
+                }
+            }
+        }"#;
+
+        let result = self.send_graphql_command(mutation, true, None).await?;
+
+        Ok(result.pointer("/bos/factoryReset/message").is_none()
+            && result.pointer("/bos/factoryReset").is_some())
+    }
 }
 
 #[async_trait]

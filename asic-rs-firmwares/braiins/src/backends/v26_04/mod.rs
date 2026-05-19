@@ -709,9 +709,14 @@ impl ReadLogs for BraiinsV2604 {
     }
 }
 
+#[async_trait]
 impl FactoryReset for BraiinsV2604 {
+    async fn factory_reset(&self) -> anyhow::Result<bool> {
+        self.web.factory_reset().await
+    }
+
     fn supports_factory_reset(&self) -> bool {
-        false
+        true
     }
 }
 
