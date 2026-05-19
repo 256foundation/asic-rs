@@ -6,7 +6,7 @@ use anyhow;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
-use serde_json::Value;
+use serde_json::{Value, json};
 use tokio::sync::RwLock;
 
 /// Braiins WebAPI client
@@ -87,6 +87,10 @@ impl BraiinsWebAPI {
         *self.bearer_token.get_mut() = None;
     }
 
+    pub fn username(&self) -> &str {
+        &self.auth.username
+    }
+
     fn build_client() -> Result<Client, BraiinsError> {
         Client::builder()
             .timeout(Duration::from_secs(10))
@@ -139,6 +143,17 @@ impl BraiinsWebAPI {
             .and_then(|t| t.as_str())
             .map(String::from)
             .ok_or(BraiinsError::AuthenticationFailed)
+    }
+
+    pub async fn set_password(&self, password: &str) -> anyhow::Result<bool> {
+        self.ensure_authenticated().await?;
+
+        let url = format!("http://{}:{}/api/v1/auth/password", self.ip, self.port);
+        let response = self
+            .execute_request(&url, &Method::PUT, Some(json!({ "password": password })))
+            .await?;
+
+        Ok(response.status().is_success())
     }
 
     /// Execute the actual HTTP request

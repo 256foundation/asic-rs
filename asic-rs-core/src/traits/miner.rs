@@ -721,7 +721,7 @@ pub trait Resume {
 #[async_trait]
 pub trait ChangePassword {
     #[allow(unused_variables)]
-    async fn change_password(&self, password: &str) -> anyhow::Result<bool> {
+    async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
         anyhow::bail!("Setting password is not supported on this platform");
     }
     fn supports_change_password(&self) -> bool;

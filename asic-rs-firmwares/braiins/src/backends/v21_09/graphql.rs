@@ -35,6 +35,10 @@ impl BraiinsGraphQLAPI {
         *self.session_id.get_mut() = None;
     }
 
+    pub fn username(&self) -> &str {
+        &self.auth.username
+    }
+
     fn build_client() -> anyhow::Result<Client> {
         Client::builder()
             .timeout(Duration::from_secs(10))
@@ -159,6 +163,29 @@ impl BraiinsGraphQLAPI {
         }
 
         Err(anyhow::anyhow!("GraphQL returned null data"))
+    }
+
+    pub async fn set_password(&self, password: &str) -> anyhow::Result<bool> {
+        let mutation = r#"mutation ($password: String) {
+            bos {
+                setPassword(newPassword: $password) {
+                    ... on VoidResult {
+                        void
+                    }
+                    ... on BosError {
+                        message
+                    }
+                }
+            }
+        }"#;
+
+        let variables = json!({ "password": password });
+        let result = self
+            .send_graphql_command(mutation, true, Some(variables))
+            .await?;
+
+        Ok(result.pointer("/bos/setPassword/message").is_none()
+            && result.pointer("/bos/setPassword").is_some())
     }
 }
 
