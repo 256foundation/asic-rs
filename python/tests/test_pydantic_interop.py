@@ -148,9 +148,7 @@ def test_hashrate_ignores_extra_fields_like_pydantic_default() -> None:
 
 
 def test_miner_control_board_uses_generated_model_shape() -> None:
-    control_board = MinerControlBoard.model_validate(
-        {"known": True, "name": "CV1835"}
-    )
+    control_board = MinerControlBoard.model_validate({"known": True, "name": "CV1835"})
     model = MinerControlBoardModel.model_validate(
         {"control_board": {"known": False, "name": "unknown"}}
     )
@@ -158,9 +156,7 @@ def test_miner_control_board_uses_generated_model_shape() -> None:
     assert repr(control_board) == "MinerControlBoard(known=True, name='CV1835')"
     assert control_board.model_dump() == {"known": True, "name": "CV1835"}
     assert repr(model.control_board) == "MinerControlBoard(known=False, name='unknown')"
-    assert model.model_dump() == {
-        "control_board": {"known": False, "name": "unknown"}
-    }
+    assert model.model_dump() == {"control_board": {"known": False, "name": "unknown"}}
 
 
 def test_miner_data_repr_uses_pydantic_model_style() -> None:
@@ -217,9 +213,7 @@ def test_miner_control_board_rejects_string_compat_shape() -> None:
         {"value": 100.0, "algo": "SHA256"},
     ],
 )
-def test_hashrate_pydantic_requires_unit_and_algo(
-    hashrate: dict[str, object]
-) -> None:
+def test_hashrate_pydantic_requires_unit_and_algo(hashrate: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         HashRateModel.model_validate({"hashrate": hashrate})
 

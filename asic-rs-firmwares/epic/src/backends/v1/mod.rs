@@ -279,6 +279,16 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
                 (
+                    WEB_CAPABILITIES,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: Some("Capabilities"),
+                    },
+                ),
+            ],
+            DataField::Chips => vec![
+                (
                     WEB_CHIP_TEMPS,
                     DataExtractor {
                         func: get_by_pointer,
@@ -308,14 +318,6 @@ impl GetDataLocations for PowerPlayV1 {
                         func: get_by_pointer,
                         key: Some(""),
                         tag: Some("Chip Clocks"),
-                    },
-                ),
-                (
-                    WEB_CAPABILITIES,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some(""),
-                        tag: Some("Capabilities"),
                     },
                 ),
             ],
@@ -476,6 +478,12 @@ impl GetHashboards for PowerPlayV1 {
         let Some(api_data) = data.get(&DataField::Hashboards) else {
             return hashboards;
         };
+        let chip_data = data.get(&DataField::Chips);
+        let board_chip_count = api_data
+            .pointer("/Capabilities/Performance Estimator/Chip Count")
+            .and_then(|v| v.as_u64())
+            .and_then(|chips| u16::try_from(chips).ok())
+            .or(self.device_info.hardware.chips);
 
         // Active status
         if let Some(boards) = api_data
@@ -487,15 +495,27 @@ impl GetHashboards for PowerPlayV1 {
                     && let Some(hashboard) = hashboards.get_mut(idx as usize)
                 {
                     hashboard.active = board.get("Enabled").and_then(|v| v.as_bool());
+                    if chip_data.is_none()
+                        && let Some(active) = hashboard.active
+                    {
+                        hashboard.working_chips = Some(if active {
+                            board_chip_count.unwrap_or_default()
+                        } else {
+                            0
+                        });
+                    }
                 }
             }
         }
 
-        // Populate chip slots for active boards
-        for board in &mut hashboards {
-            if board.active.unwrap_or(false) {
-                board.chips =
-                    vec![ChipData::default(); board.expected_chips.unwrap_or_default() as usize];
+        if chip_data.is_some() {
+            for board in &mut hashboards {
+                if board.active.unwrap_or(false) {
+                    board.chips = vec![
+                        ChipData::default();
+                        board.expected_chips.unwrap_or_default() as usize
+                    ];
+                }
             }
         }
 
@@ -599,7 +619,10 @@ impl GetHashboards for PowerPlayV1 {
         }
 
         // Chip temperatures
-        if let Some(boards) = api_data.pointer("/Chip Temps").and_then(|v| v.as_array()) {
+        if let Some(boards) = chip_data
+            .and_then(|data| data.pointer("/Chip Temps"))
+            .and_then(|v| v.as_array())
+        {
             for board in boards {
                 if let Some(idx) = board.get("Index").and_then(|v| v.as_u64())
                     && let Some(hashboard) = hashboards.get_mut(idx as usize)
@@ -616,8 +639,8 @@ impl GetHashboards for PowerPlayV1 {
         }
 
         // Chip voltages
-        if let Some(boards) = api_data
-            .pointer("/Chip Voltages")
+        if let Some(boards) = chip_data
+            .and_then(|data| data.pointer("/Chip Voltages"))
             .and_then(|v| v.as_array())
         {
             for board in boards {
@@ -637,7 +660,10 @@ impl GetHashboards for PowerPlayV1 {
         }
 
         // Chip frequencies
-        if let Some(boards) = api_data.pointer("/Chip Clocks").and_then(|v| v.as_array()) {
+        if let Some(boards) = chip_data
+            .and_then(|data| data.pointer("/Chip Clocks"))
+            .and_then(|v| v.as_array())
+        {
             for board in boards {
                 if let Some(idx) = board.get("Index").and_then(|v| v.as_u64())
                     && let Some(hashboard) = hashboards.get_mut(idx as usize)
@@ -654,8 +680,8 @@ impl GetHashboards for PowerPlayV1 {
         }
 
         // Chip hashrates — presence implies the chip is working
-        if let Some(boards) = api_data
-            .pointer("/Chip Hashrates")
+        if let Some(boards) = chip_data
+            .and_then(|data| data.pointer("/Chip Hashrates"))
             .and_then(|v| v.as_array())
         {
             for board in boards {
@@ -686,14 +712,16 @@ impl GetHashboards for PowerPlayV1 {
             }
         }
 
-        for board in &mut hashboards {
-            board.working_chips = Some(
-                board
-                    .chips
-                    .iter()
-                    .filter(|c| c.working.unwrap_or(false))
-                    .count() as u16,
-            );
+        if chip_data.is_some() {
+            for board in &mut hashboards {
+                board.working_chips = Some(
+                    board
+                        .chips
+                        .iter()
+                        .filter(|c| c.working.unwrap_or(false))
+                        .count() as u16,
+                );
+            }
         }
 
         hashboards
@@ -1474,6 +1502,60 @@ mod tests {
         }
 
         let mock_api = MockAPIClient::new(results);
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect(&[DataField::Hashboards]).await;
+        assert!(!data.contains_key(&DataField::Chips));
+
+        let hashboards_without_chips = miner.parse_hashboards(&data);
+        assert_eq!(hashboards_without_chips.len(), 3);
+        assert_eq!(hashboards_without_chips[0].active, Some(false));
+        assert_eq!(hashboards_without_chips[0].working_chips, Some(0));
+        assert!(hashboards_without_chips[1].chips.is_empty());
+        assert_eq!(hashboards_without_chips[1].working_chips, Some(110));
+        assert!(hashboards_without_chips[1].serial_number.is_some());
+        assert!(hashboards_without_chips[1].hashrate.is_some());
+        assert!(hashboards_without_chips[1].board_temperature.is_some());
+        assert!(hashboards_without_chips[1].intake_temperature.is_some());
+        assert!(hashboards_without_chips[1].outlet_temperature.is_some());
+        assert!(hashboards_without_chips[1].tuned.is_some());
+
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector
+            .collect(&[DataField::Hashboards, DataField::Chips])
+            .await;
+        assert!(data.contains_key(&DataField::Chips));
+
+        let hashboards_with_chips = miner.parse_hashboards(&data);
+        assert_eq!(hashboards_with_chips[1].chips.len(), 110);
+        assert_eq!(
+            hashboards_without_chips[1].active,
+            hashboards_with_chips[1].active
+        );
+        assert_eq!(
+            hashboards_without_chips[1].serial_number,
+            hashboards_with_chips[1].serial_number
+        );
+        assert_eq!(
+            hashboards_without_chips[1].hashrate,
+            hashboards_with_chips[1].hashrate
+        );
+        assert_eq!(
+            hashboards_without_chips[1].board_temperature,
+            hashboards_with_chips[1].board_temperature
+        );
+        assert_eq!(
+            hashboards_without_chips[1].intake_temperature,
+            hashboards_with_chips[1].intake_temperature
+        );
+        assert_eq!(
+            hashboards_without_chips[1].outlet_temperature,
+            hashboards_with_chips[1].outlet_temperature
+        );
+        assert_eq!(
+            hashboards_without_chips[1].tuned,
+            hashboards_with_chips[1].tuned
+        );
 
         let mut collector = DataCollector::new_with_client(&miner, &mock_api);
         let data = collector.collect_all().await;

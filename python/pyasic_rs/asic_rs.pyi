@@ -80,6 +80,7 @@ class ChipData:
 class DataField:
     ApiVersion: Final[DataField]
     AverageTemperature: Final[DataField]
+    Chips: Final[DataField]
     ControlBoardVersion: Final[DataField]
     DeviceInfo: Final[DataField]
     Efficiency: Final[DataField]
