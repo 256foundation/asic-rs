@@ -239,6 +239,12 @@ impl VnishWebAPI {
 
         self.set_settings(settings).await.map(|_| true)
     }
+
+    pub async fn factory_reset(&self) -> anyhow::Result<bool> {
+        self.send_command("settings/factory-reset", true, None, Method::POST)
+            .await
+            .map(|_| true)
+    }
 }
 
 /// Error types for Vnish WebAPI operations
