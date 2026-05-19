@@ -710,6 +710,18 @@ impl ChangePassword for SealMinerV2025 {
     }
 }
 
+impl ReadLogs for SealMinerV2025 {
+    fn supports_read_logs(&self) -> bool {
+        false
+    }
+}
+
+impl FactoryReset for SealMinerV2025 {
+    fn supports_factory_reset(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsPoolsConfig for SealMinerV2025 {
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {

@@ -172,6 +172,18 @@ impl ChangePassword for AvalonAMiner {
     }
 }
 
+impl ReadLogs for AvalonAMiner {
+    fn supports_read_logs(&self) -> bool {
+        false
+    }
+}
+
+impl FactoryReset for AvalonAMiner {
+    fn supports_factory_reset(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SetFaultLight for AvalonAMiner {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {

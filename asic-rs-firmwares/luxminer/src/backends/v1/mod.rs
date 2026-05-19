@@ -1175,6 +1175,18 @@ impl ChangePassword for LuxMinerV1 {
     }
 }
 
+impl ReadLogs for LuxMinerV1 {
+    fn supports_read_logs(&self) -> bool {
+        false
+    }
+}
+
+impl FactoryReset for LuxMinerV1 {
+    fn supports_factory_reset(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for LuxMinerV1 {
     fn supports_scaling_config(&self) -> bool {

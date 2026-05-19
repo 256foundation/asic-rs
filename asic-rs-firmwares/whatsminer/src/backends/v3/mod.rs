@@ -741,6 +741,18 @@ impl ChangePassword for WhatsMinerV3 {
     }
 }
 
+impl ReadLogs for WhatsMinerV3 {
+    fn supports_read_logs(&self) -> bool {
+        false
+    }
+}
+
+impl FactoryReset for WhatsMinerV3 {
+    fn supports_factory_reset(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for WhatsMinerV3 {
     fn supports_scaling_config(&self) -> bool {

@@ -736,6 +736,18 @@ impl ChangePassword for VnishV120 {
     }
 }
 
+impl ReadLogs for VnishV120 {
+    fn supports_read_logs(&self) -> bool {
+        false
+    }
+}
+
+impl FactoryReset for VnishV120 {
+    fn supports_factory_reset(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for VnishV120 {
     fn supports_scaling_config(&self) -> bool {

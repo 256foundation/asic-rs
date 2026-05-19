@@ -701,6 +701,18 @@ impl ChangePassword for BraiinsV2507 {
     }
 }
 
+impl ReadLogs for BraiinsV2507 {
+    fn supports_read_logs(&self) -> bool {
+        false
+    }
+}
+
+impl FactoryReset for BraiinsV2507 {
+    fn supports_factory_reset(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for BraiinsV2507 {
     fn supports_scaling_config(&self) -> bool {

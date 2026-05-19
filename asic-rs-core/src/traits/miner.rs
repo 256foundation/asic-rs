@@ -51,12 +51,20 @@ impl<
 }
 
 pub trait HasMinerControl:
-    SetFaultLight + SetPowerLimit + Restart + Resume + Pause + ChangePassword
+    SetFaultLight + SetPowerLimit + Restart + Resume + Pause + ChangePassword + FactoryReset + ReadLogs
 {
 }
 
-impl<T: SetFaultLight + SetPowerLimit + Restart + Resume + Pause + ChangePassword> HasMinerControl
-    for T
+impl<
+    T: SetFaultLight
+        + SetPowerLimit
+        + Restart
+        + Resume
+        + Pause
+        + ChangePassword
+        + FactoryReset
+        + ReadLogs,
+> HasMinerControl for T
 {
 }
 
@@ -717,6 +725,24 @@ pub trait ChangePassword {
         anyhow::bail!("Setting password is not supported on this platform");
     }
     fn supports_change_password(&self) -> bool;
+}
+
+#[async_trait]
+pub trait FactoryReset {
+    #[allow(unused_variables)]
+    async fn factory_reset(&self) -> anyhow::Result<bool> {
+        anyhow::bail!("Factory resetting is not supported on this platform");
+    }
+    fn supports_factory_reset(&self) -> bool;
+}
+
+#[async_trait]
+pub trait ReadLogs {
+    #[allow(unused_variables)]
+    async fn read_logs(&self) -> anyhow::Result<String> {
+        anyhow::bail!("Reading logs is not supported on this platform");
+    }
+    fn supports_read_logs(&self) -> bool;
 }
 
 #[async_trait]

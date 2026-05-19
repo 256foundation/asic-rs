@@ -733,6 +733,18 @@ impl ChangePassword for BraiinsV2505 {
     }
 }
 
+impl ReadLogs for BraiinsV2505 {
+    fn supports_read_logs(&self) -> bool {
+        false
+    }
+}
+
+impl FactoryReset for BraiinsV2505 {
+    fn supports_factory_reset(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsPoolsConfig for BraiinsV2505 {
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {

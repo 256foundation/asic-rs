@@ -916,6 +916,18 @@ impl ChangePassword for AntMinerV202307 {
     }
 }
 
+impl ReadLogs for AntMinerV202307 {
+    fn supports_read_logs(&self) -> bool {
+        false
+    }
+}
+
+impl FactoryReset for AntMinerV202307 {
+    fn supports_factory_reset(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for AntMinerV202307 {
     fn supports_scaling_config(&self) -> bool {

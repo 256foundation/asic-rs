@@ -1384,6 +1384,18 @@ impl ChangePassword for PowerPlayV1 {
     }
 }
 
+impl ReadLogs for PowerPlayV1 {
+    fn supports_read_logs(&self) -> bool {
+        false
+    }
+}
+
+impl FactoryReset for PowerPlayV1 {
+    fn supports_factory_reset(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl UpgradeFirmware for PowerPlayV1 {
     async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {

@@ -516,6 +516,18 @@ impl ChangePassword for Bitaxe200 {
     }
 }
 
+impl ReadLogs for Bitaxe200 {
+    fn supports_read_logs(&self) -> bool {
+        false
+    }
+}
+
+impl FactoryReset for Bitaxe200 {
+    fn supports_factory_reset(&self) -> bool {
+        false
+    }
+}
+
 #[async_trait]
 impl SupportsScalingConfig for Bitaxe200 {
     fn supports_scaling_config(&self) -> bool {
