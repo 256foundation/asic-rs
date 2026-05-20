@@ -1394,9 +1394,14 @@ impl ChangePassword for PowerPlayV1 {
     }
 }
 
+#[async_trait]
 impl ReadLogs for PowerPlayV1 {
+    async fn read_logs(&self) -> anyhow::Result<String> {
+        self.web.read_logs().await
+    }
+
     fn supports_read_logs(&self) -> bool {
-        false
+        true
     }
 }
 

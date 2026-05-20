@@ -180,6 +180,30 @@ impl PowerPlayWebAPI {
         .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
     }
 
+    async fn read_text(&self, command: &str) -> anyhow::Result<String> {
+        let url = format!("http://{}:{}/{}", self.ip, self.port, command);
+        let response = self.execute_request(&url, &Method::GET, None).await?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(PowerPlayError::HttpError(status.as_u16()))?;
+        }
+
+        response
+            .text()
+            .await
+            .map_err(|e| anyhow::anyhow!("failed to read {command} response body: {e}"))
+    }
+
+    pub async fn read_logs(&self) -> anyhow::Result<String> {
+        let main_log = self.read_text("log").await?;
+        let error_log = self.read_text("log/error").await?;
+
+        Ok(format!(
+            "== log ==\n{}\n== log/error ==\n{}",
+            main_log, error_log
+        ))
+    }
+
     /// Execute the actual HTTP request
     async fn execute_request(
         &self,
