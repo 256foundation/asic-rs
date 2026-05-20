@@ -207,6 +207,31 @@ impl BraiinsGraphQLAPI {
         Ok(result.pointer("/bos/factoryReset/message").is_none()
             && result.pointer("/bos/factoryReset").is_some())
     }
+
+    pub async fn read_logs(&self) -> anyhow::Result<String> {
+        let log_query = r#"query ($target: LogTarget!) {
+            bos {
+                log(target: $target)
+            }
+        }"#;
+
+        let mut logs = String::new();
+        let variables = json!({ "target": "BOSMINER" });
+        let lines = self
+            .send_graphql_command(log_query, true, Some(variables))
+            .await?
+            .pointer("/bos/log")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+
+        for line in lines.iter().filter_map(Value::as_str) {
+            logs.push_str(line);
+            logs.push('\n');
+        }
+
+        Ok(logs)
+    }
 }
 
 #[async_trait]

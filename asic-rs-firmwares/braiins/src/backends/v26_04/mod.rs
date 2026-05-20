@@ -690,7 +690,17 @@ impl Resume for BraiinsV2604 {
 #[async_trait]
 impl ChangePassword for BraiinsV2604 {
     async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
-        let success = self.web.set_password(password).await?;
+        let success = self
+            .web
+            .send_command(
+                "auth/password",
+                true,
+                Some(json!({ "password": password })),
+                Method::PUT,
+            )
+            .await
+            .is_ok();
+
         if success {
             let username = self.web.username().to_string();
             self.set_auth(MinerAuth::new(username, password));
@@ -703,16 +713,25 @@ impl ChangePassword for BraiinsV2604 {
     }
 }
 
+#[async_trait]
 impl ReadLogs for BraiinsV2604 {
+    async fn read_logs(&self) -> anyhow::Result<String> {
+        self.web.read_logs().await
+    }
+
     fn supports_read_logs(&self) -> bool {
-        false
+        true
     }
 }
 
 #[async_trait]
 impl FactoryReset for BraiinsV2604 {
     async fn factory_reset(&self) -> anyhow::Result<bool> {
-        self.web.factory_reset().await
+        Ok(self
+            .web
+            .send_command("actions/factory-reset", true, None, Method::PUT)
+            .await
+            .is_ok())
     }
 
     fn supports_factory_reset(&self) -> bool {

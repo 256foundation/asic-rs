@@ -1,12 +1,11 @@
-use std::{net::IpAddr, time::Duration};
-
 use once_cell::sync::OnceCell;
+use std::{net::IpAddr, time::Duration};
 
 use anyhow;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use reqwest::{Client, Method, Response};
-use serde_json::{Value, json};
+use serde_json::Value;
 use tokio::sync::RwLock;
 
 /// Braiins WebAPI client
@@ -145,58 +144,19 @@ impl BraiinsWebAPI {
             .ok_or(BraiinsError::AuthenticationFailed)
     }
 
-    pub async fn set_password(&self, password: &str) -> anyhow::Result<bool> {
-        self.ensure_authenticated().await?;
-
-        let url = format!("http://{}:{}/api/v1/auth/password", self.ip, self.port);
+    pub async fn read_logs(&self) -> anyhow::Result<String> {
+        if let Err(e) = self.ensure_authenticated().await {
+            return Err(anyhow::anyhow!("Failed to authenticate: {}", e));
+        }
+        let url = format!(
+            "http://{}:{}/api/v1/{}",
+            self.ip, self.port, "miner/log/bosminer"
+        );
         let response = self
-            .execute_request(&url, &Method::PUT, Some(json!({ "password": password })))
+            .execute_request_with_timeout(&url, &Method::GET, None, Duration::from_secs(60))
             .await?;
 
-        Ok(response.status().is_success())
-    }
-
-    pub async fn factory_reset(&self) -> anyhow::Result<bool> {
-        self.ensure_authenticated().await?;
-
-        let url = format!(
-            "http://{}:{}/api/v1/actions/factory-reset",
-            self.ip, self.port
-        );
-        let response = self.execute_request(&url, &Method::PUT, None).await?;
-
-        Ok(response.status().is_success())
-    }
-
-    pub async fn read_logs(&self) -> anyhow::Result<String> {
-        const LOG_TYPES: &[&str] = &["errors", "bosminer", "boser", "monitor", "syslog", "dmesg"];
-
-        self.ensure_authenticated().await?;
-
-        let mut logs = String::new();
-        for log_type in LOG_TYPES {
-            let url = format!(
-                "http://{}:{}/api/v1/miner/log/{}",
-                self.ip, self.port, log_type
-            );
-            let response = self.execute_request(&url, &Method::GET, None).await?;
-            let status = response.status();
-            if !status.is_success() {
-                return Err(BraiinsError::HttpError(status.as_u16()))?;
-            }
-
-            logs.push_str("== ");
-            logs.push_str(log_type);
-            logs.push_str(" ==\n");
-            logs.push_str(
-                &response
-                    .text()
-                    .await
-                    .map_err(|e| BraiinsError::ParseError(e.to_string()))?,
-            );
-            logs.push('\n');
-        }
-
+        let logs = response.text().await?;
         Ok(logs)
     }
 
@@ -236,6 +196,60 @@ impl BraiinsWebAPI {
         };
 
         let mut request_builder = request_builder.timeout(self.timeout);
+
+        // Add authentication headers if provided
+        if let Some(ref token) = *self.bearer_token.read().await {
+            request_builder = request_builder.header("Authorization", token.to_string());
+        }
+
+        let request = request_builder
+            .build()
+            .map_err(|e| BraiinsError::RequestError(e.to_string()))?;
+
+        let response = client
+            .execute(request)
+            .await
+            .map_err(|e| BraiinsError::NetworkError(e.to_string()))?;
+
+        Ok(response)
+    }
+
+    async fn execute_request_with_timeout(
+        &self,
+        url: &str,
+        method: &Method,
+        parameters: Option<Value>,
+        timeout: Duration,
+    ) -> anyhow::Result<Response, BraiinsError> {
+        let client = self.client()?;
+
+        let request_builder = match *method {
+            Method::GET => client.get(url),
+            Method::POST => {
+                let mut builder = client.post(url);
+                if let Some(params) = parameters {
+                    builder = builder.json(&params);
+                }
+                builder
+            }
+            Method::PUT => {
+                let mut builder = client.put(url);
+                if let Some(params) = parameters {
+                    builder = builder.json(&params);
+                }
+                builder
+            }
+            Method::PATCH => {
+                let mut builder = client.patch(url);
+                if let Some(params) = parameters {
+                    builder = builder.json(&params);
+                }
+                builder
+            }
+            _ => return Err(BraiinsError::UnsupportedMethod(method.to_string())),
+        };
+
+        let mut request_builder = request_builder.timeout(timeout);
 
         // Add authentication headers if provided
         if let Some(ref token) = *self.bearer_token.read().await {

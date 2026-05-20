@@ -739,9 +739,14 @@ impl ChangePassword for BraiinsV2109 {
     }
 }
 
+#[async_trait]
 impl ReadLogs for BraiinsV2109 {
+    async fn read_logs(&self) -> anyhow::Result<String> {
+        self.graphql.read_logs().await
+    }
+
     fn supports_read_logs(&self) -> bool {
-        false
+        true
     }
 }
 
