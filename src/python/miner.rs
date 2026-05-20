@@ -152,6 +152,18 @@ impl Miner {
         self.inner.supports_resume()
     }
     #[getter]
+    fn supports_change_password(&self) -> bool {
+        self.inner.supports_change_password()
+    }
+    #[getter]
+    fn supports_read_logs(&self) -> bool {
+        self.inner.supports_read_logs()
+    }
+    #[getter]
+    fn supports_factory_reset(&self) -> bool {
+        self.inner.supports_factory_reset()
+    }
+    #[getter]
     fn supports_pools_config(&self) -> bool {
         self.inner.supports_pools_config()
     }
@@ -384,6 +396,33 @@ impl Miner {
             let data = inner.resume(at_time).await;
             Ok(data.ok())
         })
+    }
+    pub fn factory_reset<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<bool>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let data = inner.factory_reset().await;
+            Ok(data.ok())
+        })
+    }
+    pub fn read_logs<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let data = inner.read_logs().await;
+            Ok(data.ok())
+        })
+    }
+    pub fn change_password<'a>(
+        &mut self,
+        py: Python<'a>,
+        password: &str,
+    ) -> PyResult<PyAwaitable<Option<bool>>> {
+        let password = password.to_string();
+        let inner_mut = Arc::get_mut(&mut self.inner).ok_or_else(|| {
+            PyRuntimeError::new_err("cannot update password while miner is in use")
+        })?;
+        let result = pyo3_async_runtimes::tokio::get_runtime()
+            .block_on(inner_mut.change_password(&password));
+        future_into_py(py, async move { Ok(result.ok()) })
     }
     pub fn set_power_limit<'a>(
         &self,
