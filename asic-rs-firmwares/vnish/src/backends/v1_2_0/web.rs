@@ -53,7 +53,15 @@ impl WebAPIClient for VnishWebAPI {
 
         let url = format!("http://{}:{}/api/v1/{}", self.ip, self.port, command);
 
-        let response = self.execute_request(&url, &method, parameters).await?;
+        let mut response = self
+            .execute_request(&url, &method, parameters.clone())
+            .await?;
+
+        if response.status().as_u16() == 401 {
+            *self.bearer_token.write().await = None;
+            self.ensure_authenticated().await?;
+            response = self.execute_request(&url, &method, parameters).await?;
+        }
 
         let status = response.status();
         if status.is_success() {
@@ -63,7 +71,11 @@ impl WebAPIClient for VnishWebAPI {
                 .map_err(|e| VnishError::ParseError(e.to_string()))?;
             Ok(json_data)
         } else {
-            Err(VnishError::HttpError(status.as_u16()))?
+            let code = status.as_u16();
+            Err(match code {
+                401 => VnishError::Unauthorized,
+                _ => VnishError::HttpError(code),
+            })?
         }
     }
 }
