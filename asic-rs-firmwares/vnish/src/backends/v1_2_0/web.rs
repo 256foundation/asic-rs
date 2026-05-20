@@ -245,6 +245,37 @@ impl VnishWebAPI {
             .await
             .map(|_| true)
     }
+
+    async fn read_log(&self, log_type: &str) -> anyhow::Result<String> {
+        self.ensure_authenticated().await?;
+
+        let url = format!("http://{}:{}/api/v1/logs/{}", self.ip, self.port, log_type);
+        let response = self.execute_request(&url, &Method::GET, None).await?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(VnishError::HttpError(status.as_u16()))?;
+        }
+
+        response
+            .text()
+            .await
+            .map_err(|e| anyhow::anyhow!("failed to read {log_type} log response body: {e}"))
+    }
+
+    pub async fn read_logs(&self) -> anyhow::Result<String> {
+        const LOG_TYPES: &[&str] = &["status", "miner", "autotune", "system", "messages", "api"];
+
+        let mut logs = String::new();
+        for log_type in LOG_TYPES {
+            logs.push_str("== ");
+            logs.push_str(log_type);
+            logs.push_str(" ==\n");
+            logs.push_str(&self.read_log(log_type).await?);
+            logs.push('\n');
+        }
+
+        Ok(logs)
+    }
 }
 
 /// Error types for Vnish WebAPI operations
