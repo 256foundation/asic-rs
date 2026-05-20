@@ -31,7 +31,7 @@ use reqwest::Method;
 use serde_json::{Value, json};
 use web::BraiinsWebAPI;
 
-use crate::firmware::BraiinsFirmware;
+use crate::{backends::v21_09::graphql::BraiinsGraphQLAPI, firmware::BraiinsFirmware};
 
 pub mod web;
 
@@ -39,6 +39,7 @@ pub mod web;
 pub struct BraiinsV2507 {
     pub ip: IpAddr,
     pub web: BraiinsWebAPI,
+    pub graphql: BraiinsGraphQLAPI,
     pub device_info: DeviceInfo,
 }
 
@@ -47,7 +48,8 @@ impl BraiinsV2507 {
         let auth = Self::default_auth();
         BraiinsV2507 {
             ip,
-            web: BraiinsWebAPI::new(ip, auth),
+            web: BraiinsWebAPI::new(ip, auth.clone()),
+            graphql: BraiinsGraphQLAPI::new(ip, auth),
             device_info: DeviceInfo::new(model, BraiinsFirmware::default(), HashAlgorithm::SHA256),
         }
     }
@@ -58,6 +60,7 @@ impl APIClient for BraiinsV2507 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
+            MinerCommand::GraphQL { .. } => self.graphql.get_api_result(command).await,
             _ => Err(anyhow::anyhow!("Unsupported command type for Braiins API")),
         }
     }
@@ -711,9 +714,14 @@ impl ChangePassword for BraiinsV2507 {
     }
 }
 
+#[async_trait]
 impl ReadLogs for BraiinsV2507 {
+    async fn read_logs(&self) -> anyhow::Result<String> {
+        self.graphql.read_logs().await
+    }
+
     fn supports_read_logs(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -745,7 +753,8 @@ impl HasDefaultAuth for BraiinsV2507 {
 
 impl HasAuth for BraiinsV2507 {
     fn set_auth(&mut self, auth: MinerAuth) {
-        self.web.set_auth(auth);
+        self.web.set_auth(auth.clone());
+        self.graphql.set_auth(auth);
     }
 }
 

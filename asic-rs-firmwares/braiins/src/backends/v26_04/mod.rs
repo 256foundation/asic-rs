@@ -30,7 +30,11 @@ use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use reqwest::Method;
 use serde_json::{Value, json};
 
-use crate::{backends::v25_07::web::BraiinsWebAPI, firmware::BraiinsFirmware};
+use web::BraiinsWebAPI;
+
+use crate::firmware::BraiinsFirmware;
+
+pub mod web;
 
 #[derive(Debug)]
 pub struct BraiinsV2604 {

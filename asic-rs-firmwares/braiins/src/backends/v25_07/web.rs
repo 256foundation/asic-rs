@@ -156,50 +156,6 @@ impl BraiinsWebAPI {
         Ok(response.status().is_success())
     }
 
-    pub async fn factory_reset(&self) -> anyhow::Result<bool> {
-        self.ensure_authenticated().await?;
-
-        let url = format!(
-            "http://{}:{}/api/v1/actions/factory-reset",
-            self.ip, self.port
-        );
-        let response = self.execute_request(&url, &Method::PUT, None).await?;
-
-        Ok(response.status().is_success())
-    }
-
-    pub async fn read_logs(&self) -> anyhow::Result<String> {
-        const LOG_TYPES: &[&str] = &["errors", "bosminer", "boser", "monitor", "syslog", "dmesg"];
-
-        self.ensure_authenticated().await?;
-
-        let mut logs = String::new();
-        for log_type in LOG_TYPES {
-            let url = format!(
-                "http://{}:{}/api/v1/miner/log/{}",
-                self.ip, self.port, log_type
-            );
-            let response = self.execute_request(&url, &Method::GET, None).await?;
-            let status = response.status();
-            if !status.is_success() {
-                return Err(BraiinsError::HttpError(status.as_u16()))?;
-            }
-
-            logs.push_str("== ");
-            logs.push_str(log_type);
-            logs.push_str(" ==\n");
-            logs.push_str(
-                &response
-                    .text()
-                    .await
-                    .map_err(|e| BraiinsError::ParseError(e.to_string()))?,
-            );
-            logs.push('\n');
-        }
-
-        Ok(logs)
-    }
-
     /// Execute the actual HTTP request
     async fn execute_request(
         &self,
