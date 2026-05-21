@@ -5,6 +5,7 @@ use aes::{
     cipher::{BlockEncryptMut, KeyInit},
 };
 use anyhow;
+use asic_rs_core::errors::RPCError::StatusCheckFailed;
 use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
@@ -15,9 +16,13 @@ use async_trait::async_trait;
 use base64::prelude::*;
 use chrono::Utc;
 use ecb::cipher::block_padding::ZeroPadding;
+use md5crypt::md5crypt;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+const UNLOCK_CLIENT: &str = "heatcore";
+const UNLOCK_MAGIC: &str = "3804fe31981418ce711a31d94bc69651";
 
 type Aes256EcbEnc = ecb::Encryptor<Aes256>;
 
@@ -99,7 +104,20 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         parameters: Option<Value>,
     ) -> anyhow::Result<Value> {
         if _privileged || command.starts_with("set.") {
-            return self.send_privileged_command(command, parameters).await;
+            let result = self
+                .send_privileged_command(command, parameters.clone())
+                .await;
+            return match &result {
+                Err(e)
+                    if e.downcast_ref::<RPCError>()
+                        .is_some_and(|rpc| matches!(rpc, StatusCheckFailed(_))) =>
+                {
+                    self.unlock_write_commands().await?;
+                    self.send_privileged_command(command, parameters.clone())
+                        .await
+                }
+                _ => result,
+            };
         }
 
         let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
@@ -151,6 +169,67 @@ impl WhatsMinerRPCAPI {
             port: port.unwrap_or(4433),
             auth,
         }
+    }
+
+    async fn unlock_write_commands(&self) -> anyhow::Result<()> {
+        let mut stream = tokio::net::TcpStream::connect((self.ip, 4028))
+            .await
+            .map_err(|_| RPCError::ConnectionFailed)?;
+
+        let open_cmd = json!({
+            "command": "open_write_api",
+            "client": UNLOCK_CLIENT,
+            "enable": true,
+        });
+        stream
+            .write_all(open_cmd.to_string().as_bytes())
+            .await
+            .map_err(RPCError::from)?;
+
+        let mut buf = vec![0u8; 4096];
+        let n = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut buf))
+            .await
+            .map_err(|_| RPCError::ReadTimeout)?
+            .map_err(RPCError::from)?;
+        let response: Value = serde_json::from_str(String::from_utf8_lossy(&buf[..n]).trim())?;
+
+        let msg = response
+            .get("Msg")
+            .ok_or_else(|| anyhow::anyhow!("Missing Msg in open_write_api response"))?;
+        let salt = msg["salt"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing salt"))?;
+        let newsalt = msg["newsalt"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing newsalt"))?;
+        let timestamp = msg["time"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing time"))?;
+
+        let crypted = md5crypt("admin".as_bytes(), salt.as_bytes());
+        let full_password = String::from_utf8_lossy(&crypted);
+        let pwd_md5 = full_password
+            .split('$')
+            .nth(3)
+            .ok_or_else(|| anyhow::anyhow!("Failed to extract md5crypt hash"))?;
+
+        let token_data = format!("{}{}{}{}", timestamp, newsalt, UNLOCK_MAGIC, pwd_md5);
+        let token_md5 = format!("{:x}", md5::compute(token_data.as_bytes()));
+
+        let token_json = json!({ "token": token_md5 });
+        stream
+            .write_all(token_json.to_string().as_bytes())
+            .await
+            .map_err(RPCError::from)?;
+
+        let mut final_buf = vec![0u8; 4096];
+        let _ = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut final_buf))
+            .await
+            .map_err(|_| RPCError::ReadTimeout)?
+            .map_err(RPCError::from)?;
+
+        let _ = stream.shutdown().await;
+        Ok(())
     }
 
     pub fn set_auth(&mut self, auth: MinerAuth) {
