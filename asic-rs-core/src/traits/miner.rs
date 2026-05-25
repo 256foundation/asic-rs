@@ -493,6 +493,14 @@ pub trait GetHashboards: CollectData {
     #[tracing::instrument(level = "debug")]
     async fn get_hashboards(&self) -> Vec<BoardData> {
         let mut collector = self.get_collector();
+        let data = collector
+            .collect(&[DataField::Hashboards, DataField::Chips])
+            .await;
+        self.parse_hashboards(&data)
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_hashboards_no_chips(&self) -> Vec<BoardData> {
+        let mut collector = self.get_collector();
         let data = collector.collect(&[DataField::Hashboards]).await;
         self.parse_hashboards(&data)
     }

@@ -285,6 +285,16 @@ impl Miner {
             Ok(inner.get_hashboards().await)
         })
     }
+    pub fn get_hashboards_no_chips<'a>(
+        &self,
+        py: Python<'a>,
+    ) -> PyResult<PyAwaitable<Vec<BoardData>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_hashboards_no_chips().await)
+        })
+    }
     pub fn get_hashrate<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<HashRate>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
