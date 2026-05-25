@@ -6,13 +6,14 @@ use asic_rs_core::{
     traits::miner::{APIClient, ExposeSecret, MinerAuth, WebAPIClient},
 };
 use async_trait::async_trait;
+use once_cell::sync::OnceCell;
 use reqwest::{Client, Method};
 use serde_json::{Value, json};
 use tokio::sync::Mutex;
 
 #[derive(Debug)]
 pub struct SealMinerWebAPI {
-    client: Client,
+    client: OnceCell<Client>,
     pub ip: IpAddr,
     auth: MinerAuth,
     session_cookie: Mutex<Option<String>>,
@@ -20,12 +21,8 @@ pub struct SealMinerWebAPI {
 
 impl SealMinerWebAPI {
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
         Self {
-            client,
+            client: OnceCell::new(),
             ip,
             auth,
             session_cookie: Mutex::new(None),
@@ -37,18 +34,29 @@ impl SealMinerWebAPI {
         self.session_cookie = Mutex::new(None);
     }
 
+    fn build_client() -> anyhow::Result<Client> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| anyhow::anyhow!("failed to create HTTP client: {e}"))
+    }
+
+    fn client(&self) -> anyhow::Result<&Client> {
+        self.client.get_or_try_init(Self::build_client)
+    }
+
     async fn session_cookie(&self) -> anyhow::Result<String> {
         if let Some(cookie) = self.session_cookie.lock().await.clone() {
             return Ok(cookie);
         }
+        let client = self.client()?;
 
         let body = format!(
             "username={}&origin_pwd={}",
             self.auth.username,
             self.auth.password.expose_secret()
         );
-        let response = self
-            .client
+        let response = client
             .post(format!("http://{}/cgi-bin/login.php", self.ip))
             .header(
                 "Content-Type",
@@ -101,17 +109,18 @@ impl WebAPIClient for SealMinerWebAPI {
     ) -> anyhow::Result<Value> {
         let cookie = self.session_cookie().await?;
         let url = format!("http://{}/cgi-bin/{}.php", self.ip, command);
+        let client = self.client()?;
 
         let mut builder = match method {
             Method::POST => {
-                let b = self.client.post(&url);
+                let b = client.post(&url);
                 if let Some(body) = parameters {
                     b.header("Content-Type", "application/json").json(&body)
                 } else {
                     b
                 }
             }
-            _ => self.client.get(&url),
+            _ => client.get(&url),
         };
         builder = builder.header("Cookie", cookie);
 

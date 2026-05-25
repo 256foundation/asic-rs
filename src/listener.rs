@@ -107,7 +107,6 @@ impl AntMinerListener {
         &self,
     ) -> impl Stream<Item = anyhow::Result<Option<IpAddr>>> {
         stream! {
-            let _factory = MinerFactory::new();
             let sock = match UdpSocket::bind("0.0.0.0:14235").await {
                 Ok(s) => s,
                 Err(e) => {
@@ -168,7 +167,6 @@ impl WhatsMinerListener {
         &self,
     ) -> impl Stream<Item = anyhow::Result<Option<IpAddr>>> {
         stream! {
-            let _factory = MinerFactory::new();
             let sock = match UdpSocket::bind("0.0.0.0:8888").await {
                 Ok(s) => s,
                 Err(e) => {

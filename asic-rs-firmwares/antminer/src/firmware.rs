@@ -15,13 +15,14 @@ use asic_rs_core::{
         miner::{ExposeSecret, HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
         model::MinerModel,
     },
+    util::build_discovery_client,
 };
 use asic_rs_makes_antminer::make::AntMinerMake;
 use asic_rs_makes_antminer::models::AntMinerModel;
 use async_trait::async_trait;
 use chrono::{Datelike, NaiveDateTime};
 use diqwest::WithDigestAuth;
-use reqwest::{Client, Response};
+use reqwest::Response;
 use serde_json::Value;
 
 #[derive(Clone)]
@@ -77,7 +78,8 @@ async fn get_model_with_auth(
     ip: IpAddr,
     auth: &MinerAuth,
 ) -> Result<AntMinerCompatibleModel, ModelSelectionError> {
-    let response: Option<Response> = Client::new()
+    let client = build_discovery_client()?;
+    let response: Option<Response> = client
         .get(format!("http://{ip}/cgi-bin/miner_type.cgi"))
         .send_digest_auth((auth.username.as_str(), auth.password.expose_secret()))
         .await
@@ -107,7 +109,8 @@ async fn get_model_with_auth(
 
 /// Fetch the firmware version from a miner using digest auth.
 async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::Version> {
-    let data: Response = Client::new()
+    let client = build_discovery_client().ok()?;
+    let data: Response = client
         .get(format!("http://{ip}/cgi-bin/summary.cgi"))
         .send_digest_auth((auth.username.as_str(), auth.password.expose_secret()))
         .await

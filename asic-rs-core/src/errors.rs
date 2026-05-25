@@ -25,13 +25,14 @@ pub enum RPCError {
     DeserializationFailed(serde_json::Error),
     ConnectionFailed,
     ReadTimeout,
+    WriteTimeout,
     ConnectionReset,
     BrokenPipe,
 }
 
 impl RPCError {
-    /// Returns true if this error represents an expected transient failure
-    /// from a privileged write command (timeout or connection drop).
+    /// Returns true if this error represents an expected failure after a
+    /// command was sent and the miner closed the connection or did not reply.
     pub fn is_transient(&self) -> bool {
         matches!(
             self,
@@ -54,6 +55,9 @@ impl Display for RPCError {
             }
             RPCError::ReadTimeout => {
                 write!(f, "RPC read timed out")
+            }
+            RPCError::WriteTimeout => {
+                write!(f, "RPC write timed out")
             }
             RPCError::ConnectionReset => {
                 write!(f, "Connection reset by miner")

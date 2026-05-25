@@ -13,6 +13,7 @@ use asic_rs_core::{
         miner::{Miner, MinerAuth, MinerConstructor},
         model::{MinerModel, UnknownMinerModel},
     },
+    util::build_discovery_client,
 };
 use asic_rs_makes_antminer::{make::AntMinerMake, models::AntMinerModel};
 use asic_rs_makes_epic::{make::EPicMake, models::EPicModel};
@@ -79,7 +80,7 @@ impl DiscoveryCommands for EPicFirmware {
 impl MinerFirmware for EPicFirmware {
     async fn get_model(ip: IpAddr) -> Result<impl MinerModel, ModelSelectionError> {
         let url = format!("http://{}:4028/capabilities", ip);
-        let response = reqwest::Client::new()
+        let response = build_discovery_client()?
             .get(&url)
             .send()
             .await
@@ -134,7 +135,7 @@ impl MinerFirmware for EPicFirmware {
 
     async fn get_version(ip: IpAddr) -> Option<semver::Version> {
         let url = format!("http://{}:4028/summary", ip);
-        let response = reqwest::Client::new().get(&url).send().await.ok()?;
+        let response = build_discovery_client().ok()?.get(&url).send().await.ok()?;
         let json_data = response.json::<serde_json::Value>().await.ok()?;
 
         let fw_str = json_data["Software"].as_str()?;

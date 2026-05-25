@@ -22,19 +22,30 @@ use pyo3::{
     exceptions::{PyRuntimeError, PyValueError},
     prelude::*,
 };
+use tokio::sync::RwLock;
 
 use super::typing::{PyAwaitable, future_into_py};
 
 #[pyclass(module = "asic_rs")]
 pub(crate) struct Miner {
-    inner: Arc<Box<dyn MinerTrait>>,
+    inner: Arc<RwLock<Box<dyn MinerTrait>>>,
 }
 
 impl Miner {
     pub fn new(inner: Box<dyn MinerTrait>) -> Self {
         Self {
-            inner: Arc::new(inner),
+            inner: Arc::new(RwLock::new(inner)),
         }
+    }
+
+    fn with_miner<T>(&self, py: Python<'_>, f: impl FnOnce(&dyn MinerTrait) -> T + Send) -> T
+    where
+        T: Send,
+    {
+        py.detach(|| {
+            let inner = self.inner.blocking_read();
+            f(inner.as_ref())
+        })
     }
 }
 
@@ -80,112 +91,116 @@ impl<'a, 'py> pyo3::FromPyObject<'a, 'py> for FirmwarePath {
 
 #[pymethods]
 impl Miner {
-    fn __repr__(&self) -> String {
-        format!(
-            "{} {} ({}): {}",
-            self.make(),
-            self.model(),
-            self.firmware(),
-            self.ip(),
-        )
+    fn __repr__(&self, py: Python<'_>) -> String {
+        self.with_miner(py, |miner| {
+            let device_info = miner.get_device_info();
+            format!(
+                "{} {} ({}): {}",
+                device_info.make,
+                device_info.model,
+                device_info.firmware,
+                miner.get_ip(),
+            )
+        })
     }
 
     #[getter]
-    fn ip(&self) -> IpAddr {
-        self.inner.get_ip()
+    fn ip(&self, py: Python<'_>) -> IpAddr {
+        self.with_miner(py, |miner| miner.get_ip())
     }
 
     #[getter]
-    fn model(&self) -> String {
-        self.inner.get_device_info().model
+    fn model(&self, py: Python<'_>) -> String {
+        self.with_miner(py, |miner| miner.get_device_info().model)
     }
     #[getter]
-    fn make(&self) -> String {
-        self.inner.get_device_info().make
+    fn make(&self, py: Python<'_>) -> String {
+        self.with_miner(py, |miner| miner.get_device_info().make)
     }
     #[getter]
-    fn firmware(&self) -> String {
-        self.inner.get_device_info().firmware
+    fn firmware(&self, py: Python<'_>) -> String {
+        self.with_miner(py, |miner| miner.get_device_info().firmware)
     }
     #[getter]
-    fn algo(&self) -> HashAlgorithm {
-        self.inner.get_device_info().algo
+    fn algo(&self, py: Python<'_>) -> HashAlgorithm {
+        self.with_miner(py, |miner| miner.get_device_info().algo)
     }
     #[getter]
-    fn hardware(&self) -> MinerHardware {
-        self.inner.get_device_info().hardware
-    }
-
-    #[getter]
-    fn expected_hashboards(&self) -> Option<u8> {
-        self.inner.get_expected_hashboards()
+    fn hardware(&self, py: Python<'_>) -> MinerHardware {
+        self.with_miner(py, |miner| miner.get_device_info().hardware)
     }
 
     #[getter]
-    fn expected_chips(&self) -> Option<u16> {
-        self.inner.get_expected_chips()
+    fn expected_hashboards(&self, py: Python<'_>) -> Option<u8> {
+        self.with_miner(py, |miner| miner.get_expected_hashboards())
     }
 
     #[getter]
-    fn expected_fans(&self) -> Option<u8> {
-        self.inner.get_expected_fans()
+    fn expected_chips(&self, py: Python<'_>) -> Option<u16> {
+        self.with_miner(py, |miner| miner.get_expected_chips())
     }
 
     #[getter]
-    fn supports_set_fault_light(&self) -> bool {
-        self.inner.supports_set_fault_light()
+    fn expected_fans(&self, py: Python<'_>) -> Option<u8> {
+        self.with_miner(py, |miner| miner.get_expected_fans())
+    }
+
+    #[getter]
+    fn supports_set_fault_light(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_set_fault_light())
     }
     #[getter]
-    fn supports_set_power_limit(&self) -> bool {
-        self.inner.supports_set_power_limit()
+    fn supports_set_power_limit(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_set_power_limit())
     }
     #[getter]
-    fn supports_restart(&self) -> bool {
-        self.inner.supports_restart()
+    fn supports_restart(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_restart())
     }
     #[getter]
-    fn supports_pause(&self) -> bool {
-        self.inner.supports_pause()
+    fn supports_pause(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_pause())
     }
     #[getter]
-    fn supports_resume(&self) -> bool {
-        self.inner.supports_resume()
+    fn supports_resume(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_resume())
     }
     #[getter]
-    fn supports_change_password(&self) -> bool {
-        self.inner.supports_change_password()
+    fn supports_change_password(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_change_password())
     }
     #[getter]
-    fn supports_read_logs(&self) -> bool {
-        self.inner.supports_read_logs()
+    fn supports_read_logs(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_read_logs())
     }
     #[getter]
-    fn supports_factory_reset(&self) -> bool {
-        self.inner.supports_factory_reset()
+    fn supports_factory_reset(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_factory_reset())
     }
     #[getter]
-    fn supports_pools_config(&self) -> bool {
-        self.inner.supports_pools_config()
+    fn supports_pools_config(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_pools_config())
     }
     #[getter]
-    fn supports_upgrade_firmware(&self) -> bool {
-        self.inner.supports_upgrade_firmware()
+    fn supports_upgrade_firmware(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_upgrade_firmware())
     }
     #[getter]
-    fn supports_scaling_config(&self) -> bool {
-        self.inner.supports_scaling_config()
+    fn supports_scaling_config(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_scaling_config())
     }
     #[getter]
-    fn supports_tuning_config(&self) -> bool {
-        self.inner.supports_tuning_config()
+    fn supports_tuning_config(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_tuning_config())
     }
     #[getter]
-    fn supports_fan_config(&self) -> bool {
-        self.inner.supports_fan_config()
+    fn supports_fan_config(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_fan_config())
     }
     pub fn set_auth(&mut self, username: String, password: String) -> PyResult<()> {
         Arc::get_mut(&mut self.inner)
             .ok_or_else(|| PyRuntimeError::new_err("cannot set auth while miner is in use"))?
+            .get_mut()
             .set_auth(MinerAuth::new(username, password));
         Ok(())
     }
@@ -193,11 +208,15 @@ impl Miner {
     // Data functions
     pub fn get_data<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<MinerData>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_data().await) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_data().await)
+        })
     }
     pub fn get_mac<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_mac().await;
             Ok(data.map(|m| m.to_string()))
         })
@@ -205,6 +224,7 @@ impl Miner {
     pub fn get_serial_number<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_serial_number().await;
             Ok(data)
         })
@@ -212,6 +232,7 @@ impl Miner {
     pub fn get_hostname<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_hostname().await;
             Ok(data)
         })
@@ -219,6 +240,7 @@ impl Miner {
     pub fn get_api_version<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_api_version().await;
             Ok(data)
         })
@@ -229,6 +251,7 @@ impl Miner {
     ) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_firmware_version().await;
             Ok(data)
         })
@@ -239,6 +262,7 @@ impl Miner {
     ) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner
                 .get_control_board_version()
                 .await
@@ -248,11 +272,15 @@ impl Miner {
     }
     pub fn get_hashboards<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<BoardData>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_hashboards().await) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_hashboards().await)
+        })
     }
     pub fn get_hashrate<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<HashRate>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_hashrate().await;
             Ok(data)
         })
@@ -263,21 +291,29 @@ impl Miner {
     ) -> PyResult<PyAwaitable<Option<HashRate>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_expected_hashrate().await;
             Ok(data)
         })
     }
     pub fn get_fans<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<FanData>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_fans().await) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_fans().await)
+        })
     }
     pub fn get_psu_fans<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<FanData>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_psu_fans().await) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_psu_fans().await)
+        })
     }
     pub fn get_fluid_temperature<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<f64>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_fluid_temperature().await;
             Ok(data.map(|t| t.as_celsius()))
         })
@@ -285,6 +321,7 @@ impl Miner {
     pub fn get_wattage<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<f64>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_wattage().await;
             Ok(data.map(|w| w.as_watts()))
         })
@@ -294,22 +331,30 @@ impl Miner {
         py: Python<'a>,
     ) -> PyResult<PyAwaitable<Option<TuningTarget>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_tuning_target().await) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_tuning_target().await)
+        })
     }
     pub fn get_light_flashing<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_light_flashing().await;
             Ok(data)
         })
     }
     pub fn get_messages<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<MinerMessage>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_messages().await) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_messages().await)
+        })
     }
     pub fn get_uptime<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<Duration>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_uptime().await;
             Ok(data)
         })
@@ -317,13 +362,17 @@ impl Miner {
     pub fn get_is_mining<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<bool>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.get_is_mining().await;
             Ok(data)
         })
     }
     pub fn get_pools<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<PoolGroupData>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_pools().await) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_pools().await)
+        })
     }
 
     pub fn get_pools_config<'a>(
@@ -331,25 +380,37 @@ impl Miner {
         py: Python<'a>,
     ) -> PyResult<PyAwaitable<Option<Vec<PoolGroup>>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_pools_config().await.ok()) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_pools_config().await.ok())
+        })
     }
     pub fn get_scaling_config<'a>(
         &self,
         py: Python<'a>,
     ) -> PyResult<PyAwaitable<Option<ScalingConfig>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_scaling_config().await.ok()) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_scaling_config().await.ok())
+        })
     }
     pub fn get_tuning_config<'a>(
         &self,
         py: Python<'a>,
     ) -> PyResult<PyAwaitable<Option<TuningConfig>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_tuning_config().await.ok()) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_tuning_config().await.ok())
+        })
     }
     pub fn get_fan_config<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<FanConfig>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(py, async move { Ok(inner.get_fan_config().await.ok()) })
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_fan_config().await.ok())
+        })
     }
 
     // Control functions
@@ -360,6 +421,7 @@ impl Miner {
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.set_fault_light(fault).await;
             Ok(data.ok())
         })
@@ -367,6 +429,7 @@ impl Miner {
     pub fn restart<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.restart().await;
             Ok(data.ok())
         })
@@ -380,6 +443,7 @@ impl Miner {
         let inner = Arc::clone(&self.inner);
         let at_time = parse_optional_duration(at_time)?;
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.pause(at_time).await;
             Ok(data.ok())
         })
@@ -393,6 +457,7 @@ impl Miner {
         let inner = Arc::clone(&self.inner);
         let at_time = parse_optional_duration(at_time)?;
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.resume(at_time).await;
             Ok(data.ok())
         })
@@ -400,6 +465,7 @@ impl Miner {
     pub fn factory_reset<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.factory_reset().await;
             Ok(data.ok())
         })
@@ -407,22 +473,22 @@ impl Miner {
     pub fn read_logs<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             let data = inner.read_logs().await;
             Ok(data.ok())
         })
     }
     pub fn change_password<'a>(
-        &mut self,
+        &self,
         py: Python<'a>,
         password: &str,
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let password = password.to_string();
-        let inner_mut = Arc::get_mut(&mut self.inner).ok_or_else(|| {
-            PyRuntimeError::new_err("cannot update password while miner is in use")
-        })?;
-        let result = pyo3_async_runtimes::tokio::get_runtime()
-            .block_on(inner_mut.change_password(&password));
-        future_into_py(py, async move { Ok(result.ok()) })
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let mut inner = inner.write().await;
+            Ok(inner.change_password(&password).await.ok())
+        })
     }
     pub fn set_power_limit<'a>(
         &self,
@@ -431,6 +497,7 @@ impl Miner {
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             Ok(inner.set_power_limit(Power::from_watts(watts)).await.ok())
         })
     }
@@ -441,10 +508,10 @@ impl Miner {
         groups: Vec<PoolGroup>,
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(
-            py,
-            async move { Ok(inner.set_pools_config(groups).await.ok()) },
-        )
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.set_pools_config(groups).await.ok())
+        })
     }
     #[pyo3(signature = (config: "ScalingConfig"))]
     pub fn set_scaling_config<'a>(
@@ -454,6 +521,7 @@ impl Miner {
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             Ok(inner.set_scaling_config(config).await.ok())
         })
     }
@@ -466,6 +534,7 @@ impl Miner {
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
+            let inner = inner.read().await;
             Ok(inner.set_tuning_config(config, scaling_config).await.ok())
         })
     }
@@ -476,10 +545,10 @@ impl Miner {
         config: FanConfig,
     ) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
-        future_into_py(
-            py,
-            async move { Ok(inner.set_fan_config(config).await.ok()) },
-        )
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.set_fan_config(config).await.ok())
+        })
     }
     pub fn upgrade_firmware<'a>(
         &self,
@@ -491,6 +560,7 @@ impl Miner {
             let image = FirmwareImage::from_file_async(&path.0)
                 .await
                 .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            let inner = inner.read().await;
             inner
                 .upgrade_firmware(image)
                 .await

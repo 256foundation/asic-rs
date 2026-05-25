@@ -6,6 +6,7 @@ use asic_rs_core::{
     traits::miner::*,
 };
 use async_trait::async_trait;
+use once_cell::sync::OnceCell;
 use reqwest::{Client, Method, Response, StatusCode};
 use serde_json::{Map, Value, json};
 use tokio::sync::RwLock;
@@ -16,7 +17,7 @@ use super::rpc::StatusFromAuradineV1;
 pub struct AuradineWebAPI {
     ip: IpAddr,
     port: u16,
-    client: Result<Client, String>,
+    client: OnceCell<Client>,
     timeout: Duration,
     token: RwLock<Option<String>>,
     auth: MinerAuth,
@@ -24,16 +25,10 @@ pub struct AuradineWebAPI {
 
 impl AuradineWebAPI {
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .danger_accept_invalid_certs(true)
-            .build()
-            .map_err(|e| format!("Failed to create HTTP client: {e}"));
-
         Self {
             ip,
             port: 8080,
-            client,
+            client: OnceCell::new(),
             timeout: Duration::from_secs(5),
             token: RwLock::new(None),
             auth,
@@ -48,10 +43,6 @@ impl AuradineWebAPI {
     fn endpoint_url(&self, command: &str) -> String {
         let endpoint = command.trim_start_matches('/');
         format!("http://{}:{}/{}", self.ip, self.port, endpoint)
-    }
-
-    fn client(&self) -> Result<&Client> {
-        self.client.as_ref().map_err(|e| anyhow!(e.clone()))
     }
 
     fn build_post_payload(command: &str, parameters: Option<Value>) -> Value {
@@ -87,16 +78,28 @@ impl AuradineWebAPI {
         Ok(())
     }
 
+    fn build_client() -> Result<Client> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .danger_accept_invalid_certs(true)
+            .build()
+            .map_err(|e| anyhow!("failed to create HTTP client: {e}"))
+    }
+
+    fn client(&self) -> Result<&Client> {
+        self.client.get_or_try_init(Self::build_client)
+    }
+
     async fn authenticate(&self) -> Result<String> {
         let url = self.endpoint_url("token");
+        let client = self.client()?;
         let payload = json!({
             "command": "token",
             "user": self.auth.username,
             "password": self.auth.password.expose_secret(),
         });
 
-        let response = self
-            .client()?
+        let response = client
             .post(url)
             .json(&payload)
             .timeout(self.timeout)
