@@ -510,11 +510,13 @@ impl GetHashboards for AvalonAMiner {
                 .map(Temperature::from_celsius);
 
             board.active = board.hashrate.as_ref().map(|h| h.value > 0.0);
-            board.working_chips = match (board.active, board.expected_chips) {
-                (Some(true), Some(expected_chips)) => Some(expected_chips),
-                (Some(false), _) => Some(0),
-                _ => None,
-            };
+            if chip_info.is_none() {
+                board.working_chips = match (board.active, board.expected_chips) {
+                    (Some(true), Some(expected_chips)) => Some(expected_chips),
+                    (Some(false), _) => Some(0),
+                    _ => None,
+                };
+            }
 
             if let Some(chip_info) = chip_info {
                 let chip_temps: Vec<f64> = chip_info
@@ -554,6 +556,14 @@ impl GetHashboards for AvalonAMiner {
                         ..Default::default()
                     });
                 }
+
+                board.working_chips = Some(
+                    board
+                        .chips
+                        .iter()
+                        .filter(|chip| chip.working.unwrap_or(false))
+                        .count() as u16,
+                );
             }
         }
 

@@ -109,6 +109,22 @@ impl AuradineV1 {
         })
     }
 
+    fn chip_is_working(chip: &ChipData) -> bool {
+        chip.working.unwrap_or_else(|| {
+            chip.temperature
+                .map(|temperature| temperature.as_celsius() > 0.0)
+                .unwrap_or(false)
+                || chip
+                    .voltage
+                    .map(|voltage| voltage.as_volts() > 0.0)
+                    .unwrap_or(false)
+                || chip
+                    .frequency
+                    .map(|frequency| frequency.as_megahertz() > 0.0)
+                    .unwrap_or(false)
+        })
+    }
+
     fn led_status_severity(code: u64) -> MessageSeverity {
         match code {
             2 | 3 => MessageSeverity::Info,
@@ -690,11 +706,13 @@ impl GetHashboards for AuradineV1 {
                     .map(str::to_string);
                 hashboard.active = board.get("Enabled").and_then(Value::as_bool);
                 hashboard.tuned = hashboard.active;
-                hashboard.working_chips = match (hashboard.active, hashboard.expected_chips) {
-                    (Some(true), Some(expected_chips)) => Some(expected_chips),
-                    (Some(false), _) => Some(0),
-                    _ => None,
-                };
+                if chip_data.is_none() {
+                    hashboard.working_chips = match (hashboard.active, hashboard.expected_chips) {
+                        (Some(true), Some(expected_chips)) => Some(expected_chips),
+                        (Some(false), _) => Some(0),
+                        _ => None,
+                    };
+                }
             }
         }
 
@@ -924,6 +942,9 @@ impl GetHashboards for AuradineV1 {
                 continue;
             };
             if chips_map.is_empty() {
+                if hashboard.active == Some(false) {
+                    hashboard.working_chips = Some(0);
+                }
                 continue;
             }
 
@@ -932,6 +953,27 @@ impl GetHashboards for AuradineV1 {
             if hashboard.expected_chips.is_none() {
                 hashboard.expected_chips = u16::try_from(hashboard.chips.len()).ok();
             }
+
+            let working_chip_count = hashboard
+                .chips
+                .iter()
+                .filter(|chip| Self::chip_is_working(chip))
+                .count() as u16;
+
+            hashboard.working_chips = match (hashboard.active, hashboard.expected_chips) {
+                (Some(false), _) => Some(0),
+                (_, Some(expected_chips))
+                    if hashboard.chips.len() < usize::from(expected_chips) =>
+                {
+                    let failed_chips = hashboard
+                        .chips
+                        .iter()
+                        .filter(|chip| !Self::chip_is_working(chip))
+                        .count() as u16;
+                    Some(expected_chips.saturating_sub(failed_chips))
+                }
+                _ => Some(working_chip_count),
+            };
         }
 
         hashboards
