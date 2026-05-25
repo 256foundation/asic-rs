@@ -69,9 +69,12 @@ impl WebAPIClient for PowerPlayWebAPI {
 }
 
 impl PowerPlayWebAPI {
-    fn sha256_hex(bytes: &[u8]) -> String {
+    async fn sha256_hex(bytes: &[u8]) -> String {
         let mut hasher = Sha256::new();
-        hasher.update(bytes);
+        for chunk in bytes.chunks(64 * 1024) {
+            hasher.update(chunk);
+            tokio::task::yield_now().await;
+        }
         format!("{:x}", hasher.finalize())
     }
 
@@ -108,7 +111,7 @@ impl PowerPlayWebAPI {
     pub async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
         let url = format!("http://{}:{}{}", self.ip, self.port, "/systemupdate");
         let FirmwareImage { filename, bytes } = image;
-        let checksum = Self::sha256_hex(&bytes);
+        let checksum = Self::sha256_hex(&bytes).await;
 
         let form = multipart::Form::new()
             .text("password", self.auth.password.expose_secret().to_string())

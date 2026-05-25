@@ -30,9 +30,18 @@ impl FirmwareImage {
             .await
             .with_context(|| format!("Failed to open firmware file: {}", path.display()))?;
         let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes)
-            .await
-            .with_context(|| format!("Failed to read firmware file: {}", path.display()))?;
+        let mut chunk = [0u8; 64 * 1024];
+        loop {
+            let read = file
+                .read(&mut chunk)
+                .await
+                .with_context(|| format!("Failed to read firmware file: {}", path.display()))?;
+            if read == 0 {
+                break;
+            }
+            bytes.extend_from_slice(&chunk[..read]);
+            tokio::task::yield_now().await;
+        }
 
         Ok(Self { filename, bytes })
     }

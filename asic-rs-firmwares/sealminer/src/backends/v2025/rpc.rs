@@ -4,10 +4,10 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
+    util::{DEFAULT_RPC_TIMEOUT, connect_tcp_stream, read_stream_response, write_all_with_timeout},
 };
 use async_trait::async_trait;
 use serde_json::{Value, json};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Debug)]
 pub struct SealMinerRPCAPI {
@@ -27,10 +27,6 @@ impl SealMinerRPCAPI {
         _privileged: bool,
         parameters: Option<Value>,
     ) -> anyhow::Result<Value> {
-        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
-            .await
-            .map_err(|_| RPCError::ConnectionFailed)?;
-
         let request = if let Some(params) = parameters {
             json!({
                 "command": command,
@@ -45,27 +41,16 @@ impl SealMinerRPCAPI {
         let json_str = request.to_string();
         let message = format!("{}\n", json_str);
 
-        stream.write_all(message.as_bytes()).await?;
+        let response = {
+            let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT)
+                .await
+                .map_err(|_| RPCError::ConnectionFailed)?;
 
-        let mut response = String::new();
-        let mut buffer = [0; 8192];
+            write_all_with_timeout(&mut stream, message.as_bytes(), DEFAULT_RPC_TIMEOUT).await?;
+            read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await?
+        };
 
-        loop {
-            let bytes_read = stream.read(&mut buffer).await?;
-            if bytes_read == 0 {
-                break;
-            }
-
-            let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
-            response.push_str(&chunk);
-
-            if response.contains('\0') || response.ends_with('\n') {
-                break;
-            }
-        }
-
-        let clean_response = response.trim_end_matches('\0').trim_end_matches('\n');
-        self.parse_rpc_result(clean_response)
+        self.parse_rpc_result(&response)
     }
 
     fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {

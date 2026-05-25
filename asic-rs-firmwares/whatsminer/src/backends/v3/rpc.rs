@@ -10,7 +10,9 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
-    util::{DEFAULT_RPC_TIMEOUT, read_exact_with_timeout},
+    util::{
+        DEFAULT_RPC_TIMEOUT, connect_tcp_stream, read_exact_with_timeout, write_all_with_timeout,
+    },
 };
 use async_trait::async_trait;
 use base64::prelude::*;
@@ -19,7 +21,7 @@ use ecb::cipher::block_padding::ZeroPadding;
 use md5crypt::md5crypt;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 
 const UNLOCK_CLIENT: &str = "heatcore";
 const UNLOCK_MAGIC: &str = "3804fe31981418ce711a31d94bc69651";
@@ -120,7 +122,7 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
             };
         }
 
-        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
+        let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT)
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
 
@@ -143,11 +145,8 @@ impl RPCAPIClient for WhatsMinerRPCAPI {
         let json_bytes = json_str.as_bytes();
         let length = json_bytes.len() as u32;
 
-        stream
-            .write_all(&length.to_le_bytes())
-            .await
-            .map_err(RPCError::from)?;
-        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
+        write_all_with_timeout(&mut stream, &length.to_le_bytes(), DEFAULT_RPC_TIMEOUT).await?;
+        write_all_with_timeout(&mut stream, json_bytes, DEFAULT_RPC_TIMEOUT).await?;
 
         let mut len_buf = [0u8; 4];
         read_exact_with_timeout(&mut stream, &mut len_buf, DEFAULT_RPC_TIMEOUT).await?;
@@ -172,7 +171,7 @@ impl WhatsMinerRPCAPI {
     }
 
     async fn unlock_write_commands(&self) -> anyhow::Result<()> {
-        let mut stream = tokio::net::TcpStream::connect((self.ip, 4028))
+        let mut stream = connect_tcp_stream((self.ip, 4028), DEFAULT_RPC_TIMEOUT)
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
 
@@ -181,10 +180,12 @@ impl WhatsMinerRPCAPI {
             "client": UNLOCK_CLIENT,
             "enable": true,
         });
-        stream
-            .write_all(open_cmd.to_string().as_bytes())
-            .await
-            .map_err(RPCError::from)?;
+        write_all_with_timeout(
+            &mut stream,
+            open_cmd.to_string().as_bytes(),
+            DEFAULT_RPC_TIMEOUT,
+        )
+        .await?;
 
         let mut buf = vec![0u8; 4096];
         let n = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut buf))
@@ -217,10 +218,12 @@ impl WhatsMinerRPCAPI {
         let token_md5 = format!("{:x}", md5::compute(token_data.as_bytes()));
 
         let token_json = json!({ "token": token_md5 });
-        stream
-            .write_all(token_json.to_string().as_bytes())
-            .await
-            .map_err(RPCError::from)?;
+        write_all_with_timeout(
+            &mut stream,
+            token_json.to_string().as_bytes(),
+            DEFAULT_RPC_TIMEOUT,
+        )
+        .await?;
 
         let mut final_buf = vec![0u8; 4096];
         let _ = tokio::time::timeout(DEFAULT_RPC_TIMEOUT, stream.read(&mut final_buf))
@@ -228,7 +231,6 @@ impl WhatsMinerRPCAPI {
             .map_err(|_| RPCError::ReadTimeout)?
             .map_err(RPCError::from)?;
 
-        let _ = stream.shutdown().await;
         Ok(())
     }
 
@@ -254,7 +256,7 @@ impl WhatsMinerRPCAPI {
             .await
             .ok_or_else(|| anyhow::anyhow!("Could not get salt for privileged command"))?;
 
-        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
+        let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT)
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
 
@@ -308,11 +310,8 @@ impl WhatsMinerRPCAPI {
         let json_bytes = json_str.as_bytes();
         let length = json_bytes.len() as u32;
 
-        stream
-            .write_all(&length.to_le_bytes())
-            .await
-            .map_err(RPCError::from)?;
-        stream.write_all(json_bytes).await.map_err(RPCError::from)?;
+        write_all_with_timeout(&mut stream, &length.to_le_bytes(), DEFAULT_RPC_TIMEOUT).await?;
+        write_all_with_timeout(&mut stream, json_bytes, DEFAULT_RPC_TIMEOUT).await?;
 
         let mut len_buf = [0u8; 4];
         read_exact_with_timeout(&mut stream, &mut len_buf, DEFAULT_RPC_TIMEOUT).await?;

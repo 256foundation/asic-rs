@@ -13,12 +13,11 @@ use asic_rs_core::{
         miner::{ExposeSecret, HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
         model::MinerModel,
     },
-    util::send_rpc_command,
+    util::{build_discovery_client, send_rpc_command},
 };
 use asic_rs_makes_sealminer::make::SealMinerMake;
 use asic_rs_makes_sealminer::models::SealMinerModel;
 use async_trait::async_trait;
-use reqwest::Client;
 
 #[derive(Default, Debug)]
 pub struct SealMinerStockFirmware {}
@@ -36,7 +35,7 @@ impl DiscoveryCommands for SealMinerStockFirmware {
 }
 
 async fn get_system_info(ip: IpAddr, auth: &MinerAuth) -> Option<serde_json::Value> {
-    let client = Client::new();
+    let client = build_discovery_client().ok()?;
 
     let login_response = client
         .post(format!("http://{ip}/cgi-bin/login.php"))

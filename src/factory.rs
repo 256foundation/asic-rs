@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     collections::{HashMap, HashSet},
     net::{IpAddr, Ipv4Addr, SocketAddr},
     panic::AssertUnwindSafe,
@@ -18,10 +19,15 @@ use asic_rs_core::{
     },
     util::{send_rpc_command, send_web_command},
 };
-use futures::{Stream, StreamExt, future::FutureExt, pin_mut, stream};
+use futures::{
+    Stream, StreamExt,
+    future::FutureExt,
+    pin_mut,
+    stream::{self, FuturesUnordered},
+};
 use ipnet::IpNet;
 use rand::seq::SliceRandom;
-use tokio::{net::TcpStream, task::JoinSet, time::timeout};
+use tokio::{net::TcpStream, time::timeout};
 
 const IDENTIFICATION_TIMEOUT: Duration = Duration::from_secs(10);
 const CONNECTIVITY_TIMEOUT: Duration = Duration::from_secs(1);
@@ -92,6 +98,36 @@ async fn get_miner_type_from_command(
                 .cloned()
         }
         _ => None,
+    }
+}
+
+fn panic_message(panic_info: &(dyn Any + Send)) -> &str {
+    if let Some(message) = panic_info.downcast_ref::<&str>() {
+        message
+    } else if let Some(message) = panic_info.downcast_ref::<String>() {
+        message.as_str()
+    } else {
+        "unknown panic"
+    }
+}
+
+async fn get_miner_type_from_command_catch_unwind(
+    ip: IpAddr,
+    command: MinerCommand,
+    registry: Arc<[Arc<dyn FirmwareEntry>]>,
+) -> Option<Arc<dyn FirmwareEntry>> {
+    match AssertUnwindSafe(get_miner_type_from_command(ip, command, registry))
+        .catch_unwind()
+        .await
+    {
+        Ok(result) => result,
+        Err(panic_info) => {
+            tracing::warn!(
+                "discovery command panicked for {ip}: {}",
+                panic_message(&*panic_info)
+            );
+            None
+        }
     }
 }
 
@@ -247,13 +283,7 @@ impl MinerFactory {
         {
             Ok(result) => result,
             Err(panic_info) => {
-                let msg = if let Some(s) = panic_info.downcast_ref::<&str>() {
-                    s.to_string()
-                } else if let Some(s) = panic_info.downcast_ref::<String>() {
-                    s.clone()
-                } else {
-                    "unknown panic".to_string()
-                };
+                let msg = panic_message(&*panic_info);
                 tracing::error!("panic during miner discovery for {ip}: {msg}");
                 Err(anyhow::anyhow!(
                     "internal panic during miner discovery: {msg}"
@@ -270,58 +300,24 @@ impl MinerFactory {
                 .as_slice(),
         );
 
-        let mut commands: HashSet<MinerCommand> = HashSet::new();
-        for fw in registry.iter() {
-            for cmd in fw.get_discovery_commands() {
-                commands.insert(cmd);
-            }
-        }
-
-        let mut discovery_tasks = JoinSet::new();
-        for command in commands {
-            let reg = registry.clone();
-            discovery_tasks.spawn(get_miner_type_from_command(ip, command, reg));
-        }
-
-        let id_timeout = tokio::time::sleep(self.identification_timeout).fuse();
-        pin_mut!(id_timeout);
-
-        let mut found: Option<Arc<dyn FirmwareEntry>> = None;
-
-        loop {
-            if discovery_tasks.is_empty() {
-                break;
-            }
-            tokio::select! {
-                _ = &mut id_timeout => break,
-                r = discovery_tasks.join_next() => {
-                    let fw = match r {
-                        Some(Ok(v)) => v,
-                        Some(Err(e)) => {
-                            tracing::warn!("discovery task failed for {ip}: {e}");
-                            continue;
-                        }
-                        None => continue,
-                    };
-                    match fw {
-                        Some(fw) if !fw.is_stock() => {
-                            found = Some(fw);
-                            break;
-                        }
-                        Some(fw) => {
-                            found = Some(fw);
-                            break;
-                        }
-                        _ => continue,
-                    }
+        let found = {
+            let mut commands: HashSet<MinerCommand> = HashSet::new();
+            for fw in registry.iter() {
+                for cmd in fw.get_discovery_commands() {
+                    commands.insert(cmd);
                 }
             }
-        }
 
-        // If we found a stock firmware, wait a short window for non-stock to respond
-        if found.as_ref().map(|f| f.is_stock()).unwrap_or(false) {
-            let upgrade_window = tokio::time::sleep(Duration::from_millis(300)).fuse();
-            pin_mut!(upgrade_window);
+            let mut discovery_tasks = FuturesUnordered::new();
+            for command in commands {
+                let reg = registry.clone();
+                discovery_tasks.push(get_miner_type_from_command_catch_unwind(ip, command, reg));
+            }
+
+            let id_timeout = tokio::time::sleep(self.identification_timeout).fuse();
+            pin_mut!(id_timeout);
+
+            let mut found: Option<Arc<dyn FirmwareEntry>> = None;
 
             loop {
                 if discovery_tasks.is_empty() {
@@ -329,21 +325,41 @@ impl MinerFactory {
                 }
                 tokio::select! {
                     _ = &mut id_timeout => break,
-                    _ = &mut upgrade_window => break,
-                    r = discovery_tasks.join_next() => {
-                        if let Some(Ok(Some(fw))) = r
-                            && !fw.is_stock()
-                        {
+                    r = discovery_tasks.next() => {
+                        if let Some(Some(fw)) = r {
                             found = Some(fw);
                             break;
                         }
                     }
                 }
             }
-        }
 
-        discovery_tasks.abort_all();
-        while discovery_tasks.join_next().await.is_some() {}
+            // If we found a stock firmware, wait a short window for non-stock to respond
+            if found.as_ref().map(|f| f.is_stock()).unwrap_or(false) {
+                let upgrade_window = tokio::time::sleep(Duration::from_millis(300)).fuse();
+                pin_mut!(upgrade_window);
+
+                loop {
+                    if discovery_tasks.is_empty() {
+                        break;
+                    }
+                    tokio::select! {
+                        _ = &mut id_timeout => break,
+                        _ = &mut upgrade_window => break,
+                        r = discovery_tasks.next() => {
+                            if let Some(Some(fw)) = r
+                                && !fw.is_stock()
+                            {
+                                found = Some(fw);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            found
+        };
 
         match found {
             Some(fw) => {

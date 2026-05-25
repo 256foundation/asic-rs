@@ -5,11 +5,10 @@ use asic_rs_core::{
     data::command::{MinerCommand, RPCCommandStatus},
     errors::RPCError,
     traits::miner::*,
-    util::{DEFAULT_RPC_TIMEOUT, read_stream_response},
+    util::{DEFAULT_RPC_TIMEOUT, connect_tcp_stream, read_stream_response, write_all_with_timeout},
 };
 use async_trait::async_trait;
 use serde_json::{Value, json};
-use tokio::io::AsyncWriteExt;
 
 #[derive(Debug)]
 pub struct AuradineRPCAPI {
@@ -28,10 +27,6 @@ impl AuradineRPCAPI {
         _privileged: bool,
         parameters: Option<Value>,
     ) -> anyhow::Result<Value> {
-        let mut stream = tokio::net::TcpStream::connect((self.ip, self.port))
-            .await
-            .map_err(|_| RPCError::ConnectionFailed)?;
-
         let request = if let Some(params) = parameters {
             json!({
                 "command": command,
@@ -44,10 +39,15 @@ impl AuradineRPCAPI {
         };
 
         let message = format!("{}\n", request);
-        stream.write_all(message.as_bytes()).await?;
 
-        let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
-        let _ = stream.shutdown().await;
+        let response = {
+            let mut stream = connect_tcp_stream((self.ip, self.port), DEFAULT_RPC_TIMEOUT)
+                .await
+                .map_err(|_| RPCError::ConnectionFailed)?;
+
+            write_all_with_timeout(&mut stream, message.as_bytes(), DEFAULT_RPC_TIMEOUT).await?;
+            read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await
+        };
         let response = response?;
 
         self.parse_rpc_result(&response)

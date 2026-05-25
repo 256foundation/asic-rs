@@ -11,7 +11,7 @@ use tokio::{
     net::{TcpStream, ToSocketAddrs},
 };
 
-use crate::errors::RPCError;
+use crate::errors::{ModelSelectionError, RPCError};
 
 /// Default read timeout for RPC stream responses.
 pub const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(5);
@@ -26,9 +26,15 @@ pub fn unix_timestamp_secs() -> u64 {
     )
 }
 
-/// Returns true if the error is an expected transient failure from a
-/// privileged write — timeout or connection drop. These indicate the miner
-/// received and applied the command but didn't respond in time.
+pub fn build_discovery_client() -> Result<reqwest::Client, ModelSelectionError> {
+    reqwest::Client::builder()
+        .pool_max_idle_per_host(0)
+        .build()
+        .map_err(|_| ModelSelectionError::NoModelResponse)
+}
+
+/// Returns true if the error is expected after a privileged command was sent:
+/// the miner did not reply or closed the connection while applying it.
 pub fn is_expected_write_error(err: &anyhow::Error) -> bool {
     err.downcast_ref::<RPCError>()
         .is_some_and(|e| e.is_transient())
@@ -123,28 +129,29 @@ pub async fn write_all_with_timeout(
 ) -> anyhow::Result<()> {
     tokio::time::timeout(timeout, stream.write_all(buf))
         .await
-        .map_err(|_| RPCError::ReadTimeout)?
+        .map_err(|_| RPCError::WriteTimeout)?
         .map_err(RPCError::from)?;
     Ok(())
 }
 
 #[tracing::instrument(level = "debug")]
 pub async fn send_rpc_command(ip: &IpAddr, command: &'static str) -> Option<serde_json::Value> {
-    let mut stream = connect_tcp_stream((*ip, 4028), DEFAULT_RPC_TIMEOUT)
-        .await
-        .map_err(|_| tracing::debug!("failed to connect to {ip} rpc"))
-        .ok()?;
+    let response = {
+        let mut stream = connect_tcp_stream((*ip, 4028), DEFAULT_RPC_TIMEOUT)
+            .await
+            .map_err(|_| tracing::debug!("failed to connect to {ip} rpc"))
+            .ok()?;
 
-    let command = format!("{{\"command\":\"{command}\"}}");
-    if let Err(err) =
-        write_all_with_timeout(&mut stream, command.as_bytes(), DEFAULT_RPC_TIMEOUT).await
-    {
-        tracing::debug!("failed to write command to {ip}: {err:?}");
-        return None;
-    }
+        let command = format!("{{\"command\":\"{command}\"}}");
+        if let Err(err) =
+            write_all_with_timeout(&mut stream, command.as_bytes(), DEFAULT_RPC_TIMEOUT).await
+        {
+            tracing::debug!("failed to write command to {ip}: {err:?}");
+            return None;
+        }
 
-    let response = read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await;
-    let _ = stream.shutdown().await;
+        read_stream_response(&mut stream, DEFAULT_RPC_TIMEOUT).await
+    };
     let response = match response {
         Ok(r) => r,
         Err(err) => {
@@ -293,8 +300,10 @@ mod tests {
     #[tokio::test]
     async fn empty_response_on_stream_close() {
         // Arrange
-        let (writer, mut reader) = tokio::io::duplex(8192);
-        drop(writer);
+        let mut reader = {
+            let (_writer, reader) = tokio::io::duplex(8192);
+            reader
+        };
 
         // Act
         let result = read_stream_response(&mut reader, Duration::from_secs(5))
@@ -336,5 +345,31 @@ mod tests {
             err.downcast_ref::<RPCError>()
                 .is_some_and(|e| matches!(e, RPCError::ReadTimeout))
         );
+    }
+
+    #[tokio::test]
+    async fn write_timeout_fires() {
+        // Arrange - keep the read half open but unread so the tiny buffer fills.
+        let (mut writer, _reader) = tokio::io::duplex(1);
+
+        // Act
+        let result =
+            write_all_with_timeout(&mut writer, &[0; 1024], Duration::from_millis(100)).await;
+
+        // Assert
+        let err = result.unwrap_err();
+        assert!(
+            err.downcast_ref::<RPCError>()
+                .is_some_and(|e| matches!(e, RPCError::WriteTimeout))
+        );
+    }
+
+    #[test]
+    fn expected_write_errors_require_command_delivery() {
+        let read_timeout = anyhow::Error::new(RPCError::ReadTimeout);
+        let write_timeout = anyhow::Error::new(RPCError::WriteTimeout);
+
+        assert!(is_expected_write_error(&read_timeout));
+        assert!(!is_expected_write_error(&write_timeout));
     }
 }

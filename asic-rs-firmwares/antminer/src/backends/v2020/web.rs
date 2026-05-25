@@ -7,7 +7,7 @@ use asic_rs_core::data::firmware::FirmwareImage;
 use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
-use reqwest::{Client, Method, Response, header::CONTENT_TYPE};
+use reqwest::{Client, Method, Response, multipart};
 use serde_json::{Value, json};
 
 use super::firmware::AntMinerFirmwareUpgradeResponseExt;
@@ -23,8 +23,6 @@ pub struct AntMinerWebAPI {
 
 #[allow(dead_code)]
 impl AntMinerWebAPI {
-    const FIRMWARE_UPLOAD_BOUNDARY: &str = "asic-rs-antminer-firmware-boundary";
-
     fn truncated_firmware_upgrade_response_body(body: &str) -> String {
         const MAX_BODY_CHARS: usize = 512;
 
@@ -36,29 +34,13 @@ impl AntMinerWebAPI {
         }
     }
 
-    fn build_firmware_upload_request_body(image: FirmwareImage) -> (Vec<u8>, String) {
+    fn build_firmware_upload_form(image: FirmwareImage) -> Result<multipart::Form> {
         let FirmwareImage { filename, bytes } = image;
-        let payload_len = bytes.len();
-        let mut body = Vec::with_capacity(payload_len + 256);
-        body.extend_from_slice(
-            format!(
-                "--{}\r\nContent-Disposition: form-data; name=\"firmware\"; filename=\"{}\"\r\nContent-Type: application/octet-stream\r\n\r\n",
-                Self::FIRMWARE_UPLOAD_BOUNDARY,
-                filename
-            )
-            .as_bytes(),
-        );
-        body.extend_from_slice(&bytes);
-        body.extend_from_slice(
-            format!("\r\n--{}--\r\n", Self::FIRMWARE_UPLOAD_BOUNDARY).as_bytes(),
-        );
-        (
-            body,
-            format!(
-                "multipart/form-data; boundary={}",
-                Self::FIRMWARE_UPLOAD_BOUNDARY
-            ),
-        )
+        let part = multipart::Part::bytes(bytes)
+            .file_name(filename)
+            .mime_str("application/octet-stream")
+            .context("failed to set firmware part mime type")?;
+        Ok(multipart::Form::new().part("firmware", part))
     }
 
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
@@ -198,13 +180,12 @@ impl AntMinerWebAPI {
 
     pub async fn upgrade_firmware(&self, image: FirmwareImage) -> Result<()> {
         let url = format!("http://{}:{}/cgi-bin/upgrade.cgi", self.ip, self.port);
-        let (body, content_type) = Self::build_firmware_upload_request_body(image);
+        let form = Self::build_firmware_upload_form(image)?;
 
         let response = self
             .client()?
             .post(url)
-            .header(CONTENT_TYPE, content_type)
-            .body(body)
+            .multipart(form)
             .timeout(self.timeout.max(Duration::from_secs(60)))
             .send_digest_auth((
                 self.auth.username.as_str(),

@@ -6,6 +6,7 @@ use asic_rs_core::{
     traits::miner::*,
 };
 use async_trait::async_trait;
+use once_cell::sync::OnceCell;
 use reqwest::{Client, Method, Response, StatusCode};
 use serde_json::{Map, Value, json};
 use tokio::sync::RwLock;
@@ -16,7 +17,7 @@ use super::rpc::StatusFromAuradineV1;
 pub struct AuradineWebAPI {
     ip: IpAddr,
     port: u16,
-    client: Client,
+    client: OnceCell<Client>,
     timeout: Duration,
     token: RwLock<Option<String>>,
     auth: MinerAuth,
@@ -24,16 +25,10 @@ pub struct AuradineWebAPI {
 
 impl AuradineWebAPI {
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .danger_accept_invalid_certs(true)
-            .build()
-            .expect("Failed to create HTTP client");
-
         Self {
             ip,
             port: 8080,
-            client,
+            client: OnceCell::new(),
             timeout: Duration::from_secs(5),
             token: RwLock::new(None),
             auth,
@@ -83,16 +78,28 @@ impl AuradineWebAPI {
         Ok(())
     }
 
+    fn build_client() -> Result<Client> {
+        Client::builder()
+            .timeout(Duration::from_secs(10))
+            .danger_accept_invalid_certs(true)
+            .build()
+            .map_err(|e| anyhow!("failed to create HTTP client: {e}"))
+    }
+
+    fn client(&self) -> Result<&Client> {
+        self.client.get_or_try_init(Self::build_client)
+    }
+
     async fn authenticate(&self) -> Result<String> {
         let url = self.endpoint_url("token");
+        let client = self.client()?;
         let payload = json!({
             "command": "token",
             "user": self.auth.username,
             "password": self.auth.password.expose_secret(),
         });
 
-        let response = self
-            .client
+        let response = client
             .post(url)
             .json(&payload)
             .timeout(self.timeout)
@@ -131,11 +138,12 @@ impl AuradineWebAPI {
         parameters: Option<Value>,
         token: Option<String>,
     ) -> Result<Response> {
+        let client = self.client()?;
         let mut request_builder = match *method {
-            Method::GET => self.client.get(url),
+            Method::GET => client.get(url),
             Method::POST => {
                 let payload = parameters.unwrap_or_else(|| json!({}));
-                self.client.post(url).json(&payload)
+                client.post(url).json(&payload)
             }
             _ => bail!("Unsupported method: {}", method),
         };

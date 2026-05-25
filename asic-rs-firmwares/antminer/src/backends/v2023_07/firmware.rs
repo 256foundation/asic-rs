@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use anyhow::{Context, bail};
 use asic_rs_core::data::firmware::FirmwareImage;
 use crc32fast::Hasher;
@@ -21,21 +23,11 @@ struct BmuEntry {
     chip: String,
     hardware: String,
     model: String,
-    bytes: Vec<u8>,
-}
-
-pub(super) trait AntMinerFirmwareImageExt {
-    fn resolve_for_miner(self, miner: &MinerTypeInfo) -> anyhow::Result<FirmwareImage>;
+    data: Range<usize>,
 }
 
 pub(super) trait AntMinerFirmwareUpgradeResponseExt {
     fn validate_firmware_upgrade_response(&self) -> anyhow::Result<()>;
-}
-
-impl AntMinerFirmwareImageExt for FirmwareImage {
-    fn resolve_for_miner(self, miner: &MinerTypeInfo) -> anyhow::Result<FirmwareImage> {
-        resolve_firmware_image_inner(self.filename, self.bytes, miner, 0)
-    }
 }
 
 impl AntMinerFirmwareUpgradeResponseExt for str {
@@ -100,7 +92,7 @@ fn read_u32_le(bytes: &[u8], offset: usize) -> anyhow::Result<u32> {
     Ok(u32::from_le_bytes(array))
 }
 
-fn parse_bmu_entries(bytes: &[u8]) -> anyhow::Result<Option<Vec<BmuEntry>>> {
+async fn parse_bmu_entries(bytes: &[u8]) -> anyhow::Result<Option<Vec<BmuEntry>>> {
     if bytes.len() < BMU_HEADER_SIZE {
         return Ok(None);
     }
@@ -134,15 +126,18 @@ fn parse_bmu_entries(bytes: &[u8]) -> anyhow::Result<Option<Vec<BmuEntry>>> {
     }
 
     let mut hasher = Hasher::new();
-    hasher.update(&bytes[..24]);
+    update_crc32(&mut hasher, &bytes[..24]).await;
     hasher.update(&[0, 0, 0, 0]);
-    hasher.update(&bytes[28..]);
+    update_crc32(&mut hasher, &bytes[28..]).await;
     if hasher.finalize() != crc32 {
         bail!("BMU CRC mismatch");
     }
 
     let mut entries = Vec::with_capacity(item_count);
     for idx in 0..item_count {
+        if idx % 16 == 0 {
+            tokio::task::yield_now().await;
+        }
         let offset = BMU_HEADER_SIZE + idx * item_size;
         let entry = bytes
             .get(offset..offset + item_size)
@@ -175,7 +170,7 @@ fn parse_bmu_entries(bytes: &[u8]) -> anyhow::Result<Option<Vec<BmuEntry>>> {
         let data_end = data_offset
             .checked_add(size)
             .context("BMU payload size overflow")?;
-        let data = bytes
+        bytes
             .get(data_offset..data_end)
             .context("BMU payload exceeds file size")?;
 
@@ -184,11 +179,30 @@ fn parse_bmu_entries(bytes: &[u8]) -> anyhow::Result<Option<Vec<BmuEntry>>> {
             chip,
             hardware,
             model,
-            bytes: data.to_vec(),
+            data: data_offset..data_end,
         });
     }
 
     Ok(Some(entries))
+}
+
+async fn update_crc32(hasher: &mut Hasher, bytes: &[u8]) {
+    for chunk in bytes.chunks(64 * 1024) {
+        hasher.update(chunk);
+        tokio::task::yield_now().await;
+    }
+}
+
+async fn copy_firmware_range(bytes: &[u8], range: Range<usize>) -> anyhow::Result<Vec<u8>> {
+    let data = bytes
+        .get(range)
+        .context("BMU selected payload exceeds file size")?;
+    let mut out = Vec::with_capacity(data.len());
+    for chunk in data.chunks(64 * 1024) {
+        out.extend_from_slice(chunk);
+        tokio::task::yield_now().await;
+    }
+    Ok(out)
 }
 
 fn decode_bmu_field(field: &[u8], len: usize) -> String {
@@ -227,29 +241,31 @@ fn candidate_score(entry: &BmuEntry, miner: &MinerTypeInfo) -> Option<u8> {
     }
 }
 
-fn resolve_firmware_image_inner(
-    filename: String,
-    firmware: Vec<u8>,
+pub(super) async fn resolve_firmware_image(
+    image: FirmwareImage,
     miner: &MinerTypeInfo,
-    depth: usize,
 ) -> anyhow::Result<FirmwareImage> {
-    if depth > 8 {
-        bail!("BMU nesting depth exceeded");
+    let mut image = image;
+    for _ in 0..=8 {
+        let FirmwareImage { filename, bytes } = image;
+
+        let Some(entries) = parse_bmu_entries(&bytes).await? else {
+            return Ok(FirmwareImage::new(filename, bytes));
+        };
+
+        let best = entries
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, entry)| candidate_score(entry, miner).map(|score| (score, idx)))
+            .max_by_key(|(score, _)| *score)
+            .map(|(_, idx)| entries[idx].clone())
+            .context("No matching firmware image found in BMU bundle")?;
+
+        let firmware = copy_firmware_range(&bytes, best.data).await?;
+        image = FirmwareImage::new(best.filename, firmware);
     }
 
-    let Some(entries) = parse_bmu_entries(&firmware)? else {
-        return Ok(FirmwareImage::new(filename, firmware));
-    };
-
-    let best = entries
-        .iter()
-        .enumerate()
-        .filter_map(|(idx, entry)| candidate_score(entry, miner).map(|score| (score, idx)))
-        .max_by_key(|(score, _)| *score)
-        .map(|(_, idx)| entries[idx].clone())
-        .context("No matching firmware image found in BMU bundle")?;
-
-    resolve_firmware_image_inner(best.filename, best.bytes, miner, depth + 1)
+    bail!("BMU nesting depth exceeded")
 }
 
 impl AntMinerV202307 {
@@ -352,24 +368,27 @@ mod tests {
         bytes
     }
 
-    #[test]
-    fn raw_firmware_is_passed_through_when_file_is_not_bmu() {
+    #[tokio::test]
+    async fn raw_firmware_is_passed_through_when_file_is_not_bmu() {
         let firmware = vec![1, 2, 3, 4, 5];
         let miner = MinerTypeInfo {
             model: "S21".to_string(),
             subtype: "X21".to_string(),
         };
 
-        let resolved =
-            resolve_firmware_image_inner("stock.bin".to_string(), firmware.clone(), &miner, 0)
-                .unwrap();
+        let resolved = resolve_firmware_image(
+            FirmwareImage::new("stock.bin".to_string(), firmware.clone()),
+            &miner,
+        )
+        .await
+        .unwrap();
 
         assert_eq!(resolved.filename, "stock.bin");
         assert_eq!(resolved.bytes, firmware);
     }
 
-    #[test]
-    fn bmu_selects_matching_entry_for_model_and_subtype() {
+    #[tokio::test]
+    async fn bmu_selects_matching_entry_for_model_and_subtype() {
         let bmu = build_bmu(&[
             ("s21-xp.bin", "X21", "X21", "S21", b"wrong"),
             ("s21-hyd.bin", "X22", "X22", "S21", b"right"),
@@ -380,28 +399,30 @@ mod tests {
         };
 
         let resolved =
-            resolve_firmware_image_inner("bundle.bmu".to_string(), bmu, &miner, 0).unwrap();
+            resolve_firmware_image(FirmwareImage::new("bundle.bmu".to_string(), bmu), &miner)
+                .await
+                .unwrap();
 
         assert_eq!(resolved.filename, "s21-hyd.bin");
         assert_eq!(resolved.bytes, b"right");
     }
 
-    #[test]
-    fn bmu_crc_mismatch_returns_error() {
+    #[tokio::test]
+    async fn bmu_crc_mismatch_returns_error() {
         let mut bmu = build_bmu(&[("s21.bin", "X21", "X21", "S21", b"payload")]);
         bmu[24] ^= 0xFF;
 
-        let err = parse_bmu_entries(&bmu).unwrap_err();
+        let err = parse_bmu_entries(&bmu).await.unwrap_err();
 
         assert!(err.to_string().contains("BMU CRC mismatch"));
     }
 
-    #[test]
-    fn bmu_truncated_payload_returns_error() {
+    #[tokio::test]
+    async fn bmu_truncated_payload_returns_error() {
         let mut bmu = build_bmu(&[("s21.bin", "X21", "X21", "S21", b"payload")]);
         bmu.truncate(bmu.len() - 2);
 
-        let err = parse_bmu_entries(&bmu).unwrap_err();
+        let err = parse_bmu_entries(&bmu).await.unwrap_err();
 
         assert!(err.to_string().contains("BMU CRC mismatch"));
 
@@ -415,7 +436,7 @@ mod tests {
         hasher.update(&bmu[28..]);
         write_u32_le(&mut bmu, 24, hasher.finalize());
 
-        let err = parse_bmu_entries(&bmu).unwrap_err();
+        let err = parse_bmu_entries(&bmu).await.unwrap_err();
 
         assert!(err.to_string().contains("BMU payload exceeds file size"));
     }
