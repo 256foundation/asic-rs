@@ -4,11 +4,24 @@
   "msg": {
     "error-code": [
       {
-        "218": "2024-06-15 10:30:00"
+        "264": "2026-05-23 09:19:10",
+        "reason": "Power xfer error. code: 0xffffffffc0000000"
       },
       {
-        "541": "Slot 1 error reading chip id.",
-        "reason": "hashboard"
+        "265": "2026-05-23 09:19:10",
+        "reason": "Power Unknow error. code: 0xffffffffc0000000"
+      },
+      {
+        "266": "2026-05-23 09:19:11",
+        "reason": "Power Unknow error. code: 0xffffffffc0000000"
+      },
+      {
+        "267": "2026-05-23 09:19:11",
+        "reason": "Power watch dog protected. code: 0xffffffffc0000000"
+      },
+      {
+        "270": "2026-05-23 09:19:11",
+        "reason": "Power input over-voltage warning. code: 0xffffffffc0000000"
       }
     ],
     "miner": {

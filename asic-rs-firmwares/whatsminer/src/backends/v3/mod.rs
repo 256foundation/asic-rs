@@ -27,6 +27,7 @@ use asic_rs_core::{
 };
 use asic_rs_makes_whatsminer::hardware::WhatsMinerControlBoard;
 use async_trait::async_trait;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 pub(crate) use rpc::WhatsMinerRPCAPI;
@@ -534,17 +535,27 @@ impl GetMessages for WhatsMinerV3 {
         if let Some(errors) = data.get(&DataField::Messages) {
             for item in errors.as_array().into_iter().flatten() {
                 if let Some(obj) = item.as_object() {
-                    for (key, _val) in obj.iter() {
+                    for (key, time) in obj.iter() {
                         if key == "reason" {
                             continue;
                         }
-                        let code = key.parse::<u64>().unwrap_or(0);
-                        messages.push(MinerMessage::new(
-                            0,
-                            code,
-                            crate::error_codes::error_message(code),
-                            MessageSeverity::Error,
-                        ));
+                        let Some(time_str) = time.as_str() else {
+                            continue;
+                        };
+                        let timestamp =
+                            NaiveDateTime::parse_from_str(time_str, "%Y-%m-%d %H:%M:%S")
+                                .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc))
+                                .map(|dt| dt.timestamp() as u32);
+
+                        if let Ok(ts) = timestamp {
+                            let code = key.parse::<u64>().unwrap_or(0);
+                            messages.push(MinerMessage::new(
+                                ts,
+                                code,
+                                crate::error_codes::error_message(code),
+                                MessageSeverity::Error,
+                            ));
+                        }
                     }
                 }
             }
@@ -1158,17 +1169,13 @@ mod integration_tests {
         let miner_data = miner.parse_data(data);
 
         // Assert
-        assert_eq!(miner_data.messages.len(), 2);
-        assert_eq!(miner_data.messages[0].code, 218);
-        assert_eq!(
-            miner_data.messages[0].message,
-            "Power input voltage is lower than 230V for high power mode."
-        );
-        assert_eq!(miner_data.messages[1].code, 541);
-        assert_eq!(
-            miner_data.messages[1].message,
-            "Slot 1 error reading chip id."
-        );
+        assert_eq!(miner_data.messages.len(), 5);
+        assert_eq!(miner_data.messages[0].code, 264);
+        assert_eq!(miner_data.messages[0].timestamp, 1779527950);
+        assert_eq!(miner_data.messages[0].message, "Power communication error.");
+        assert_eq!(miner_data.messages[1].code, 265);
+        assert_eq!(miner_data.messages[1].timestamp, 1779527950);
+        assert_eq!(miner_data.messages[1].message, "Power unknown error.");
 
         Ok(())
     }
