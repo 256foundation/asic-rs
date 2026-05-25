@@ -16,7 +16,7 @@ use super::rpc::StatusFromAuradineV1;
 pub struct AuradineWebAPI {
     ip: IpAddr,
     port: u16,
-    client: Client,
+    client: Result<Client, String>,
     timeout: Duration,
     token: RwLock<Option<String>>,
     auth: MinerAuth,
@@ -28,7 +28,7 @@ impl AuradineWebAPI {
             .timeout(Duration::from_secs(10))
             .danger_accept_invalid_certs(true)
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| format!("Failed to create HTTP client: {e}"));
 
         Self {
             ip,
@@ -48,6 +48,10 @@ impl AuradineWebAPI {
     fn endpoint_url(&self, command: &str) -> String {
         let endpoint = command.trim_start_matches('/');
         format!("http://{}:{}/{}", self.ip, self.port, endpoint)
+    }
+
+    fn client(&self) -> Result<&Client> {
+        self.client.as_ref().map_err(|e| anyhow!(e.clone()))
     }
 
     fn build_post_payload(command: &str, parameters: Option<Value>) -> Value {
@@ -92,7 +96,7 @@ impl AuradineWebAPI {
         });
 
         let response = self
-            .client
+            .client()?
             .post(url)
             .json(&payload)
             .timeout(self.timeout)
@@ -131,11 +135,12 @@ impl AuradineWebAPI {
         parameters: Option<Value>,
         token: Option<String>,
     ) -> Result<Response> {
+        let client = self.client()?;
         let mut request_builder = match *method {
-            Method::GET => self.client.get(url),
+            Method::GET => client.get(url),
             Method::POST => {
                 let payload = parameters.unwrap_or_else(|| json!({}));
-                self.client.post(url).json(&payload)
+                client.post(url).json(&payload)
             }
             _ => bail!("Unsupported method: {}", method),
         };

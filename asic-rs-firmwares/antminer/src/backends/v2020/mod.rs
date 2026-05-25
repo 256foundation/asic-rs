@@ -63,6 +63,16 @@ impl Display for MinerMode {
     }
 }
 
+impl MinerMode {
+    fn as_web_value(&self) -> u8 {
+        match self {
+            MinerMode::Sleep => 1,
+            MinerMode::Low => 3,
+            MinerMode::Normal | MinerMode::High => 0,
+        }
+    }
+}
+
 fn miner_conf_mode_matches(conf: &Value, mode: MinerMode) -> bool {
     let expected = mode.to_string();
     ["miner-mode", "bitmain-work-mode"]
@@ -75,6 +85,70 @@ fn miner_conf_mode_matches(conf: &Value, mode: MinerMode) -> bool {
                 .or_else(|| value.as_i64().map(|mode| mode.to_string() == expected))
                 .unwrap_or(false)
         })
+}
+
+fn miner_mode_config_key(miner_conf: &Value) -> Option<&'static str> {
+    if miner_conf.get("miner-mode").is_some() {
+        Some("miner-mode")
+    } else if miner_conf.get("bitmain-work-mode").is_some() {
+        Some("bitmain-work-mode")
+    } else {
+        None
+    }
+}
+
+fn browser_miner_conf_payload(miner_conf: &Value) -> serde_json::Map<String, Value> {
+    let mut payload = serde_json::Map::new();
+    payload.insert(
+        "bitmain-fan-ctrl".to_string(),
+        miner_conf
+            .get("bitmain-fan-ctrl")
+            .cloned()
+            .unwrap_or(Value::Bool(false)),
+    );
+    payload.insert(
+        "bitmain-fan-pwm".to_string(),
+        miner_conf
+            .get("bitmain-fan-pwm")
+            .cloned()
+            .unwrap_or(Value::String("100".to_string())),
+    );
+
+    if let Some(mode_key) = miner_mode_config_key(miner_conf)
+        && let Some(mode) = miner_conf.get(mode_key)
+    {
+        payload.insert(mode_key.to_string(), mode.clone());
+    }
+    payload.insert(
+        "freq-level".to_string(),
+        miner_conf
+            .get("freq-level")
+            .or_else(|| miner_conf.get("bitmain-freq-level"))
+            .cloned()
+            .unwrap_or(Value::String("100".to_string())),
+    );
+    payload.insert(
+        "pools".to_string(),
+        miner_conf
+            .get("pools")
+            .cloned()
+            .unwrap_or_else(|| Value::Array(Vec::new())),
+    );
+
+    payload
+}
+
+fn miner_conf_with_pools(miner_conf: &Value, pools: Vec<Value>) -> Value {
+    let mut payload = browser_miner_conf_payload(miner_conf);
+    payload.insert("pools".to_string(), Value::Array(pools));
+    Value::Object(payload)
+}
+
+fn miner_conf_with_miner_mode(miner_conf: &Value, mode: MinerMode) -> Option<Value> {
+    let mode_key = miner_mode_config_key(miner_conf)?;
+    let mut payload = browser_miner_conf_payload(miner_conf);
+    payload.insert(mode_key.to_string(), Value::from(mode.as_web_value()));
+    Some(Value::Object(payload))
 }
 
 impl AntMinerV2020 {
@@ -844,12 +918,10 @@ impl SupportsPoolsConfig for AntMinerV2020 {
             .collect();
 
         pools.truncate(3);
+        let miner_conf = self.web.get_miner_conf().await?;
+        let miner_conf = miner_conf_with_pools(&miner_conf, pools);
 
-        Ok(self
-            .web
-            .set_miner_conf(json!({ "pools": pools }))
-            .await
-            .is_ok())
+        Ok(self.web.set_miner_conf(miner_conf).await.is_ok())
     }
 
     fn supports_pools_config(&self) -> bool {
@@ -875,24 +947,13 @@ impl Pause for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;
+        let Some(miner_conf) = miner_conf_with_miner_mode(&pre, MinerMode::Sleep) else {
+            return Ok(false);
+        };
 
-        if pre.get("miner-mode").is_some() {
-            self.web
-                .set_miner_conf(json!({"miner-mode": MinerMode::Sleep.to_string()}))
-                .await?;
-            let post = self.web.get_miner_conf().await?;
-            return Ok(miner_conf_mode_matches(&post, MinerMode::Sleep));
-        }
-
-        if pre.get("bitmain-work-mode").is_some() {
-            self.web
-                .set_miner_conf(json!({"bitmain-work-mode": MinerMode::Sleep.to_string()}))
-                .await?;
-            let post = self.web.get_miner_conf().await?;
-            return Ok(miner_conf_mode_matches(&post, MinerMode::Sleep));
-        }
-
-        Ok(false)
+        self.web.set_miner_conf(miner_conf).await?;
+        let post = self.web.get_miner_conf().await?;
+        Ok(miner_conf_mode_matches(&post, MinerMode::Sleep))
     }
 }
 
@@ -904,24 +965,13 @@ impl Resume for AntMinerV2020 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;
+        let Some(miner_conf) = miner_conf_with_miner_mode(&pre, MinerMode::Normal) else {
+            return Ok(false);
+        };
 
-        if pre.get("miner-mode").is_some() {
-            self.web
-                .set_miner_conf(json!({"miner-mode": MinerMode::Normal.to_string()}))
-                .await?;
-            let post = self.web.get_miner_conf().await?;
-            return Ok(miner_conf_mode_matches(&post, MinerMode::Normal));
-        }
-
-        if pre.get("bitmain-work-mode").is_some() {
-            self.web
-                .set_miner_conf(json!({"bitmain-work-mode": MinerMode::Normal.to_string()}))
-                .await?;
-            let post = self.web.get_miner_conf().await?;
-            return Ok(miner_conf_mode_matches(&post, MinerMode::Normal));
-        }
-
-        Ok(false)
+        self.web.set_miner_conf(miner_conf).await?;
+        let post = self.web.get_miner_conf().await?;
+        Ok(miner_conf_mode_matches(&post, MinerMode::Normal))
     }
 }
 

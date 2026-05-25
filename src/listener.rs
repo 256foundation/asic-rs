@@ -108,12 +108,24 @@ impl AntMinerListener {
     ) -> impl Stream<Item = anyhow::Result<Option<IpAddr>>> {
         stream! {
             let _factory = MinerFactory::new();
-            let sock = UdpSocket::bind("0.0.0.0:14235").await.expect("Failed to bind to port 14235 to listen for AntMiners.");
+            let sock = match UdpSocket::bind("0.0.0.0:14235").await {
+                Ok(s) => s,
+                Err(e) => {
+                    yield Err(anyhow::anyhow!("Failed to bind UDP port 14235: {e}"));
+                    return;
+                }
+            };
             let mut buf = Vec::with_capacity(256);
 
             loop {
-                let (_len, addr) = sock.recv_buf_from(&mut buf).await.unwrap();
-                yield Ok(Some(addr.ip()));
+                buf.clear();
+                match sock.recv_buf_from(&mut buf).await {
+                    Ok((_len, addr)) => yield Ok(Some(addr.ip())),
+                    Err(e) => {
+                        tracing::warn!("UDP recv error on port 14235: {e}");
+                        continue;
+                    }
+                }
             }
         }
     }
@@ -157,12 +169,24 @@ impl WhatsMinerListener {
     ) -> impl Stream<Item = anyhow::Result<Option<IpAddr>>> {
         stream! {
             let _factory = MinerFactory::new();
-            let sock = UdpSocket::bind("0.0.0.0:8888").await.expect("Failed to bind to port 8888 to listen for WhatsMiners.");
+            let sock = match UdpSocket::bind("0.0.0.0:8888").await {
+                Ok(s) => s,
+                Err(e) => {
+                    yield Err(anyhow::anyhow!("Failed to bind UDP port 8888: {e}"));
+                    return;
+                }
+            };
             let mut buf = Vec::with_capacity(256);
 
             loop {
-                let (_len, addr) = sock.recv_buf_from(&mut buf).await.unwrap();
-                yield Ok(Some(addr.ip()));
+                buf.clear();
+                match sock.recv_buf_from(&mut buf).await {
+                    Ok((_len, addr)) => yield Ok(Some(addr.ip())),
+                    Err(e) => {
+                        tracing::warn!("UDP recv error on port 8888: {e}");
+                        continue;
+                    }
+                }
             }
         }
     }
