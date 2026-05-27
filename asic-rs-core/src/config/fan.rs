@@ -4,25 +4,38 @@ use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "python", pyclass(skip_from_py_object, module = "asic_rs"))]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Fan control mode.
 pub enum FanMode {
+    /// Firmware-managed fan control using a target temperature.
     Auto,
+    /// Fixed fan speed control.
     Manual,
 }
 
 #[cfg_attr(feature = "python", pyclass(skip_from_py_object, module = "asic_rs"))]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "mode", rename_all = "PascalCase")]
+/// Desired fan control configuration.
+///
+/// Use [`Self::auto`] to target a temperature, or [`Self::manual`] to request a
+/// fixed fan speed.
 pub enum FanConfig {
+    /// Automatic fan control with a target chip/board temperature.
     Auto {
+        /// Temperature target in Celsius.
         target_temp: f64,
+        /// Optional idle fan speed percentage.
         idle_speed: Option<u64>,
     },
+    /// Manual fan control with a fixed fan speed percentage.
     Manual {
+        /// Fan speed percentage.
         fan_speed: u64,
     },
 }
 
 impl FanConfig {
+    /// Create an automatic fan configuration.
     pub fn auto(target_temp: f64, idle_speed: Option<u64>) -> Self {
         Self::Auto {
             target_temp,
@@ -30,10 +43,12 @@ impl FanConfig {
         }
     }
 
+    /// Create a manual fan configuration.
     pub fn manual(fan_speed: u64) -> Self {
         Self::Manual { fan_speed }
     }
 
+    /// Return the selected fan mode.
     pub fn mode(&self) -> FanMode {
         match self {
             Self::Auto { .. } => FanMode::Auto,
@@ -41,6 +56,7 @@ impl FanConfig {
         }
     }
 
+    /// Return the automatic target temperature, if this is automatic mode.
     pub fn target_temp(&self) -> Option<f64> {
         match self {
             Self::Auto { target_temp, .. } => Some(*target_temp),
@@ -48,6 +64,7 @@ impl FanConfig {
         }
     }
 
+    /// Return the automatic idle speed, if this is automatic mode.
     pub fn idle_speed(&self) -> Option<u64> {
         match self {
             Self::Auto { idle_speed, .. } => *idle_speed,
@@ -55,6 +72,7 @@ impl FanConfig {
         }
     }
 
+    /// Return the manual fan speed, if this is manual mode.
     pub fn fan_speed(&self) -> Option<u64> {
         match self {
             Self::Auto { .. } => None,

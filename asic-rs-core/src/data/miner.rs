@@ -20,13 +20,18 @@ use crate::data::{
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Firmware tuning target reported by a miner or requested by configuration.
 pub enum TuningTarget {
+    /// Target a power limit.
     Power(Power),
+    /// Target a hashrate.
     HashRate(HashRate),
+    /// Target a named mining mode.
     MiningMode(MiningMode),
 }
 
 impl TuningTarget {
+    /// Create a power tuning target from watts.
     pub fn from_watts(watts: f64) -> Self {
         TuningTarget::Power(Power::from_watts(watts))
     }
@@ -37,11 +42,15 @@ impl TuningTarget {
 #[derive(
     Debug, Clone, Copy, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
 )]
+/// Firmware-defined mining performance mode.
 pub enum MiningMode {
+    /// Lower-power or quiet mining mode.
     #[cfg_attr(feature = "python", pydantic(value = "Low"))]
     Low,
+    /// Normal mining mode.
     #[cfg_attr(feature = "python", pydantic(value = "Normal"))]
     Normal,
+    /// High-performance mining mode.
     #[cfg_attr(feature = "python", pydantic(value = "High"))]
     High,
 }
@@ -49,6 +58,7 @@ pub enum MiningMode {
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Standardized telemetry snapshot for one miner.
 pub struct MinerData {
     /// The schema version of this MinerData object, for use in external APIs
     pub schema_version: String,

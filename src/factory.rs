@@ -205,6 +205,14 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
 }
 
 #[derive(Clone)]
+/// Discovers ASIC miners and constructs firmware-specific miner handles.
+///
+/// A factory owns the IP addresses to scan, the firmware registry used for
+/// identification, and discovery tuning such as timeouts and concurrency.
+/// Constructors like [`Self::from_subnet`], [`Self::from_octets`], and
+/// [`Self::from_range`] create a factory with an initial search range. The
+/// matching `with_*` methods append additional addresses and return the updated
+/// factory for chaining.
 pub struct MinerFactory {
     search_firmwares: Option<Vec<Arc<dyn FirmwareEntry>>>,
     ips: Vec<IpAddr>,
@@ -379,6 +387,10 @@ impl MinerFactory {
         }
     }
 
+    /// Create an empty factory.
+    ///
+    /// Use one of the `with_*` range methods before calling [`Self::scan`], or
+    /// call [`Self::get_miner`] directly when a single IP address is known.
     pub fn new() -> MinerFactory {
         MinerFactory {
             search_firmwares: None,
@@ -394,6 +406,11 @@ impl MinerFactory {
         }
     }
 
+    /// Enable or disable the quick TCP port check before miner identification.
+    ///
+    /// Port checking reduces wasted identification attempts during scans by
+    /// probing common miner ports first. Disable it when a network filters TCP
+    /// probes but still responds to the firmware-specific discovery requests.
     pub fn with_port_check(mut self, enabled: bool) -> Self {
         self.check_port = enabled;
         self
@@ -411,52 +428,73 @@ impl MinerFactory {
         self
     }
 
+    /// Set the maximum number of addresses scanned at the same time.
+    ///
+    /// If unset, scan concurrency is chosen from the number of queued hosts.
     pub fn with_concurrent_limit(mut self, limit: usize) -> Self {
         self.concurrent = Some(limit);
         self
     }
 
+    /// Set the desired process file descriptor limit before large scans.
+    ///
+    /// This is best-effort. If the operating system rejects the requested
+    /// value, scanning continues with the existing limit.
     pub fn with_nofile_limit(mut self, limit: u64) -> Self {
         self.nofile_limit = Some(limit);
         self
     }
 
+    /// Enable or disable automatic file descriptor limit adjustment.
+    ///
+    /// Automatic adjustment is enabled by default and is only attempted before
+    /// scans. The operation is fail-open.
     pub fn with_nofile_adjustment(mut self, enabled: bool) -> Self {
         self.nofile_adjustment = enabled;
         self
     }
 
+    /// Choose scan concurrency from the number of queued hosts.
+    ///
+    /// This is normally unnecessary because [`Self::scan`] and streaming scans
+    /// already use adaptive concurrency when no explicit limit is set.
     pub fn with_adaptive_concurrency(mut self) -> Self {
         self.concurrent = Some(calculate_optimal_concurrency(self.ips.len()));
         self
     }
 
+    /// Populate the concurrency limit if it has not already been set.
     pub fn update_adaptive_concurrency(&mut self) {
         if self.concurrent.is_none() {
             self.concurrent = Some(calculate_optimal_concurrency(self.ips.len()));
         }
     }
 
+    /// Set the maximum time spent identifying a miner once connectivity exists.
     pub fn with_identification_timeout(mut self, timeout: Duration) -> Self {
         self.identification_timeout = timeout;
         self
     }
 
+    /// Set the identification timeout in seconds.
     pub fn with_identification_timeout_secs(mut self, timeout_secs: u64) -> Self {
         self.identification_timeout = Duration::from_secs(timeout_secs);
         self
     }
 
+    /// Set the timeout for quick connectivity probes during scans.
     pub fn with_connectivity_timeout(mut self, timeout: Duration) -> Self {
         self.connectivity_timeout = timeout;
         self
     }
 
+    /// Set the connectivity probe timeout in seconds.
     pub fn with_connectivity_timeout_secs(mut self, timeout_secs: u64) -> Self {
         self.connectivity_timeout = Duration::from_secs(timeout_secs);
         self
     }
 
+    /// Set how many connectivity attempts are made before identification.
     pub fn with_connectivity_retries(mut self, retries: u32) -> Self {
         self.connectivity_retries = retries;
         self
@@ -468,11 +506,14 @@ impl MinerFactory {
         self
     }
 
-    // Subnet handlers
+    /// Create a factory populated with all addresses from a CIDR subnet.
+    ///
+    /// Both IPv4 and IPv6 CIDR strings are supported.
     pub fn from_subnet(subnet: &str) -> Result<Self> {
         Self::new().with_subnet(subnet)
     }
 
+    /// Append all addresses from a CIDR subnet to this factory.
     pub fn with_subnet(mut self, subnet: &str) -> Result<Self> {
         let ips = self.hosts_from_subnet(subnet)?;
         self.ips.extend(ips);
@@ -480,6 +521,7 @@ impl MinerFactory {
         Ok(self)
     }
 
+    /// Replace this factory's queued addresses with all addresses from a CIDR subnet.
     pub fn set_subnet(&mut self, subnet: &str) -> Result<&Self> {
         let ips = self.hosts_from_subnet(subnet)?;
         self.ips = ips;
@@ -510,11 +552,15 @@ impl MinerFactory {
         self.ips.shuffle(&mut rng);
     }
 
-    // Octet handlers
+    /// Create a factory from four IPv4 octet selectors.
+    ///
+    /// Each octet may be a single value such as `"192"` or an inclusive range
+    /// such as `"1-254"`.
     pub fn from_octets(octet1: &str, octet2: &str, octet3: &str, octet4: &str) -> Result<Self> {
         Self::new().with_octets(octet1, octet2, octet3, octet4)
     }
 
+    /// Append addresses generated from four IPv4 octet selectors.
     pub fn with_octets(
         mut self,
         octet1: &str,
@@ -528,6 +574,7 @@ impl MinerFactory {
         Ok(self)
     }
 
+    /// Replace this factory's queued addresses with four IPv4 octet selectors.
     pub fn set_octets(
         &mut self,
         octet1: &str,
@@ -561,11 +608,15 @@ impl MinerFactory {
         ))
     }
 
-    // Range handlers
+    /// Create a factory from an IPv4 range string.
+    ///
+    /// Range strings use dotted octets where any octet may be a single value or
+    /// an inclusive range, for example `"192.168.1.1-254"`.
     pub fn from_range(range_str: &str) -> Result<Self> {
         Self::new().with_range(range_str)
     }
 
+    /// Append addresses generated from an IPv4 range string.
     pub fn with_range(mut self, range_str: &str) -> Result<Self> {
         let ips = self.hosts_from_range(range_str)?;
         self.ips.extend(ips);
@@ -573,6 +624,7 @@ impl MinerFactory {
         Ok(self)
     }
 
+    /// Replace this factory's queued addresses with an IPv4 range string.
     pub fn set_range(&mut self, range_str: &str) -> Result<&Self> {
         let ips = self.hosts_from_range(range_str)?;
         self.ips = ips;
@@ -601,18 +653,25 @@ impl MinerFactory {
         ))
     }
 
+    /// Return the queued scan addresses.
     pub fn hosts(&self) -> Vec<IpAddr> {
         self.ips.clone()
     }
 
+    /// Return the number of queued scan addresses.
     pub fn len(&self) -> usize {
         self.ips.len()
     }
 
+    /// Return whether this factory has no queued scan addresses.
     pub fn is_empty(&self) -> bool {
         self.ips.is_empty()
     }
 
+    /// Scan all queued addresses and return every successfully identified miner.
+    ///
+    /// Unsupported hosts and failed identification attempts are skipped. An
+    /// error is returned only when the factory has no queued IP addresses.
     pub async fn scan(&self) -> Result<Vec<Box<dyn Miner>>> {
         if self.ips.is_empty() {
             return Err(anyhow::anyhow!(
@@ -641,6 +700,10 @@ impl MinerFactory {
         Ok(miners)
     }
 
+    /// Scan queued addresses as a stream of successfully identified miners.
+    ///
+    /// Use this when callers should process miners as soon as they are found
+    /// instead of waiting for the full scan to finish.
     pub fn scan_stream(&self) -> Pin<Box<impl Stream<Item = Box<dyn Miner>> + Send + use<>>> {
         let concurrency = self
             .concurrent
@@ -669,6 +732,10 @@ impl MinerFactory {
         Box::pin(stream)
     }
 
+    /// Scan queued addresses as a stream that preserves every attempted IP.
+    ///
+    /// Stream items are `(ip, miner)` pairs. `miner` is `None` when the host did
+    /// not identify as a supported miner.
     #[allow(clippy::type_complexity)]
     pub fn scan_stream_with_ip(
         &self,
@@ -699,6 +766,7 @@ impl MinerFactory {
         Box::pin(stream)
     }
 
+    /// Append an octet range, scan it, and return identified miners.
     pub async fn scan_by_octets(
         self,
         octet1: &str,
@@ -711,6 +779,7 @@ impl MinerFactory {
             .await
     }
 
+    /// Append an IPv4 range string, scan it, and return identified miners.
     pub async fn scan_by_range(self, range_str: &str) -> Result<Vec<Box<dyn Miner>>> {
         self.with_range(range_str)?.scan().await
     }

@@ -1,0 +1,75 @@
+[project]
+site_name = "asic-rs"
+site_description = "Unified Rust and Python documentation for ASIC miner management."
+docs_dir = "docs"
+site_dir = "site"
+nav = [
+  {"Home" = "index.md"},
+  {"Getting Started" = "getting-started.md"},
+  {"API Guide" = "api.md"},
+  {"Development" = [
+    {"Documentation Workflow" = "development/documentation.md"},
+  ]},
+  {"Rust API" = "https://docs.rs/asic-rs"},
+  {"Python Package" = "https://pypi.org/project/pyasic-rs"},
+]
+
+markdown_extensions = [
+    "attr_list",
+    "admonition",
+    "pymdownx.details",
+    "pymdownx.superfences",
+    { "pymdownx.tabbed" = { alternate_style = true, slugify = { case = "lower" } } },
+    "md_in_html",
+    "pymdownx.blocks.caption",
+    "pymdownx.snippets",
+    "abbr",
+    { "pymdownx.tasklist" = { custom_checkbox = true } },
+    { toc = { permalink = true } },
+    { "pymdownx.emoji" = { emoji_index = "zensical.extensions.emoji.twemoji", emoji_generator = "zensical.extensions.emoji.to_svg" } },
+    "tables",
+    "pymdownx.caret",
+    "pymdownx.tilde",
+    "pymdownx.mark",
+    "pymdownx.smartsymbols",
+]
+
+[project.theme]
+features = [
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.instant",
+    "navigation.instant.prefetch",
+    "navigation.instant.progress",
+    "navigation.path",
+    "navigation.sections",
+    "navigation.tabs",
+    "navigation.tabs.sticky",
+    "navigation.top",
+    "navigation.tracking",
+    "search.highlight",
+    "toc.follow",
+    "toc.integrate",
+    "content.tooltips",
+    "content.tabs.link",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+
+[project.theme.palette.toggle]
+icon = "lucide/sun"
+name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+
+[project.theme.palette.toggle]
+icon = "lucide/moon"
+name = "Switch to light mode"
+
+[project.theme.font]
+text = "Inter"
+code = "Jetbrains Mono"

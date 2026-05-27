@@ -202,6 +202,11 @@ impl PyMinerStreamWithIP {
     }
 }
 
+/// Python handle for miner discovery and construction.
+///
+/// A `MinerFactory` stores the IP addresses to scan plus discovery tuning such
+/// as concurrency and timeouts. Methods that add ranges return `self`, so calls
+/// can be chained before awaiting `scan()`.
 #[pyclass(module = "asic_rs")]
 pub(crate) struct MinerFactory {
     inner: Arc<MinerFactory_Base>,
@@ -237,6 +242,11 @@ impl MinerFactory {
 
 #[pymethods]
 impl MinerFactory {
+    /// Create an empty factory.
+    ///
+    /// Use `get_miner(ip)` for a known address, or add a range with
+    /// `from_subnet`, `from_octets`, `from_range`, or the matching `with_*`
+    /// methods before calling `scan()`.
     #[new]
     pub fn new() -> Self {
         Self {
@@ -244,11 +254,15 @@ impl MinerFactory {
         }
     }
 
+    /// Create a factory populated from a CIDR subnet.
+    ///
+    /// Example: `MinerFactory.from_subnet("192.168.1.0/24")`.
     #[classmethod]
     pub fn from_subnet(_cls: &Bound<'_, PyType>, subnet: String) -> PyResult<Self> {
         Self::from_inner_result(MinerFactory_Base::from_subnet(&subnet))
     }
 
+    /// Append all addresses from a CIDR subnet and return this factory.
     pub fn with_subnet<'py>(
         slf: PyRefMut<'py, Self>,
         subnet: &str,
@@ -256,6 +270,9 @@ impl MinerFactory {
         Self::try_update_inner(slf, |inner| inner.with_subnet(subnet))
     }
 
+    /// Create a factory from four IPv4 octet selectors.
+    ///
+    /// Each octet may be a number or a string range such as `"1-254"`.
     #[classmethod]
     #[pyo3(signature = (octet1: "str | int", octet2: "str | int", octet3: "str | int", octet4: "str | int") -> "MinerFactory")]
     pub fn from_octets(
@@ -274,6 +291,7 @@ impl MinerFactory {
         ))
     }
 
+    /// Append addresses generated from four IPv4 octet selectors.
     #[pyo3(signature = (octet1: "str | int", octet2: "str | int", octet3: "str | int", octet4: "str | int") -> "MinerFactory")]
     pub fn with_octets<'py>(
         slf: PyRefMut<'py, Self>,
@@ -291,15 +309,20 @@ impl MinerFactory {
         })
     }
 
+    /// Create a factory from an IPv4 range string.
+    ///
+    /// Example: `MinerFactory.from_range("192.168.1.1-254")`.
     #[classmethod]
     pub fn from_range(_cls: &Bound<'_, PyType>, range: String) -> PyResult<Self> {
         Self::from_inner_result(MinerFactory_Base::from_range(&range))
     }
 
+    /// Append addresses generated from an IPv4 range string.
     pub fn with_range<'py>(slf: PyRefMut<'py, Self>, range: &str) -> PyResult<PyRefMut<'py, Self>> {
         Self::try_update_inner(slf, |inner| inner.with_range(range))
     }
 
+    /// Set the maximum number of addresses scanned concurrently.
     pub fn with_concurrent_limit<'py>(
         slf: PyRefMut<'py, Self>,
         limit: usize,
@@ -309,6 +332,7 @@ impl MinerFactory {
         }))
     }
 
+    /// Set the maximum seconds spent identifying a miner after it responds.
     pub fn with_identification_timeout_secs<'py>(
         slf: PyRefMut<'py, Self>,
         timeout_secs: u64,
@@ -318,6 +342,7 @@ impl MinerFactory {
         }))
     }
 
+    /// Set the timeout, in seconds, for quick connectivity probes.
     pub fn with_connectivity_timeout_secs<'py>(
         slf: PyRefMut<'py, Self>,
         timeout_secs: u64,
@@ -327,6 +352,7 @@ impl MinerFactory {
         }))
     }
 
+    /// Set how many connectivity attempts are made before identification.
     pub fn with_connectivity_retries<'py>(
         slf: PyRefMut<'py, Self>,
         retries: u32,
@@ -336,6 +362,7 @@ impl MinerFactory {
         }))
     }
 
+    /// Enable or disable quick TCP port checks before miner identification.
     pub fn with_port_check<'py>(
         slf: PyRefMut<'py, Self>,
         enabled: bool,
@@ -345,6 +372,10 @@ impl MinerFactory {
         }))
     }
 
+    /// Await a scan of all queued addresses and return every supported miner.
+    ///
+    /// Unsupported hosts are skipped. Raises `ValueError` when no addresses have
+    /// been queued or when the scan setup is invalid.
     pub fn scan<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<Miner>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -356,6 +387,7 @@ impl MinerFactory {
         })
     }
 
+    /// Return an async iterator over miners as soon as they are found.
     pub fn scan_stream<'py>(&self, py: Python<'py>) -> PyResult<PyAsyncIterator<Miner>> {
         let inner = Arc::clone(&self.inner);
         Bound::new(py, PyMinerStream::new(inner.scan_stream()))
@@ -363,6 +395,10 @@ impl MinerFactory {
             .map(PyAsyncIterator::new)
     }
 
+    /// Return an async iterator of `(ip, miner)` for every scanned address.
+    ///
+    /// The miner value is `None` when the IP did not identify as a supported
+    /// ASIC miner.
     pub fn scan_stream_with_ip<'py>(
         &self,
         py: Python<'py>,
@@ -373,6 +409,10 @@ impl MinerFactory {
             .map(PyAsyncIterator::new)
     }
 
+    /// Identify and construct a miner at a known IP address.
+    ///
+    /// Returns `None` when the address does not respond as a supported miner.
+    /// Raises `ConnectionError` for discovery errors.
     pub fn get_miner<'a>(
         &self,
         py: Python<'a>,

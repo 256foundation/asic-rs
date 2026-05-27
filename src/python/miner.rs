@@ -26,6 +26,12 @@ use pyo3::{
 };
 use tokio::sync::RwLock;
 
+/// Python handle for one supported ASIC miner.
+///
+/// A `Miner` is returned by `MinerFactory.get_miner`, `scan`, or scan streams.
+/// Data and control methods are awaitable. Capability properties named
+/// `supports_*` describe whether the current miner/firmware supports a control
+/// or config operation before it is called.
 #[pyclass(module = "asic_rs")]
 pub(crate) struct Miner {
     inner: Arc<RwLock<Box<dyn MinerTrait>>>,
@@ -104,99 +110,125 @@ impl Miner {
         })
     }
 
+    /// IP address of this miner.
     #[getter]
     fn ip(&self, py: Python<'_>) -> IpAddr {
         self.with_miner(py, |miner| miner.get_ip())
     }
 
+    /// Miner model name.
     #[getter]
     fn model(&self, py: Python<'_>) -> String {
         self.with_miner(py, |miner| miner.get_device_info().model)
     }
+    /// Miner manufacturer or make.
     #[getter]
     fn make(&self, py: Python<'_>) -> String {
         self.with_miner(py, |miner| miner.get_device_info().make)
     }
+    /// Firmware name or family used by this miner.
     #[getter]
     fn firmware(&self, py: Python<'_>) -> String {
         self.with_miner(py, |miner| miner.get_device_info().firmware)
     }
+    /// Hash algorithm mined by this device.
     #[getter]
     fn algo(&self, py: Python<'_>) -> HashAlgorithm {
         self.with_miner(py, |miner| miner.get_device_info().algo)
     }
+    /// Expected hardware shape for this miner model.
     #[getter]
     fn hardware(&self, py: Python<'_>) -> MinerHardware {
         self.with_miner(py, |miner| miner.get_device_info().hardware)
     }
 
+    /// Expected number of hashboards, when known.
     #[getter]
     fn expected_hashboards(&self, py: Python<'_>) -> Option<u8> {
         self.with_miner(py, |miner| miner.get_expected_hashboards())
     }
 
+    /// Expected total number of chips, when known.
     #[getter]
     fn expected_chips(&self, py: Python<'_>) -> Option<u16> {
         self.with_miner(py, |miner| miner.get_expected_chips())
     }
 
+    /// Expected number of fans, when known.
     #[getter]
     fn expected_fans(&self, py: Python<'_>) -> Option<u8> {
         self.with_miner(py, |miner| miner.get_expected_fans())
     }
 
+    /// Whether this miner supports changing the fault light state.
     #[getter]
     fn supports_set_fault_light(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_set_fault_light())
     }
+    /// Whether this miner supports setting a power limit.
     #[getter]
     fn supports_set_power_limit(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_set_power_limit())
     }
+    /// Whether this miner supports restart commands.
     #[getter]
     fn supports_restart(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_restart())
     }
+    /// Whether this miner supports pause commands.
     #[getter]
     fn supports_pause(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_pause())
     }
+    /// Whether this miner supports resume commands.
     #[getter]
     fn supports_resume(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_resume())
     }
+    /// Whether this miner supports changing its password.
     #[getter]
     fn supports_change_password(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_change_password())
     }
+    /// Whether this miner supports reading logs.
     #[getter]
     fn supports_read_logs(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_read_logs())
     }
+    /// Whether this miner supports factory reset.
     #[getter]
     fn supports_factory_reset(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_factory_reset())
     }
+    /// Whether this miner supports reading and writing pool configuration.
     #[getter]
     fn supports_pools_config(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_pools_config())
     }
+    /// Whether this miner supports firmware upgrades through the API.
     #[getter]
     fn supports_upgrade_firmware(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_upgrade_firmware())
     }
+    /// Whether this miner supports scaling configuration.
     #[getter]
     fn supports_scaling_config(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_scaling_config())
     }
+    /// Whether this miner supports tuning configuration.
     #[getter]
     fn supports_tuning_config(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_tuning_config())
     }
+    /// Whether this miner supports fan configuration.
     #[getter]
     fn supports_fan_config(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_fan_config())
     }
+    /// Set credentials used by subsequent operations on this miner.
+    ///
+    /// Call this before starting concurrent operations. It raises `RuntimeError`
+    /// if the miner handle is already shared by an active async operation.
     pub fn set_auth(&mut self, username: String, password: String) -> PyResult<()> {
         Arc::get_mut(&mut self.inner)
             .ok_or_else(|| PyRuntimeError::new_err("cannot set auth while miner is in use"))?
@@ -206,6 +238,10 @@ impl Miner {
     }
 
     // Data functions
+    /// Await a full telemetry snapshot.
+    ///
+    /// Pass `exclude=[DataField.SomeField]` to skip expensive or unnecessary
+    /// fields during collection.
     #[pyo3(signature = (exclude: "list[DataField] | None" = None))]
     pub fn get_data<'a>(
         &self,
@@ -221,6 +257,7 @@ impl Miner {
             }
         })
     }
+    /// Await the miner MAC address, if exposed by the firmware.
     pub fn get_mac<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -229,6 +266,7 @@ impl Miner {
             Ok(data.map(|m| m.to_string()))
         })
     }
+    /// Await the miner serial number, if exposed by the firmware.
     pub fn get_serial_number<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -237,6 +275,7 @@ impl Miner {
             Ok(data)
         })
     }
+    /// Await the network hostname, if exposed by the firmware.
     pub fn get_hostname<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -245,6 +284,7 @@ impl Miner {
             Ok(data)
         })
     }
+    /// Await the miner API version, if exposed by the firmware.
     pub fn get_api_version<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -253,6 +293,7 @@ impl Miner {
             Ok(data)
         })
     }
+    /// Await the firmware version string, if exposed by the firmware.
     pub fn get_firmware_version<'a>(
         &self,
         py: Python<'a>,
@@ -264,6 +305,7 @@ impl Miner {
             Ok(data)
         })
     }
+    /// Await the control board version or name, if exposed by the firmware.
     pub fn get_control_board_version<'a>(
         &self,
         py: Python<'a>,
@@ -278,6 +320,7 @@ impl Miner {
             Ok(data)
         })
     }
+    /// Await per-hashboard data including chip details where available.
     pub fn get_hashboards<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<BoardData>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -285,6 +328,7 @@ impl Miner {
             Ok(inner.get_hashboards().await)
         })
     }
+    /// Await per-hashboard data without collecting per-chip details.
     pub fn get_hashboards_no_chips<'a>(
         &self,
         py: Python<'a>,
@@ -295,6 +339,7 @@ impl Miner {
             Ok(inner.get_hashboards_no_chips().await)
         })
     }
+    /// Await the current hashrate, if exposed by the firmware.
     pub fn get_hashrate<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<HashRate>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -303,6 +348,7 @@ impl Miner {
             Ok(data)
         })
     }
+    /// Await the expected or nominal hashrate, if known.
     pub fn get_expected_hashrate<'a>(
         &self,
         py: Python<'a>,
@@ -314,6 +360,7 @@ impl Miner {
             Ok(data)
         })
     }
+    /// Await current fan readings.
     pub fn get_fans<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<FanData>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -321,6 +368,7 @@ impl Miner {
             Ok(inner.get_fans().await)
         })
     }
+    /// Await power-supply fan readings, if exposed separately.
     pub fn get_psu_fans<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<FanData>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -328,6 +376,7 @@ impl Miner {
             Ok(inner.get_psu_fans().await)
         })
     }
+    /// Await fluid or ambient temperature in Celsius, if available.
     pub fn get_fluid_temperature<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<f64>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -336,6 +385,7 @@ impl Miner {
             Ok(data.map(|t| t.as_celsius()))
         })
     }
+    /// Await current power draw in watts, if available.
     pub fn get_wattage<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<f64>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -344,6 +394,7 @@ impl Miner {
             Ok(data.map(|w| w.as_watts()))
         })
     }
+    /// Await the active tuning target, if exposed by the firmware.
     pub fn get_tuning_target<'a>(
         &self,
         py: Python<'a>,
@@ -354,6 +405,7 @@ impl Miner {
             Ok(inner.get_tuning_target().await)
         })
     }
+    /// Await the current fault light state, if available.
     pub fn get_light_flashing<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -362,6 +414,7 @@ impl Miner {
             Ok(data)
         })
     }
+    /// Await current miner messages and errors.
     pub fn get_messages<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<MinerMessage>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -369,6 +422,7 @@ impl Miner {
             Ok(inner.get_messages().await)
         })
     }
+    /// Await system uptime as `datetime.timedelta`, if available.
     pub fn get_uptime<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<Duration>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -377,6 +431,7 @@ impl Miner {
             Ok(data)
         })
     }
+    /// Await whether the miner is currently mining.
     pub fn get_is_mining<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<bool>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -385,6 +440,7 @@ impl Miner {
             Ok(data)
         })
     }
+    /// Await the current mining pool status.
     pub fn get_pools<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<PoolGroupData>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -393,6 +449,7 @@ impl Miner {
         })
     }
 
+    /// Await configured pool groups, or `None` when unsupported/unavailable.
     pub fn get_pools_config<'a>(
         &self,
         py: Python<'a>,
@@ -403,6 +460,7 @@ impl Miner {
             Ok(inner.get_pools_config().await.ok())
         })
     }
+    /// Await scaling configuration, or `None` when unsupported/unavailable.
     pub fn get_scaling_config<'a>(
         &self,
         py: Python<'a>,
@@ -413,6 +471,7 @@ impl Miner {
             Ok(inner.get_scaling_config().await.ok())
         })
     }
+    /// Await tuning configuration, or `None` when unsupported/unavailable.
     pub fn get_tuning_config<'a>(
         &self,
         py: Python<'a>,
@@ -423,6 +482,7 @@ impl Miner {
             Ok(inner.get_tuning_config().await.ok())
         })
     }
+    /// Await fan configuration, or `None` when unsupported/unavailable.
     pub fn get_fan_config<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<FanConfig>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -432,6 +492,9 @@ impl Miner {
     }
 
     // Control functions
+    /// Set the fault light state.
+    ///
+    /// Returns `None` if the command is unsupported or rejected by the backend.
     pub fn set_fault_light<'a>(
         &self,
         py: Python<'a>,
@@ -444,6 +507,9 @@ impl Miner {
             Ok(data.ok())
         })
     }
+    /// Restart the miner.
+    ///
+    /// Returns `None` if restart is unsupported or rejected by the backend.
     pub fn restart<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -452,6 +518,9 @@ impl Miner {
             Ok(data.ok())
         })
     }
+    /// Pause mining immediately or after a delay.
+    ///
+    /// `at_time` may be `datetime.timedelta`, non-negative seconds, or `None`.
     #[pyo3(signature = (at_time: "timedelta | float | int | None" = None))]
     pub fn pause<'a>(
         &self,
@@ -466,6 +535,9 @@ impl Miner {
             Ok(data.ok())
         })
     }
+    /// Resume mining immediately or after a delay.
+    ///
+    /// `at_time` may be `datetime.timedelta`, non-negative seconds, or `None`.
     #[pyo3(signature = (at_time: "timedelta | float | int | None" = None))]
     pub fn resume<'a>(
         &self,
@@ -480,6 +552,9 @@ impl Miner {
             Ok(data.ok())
         })
     }
+    /// Factory reset the miner.
+    ///
+    /// Returns `None` if factory reset is unsupported or rejected by the backend.
     pub fn factory_reset<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<bool>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -488,6 +563,7 @@ impl Miner {
             Ok(data.ok())
         })
     }
+    /// Read miner logs, if supported.
     pub fn read_logs<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<String>>> {
         let inner = Arc::clone(&self.inner);
         future_into_py(py, async move {
@@ -496,6 +572,9 @@ impl Miner {
             Ok(data.ok())
         })
     }
+    /// Change the miner password.
+    ///
+    /// This may require existing credentials to have been set with `set_auth`.
     pub fn change_password<'a>(
         &self,
         py: Python<'a>,
@@ -508,6 +587,7 @@ impl Miner {
             Ok(inner.change_password(&password).await.ok())
         })
     }
+    /// Set the power limit in watts.
     pub fn set_power_limit<'a>(
         &self,
         py: Python<'a>,
@@ -519,6 +599,7 @@ impl Miner {
             Ok(inner.set_power_limit(Power::from_watts(watts)).await.ok())
         })
     }
+    /// Replace the configured mining pool groups.
     #[pyo3(signature = (groups: "list[PoolGroup]"))]
     pub fn set_pools_config<'a>(
         &self,
@@ -531,6 +612,7 @@ impl Miner {
             Ok(inner.set_pools_config(groups).await.ok())
         })
     }
+    /// Set scaling configuration.
     #[pyo3(signature = (config: "ScalingConfig"))]
     pub fn set_scaling_config<'a>(
         &self,
@@ -543,6 +625,7 @@ impl Miner {
             Ok(inner.set_scaling_config(config).await.ok())
         })
     }
+    /// Set tuning configuration, optionally with companion scaling settings.
     #[pyo3(signature = (config: "TuningConfig", scaling_config: "ScalingConfig | None" = None))]
     pub fn set_tuning_config<'a>(
         &self,
@@ -556,6 +639,7 @@ impl Miner {
             Ok(inner.set_tuning_config(config, scaling_config).await.ok())
         })
     }
+    /// Set fan configuration.
     #[pyo3(signature = (config: "FanConfig"))]
     pub fn set_fan_config<'a>(
         &self,
@@ -568,6 +652,7 @@ impl Miner {
             Ok(inner.set_fan_config(config).await.ok())
         })
     }
+    /// Upload and apply a firmware image from a local path.
     pub fn upgrade_firmware<'a>(
         &self,
         py: Python<'a>,

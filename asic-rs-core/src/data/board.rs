@@ -13,6 +13,7 @@ use super::{
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+/// Per-chip telemetry for a hashboard.
 pub struct ChipData {
     /// The position of the chip on the board, indexed from 0
     pub position: u16,
@@ -39,6 +40,7 @@ pub struct ChipData {
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+/// Per-hashboard telemetry for a miner.
 pub struct BoardData {
     /// The board position in the miner, indexed from 0
     pub position: u8,
@@ -115,14 +117,19 @@ impl BoardData {
     pyclass(from_py_object, get_all, module = "asic_rs")
 )]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
+/// Control board identity reported by a miner.
 pub struct MinerControlBoard {
+    /// Whether the control board name is a known board identifier.
     pub known: bool,
+    /// Control board name or raw unknown identifier.
     pub name: String,
 }
 impl MinerControlBoard {
+    /// Create an unknown control board identity from a raw name.
     pub fn unknown(name: String) -> Self {
         Self { known: false, name }
     }
+    /// Create a known control board identity.
     pub fn known(name: String) -> Self {
         Self { known: true, name }
     }

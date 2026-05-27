@@ -13,11 +13,15 @@ use url::Url;
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Mining pool URL scheme.
 pub enum PoolScheme {
+    /// Stratum V1 over TCP.
     #[cfg_attr(feature = "python", pydantic(value = "stratum+tcp"))]
     StratumV1,
+    /// Stratum V1 over TLS/SSL.
     #[cfg_attr(feature = "python", pydantic(value = "stratum+ssl"))]
     StratumV1SSL,
+    /// Stratum V2 over TCP.
     #[cfg_attr(feature = "python", pydantic(value = "stratum2+tcp"))]
     StratumV2,
 }
@@ -70,6 +74,7 @@ impl FromStr for PoolScheme {
     )
 )]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Parsed mining pool URL.
 pub struct PoolURL {
     /// The scheme being used to connect to this pool
     pub scheme: PoolScheme,
@@ -131,13 +136,21 @@ impl Display for PoolURL {
 )]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Runtime status for one configured pool.
 pub struct PoolData {
+    /// Pool position in the firmware configuration.
     pub position: Option<u16>,
+    /// Pool URL.
     pub url: Option<PoolURL>,
+    /// Accepted share count.
     pub accepted_shares: Option<u64>,
+    /// Rejected share count.
     pub rejected_shares: Option<u64>,
+    /// Whether this pool is currently active.
     pub active: Option<bool>,
+    /// Whether the firmware reports this pool as alive.
     pub alive: Option<bool>,
+    /// Worker username reported for this pool.
     pub user: Option<String>,
 }
 
@@ -147,17 +160,23 @@ pub struct PoolData {
 )]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Runtime status for a group of configured pools.
 pub struct PoolGroupData {
+    /// Pool group name.
     pub name: String,
+    /// Pool group quota or priority weight.
     pub quota: u32,
+    /// Runtime status for pools in this group.
     pub pools: Vec<PoolData>,
 }
 
 impl PoolGroupData {
+    /// Return the number of pools in this group.
     pub fn len(&self) -> usize {
         self.pools.len()
     }
 
+    /// Return whether this pool group has no pools.
     pub fn is_empty(&self) -> bool {
         self.pools.is_empty()
     }

@@ -14,7 +14,7 @@ documentation = "https://github.com/256-Foundation/asic-rs"
 issues = "https://github.com/256-Foundation/asic-rs/issues"
 
 license = "Apache 2.0"
-readme = "python/README.md"
+readme = "docs-shared/guide.md"
 
 requires-python = ">=3.11, <4.0"
 dependencies = [
@@ -44,6 +44,9 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+docs = [
+    "zensical>=0.0.43",
+]
 test = [
     "pytest>=8",
 ]

@@ -7,13 +7,21 @@ use crate::data::miner::TuningTarget;
 #[cfg_attr(feature = "python", pyclass(skip_from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Desired firmware tuning target.
+///
+/// A tuning config can target a power limit, a hashrate, or a named mining
+/// mode. The optional algorithm field lets firmwares distinguish tuning
+/// profiles when they support more than one algorithm.
 pub struct TuningConfig {
+    /// Tuning target requested from the firmware.
     pub target: TuningTarget,
+    /// Optional firmware-specific tuning algorithm/profile.
     #[cfg_attr(feature = "python", pydantic(default = None))]
     pub algorithm: Option<String>,
 }
 
 impl TuningConfig {
+    /// Create a tuning config from a target.
     pub fn new(target: TuningTarget) -> Self {
         Self {
             target,
@@ -21,11 +29,13 @@ impl TuningConfig {
         }
     }
 
+    /// Attach a firmware-specific algorithm/profile name.
     pub fn with_algorithm(mut self, algorithm: impl Into<String>) -> Self {
         self.algorithm = Some(algorithm.into());
         self
     }
 
+    /// Return `"power"`, `"hashrate"`, or `"mode"` for this config target.
     pub fn variant(&self) -> &'static str {
         match &self.target {
             TuningTarget::Power(_) => "power",

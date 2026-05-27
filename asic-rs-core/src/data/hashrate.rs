@@ -18,24 +18,34 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
 #[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+/// Unit used to represent a [`HashRate`] value.
 pub enum HashRateUnit {
+    /// Hashes per second.
     #[cfg_attr(feature = "python", pydantic(value = "H/s"))]
     Hash,
+    /// Kilohashes per second.
     #[cfg_attr(feature = "python", pydantic(value = "KH/s"))]
     KiloHash,
+    /// Megahashes per second.
     #[cfg_attr(feature = "python", pydantic(value = "MH/s"))]
     MegaHash,
+    /// Gigahashes per second.
     #[cfg_attr(feature = "python", pydantic(value = "GH/s"))]
     GigaHash,
+    /// Terahashes per second.
     #[cfg_attr(feature = "python", pydantic(value = "TH/s"))]
     #[default]
     TeraHash,
+    /// Petahashes per second.
     #[cfg_attr(feature = "python", pydantic(value = "PH/s"))]
     PetaHash,
+    /// Exahashes per second.
     #[cfg_attr(feature = "python", pydantic(value = "EH/s"))]
     ExaHash,
+    /// Zettahashes per second.
     #[cfg_attr(feature = "python", pydantic(value = "ZH/s"))]
     ZettaHash,
+    /// Yottahashes per second.
     #[cfg_attr(feature = "python", pydantic(value = "YH/s"))]
     YottaHash,
 }
@@ -168,6 +178,7 @@ impl HashRateUnit {
 )]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Hashrate value with unit and mining algorithm.
 pub struct HashRate {
     /// The current amount of hashes being computed
     pub value: f64,
@@ -179,6 +190,7 @@ pub struct HashRate {
 }
 
 impl HashRate {
+    /// Return this hashrate converted into another unit.
     pub fn as_unit(self, unit: HashRateUnit) -> Self {
         let base = self.value * self.unit.to_multiplier() as f64; // Convert to base unit.
 

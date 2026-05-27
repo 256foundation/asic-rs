@@ -11,15 +11,22 @@ use crate::traits::{firmware::MinerFirmware, model::MinerModel};
     pyclass(from_py_object, get_all, module = "asic_rs")
 )]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
+/// Static identity and hardware information for a miner model.
 pub struct DeviceInfo {
+    /// Miner manufacturer or make.
     pub make: String,
+    /// Miner model name.
     pub model: String,
+    /// Expected hardware shape.
     pub hardware: MinerHardware,
+    /// Firmware name or family.
     pub firmware: String,
+    /// Mining hash algorithm.
     pub algo: HashAlgorithm,
 }
 
 impl DeviceInfo {
+    /// Build device information from a model and firmware implementation.
     pub fn new(model: impl MinerModel, firmware: impl MinerFirmware, algo: HashAlgorithm) -> Self {
         Self {
             hardware: model.clone().into(),
@@ -37,9 +44,13 @@ impl DeviceInfo {
 )]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Default)]
+/// Expected hardware counts for a miner model.
 pub struct MinerHardware {
+    /// Expected number of chips.
     pub chips: Option<u16>,
+    /// Expected number of fans.
     pub fans: Option<u8>,
+    /// Expected number of hashboards.
     pub boards: Option<u8>,
 }
 
@@ -48,19 +59,25 @@ pub struct MinerHardware {
 #[derive(
     Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, StrumDisplay, EnumString,
 )]
+/// Mining hash algorithm.
 pub enum HashAlgorithm {
+    /// SHA-256 mining.
     #[cfg_attr(feature = "python", pydantic(value = "SHA256"))]
     #[serde(rename = "SHA256")]
     SHA256,
+    /// Scrypt mining.
     #[cfg_attr(feature = "python", pydantic(value = "Scrypt"))]
     #[serde(rename = "Scrypt")]
     Scrypt,
+    /// X11 mining.
     #[cfg_attr(feature = "python", pydantic(value = "X11"))]
     #[serde(rename = "X11")]
     X11,
+    /// Blake2S256 mining.
     #[cfg_attr(feature = "python", pydantic(value = "Blake2S256"))]
     #[serde(rename = "Blake2S256")]
     Blake2S256,
+    /// Kadena mining.
     #[cfg_attr(feature = "python", pydantic(value = "Kadena"))]
     #[serde(rename = "Kadena")]
     Kadena,
