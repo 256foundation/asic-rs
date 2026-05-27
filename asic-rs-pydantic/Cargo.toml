@@ -3,7 +3,7 @@ name = "asic-rs-pydantic"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Pydantic integration support for asic-rs Python bindings."
+description ="Pydantic integration support for asic-rs Python bindings."
 
 [lints]
 workspace = true

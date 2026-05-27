@@ -3,7 +3,7 @@ name = "asic-rs-makes-whatsminer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Whatsminer hardware information for asic-rs"
+description ="Whatsminer hardware information for asic-rs"
 
 [lints]
 workspace = true

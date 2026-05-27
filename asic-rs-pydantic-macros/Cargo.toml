@@ -3,6 +3,9 @@ name = "asic-rs-pydantic-macros"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+keywords.workspace = true
 description = "Pydantic proc macros for asic-rs."
 
 [lib]

@@ -3,7 +3,7 @@ name = "asic-rs-makes-auradine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Auradine hardware information for asic-rs"
+description ="Auradine hardware information for asic-rs"
 
 [lints]
 workspace = true

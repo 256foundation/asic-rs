@@ -3,12 +3,29 @@ name = "asic-rs"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+keywords.workspace = true
 description = "Simple ASIC management in Rust"
 
 [workspace.package]
 version = "0.5.3"
 edition = "2024"
 license = "Apache-2.0"
+documentation = "https://256foundation.github.io/asic-rs"
+repository = "https://github.com/256foundation/asic-rs"
+keywords = [
+    "python",
+    "asic",
+    "bitcoin",
+    "whatsminer",
+    "antminer",
+    "braiins-os",
+    "vnish",
+    "luxos",
+    "bitaxe"
+]
+
 
 [workspace]
 members = [
