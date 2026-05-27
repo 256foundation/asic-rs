@@ -2,7 +2,8 @@
 site_name = "asic-rs"
 site_description = "Unified Rust and Python documentation for ASIC miner management."
 docs_dir = "docs"
-site_dir = "site"
+site_author = "256 Foundation"
+site_url = "https://256foundation.github.io/asic-rs"
 nav = [
   {"Home" = "index.md"},
   {"Getting Started" = "getting-started.md"},

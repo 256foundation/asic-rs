@@ -15,10 +15,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
       - name: Run doc2readme
-        uses: docker://codeberg.org/msrd0/cargo-doc2readme
+        uses: docker://codeberg.org/msrd0/cargo-doc2readme:nightly
         with:
           entrypoint: cargo
-          args: +nightly doc2readme --expand-macros
+          args: doc2readme --expand-macros
       - name: Commit updated README
         run: |
           git config user.name "github-actions[bot]"
