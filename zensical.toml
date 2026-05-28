@@ -7,6 +7,7 @@ site_url = "https://256foundation.github.io/asic-rs"
 nav = [
   {"Home" = "index.md"},
   {"Getting Started" = "getting-started.md"},
+  {"Supported Devices" = "supported-devices.md"},
   {"API Guide" = "api.md"},
   {"Development" = [
     {"Documentation Workflow" = "development/documentation.md"},
@@ -34,6 +35,7 @@ markdown_extensions = [
     "pymdownx.mark",
     "pymdownx.smartsymbols",
 ]
+extra_css = ["stylesheets/extra.css"]
 
 [project.theme]
 features = [

@@ -55,6 +55,11 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+      - id: supported-devices-docs
+        name: check supported devices docs
+        entry: python scripts/docs/gen_supported_devices.py
+        language: python
+        pass_filenames: false
       - id: python-test
         name: python tests
         entry: python scripts/run_python_tests.py
