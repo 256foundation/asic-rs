@@ -23,10 +23,10 @@ jobs:
         with:
           python-version: 3.x
       - name: Run Python tests
-        run: .venv/bin/python scripts/docs/gen_supported_devices.py
+        run: python scripts/docs/gen_supported_devices.py
       - name: Commit updated README/docs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add README.md
+          git add README.md docs/supported-devices.md
           git diff --cached --quiet || git commit -m "docs: update README" && git push
