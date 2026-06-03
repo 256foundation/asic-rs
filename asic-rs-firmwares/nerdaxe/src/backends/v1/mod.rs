@@ -249,7 +249,7 @@ impl GetControlBoardVersion for NerdAxeV1 {
 }
 impl GetHashboards for NerdAxeV1 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut board = BoardData::new(0, self.device_info.hardware.chips);
+        let mut board = BoardData::new(0, self.device_info.hardware.chips_for_board(0));
 
         let Some(api_data) = data.get(&DataField::Hashboards) else {
             return vec![board];

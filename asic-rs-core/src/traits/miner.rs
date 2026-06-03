@@ -292,16 +292,13 @@ impl<
             control_board_version,
 
             // Hashboard information
-            expected_hashboards: device_info.hardware.boards,
+            expected_hashboards: device_info.hardware.board_count(),
             hashboards,
             hashrate,
             expected_hashrate,
 
             // Chip information
-            expected_chips: match (device_info.hardware.chips, device_info.hardware.boards) {
-                (Some(chips), Some(boards)) => Some(chips * boards as u16),
-                _ => None,
-            },
+            expected_chips: device_info.hardware.total_chips(),
             total_chips,
 
             // Cooling information
@@ -378,7 +375,7 @@ pub trait GetDeviceInfo: Send + Sync {
 pub trait GetExpectedHashboards: GetDeviceInfo {
     #[allow(dead_code)]
     fn get_expected_hashboards(&self) -> Option<u8> {
-        self.get_device_info().hardware.boards
+        self.get_device_info().hardware.board_count()
     }
 }
 impl<T: GetDeviceInfo> GetExpectedHashboards for T {}
@@ -386,7 +383,7 @@ impl<T: GetDeviceInfo> GetExpectedHashboards for T {}
 pub trait GetExpectedChips: GetDeviceInfo {
     #[allow(dead_code)]
     fn get_expected_chips(&self) -> Option<u16> {
-        self.get_device_info().hardware.chips
+        self.get_device_info().hardware.total_chips()
     }
 }
 impl<T: GetDeviceInfo> GetExpectedChips for T {}

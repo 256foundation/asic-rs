@@ -10,14 +10,19 @@ impl From<EPicModel> for MinerHardware {
     fn from(value: EPicModel) -> Self {
         match value {
             EPicModel::BM520i => Self {
-                chips: Some(124),
                 fans: Some(4),
-                boards: Some(3),
+                boards: Some(vec![Some(124), Some(124), Some(124)]),
             },
             EPicModel::S19JProDual => Self {
-                chips: Some(126),
                 fans: Some(8),
-                boards: Some(6),
+                boards: Some(vec![
+                    Some(126),
+                    Some(126),
+                    Some(126),
+                    Some(126),
+                    Some(126),
+                    Some(126),
+                ]),
             },
             EPicModel::Unknown(_) => Default::default(),
         }

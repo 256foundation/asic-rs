@@ -343,9 +343,12 @@ impl GetControlBoardVersion for BraiinsV2503 {}
 
 impl GetHashboards for BraiinsV2503 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
-            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
-            .collect();
+        let mut hashboards: Vec<BoardData> =
+            (0..self.device_info.hardware.board_count().unwrap_or(0))
+                .map(|idx| {
+                    BoardData::new(idx, self.device_info.hardware.chips_for_board(idx as usize))
+                })
+                .collect();
 
         let Some(solvers_array) = data.get(&DataField::Hashboards).and_then(|v| v.as_array())
         else {

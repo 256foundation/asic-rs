@@ -72,24 +72,20 @@ impl From<NerdAxeModel> for MinerHardware {
     fn from(model: NerdAxeModel) -> Self {
         match model {
             NerdAxeModel::NerdAxe => Self {
-                chips: Some(1),
                 fans: Some(1),
-                boards: Some(1),
+                boards: Some(vec![Some(1)]),
             },
             NerdAxeModel::NerdQAxe => Self {
-                chips: Some(4),
                 fans: Some(1),
-                boards: Some(1),
+                boards: Some(vec![Some(4)]),
             },
             NerdAxeModel::NerdMiner => Self {
-                chips: Some(1),
                 fans: Some(1),
-                boards: Some(1),
+                boards: Some(vec![Some(1)]),
             },
             NerdAxeModel::NerdAxeUltra => Self {
-                chips: Some(1),
                 fans: Some(1),
-                boards: Some(1),
+                boards: Some(vec![Some(1)]),
             },
             NerdAxeModel::Unknown(_) => Default::default(),
         }

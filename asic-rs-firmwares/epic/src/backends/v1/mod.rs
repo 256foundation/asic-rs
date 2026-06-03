@@ -504,9 +504,12 @@ impl GetControlBoardVersion for PowerPlayV1 {
 
 impl GetHashboards for PowerPlayV1 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
-            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
-            .collect();
+        let mut hashboards: Vec<BoardData> =
+            (0..self.device_info.hardware.board_count().unwrap_or(0))
+                .map(|idx| {
+                    BoardData::new(idx, self.device_info.hardware.chips_for_board(idx as usize))
+                })
+                .collect();
 
         let Some(api_data) = data.get(&DataField::Hashboards) else {
             return hashboards;
@@ -516,7 +519,7 @@ impl GetHashboards for PowerPlayV1 {
             .pointer("/Capabilities/Performance Estimator/Chip Count")
             .and_then(|v| v.as_u64())
             .and_then(|chips| u16::try_from(chips).ok())
-            .or(self.device_info.hardware.chips);
+            .or_else(|| self.device_info.hardware.chips_for_board(0));
         let hashes_per_clock = api_data
             .pointer("/Capabilities/Performance Estimator/Hashes Per Second Per Chip")
             .and_then(|v| v.as_f64());

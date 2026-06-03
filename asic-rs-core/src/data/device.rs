@@ -6,10 +6,7 @@ use strum::{Display as StrumDisplay, EnumString};
 use crate::traits::{firmware::MinerFirmware, model::MinerModel};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[cfg_attr(
-    feature = "python",
-    pyclass(from_py_object, get_all, module = "asic_rs")
-)]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
 /// Static identity and hardware information for a miner model.
 pub struct DeviceInfo {
@@ -38,20 +35,63 @@ impl DeviceInfo {
     }
 }
 
-#[cfg_attr(
-    feature = "python",
-    pyclass(from_py_object, get_all, module = "asic_rs")
-)]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Default)]
 /// Expected hardware counts for a miner model.
 pub struct MinerHardware {
-    /// Expected number of chips.
-    pub chips: Option<u16>,
     /// Expected number of fans.
     pub fans: Option<u8>,
+    /// Expected hashboards, represented as the expected number of chips per board.
+    pub boards: Option<Vec<Option<u16>>>,
+}
+
+impl MinerHardware {
     /// Expected number of hashboards.
-    pub boards: Option<u8>,
+    pub fn board_count(&self) -> Option<u8> {
+        self.boards
+            .as_ref()
+            .and_then(|boards| u8::try_from(boards.len()).ok())
+    }
+
+    /// Expected total chip count across all hashboards.
+    pub fn total_chips(&self) -> Option<u16> {
+        self.boards
+            .as_ref()
+            .map(|boards| boards.iter().copied().flatten().sum())
+    }
+
+    /// Expected chip count for a specific hashboard position.
+    pub fn chips_for_board(&self, position: usize) -> Option<u16> {
+        self.boards
+            .as_ref()
+            .and_then(|boards| boards.get(position).copied().flatten())
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl MinerHardware {
+    #[getter]
+    pub fn fans(&self) -> Option<u8> {
+        self.fans
+    }
+
+    #[getter]
+    pub fn boards(&self) -> Option<Vec<Option<u16>>> {
+        self.boards.clone()
+    }
+
+    #[getter]
+    pub fn chips(&self) -> Option<u16> {
+        self.total_chips()
+    }
+
+    #[getter]
+    #[pyo3(name = "board_count")]
+    pub fn py_board_count(&self) -> Option<u8> {
+        self.board_count()
+    }
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]

@@ -8,14 +8,12 @@ impl From<BraiinsModel> for MinerHardware {
     fn from(value: BraiinsModel) -> Self {
         match value {
             BraiinsModel::BMM100 => Self {
-                chips: None,
                 fans: Some(1),
-                boards: Some(1),
+                boards: Some(vec![None]),
             },
             BraiinsModel::BMM101 => Self {
-                chips: None,
                 fans: Some(1),
-                boards: Some(1),
+                boards: Some(vec![None]),
             },
             BraiinsModel::Unknown(_) => Default::default(),
         }

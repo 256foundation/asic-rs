@@ -16,6 +16,7 @@ from pyasic_rs.data import (
     MinerComponent,
     MinerControlBoard,
     MinerData,
+    MinerHardware,
     MinerMessage,
     MiningMode,
 )
@@ -43,6 +44,10 @@ class ChipDataModel(BaseModel):
 
 class MinerDataModel(BaseModel):
     miner: MinerData
+
+
+class MinerHardwareModel(BaseModel):
+    hardware: MinerHardware
 
 
 class MinerControlBoardModel(BaseModel):
@@ -88,7 +93,7 @@ def minimal_miner_data(**overrides: object) -> dict[str, object]:
         "device_info": {
             "make": "test",
             "model": "test",
-            "hardware": {"chips": None, "fans": None, "boards": None},
+            "hardware": {"fans": None, "boards": None},
             "firmware": "test",
             "algo": "SHA256",
         },
@@ -177,7 +182,7 @@ def test_miner_data_repr_uses_pydantic_model_style() -> None:
             device_info={
                 "make": "test",
                 "model": "test",
-                "hardware": {"chips": 1, "fans": 2, "boards": 3},
+                "hardware": {"fans": 2, "boards": [1, 1, 1]},
                 "firmware": "test",
                 "algo": "SHA256",
             },
@@ -211,6 +216,33 @@ def test_miner_data_repr_uses_pydantic_model_style() -> None:
     assert "hashboards=[BoardData(" in model_repr
     assert "hashrate=HashRate(" in model_repr
     assert not model_repr.startswith("{")
+
+
+def test_miner_hardware_accepts_new_shape_and_keeps_compat_properties() -> None:
+    explicit = MinerHardwareModel.model_validate(
+        {"hardware": {"fans": 4, "boards": [60, 59, 60]}}
+    ).hardware
+
+    assert explicit.fans == 4
+    assert explicit.boards == 3
+    assert explicit.chips == 179
+    assert explicit.board_chips == [60, 59, 60]
+    assert explicit.model_dump() == {"fans": 4, "boards": [60, 59, 60]}
+
+    uniform = MinerHardwareModel.model_validate(
+        {"hardware": {"fans": 4, "boards": [60, 60, 60]}}
+    ).hardware
+
+    assert uniform.boards == 3
+    assert uniform.chips == 180
+    assert uniform.board_chips == [60, 60, 60]
+
+
+def test_miner_hardware_rejects_legacy_shape() -> None:
+    with pytest.raises(ValidationError):
+        MinerHardwareModel.model_validate(
+            {"hardware": {"fans": 4, "boards": 3, "chips": 60}}
+        )
 
 
 def test_miner_control_board_rejects_string_compat_shape() -> None:
@@ -671,7 +703,7 @@ def test_miner_data_accepts_hash_algorithm_name() -> None:
                 device_info={
                     "make": "test",
                     "model": "test",
-                    "hardware": {"chips": None, "fans": None, "boards": None},
+                    "hardware": {"fans": None, "boards": None},
                     "firmware": "test",
                     "algo": "SHA256",
                 }

@@ -459,7 +459,7 @@ impl GetHashboards for SealMinerV2025 {
                     board_temperature: board_temp,
                     intake_temperature: intake_temp,
                     outlet_temperature: outlet_temp,
-                    expected_chips: self.device_info.hardware.chips,
+                    expected_chips: self.device_info.hardware.chips_for_board(i),
                     working_chips,
                     serial_number: serial,
                     chips: vec![],

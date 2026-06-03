@@ -324,10 +324,12 @@ impl GetHashboards for VnishV120 {
         };
         let chip_chains = data.get(&DataField::Chips).and_then(|v| v.as_array());
 
-        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0)
-            as usize)
-            .map(|idx| BoardData::new(idx as u8, self.device_info.hardware.chips))
-            .collect();
+        let mut hashboards: Vec<BoardData> =
+            (0..self.device_info.hardware.board_count().unwrap_or(0) as usize)
+                .map(|idx| {
+                    BoardData::new(idx as u8, self.device_info.hardware.chips_for_board(idx))
+                })
+                .collect();
 
         // Both /summary and /chains endpoints are concatenated into all_chains.
         // Vnish chain IDs are 1-based; map to 0-based position by adding 1 when matching.

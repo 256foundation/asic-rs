@@ -8,9 +8,8 @@ impl From<SealMinerModel> for MinerHardware {
     fn from(value: SealMinerModel) -> Self {
         match &value {
             SealMinerModel::A2 => MinerHardware {
-                chips: Some(153),
                 fans: Some(4),
-                boards: Some(3),
+                boards: Some(vec![Some(153), Some(153), Some(153)]),
             },
             SealMinerModel::Unknown(_) => Default::default(),
         }

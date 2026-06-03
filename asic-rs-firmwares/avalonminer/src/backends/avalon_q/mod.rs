@@ -462,9 +462,12 @@ impl GetControlBoardVersion for AvalonQMiner {}
 
 impl GetHashboards for AvalonQMiner {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
-            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
-            .collect();
+        let mut hashboards: Vec<BoardData> =
+            (0..self.device_info.hardware.board_count().unwrap_or(0))
+                .map(|idx| {
+                    BoardData::new(idx, self.device_info.hardware.chips_for_board(idx as usize))
+                })
+                .collect();
 
         let hb_info = data.get(&DataField::Chips).and_then(|v| v.as_object());
         let summary = data

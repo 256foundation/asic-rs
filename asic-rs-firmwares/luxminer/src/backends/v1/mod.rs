@@ -651,8 +651,8 @@ impl GetFirmwareVersion for LuxMinerV1 {
 
 impl GetHashboards for LuxMinerV1 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut boards: Vec<BoardData> = (0..self.device_info.hardware.boards.unwrap_or(0))
-            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
+        let mut boards: Vec<BoardData> = (0..self.device_info.hardware.board_count().unwrap_or(0))
+            .map(|idx| BoardData::new(idx, self.device_info.hardware.chips_for_board(idx as usize)))
             .collect();
 
         let Some(api_data) = data.get(&DataField::Hashboards) else {
@@ -832,7 +832,7 @@ impl GetExpectedHashrate for LuxMinerV1 {
         let data = data
             .get(&DataField::ExpectedHashrate)
             .and_then(|v| v.as_array())?;
-        let expected_boards = self.device_info.hardware.boards.unwrap_or(3);
+        let expected_boards = self.device_info.hardware.board_count().unwrap_or(3);
 
         let mut expected_hashrate = 0.0;
 

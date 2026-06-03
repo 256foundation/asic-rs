@@ -626,13 +626,14 @@ impl GetHashboards for AuradineV1 {
                 u16::try_from(total_chips / total_boards).ok()
             });
 
-        let expected_chips = chips_per_board.or(self.device_info.hardware.chips);
+        let expected_chips =
+            chips_per_board.or_else(|| self.device_info.hardware.chips_for_board(0));
         let expected_boards = api_data
             .and_then(|count_data| count_data.get("asccount"))
             .and_then(|count| count.get("BoardCount"))
             .and_then(Value::as_u64)
             .and_then(|count| u8::try_from(count).ok())
-            .or(self.device_info.hardware.boards);
+            .or_else(|| self.device_info.hardware.board_count());
 
         let mut board_count = expected_boards.unwrap_or(0);
         let Some(api_data) = api_data else {

@@ -8,20 +8,17 @@ impl From<AuradineModel> for MinerHardware {
     fn from(model: AuradineModel) -> Self {
         match model {
             AuradineModel::AT2880 => Self {
-                chips: Some(138),
                 fans: Some(4),
-                boards: Some(3),
+                boards: Some(vec![Some(138), Some(138), Some(138)]),
             },
             AuradineModel::AT1500 => Self {
-                chips: Some(132),
                 fans: Some(4),
-                boards: Some(3),
+                boards: Some(vec![Some(132), Some(132), Some(132)]),
             },
             AuradineModel::Unknown(_)
             | AuradineModel::AI2500
             | AuradineModel::AI3680
             | AuradineModel::AH3880 => Self {
-                chips: None,
                 fans: None,
                 boards: None,
             },
