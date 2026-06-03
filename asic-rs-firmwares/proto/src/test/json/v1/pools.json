@@ -1,0 +1,30 @@
+{
+  "pools": [
+    {
+      "id": 0,
+      "priority": 0,
+      "name": "Primary Pool",
+      "url": "stratum+tcp://pool-a.example.com:3333",
+      "user": "worker-a",
+      "status": "Active",
+      "accepted_shares": 12345,
+      "rejected_shares": 10,
+      "difficulty": "1048576",
+      "enabled": true,
+      "connection_status": "Active"
+    },
+    {
+      "id": 1,
+      "priority": 1,
+      "name": "Backup Pool",
+      "url": "stratum+tcp://pool-b.example.com:4444",
+      "user": "worker-b",
+      "status": "Active",
+      "accepted_shares": 12345,
+      "rejected_shares": 10,
+      "difficulty": "1048576",
+      "enabled": true,
+      "connection_status": "Active"
+    }
+  ]
+}

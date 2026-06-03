@@ -196,6 +196,11 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
         asic_rs_firmwares_nerdaxe::firmware::NerdAxeFirmware::default(),
     ));
 
+    #[cfg(feature = "proto")]
+    registry.push(Arc::new(
+        asic_rs_firmwares_proto::firmware::ProtoFirmware::default(),
+    ));
+
     #[cfg(feature = "bitaxe")]
     registry.push(Arc::new(
         asic_rs_firmwares_bitaxe::firmware::BitaxeFirmware::default(),

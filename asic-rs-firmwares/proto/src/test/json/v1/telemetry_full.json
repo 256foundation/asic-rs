@@ -1,0 +1,195 @@
+{
+  "timestamp": "2026-05-27T22:50:24Z",
+  "miner": {
+    "hashrate": {
+      "value": 135.47567610136747,
+      "unit": "TH/s"
+    },
+    "temperature": {
+      "value": 54.138217397149354,
+      "unit": "°C"
+    },
+    "power": {
+      "value": 3466.397308943879,
+      "unit": "W"
+    },
+    "efficiency": {
+      "value": 24.022422843575338,
+      "unit": "J/TH"
+    }
+  },
+  "hashboards": [
+    {
+      "index": 0,
+      "serial_number": "HB-PROTO-SIM-b6bdaf86-0",
+      "hashrate": {
+        "value": 36.44848053006888,
+        "unit": "TH/s"
+      },
+      "temperature": {
+        "unit": "°C",
+        "inlet": 41.257896451539054,
+        "outlet": 55.241942214972724,
+        "average": 48.43489937831655
+      },
+      "power": {
+        "value": 889.0357387674567,
+        "unit": "W"
+      },
+      "efficiency": {
+        "value": 24.36006310152951,
+        "unit": "J/TH"
+      },
+      "voltage": {
+        "value": 14.555635532845155,
+        "unit": "V"
+      },
+      "current": {
+        "value": 59.466562509735965,
+        "unit": "A"
+      }
+    },
+    {
+      "index": 1,
+      "serial_number": "HB-PROTO-SIM-b6bdaf86-1",
+      "hashrate": {
+        "value": 33.618811133184686,
+        "unit": "TH/s"
+      },
+      "temperature": {
+        "unit": "°C",
+        "inlet": 38.73552243664069,
+        "outlet": 54.978843834992624,
+        "average": 45.58085180490902
+      },
+      "power": {
+        "value": 848.0138124996449,
+        "unit": "W"
+      },
+      "efficiency": {
+        "value": 24.65931702750459,
+        "unit": "J/TH"
+      },
+      "voltage": {
+        "value": 13.950899775445338,
+        "unit": "V"
+      },
+      "current": {
+        "value": 58.4492998104455,
+        "unit": "A"
+      }
+    },
+    {
+      "index": 2,
+      "serial_number": "HB-PROTO-SIM-b6bdaf86-2",
+      "hashrate": {
+        "value": 35.78954003202982,
+        "unit": "TH/s"
+      },
+      "temperature": {
+        "unit": "°C",
+        "inlet": 38.642894869829554,
+        "outlet": 55.43768806658174,
+        "average": 46.45892698177783
+      },
+      "power": {
+        "value": 823.2936544016345,
+        "unit": "W"
+      },
+      "efficiency": {
+        "value": 25.286276331519883,
+        "unit": "J/TH"
+      },
+      "voltage": {
+        "value": 14.51321581261823,
+        "unit": "V"
+      },
+      "current": {
+        "value": 55.71583235754505,
+        "unit": "A"
+      }
+    },
+    {
+      "index": 3,
+      "serial_number": "HB-PROTO-SIM-b6bdaf86-3",
+      "hashrate": {
+        "value": 36.166744497811905,
+        "unit": "TH/s"
+      },
+      "temperature": {
+        "unit": "°C",
+        "inlet": 39.25599482703729,
+        "outlet": 53.387135818884865,
+        "average": 47.795184450368396
+      },
+      "power": {
+        "value": 889.0038420518491,
+        "unit": "W"
+      },
+      "efficiency": {
+        "value": 24.784206267270207,
+        "unit": "J/TH"
+      },
+      "voltage": {
+        "value": 14.461652906814546,
+        "unit": "V"
+      },
+      "current": {
+        "value": 56.697755131020855,
+        "unit": "A"
+      }
+    }
+  ],
+  "psus": [
+    {
+      "index": 0,
+      "serial_number": "PSU-PROTO-SIM-b6bdaf86-0",
+      "voltage": {
+        "input": 230.96996200756033,
+        "output": 14.072572063943188,
+        "unit": "V"
+      },
+      "current": {
+        "input": 7.386563362447679,
+        "output": 122.24137352737911,
+        "unit": "A"
+      },
+      "power": {
+        "input": 1774.4900359549026,
+        "output": 1616.3187995506262,
+        "unit": "W"
+      },
+      "temperature": {
+        "ambient": 30.382706638883114,
+        "average": 37.901950839067965,
+        "hotspot": 45.42119503925281,
+        "unit": "°C"
+      }
+    },
+    {
+      "index": 1,
+      "serial_number": "PSU-PROTO-SIM-b6bdaf86-1",
+      "voltage": {
+        "input": 233.4886910273243,
+        "output": 14.689591787501492,
+        "unit": "V"
+      },
+      "current": {
+        "input": 7.485816654669241,
+        "output": 114.93642400933221,
+        "unit": "A"
+      },
+      "power": {
+        "input": 1751.847016486352,
+        "output": 1647.885525596383,
+        "unit": "W"
+      },
+      "temperature": {
+        "ambient": 31.196655626732856,
+        "average": 39.03910900041686,
+        "hotspot": 46.88156237410087,
+        "unit": "°C"
+      }
+    }
+  ]
+}

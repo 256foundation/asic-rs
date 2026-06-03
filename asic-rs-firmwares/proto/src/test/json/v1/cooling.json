@@ -1,0 +1,1 @@
+{"cooling-status":{"fan_mode":"Auto","speed_percentage":60,"target_temperature_c":50,"fans":[{"slot":1,"rpm":4346,"speed_percentage":60},{"slot":2,"rpm":4691,"speed_percentage":60},{"slot":3,"rpm":4658,"speed_percentage":60},{"slot":4,"rpm":4443,"speed_percentage":60}]}}

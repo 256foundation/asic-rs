@@ -22,6 +22,8 @@ pub use asic_rs_firmwares_luxminer as luxminer;
 pub use asic_rs_firmwares_marathon as marathon;
 #[cfg(feature = "nerdaxe")]
 pub use asic_rs_firmwares_nerdaxe as nerdaxe;
+#[cfg(feature = "proto")]
+pub use asic_rs_firmwares_proto as proto;
 #[cfg(feature = "vnish")]
 pub use asic_rs_firmwares_vnish as vnish;
 #[cfg(feature = "whatsminer")]
