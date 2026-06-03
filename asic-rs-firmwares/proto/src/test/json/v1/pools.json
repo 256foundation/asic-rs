@@ -7,8 +7,8 @@
       "url": "stratum+tcp://pool-a.example.com:3333",
       "user": "worker-a",
       "status": "Active",
-      "accepted_shares": 12345,
-      "rejected_shares": 10,
+      "accepted": 12345,
+      "rejected": 10,
       "difficulty": "1048576",
       "enabled": true,
       "connection_status": "Active"
@@ -20,8 +20,8 @@
       "url": "stratum+tcp://pool-b.example.com:4444",
       "user": "worker-b",
       "status": "Active",
-      "accepted_shares": 12345,
-      "rejected_shares": 10,
+      "accepted": 12345,
+      "rejected": 10,
       "difficulty": "1048576",
       "enabled": true,
       "connection_status": "Active"

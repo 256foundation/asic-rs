@@ -61,9 +61,7 @@ impl ProtoV1 {
         let web = ProtoWebAPI::new(ip, auth.clone());
         let mut device_info =
             DeviceInfo::new(model, ProtoFirmware::default(), HashAlgorithm::SHA256);
-        // A Proto rig's layout is discovered from the device (see
-        // `discover_hardware`), not derived from the model, so override the
-        // model's empty default with the discovered shape.
+        // Layout is discovered from the device, not model-derived.
         device_info.hardware = hardware;
         Self {
             ip,
@@ -73,12 +71,8 @@ impl ProtoV1 {
         }
     }
 
-    /// Discover the rig's hardware layout from `/api/v1/hardware`.
-    ///
-    /// Called during discovery (from `build_miner`) so the layout can be passed
-    /// into the constructor. The hardware endpoint is authenticated, so the
-    /// resolved credentials are required. Returns an empty layout if the device
-    /// can't be reached or doesn't report one.
+    /// Discover the hardware layout from the authenticated `/api/v1/hardware`
+    /// endpoint; empty if unreachable.
     pub async fn discover_hardware(ip: IpAddr, auth: &MinerAuth) -> MinerHardware {
         const WEB_HARDWARE: MinerCommand = MinerCommand::WebAPI {
             command: "/api/v1/hardware",
@@ -91,13 +85,8 @@ impl ProtoV1 {
         }
     }
 
-    /// Derive the expected hardware shape from a `/api/v1/hardware` response.
-    ///
-    /// A Proto rig is heterogeneous and hot-swappable, so board, chip, and fan
-    /// counts are read from the device rather than hardcoded per model. Boards
-    /// may differ from one another; per-board chip counts are still captured
-    /// individually on each `BoardData`, so the model-level `chips` here is the
-    /// representative (largest) per-board count used for expected-chip totals.
+    /// Parse board/fan counts from a `/api/v1/hardware` response. `boards` is the
+    /// highest slot number (chassis capacity), since slots can be sparse.
     fn hardware_from_response(hardware: &Value) -> MinerHardware {
         let boards = hardware
             .pointer("/hardware-info/hashboards-info")
@@ -107,13 +96,18 @@ impl ProtoV1 {
             .and_then(Value::as_array);
 
         MinerHardware {
-            boards: boards.map(|b| b.len() as u8),
-            chips: boards.and_then(|b| {
+            boards: boards.and_then(|b| {
                 b.iter()
-                    .filter_map(|board| board.get("mining_asic_count").and_then(Value::as_u64))
+                    .filter_map(|board| board.get("slot").and_then(Value::as_u64))
                     .max()
-                    .map(|chips| chips as u16)
+                    .or(Some(b.len() as u64))
+                    .map(|count| count as u8)
             }),
+            // TODO: rigs are heterogeneous/sparse, so a single model-level chip
+            // count can't represent them and the core's `chips * boards` would
+            // misreport. Left None for now; real counts are per-`BoardData` and
+            // the working total is in `total_chips`.
+            chips: None,
             fans: fans.map(|f| f.len() as u8),
         }
     }
@@ -210,9 +204,7 @@ impl GetDataLocations for ProtoV1 {
             command: "/api/v1/errors",
             parameters: None,
         };
-        // Telemetry is a read-only GET whose `level` filter rides as a URL query
-        // parameter, so it carries `parameters` and can't be a `const` like the
-        // others.
+        // Carries a query param, so it's a `let`, not a `const` like the others.
         let web_telemetry_full = MinerCommand::WebAPI {
             command: "/api/v1/telemetry",
             parameters: Some(json!({ "level": "miner,hashboard,psu" })),
@@ -223,7 +215,7 @@ impl GetDataLocations for ProtoV1 {
                 WEB_NETWORK,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/network-info/mac_address"),
+                    key: Some("/network-info/mac"),
                     tag: None,
                 },
             )],
@@ -437,14 +429,8 @@ impl GetControlBoardVersion for ProtoV1 {
 #[async_trait]
 impl GetHashboards for ProtoV1 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let mut hashboards: Vec<BoardData> =
-            (0..self.device_info.hardware.boards.unwrap_or_default())
-                .map(|idx| BoardData::new(idx, self.device_info.hardware.chips))
-                .collect();
-
-        let hashboards_payload = match data.get(&DataField::Hashboards) {
-            Some(payload) => payload,
-            None => return hashboards,
+        let Some(hashboards_payload) = data.get(&DataField::Hashboards) else {
+            return Vec::new();
         };
         let hardware_boards = hashboards_payload
             .get("hardware")
@@ -468,45 +454,34 @@ impl GetHashboards for ProtoV1 {
             .and_then(Value::as_u64);
 
         let board_count = hardware_boards.len().max(1) as f64;
-        let required_board_count = self
-            .device_info
-            .hardware
-            .boards
-            .unwrap_or(hardware_boards.len() as u8)
-            .max(hardware_boards.len() as u8) as usize;
-        if hashboards.len() < required_board_count {
-            hashboards.extend(
-                (hashboards.len()..required_board_count)
-                    .map(|idx| BoardData::new(idx as u8, self.device_info.hardware.chips)),
-            );
-        }
 
-        for (idx, board) in hardware_boards.iter().enumerate() {
-            let slot = board
-                .get("slot")
-                .and_then(Value::as_u64)
-                .unwrap_or((idx + 1) as u64)
-                .saturating_sub(1) as usize;
-            let Some(hashboard) = hashboards.get_mut(slot) else {
-                continue;
-            };
-
-            hashboard.expected_chips = board
-                .get("mining_asic_count")
-                .and_then(Value::as_u64)
-                .map(|v| v as u16)
-                .or(hashboard.expected_chips);
-            hashboard.working_chips = board
-                .get("mining_asic_count")
-                .and_then(Value::as_u64)
-                .map(|v| v as u16)
-                .or(hashboard.working_chips);
-            hashboard.serial_number = board
-                .get("hb_sn")
-                .and_then(Value::as_str)
-                .map(ToOwned::to_owned)
-                .or_else(|| hashboard.serial_number.clone());
-        }
+        // Only populated slots are reported, positioned by slot, so a sparse
+        // chassis (e.g. slots 1,3,4,6,7,9) yields just those boards.
+        let mut hashboards: Vec<BoardData> = hardware_boards
+            .iter()
+            .enumerate()
+            .map(|(idx, board)| {
+                let slot = board
+                    .get("slot")
+                    .and_then(Value::as_u64)
+                    .unwrap_or((idx + 1) as u64);
+                let asic_count = board
+                    .get("mining_asic_count")
+                    .and_then(Value::as_u64)
+                    .map(|v| v as u16);
+                let mut hashboard = BoardData::new(
+                    slot.saturating_sub(1) as u8,
+                    self.device_info.hardware.chips,
+                );
+                hashboard.expected_chips = asic_count.or(hashboard.expected_chips);
+                hashboard.working_chips = asic_count;
+                hashboard.serial_number = board
+                    .get("hb_sn")
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned);
+                hashboard
+            })
+            .collect();
 
         for board in &mut hashboards {
             let telemetry = board
@@ -632,8 +607,7 @@ impl GetTuningTarget for ProtoV1 {
     }
 }
 
-// The Proto API has no endpoint reporting locate-LED state, so light flashing
-// stays unreported (set-only via SetFaultLight).
+// No endpoint reports locate-LED state, so it's set-only.
 impl GetLightFlashing for ProtoV1 {}
 
 /// Map a Proto error `source` (plus its slot) onto the shared component type.
@@ -660,9 +634,7 @@ impl GetMessages for ProtoV1 {
             .map(|item| {
                 let source = item.get("source").and_then(Value::as_str).unwrap_or("rig");
                 let slot = item.get("slot").and_then(Value::as_u64).unwrap_or_default();
-                // error_code may arrive as a JSON number or a numeric string;
-                // keep it in the structured `code` field (0 if non-numeric)
-                // rather than packing it into the message text.
+                // Structured code (0 if non-numeric), not packed into the text.
                 let code = item
                     .get("error_code")
                     .and_then(|c| c.as_u64().or_else(|| c.as_str()?.parse().ok()))
@@ -720,8 +692,8 @@ impl GetPools for ProtoV1 {
                     .get("url")
                     .and_then(Value::as_str)
                     .map(|raw| PoolURL::from(raw.to_string())),
-                accepted_shares: pool.get("accepted_shares").and_then(Value::as_u64),
-                rejected_shares: pool.get("rejected_shares").and_then(Value::as_u64),
+                accepted_shares: pool.get("accepted").and_then(Value::as_u64),
+                rejected_shares: pool.get("rejected").and_then(Value::as_u64),
                 active: pool
                     .get("status")
                     .and_then(Value::as_str)
@@ -752,9 +724,8 @@ impl GetPools for ProtoV1 {
 #[async_trait]
 impl SetFaultLight for ProtoV1 {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
-        // Proto's locate endpoint only flashes the LED for a fixed duration
-        // and auto-expires; there is no way to turn it off early. So enabling
-        // flashes the light, and disabling is a no-op.
+        // The locate LED auto-expires and can't be turned off early; disabling
+        // is a no-op.
         if fault {
             self.web.locate().await?;
         }
@@ -1024,7 +995,7 @@ mod tests {
         test::api::MockAPIClient,
         traits::{
             identification::{FirmwareIdentification, WebResponse},
-            miner::{GetHashboards, GetMinerData},
+            miner::{GetHashboards, GetMessages, GetMinerData},
         },
     };
     use serde_json::{Value, json};
@@ -1074,8 +1045,7 @@ mod tests {
 
     #[test]
     fn identify_web_matches_dashboard_root() {
-        // Discovery identifies Proto from the web dashboard served at `/`; the
-        // page title carries the firmware marker.
+        // Identify from the dashboard `/` page title.
         let root_page =
             r#"<!doctype html><html><head><title>Proto OS</title></head><body></body></html>"#;
         let web = WebResponse {
@@ -1087,7 +1057,7 @@ mod tests {
         };
 
         assert!(ProtoFirmware::default().identify_web(&web));
-        // The system JSON is not the discovery response and must not match.
+        // The system JSON must not match.
         let system = WebResponse {
             body: SYSTEM,
             auth_header: "",
@@ -1100,8 +1070,7 @@ mod tests {
 
     #[tokio::test]
     async fn parse_data_test_proto_rig() -> Result<()> {
-        // The rig's shape is discovered from the hardware response and passed
-        // into the constructor rather than hardcoded; mirror that here.
+        // Hardware shape is discovered and passed into the constructor.
         let miner = ProtoV1::new(
             IpAddr::from([127, 0, 0, 1]),
             asic_rs_makes_proto::models::ProtoModel::Rig,
@@ -1110,7 +1079,8 @@ mod tests {
         );
         assert_eq!(miner.device_info.hardware.boards, Some(4));
         assert_eq!(miner.device_info.hardware.fans, Some(4));
-        assert_eq!(miner.device_info.hardware.chips, Some(120));
+        // chips is intentionally None at the model level (see hardware_from_response).
+        assert_eq!(miner.device_info.hardware.chips, None);
 
         let mock_api = MockAPIClient::new(command_results());
 
@@ -1139,10 +1109,17 @@ mod tests {
         let parsed = miner.parse_data(data);
 
         assert_eq!(parsed.hostname.as_deref(), Some("proto-miner-af86"));
+        assert_eq!(
+            parsed.mac.map(|m| m.to_string()),
+            Some("02:00:00:AD:66:39".to_string())
+        );
         assert_eq!(parsed.serial_number.as_deref(), Some("PROTO-SIM-b6bdaf86"));
         assert_eq!(parsed.expected_hashboards, Some(4));
         assert_eq!(parsed.expected_fans, Some(4));
-        assert_eq!(parsed.expected_chips, Some(480));
+        // Model-level chips is None, so the core's chips*boards aggregate is None;
+        // the real counts live per-board and in total_chips.
+        assert_eq!(parsed.expected_chips, None);
+        assert_eq!(parsed.total_chips, Some(480));
         assert_eq!(parsed.hashboards.len(), 4);
         assert!(parsed.hashboards[0].chips.is_empty());
         assert_eq!(
@@ -1227,21 +1204,38 @@ mod tests {
                 > 100.0
         );
         assert!(parsed.wattage.expect("wattage").as_watts() > 3000.0);
-
-        // Messages carry a structured code + component, not a packed string.
-        assert_eq!(parsed.messages.len(), 2);
-        assert_eq!(parsed.messages[0].code, 1024);
-        assert_eq!(parsed.messages[0].message, "Hashboard 2 over temperature");
-        assert_eq!(
-            parsed.messages[0].component,
-            Some(MinerComponent::hashboard(2))
-        );
-        // A non-numeric error_code falls back to 0 in the structured field.
-        assert_eq!(parsed.messages[1].code, 0);
-        assert_eq!(
-            parsed.messages[1].component,
-            Some(MinerComponent::power_supply(0))
-        );
         Ok(())
+    }
+
+    #[test]
+    fn parse_messages_maps_component_and_code() {
+        // Shaped per the MDK `NotificationError` schema (error_code is a
+        // string); a healthy rig returns `[]`, so drive the parser directly.
+        let miner = ProtoV1::new(
+            IpAddr::from([127, 0, 0, 1]),
+            asic_rs_makes_proto::models::ProtoModel::Rig,
+            None,
+            MinerHardware::default(),
+        );
+        let mut data = HashMap::new();
+        data.insert(
+            DataField::Messages,
+            json!([
+                {"source": "hashboard", "slot": 2, "error_code": "1024",
+                 "message": "Hashboard 2 over temperature", "timestamp": 1718000000},
+                {"source": "psu", "slot": 0, "error_code": "PSU_FAULT",
+                 "message": "PSU voltage out of range", "timestamp": 1718000100}
+            ]),
+        );
+
+        let messages = miner.parse_messages(&data);
+        assert_eq!(messages.len(), 2);
+        // Numeric code kept structured; component derived from source/slot.
+        assert_eq!(messages[0].code, 1024);
+        assert_eq!(messages[0].message, "Hashboard 2 over temperature");
+        assert_eq!(messages[0].component, Some(MinerComponent::hashboard(2)));
+        // Non-numeric error_code can't fit u64 `code`, so it's 0.
+        assert_eq!(messages[1].code, 0);
+        assert_eq!(messages[1].component, Some(MinerComponent::power_supply(0)));
     }
 }

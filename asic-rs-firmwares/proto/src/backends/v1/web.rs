@@ -28,7 +28,9 @@ impl ProtoWebAPI {
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
         Self {
             ip,
-            port: 8080,
+            // Real rigs serve the API on the standard web port; :8080 is the
+            // simulator's port per the MDK spec.
+            port: 80,
             client: OnceCell::new(),
             timeout: Duration::from_secs(5),
             token: RwLock::new(None),
@@ -66,9 +68,14 @@ impl ProtoWebAPI {
         if self.token.read().await.is_some() {
             return Ok(());
         }
-
+        // Single-flight: hold the write lock across login so concurrent cold
+        // callers share one login instead of storming the rig.
+        let mut guard = self.token.write().await;
+        if guard.is_some() {
+            return Ok(());
+        }
         let token = self.authenticate().await?;
-        *self.token.write().await = Some(token);
+        *guard = Some(token);
         Ok(())
     }
 

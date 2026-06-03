@@ -1,16 +1,1 @@
-[
-  {
-    "source": "hashboard",
-    "slot": 2,
-    "error_code": 1024,
-    "message": "Hashboard 2 over temperature",
-    "timestamp": 1718000000
-  },
-  {
-    "source": "psu",
-    "slot": 0,
-    "error_code": "PSU_FAULT",
-    "message": "PSU voltage out of range",
-    "timestamp": 1718000100
-  }
-]
+[]

@@ -19,11 +19,7 @@ use asic_rs_makes_proto::make::ProtoMake;
 use async_trait::async_trait;
 use serde_json::Value;
 
-// Discovery identifies Proto from its web dashboard on port 80 (the shared
-// `HTTP_WEB_ROOT` path), but the JSON API — including the system endpoint that
-// backs model/version lookups — is served on 8080, so that port is part of the
-// path used after identification.
-const WEB_SYSTEM: &str = ":8080/api/v1/system";
+const WEB_SYSTEM: &str = "/api/v1/system";
 
 #[derive(Default, Debug)]
 pub struct ProtoFirmware {}
@@ -54,8 +50,6 @@ impl MinerFirmware for ProtoFirmware {
             .pointer("/system-info/model")
             .and_then(Value::as_str)
             .ok_or(ModelSelectionError::UnexpectedModelResponse)?;
-        // `ProtoModel::from_str` normalizes (trims/uppercases) the value, so
-        // hand it the raw model string as-is.
         ProtoMake::parse_model(model.to_string())
     }
 
@@ -89,11 +83,8 @@ impl FirmwareEntry for ProtoFirmware {
     ) -> Result<Box<dyn Miner>, ModelSelectionError> {
         let model = ProtoFirmware::get_model(ip).await?;
         let version = ProtoFirmware::get_version(ip).await;
-        // Proto rigs are heterogeneous and hot-swappable, so the board/chip/fan
-        // layout can't be derived from the model. Discover it from the device
-        // here, as part of discovery, and pass it into the miner rather than
-        // mutating the constructed miner afterward. The hardware endpoint is
-        // authenticated, so use the resolved credentials.
+        // Rig hardware is hot-swappable, so discover the layout during discovery
+        // and pass it in. The hardware endpoint needs auth.
         let default = crate::backends::ProtoV1::default_auth();
         let resolved = auth.unwrap_or(&default);
         let hardware = crate::backends::ProtoV1::discover_hardware(ip, resolved).await;
