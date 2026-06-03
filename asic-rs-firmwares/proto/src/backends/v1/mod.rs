@@ -21,7 +21,7 @@ use asic_rs_core::{
         device::{DeviceInfo, HashAlgorithm, MinerHardware},
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
-        message::{MessageSeverity, MinerMessage},
+        message::{MessageSeverity, MinerComponent, MinerMessage},
         miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
@@ -31,6 +31,7 @@ use asic_rs_core::{
         model::MinerModel,
     },
 };
+use asic_rs_makes_proto::hardware::ProtoControlBoard;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Power, Temperature};
@@ -41,16 +42,6 @@ use crate::firmware::ProtoFirmware;
 
 pub mod web;
 
-// Telemetry is a read-only GET, so the `level` filter is passed as a URL query
-// parameter rather than baked into the command path. It carries parameters, so
-// it can't be a `const` like the other endpoint commands.
-fn web_telemetry_full() -> MinerCommand {
-    MinerCommand::WebAPI {
-        command: "/api/v1/telemetry",
-        parameters: Some(json!({ "level": "miner,hashboard,psu" })),
-    }
-}
-
 #[derive(Debug)]
 pub struct ProtoV1 {
     ip: IpAddr,
@@ -60,14 +51,43 @@ pub struct ProtoV1 {
 }
 
 impl ProtoV1 {
-    pub fn new(ip: IpAddr, model: impl MinerModel, _version: Option<semver::Version>) -> Self {
+    pub fn new(
+        ip: IpAddr,
+        model: impl MinerModel,
+        _version: Option<semver::Version>,
+        hardware: MinerHardware,
+    ) -> Self {
         let auth = Self::default_auth();
         let web = ProtoWebAPI::new(ip, auth.clone());
+        let mut device_info =
+            DeviceInfo::new(model, ProtoFirmware::default(), HashAlgorithm::SHA256);
+        // A Proto rig's layout is discovered from the device (see
+        // `discover_hardware`), not derived from the model, so override the
+        // model's empty default with the discovered shape.
+        device_info.hardware = hardware;
         Self {
             ip,
             auth,
-            device_info: DeviceInfo::new(model, ProtoFirmware::default(), HashAlgorithm::SHA256),
+            device_info,
             web,
+        }
+    }
+
+    /// Discover the rig's hardware layout from `/api/v1/hardware`.
+    ///
+    /// Called during discovery (from `build_miner`) so the layout can be passed
+    /// into the constructor. The hardware endpoint is authenticated, so the
+    /// resolved credentials are required. Returns an empty layout if the device
+    /// can't be reached or doesn't report one.
+    pub async fn discover_hardware(ip: IpAddr, auth: &MinerAuth) -> MinerHardware {
+        const WEB_HARDWARE: MinerCommand = MinerCommand::WebAPI {
+            command: "/api/v1/hardware",
+            parameters: None,
+        };
+        let web = ProtoWebAPI::new(ip, auth.clone());
+        match web.get_api_result(&WEB_HARDWARE).await {
+            Ok(hardware) => Self::hardware_from_response(&hardware),
+            Err(_) => MinerHardware::default(),
         }
     }
 
@@ -95,28 +115,6 @@ impl ProtoV1 {
                     .map(|chips| chips as u16)
             }),
             fans: fans.map(|f| f.len() as u8),
-        }
-    }
-
-    /// Query the rig for its current hardware layout and refresh the cached
-    /// device info. Safe to call again later to pick up hot-swapped boards.
-    pub async fn refresh_hardware(&mut self) {
-        const WEB_HARDWARE: MinerCommand = MinerCommand::WebAPI {
-            command: "/api/v1/hardware",
-            parameters: None,
-        };
-        if let Ok(hardware) = self.web.get_api_result(&WEB_HARDWARE).await {
-            let discovered = Self::hardware_from_response(&hardware);
-            // Only overwrite fields the device actually reported.
-            if discovered.boards.is_some() {
-                self.device_info.hardware.boards = discovered.boards;
-            }
-            if discovered.chips.is_some() {
-                self.device_info.hardware.chips = discovered.chips;
-            }
-            if discovered.fans.is_some() {
-                self.device_info.hardware.fans = discovered.fans;
-            }
         }
     }
 }
@@ -212,6 +210,13 @@ impl GetDataLocations for ProtoV1 {
             command: "/api/v1/errors",
             parameters: None,
         };
+        // Telemetry is a read-only GET whose `level` filter rides as a URL query
+        // parameter, so it carries `parameters` and can't be a `const` like the
+        // others.
+        let web_telemetry_full = MinerCommand::WebAPI {
+            command: "/api/v1/telemetry",
+            parameters: Some(json!({ "level": "miner,hashboard,psu" })),
+        };
 
         match data_field {
             DataField::Mac => vec![(
@@ -280,7 +285,7 @@ impl GetDataLocations for ProtoV1 {
                     },
                 ),
                 (
-                    web_telemetry_full(),
+                    web_telemetry_full.clone(),
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/hashboards"),
@@ -289,7 +294,7 @@ impl GetDataLocations for ProtoV1 {
                 ),
             ],
             DataField::Hashrate => vec![(
-                web_telemetry_full(),
+                web_telemetry_full.clone(),
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/hashrate/value"),
@@ -313,7 +318,7 @@ impl GetDataLocations for ProtoV1 {
                 },
             )],
             DataField::Wattage => vec![(
-                web_telemetry_full(),
+                web_telemetry_full,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/power/value"),
@@ -424,7 +429,8 @@ impl GetControlBoardVersion for ProtoV1 {
         &self,
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
-        data.extract_map::<String, _>(DataField::ControlBoardVersion, MinerControlBoard::known)
+        data.extract::<String>(DataField::ControlBoardVersion)
+            .and_then(|s| ProtoControlBoard::parse(&s).map(Into::into))
     }
 }
 
@@ -630,6 +636,20 @@ impl GetTuningTarget for ProtoV1 {
 // stays unreported (set-only via SetFaultLight).
 impl GetLightFlashing for ProtoV1 {}
 
+/// Map a Proto error `source` (plus its slot) onto the shared component type.
+fn message_component(source: &str, slot: u64) -> Option<MinerComponent> {
+    let idx = slot as u16;
+    match source.trim().to_ascii_lowercase().as_str() {
+        "hashboard" | "hb" => Some(MinerComponent::hashboard(idx)),
+        "fan" => Some(MinerComponent::fan(idx)),
+        "psu" | "power" | "power_supply" | "powersupply" => Some(MinerComponent::power_supply(idx)),
+        "controlboard" | "control_board" | "control" | "cb" => {
+            Some(MinerComponent::control_board())
+        }
+        _ => None,
+    }
+}
+
 impl GetMessages for ProtoV1 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         data.get(&DataField::Messages)
@@ -640,22 +660,28 @@ impl GetMessages for ProtoV1 {
             .map(|item| {
                 let source = item.get("source").and_then(Value::as_str).unwrap_or("rig");
                 let slot = item.get("slot").and_then(Value::as_u64).unwrap_or_default();
-                let code_str = item
+                // error_code may arrive as a JSON number or a numeric string;
+                // keep it in the structured `code` field (0 if non-numeric)
+                // rather than packing it into the message text.
+                let code = item
                     .get("error_code")
-                    .and_then(Value::as_str)
-                    .unwrap_or("0")
-                    .to_string();
+                    .and_then(|c| c.as_u64().or_else(|| c.as_str()?.parse().ok()))
+                    .unwrap_or_default();
                 let message = item
                     .get("message")
                     .and_then(Value::as_str)
-                    .unwrap_or_default();
-                MinerMessage::new(
-                    item.get("timestamp")
-                        .and_then(Value::as_u64)
-                        .unwrap_or_default() as u32,
-                    0,
-                    format!("{source}:{slot} {code_str} {message}"),
+                    .unwrap_or_default()
+                    .to_string();
+                let timestamp = item
+                    .get("timestamp")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default() as u32;
+                MinerMessage::with_component(
+                    timestamp,
+                    code,
+                    message,
                     MessageSeverity::Warning,
+                    message_component(source, slot),
                 )
             })
             .collect()
@@ -1001,7 +1027,7 @@ mod tests {
             miner::{GetHashboards, GetMinerData},
         },
     };
-    use serde_json::Value;
+    use serde_json::{Value, json};
 
     use super::*;
     use crate::test::json::v1::{
@@ -1036,7 +1062,13 @@ mod tests {
         }
 
         // Telemetry carries query parameters, so it can't go through the loop.
-        results.insert(web_telemetry_full(), parse_fixture(TELEMETRY_FULL));
+        results.insert(
+            MinerCommand::WebAPI {
+                command: "/api/v1/telemetry",
+                parameters: Some(json!({ "level": "miner,hashboard,psu" })),
+            },
+            parse_fixture(TELEMETRY_FULL),
+        );
         results
     }
 
@@ -1068,14 +1100,14 @@ mod tests {
 
     #[tokio::test]
     async fn parse_data_test_proto_rig() -> Result<()> {
-        let mut miner = ProtoV1::new(
+        // The rig's shape is discovered from the hardware response and passed
+        // into the constructor rather than hardcoded; mirror that here.
+        let miner = ProtoV1::new(
             IpAddr::from([127, 0, 0, 1]),
             asic_rs_makes_proto::models::ProtoModel::Rig,
             Some(semver::Version::parse("1.8.0").expect("version parses")),
+            ProtoV1::hardware_from_response(&parse_fixture(HARDWARE)),
         );
-        // The rig's shape is discovered from the hardware response rather than
-        // hardcoded; mirror that here from the fixture.
-        miner.device_info.hardware = ProtoV1::hardware_from_response(&parse_fixture(HARDWARE));
         assert_eq!(miner.device_info.hardware.boards, Some(4));
         assert_eq!(miner.device_info.hardware.fans, Some(4));
         assert_eq!(miner.device_info.hardware.chips, Some(120));
@@ -1195,6 +1227,21 @@ mod tests {
                 > 100.0
         );
         assert!(parsed.wattage.expect("wattage").as_watts() > 3000.0);
+
+        // Messages carry a structured code + component, not a packed string.
+        assert_eq!(parsed.messages.len(), 2);
+        assert_eq!(parsed.messages[0].code, 1024);
+        assert_eq!(parsed.messages[0].message, "Hashboard 2 over temperature");
+        assert_eq!(
+            parsed.messages[0].component,
+            Some(MinerComponent::hashboard(2))
+        );
+        // A non-numeric error_code falls back to 0 in the structured field.
+        assert_eq!(parsed.messages[1].code, 0);
+        assert_eq!(
+            parsed.messages[1].component,
+            Some(MinerComponent::power_supply(0))
+        );
         Ok(())
     }
 }

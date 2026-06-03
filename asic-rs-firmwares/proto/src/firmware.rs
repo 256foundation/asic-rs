@@ -5,7 +5,7 @@ use asic_rs_core::{
     discovery::HTTP_WEB_ROOT,
     errors::ModelSelectionError,
     traits::{
-        auth::HasAuth,
+        auth::{HasAuth, HasDefaultAuth},
         discovery::DiscoveryCommands,
         entry::FirmwareEntry,
         firmware::MinerFirmware,
@@ -89,13 +89,18 @@ impl FirmwareEntry for ProtoFirmware {
     ) -> Result<Box<dyn Miner>, ModelSelectionError> {
         let model = ProtoFirmware::get_model(ip).await?;
         let version = ProtoFirmware::get_version(ip).await;
-        let mut miner = crate::backends::ProtoV1::new(ip, model, version);
+        // Proto rigs are heterogeneous and hot-swappable, so the board/chip/fan
+        // layout can't be derived from the model. Discover it from the device
+        // here, as part of discovery, and pass it into the miner rather than
+        // mutating the constructed miner afterward. The hardware endpoint is
+        // authenticated, so use the resolved credentials.
+        let default = crate::backends::ProtoV1::default_auth();
+        let resolved = auth.unwrap_or(&default);
+        let hardware = crate::backends::ProtoV1::discover_hardware(ip, resolved).await;
+        let mut miner = crate::backends::ProtoV1::new(ip, model, version, hardware);
         if let Some(auth) = auth {
             miner.set_auth(auth.clone());
         }
-        // Proto rigs are heterogeneous; discover the actual hardware layout
-        // during the initial build rather than assuming a fixed shape.
-        miner.refresh_hardware().await;
         Ok(Box::new(miner))
     }
 }

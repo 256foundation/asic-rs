@@ -151,9 +151,93 @@ impl ProtoWebAPI {
             .map_err(|e| anyhow!(e.to_string()))
     }
 
-    async fn send_command_with_method(
+    /// Reboot the rig.
+    pub async fn reboot(&self) -> Result<Value> {
+        self.send_command("/api/v1/system/reboot", false, None, Method::POST)
+            .await
+    }
+
+    /// Start mining.
+    pub async fn mining_start(&self) -> Result<Value> {
+        self.send_command("/api/v1/mining/start", false, None, Method::POST)
+            .await
+    }
+
+    /// Stop mining.
+    pub async fn mining_stop(&self) -> Result<Value> {
+        self.send_command("/api/v1/mining/stop", false, None, Method::POST)
+            .await
+    }
+
+    /// Set the mining power target, in watts.
+    pub async fn set_miner_target(&self, power_target_watts: u64) -> Result<Value> {
+        self.send_command(
+            "/api/v1/mining/target",
+            false,
+            Some(json!({ "power_target_watts": power_target_watts })),
+            Method::PUT,
+        )
+        .await
+    }
+
+    /// Update the cooling configuration.
+    pub async fn set_cooling(&self, payload: Value) -> Result<Value> {
+        self.send_command("/api/v1/cooling", false, Some(payload), Method::PUT)
+            .await
+    }
+
+    /// Replace the configured pools. Accepts an array of pool configs.
+    pub async fn set_pools(&self, payload: Value) -> Result<Value> {
+        self.send_command("/api/v1/pools", false, Some(payload), Method::POST)
+            .await
+    }
+
+    /// Flash the control-board locate LED to help find the miner. The LED
+    /// turns itself off after the API's default duration; there is no way to
+    /// turn it off early, and requests made while it is already lit are ignored.
+    pub async fn locate(&self) -> Result<Value> {
+        self.send_command("/api/v1/system/locate", false, None, Method::POST)
+            .await
+    }
+
+    /// Set the device password.
+    pub async fn set_password(&self, password: &str) -> Result<bool> {
+        self.send_command(
+            "/api/v1/auth/password",
+            false,
+            Some(json!({ "password": password })),
+            Method::PUT,
+        )
+        .await?;
+        Ok(true)
+    }
+
+    /// Read system logs, returning the log lines joined by newlines.
+    pub async fn read_logs(&self) -> Result<String> {
+        let response = self
+            .send_command("/api/v1/system/logs", false, None, Method::GET)
+            .await?;
+        let logs = response
+            .pointer("/logs/content")
+            .and_then(Value::as_array)
+            .map(|lines| {
+                lines
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })
+            .unwrap_or_default();
+        Ok(logs)
+    }
+}
+
+#[async_trait]
+impl WebAPIClient for ProtoWebAPI {
+    async fn send_command(
         &self,
         command: &str,
+        _privileged: bool,
         parameters: Option<Value>,
         method: Method,
     ) -> Result<Value> {
@@ -185,98 +269,6 @@ impl ProtoWebAPI {
                 .await
                 .map_err(|e| anyhow!("Failed to parse JSON response: {e}"));
         }
-    }
-
-    /// Reboot the rig.
-    pub async fn reboot(&self) -> Result<Value> {
-        self.send_command_with_method("/api/v1/system/reboot", None, Method::POST)
-            .await
-    }
-
-    /// Start mining.
-    pub async fn mining_start(&self) -> Result<Value> {
-        self.send_command_with_method("/api/v1/mining/start", None, Method::POST)
-            .await
-    }
-
-    /// Stop mining.
-    pub async fn mining_stop(&self) -> Result<Value> {
-        self.send_command_with_method("/api/v1/mining/stop", None, Method::POST)
-            .await
-    }
-
-    /// Set the mining power target, in watts.
-    pub async fn set_miner_target(&self, power_target_watts: u64) -> Result<Value> {
-        self.send_command_with_method(
-            "/api/v1/mining/target",
-            Some(json!({ "power_target_watts": power_target_watts })),
-            Method::PUT,
-        )
-        .await
-    }
-
-    /// Update the cooling configuration.
-    pub async fn set_cooling(&self, payload: Value) -> Result<Value> {
-        self.send_command_with_method("/api/v1/cooling", Some(payload), Method::PUT)
-            .await
-    }
-
-    /// Replace the configured pools. Accepts an array of pool configs.
-    pub async fn set_pools(&self, payload: Value) -> Result<Value> {
-        self.send_command_with_method("/api/v1/pools", Some(payload), Method::POST)
-            .await
-    }
-
-    /// Flash the control-board locate LED to help find the miner. The LED
-    /// turns itself off after the API's default duration; there is no way to
-    /// turn it off early, and requests made while it is already lit are ignored.
-    pub async fn locate(&self) -> Result<Value> {
-        self.send_command_with_method("/api/v1/system/locate", None, Method::POST)
-            .await
-    }
-
-    /// Set the device password.
-    pub async fn set_password(&self, password: &str) -> Result<bool> {
-        self.send_command_with_method(
-            "/api/v1/auth/password",
-            Some(json!({ "password": password })),
-            Method::PUT,
-        )
-        .await?;
-        Ok(true)
-    }
-
-    /// Read system logs, returning the log lines joined by newlines.
-    pub async fn read_logs(&self) -> Result<String> {
-        let response = self
-            .send_command_with_method("/api/v1/system/logs", None, Method::GET)
-            .await?;
-        let logs = response
-            .pointer("/logs/content")
-            .and_then(Value::as_array)
-            .map(|lines| {
-                lines
-                    .iter()
-                    .filter_map(Value::as_str)
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            })
-            .unwrap_or_default();
-        Ok(logs)
-    }
-}
-
-#[async_trait]
-impl WebAPIClient for ProtoWebAPI {
-    async fn send_command(
-        &self,
-        command: &str,
-        _privileged: bool,
-        parameters: Option<Value>,
-        method: Method,
-    ) -> Result<Value> {
-        self.send_command_with_method(command, parameters, method)
-            .await
     }
 }
 
