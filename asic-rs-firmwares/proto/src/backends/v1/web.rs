@@ -28,8 +28,6 @@ impl ProtoWebAPI {
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
         Self {
             ip,
-            // Real rigs serve the API on the standard web port; :8080 is the
-            // simulator's port per the MDK spec.
             port: 80,
             client: OnceCell::new(),
             timeout: Duration::from_secs(5),

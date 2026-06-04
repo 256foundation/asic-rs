@@ -634,16 +634,24 @@ impl GetMessages for ProtoV1 {
             .map(|item| {
                 let source = item.get("source").and_then(Value::as_str).unwrap_or("rig");
                 let slot = item.get("slot").and_then(Value::as_u64).unwrap_or_default();
-                // Structured code (0 if non-numeric), not packed into the text.
-                let code = item
+                // `error_code` is a string in the MDK spec. Put it in the u64
+                // `code` when numeric; if it's non-numeric, surface it in the
+                // message instead so it isn't lost.
+                let error_code = item
                     .get("error_code")
-                    .and_then(|c| c.as_u64().or_else(|| c.as_str()?.parse().ok()))
+                    .and_then(Value::as_str)
                     .unwrap_or_default();
-                let message = item
+                let raw_message = item
                     .get("message")
                     .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string();
+                    .unwrap_or_default();
+                let parsed = error_code.parse::<u64>().ok();
+                let message = match parsed {
+                    Some(_) => raw_message.to_string(),
+                    None if error_code.is_empty() => raw_message.to_string(),
+                    None => format!("{error_code}: {raw_message}"),
+                };
+                let code = parsed.unwrap_or_default();
                 let timestamp = item
                     .get("timestamp")
                     .and_then(Value::as_u64)
@@ -1230,12 +1238,15 @@ mod tests {
 
         let messages = miner.parse_messages(&data);
         assert_eq!(messages.len(), 2);
-        // Numeric code kept structured; component derived from source/slot.
+        // Numeric code goes in `code` only (not duplicated into the message);
+        // component is derived from source/slot.
         assert_eq!(messages[0].code, 1024);
         assert_eq!(messages[0].message, "Hashboard 2 over temperature");
         assert_eq!(messages[0].component, Some(MinerComponent::hashboard(2)));
-        // Non-numeric error_code can't fit u64 `code`, so it's 0.
+        // Non-numeric error_code can't fit the u64 `code` (stays 0), so it's
+        // surfaced in the message instead.
         assert_eq!(messages[1].code, 0);
+        assert_eq!(messages[1].message, "PSU_FAULT: PSU voltage out of range");
         assert_eq!(messages[1].component, Some(MinerComponent::power_supply(0)));
     }
 }
