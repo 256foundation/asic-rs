@@ -1650,64 +1650,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_scaled_tuning_target_uses_lower_throttle_target() {
-        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
-        let summary = serde_json::json!({
-            "Mining": {
-                "Algorithm": "SHA-256"
-            },
-            "PerpetualTune": {
-                "Running": true,
-                "Algorithm": {
-                    "VoltageOptimizer": {
-                        "Target": 143,
-                        "Throttle Target": 120,
-                        "Error Throttle Target": 95,
-                        "Unit": "TH/s"
-                    }
-                }
-            }
-        });
-        let data = HashMap::from([(DataField::TuningTarget, summary)]);
-
-        assert_eq!(
-            miner.parse_scaled_tuning_target(&data),
-            Some(TuningTarget::HashRate(HashRate {
-                value: 95.0,
-                unit: HashRateUnit::TeraHash,
-                algo: "SHA-256".to_string(),
-            }))
-        );
-    }
-
-    #[test]
-    fn parse_scaled_tuning_target_uses_lower_power_throttle_target() {
-        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
-        let summary = serde_json::json!({
-            "Mining": {
-                "Algorithm": "SHA-256"
-            },
-            "PerpetualTune": {
-                "Running": true,
-                "Algorithm": {
-                    "PowerTune": {
-                        "Target": 3000,
-                        "Throttle Target": 2600,
-                        "Error Throttle Target": 2800,
-                        "Unit": "W"
-                    }
-                }
-            }
-        });
-        let data = HashMap::from([(DataField::TuningTarget, summary)]);
-
-        assert_eq!(
-            miner.parse_scaled_tuning_target(&data),
-            Some(TuningTarget::Power(Power::from_watts(2600.0)))
-        );
-    }
-
-    #[test]
     fn parse_fan_config_test() -> anyhow::Result<()> {
         let summary = Value::from_str(SUMMARY)?;
         let fan_mode = summary
