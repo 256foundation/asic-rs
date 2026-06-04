@@ -871,6 +871,8 @@ impl GetTuningTarget for MaraV1 {
     }
 }
 
+impl GetScaledTuningTarget for MaraV1 {}
+
 impl GetLightFlashing for MaraV1 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)

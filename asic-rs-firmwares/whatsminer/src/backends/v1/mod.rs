@@ -431,6 +431,7 @@ impl GetTuningTarget for WhatsMinerV1 {
             .map(TuningTarget::Power)
     }
 }
+impl GetScaledTuningTarget for WhatsMinerV1 {}
 impl GetLightFlashing for WhatsMinerV1 {}
 impl GetMessages for WhatsMinerV1 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {

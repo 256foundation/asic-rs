@@ -113,6 +113,8 @@ pub struct MinerData {
     pub wattage: Option<Power>,
     /// The current tuning target of the miner, such as power target or hashrate target
     pub tuning_target: Option<TuningTarget>,
+    /// The current tuning target adjusted by scaling settings, when available.
+    pub scaled_tuning_target: Option<TuningTarget>,
     /// The current efficiency in W/TH/s (J/TH) of the miner
     pub efficiency: Option<f64>,
     /// The state of the fault/alert light on the miner

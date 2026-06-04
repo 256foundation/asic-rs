@@ -129,6 +129,7 @@ pub trait GetMinerData:
     + GetFluidTemperature
     + GetWattage
     + GetTuningTarget
+    + GetScaledTuningTarget
     + GetLightFlashing
     + GetMessages
     + GetUptime
@@ -186,6 +187,7 @@ impl<
         + GetFluidTemperature
         + GetWattage
         + GetTuningTarget
+        + GetScaledTuningTarget
         + GetLightFlashing
         + GetMessages
         + GetUptime
@@ -221,6 +223,7 @@ impl<
         let expected_hashrate = self.parse_expected_hashrate(&data);
         let wattage = self.parse_wattage(&data);
         let tuning_target = self.parse_tuning_target(&data);
+        let scaled_tuning_target = self.parse_scaled_tuning_target(&data);
         let fluid_temperature = self.parse_fluid_temperature(&data);
         let fans = self.parse_fans(&data);
         let psu_fans = self.parse_psu_fans(&data);
@@ -311,6 +314,7 @@ impl<
             // Power information
             wattage,
             tuning_target,
+            scaled_tuning_target,
             efficiency,
 
             // Status information
@@ -613,6 +617,22 @@ pub trait GetTuningTarget: CollectData {
     }
     #[allow(unused_variables)]
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        None
+    }
+}
+
+// Scaled Tuning Target
+#[async_trait]
+pub trait GetScaledTuningTarget: CollectData {
+    #[tracing::instrument(level = "debug")]
+    async fn get_scaled_tuning_target(&self) -> Option<TuningTarget> {
+        let mut collector = self.get_collector();
+        let data = collector.collect(&[DataField::TuningTarget]).await;
+        self.parse_scaled_tuning_target(&data)
+    }
+
+    #[allow(unused_variables)]
+    fn parse_scaled_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         None
     }
 }

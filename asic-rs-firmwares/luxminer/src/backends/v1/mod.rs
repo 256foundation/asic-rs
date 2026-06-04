@@ -983,6 +983,8 @@ impl GetTuningTarget for LuxMinerV1 {
     }
 }
 
+impl GetScaledTuningTarget for LuxMinerV1 {}
+
 impl GetPsuFans for LuxMinerV1 {}
 
 impl GetMessages for LuxMinerV1 {

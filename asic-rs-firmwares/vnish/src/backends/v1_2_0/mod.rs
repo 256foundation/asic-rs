@@ -524,6 +524,8 @@ impl GetWattage for VnishV120 {
 
 impl GetTuningTarget for VnishV120 {}
 
+impl GetScaledTuningTarget for VnishV120 {}
+
 impl GetLightFlashing for VnishV120 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)

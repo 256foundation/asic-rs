@@ -495,6 +495,7 @@ impl GetTuningTarget for WhatsMinerV2 {
         parse_v2_tuning(summary)
     }
 }
+impl GetScaledTuningTarget for WhatsMinerV2 {}
 impl GetLightFlashing for WhatsMinerV2 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract_map::<String, _>(DataField::LightFlashing, |l| l != "auto")

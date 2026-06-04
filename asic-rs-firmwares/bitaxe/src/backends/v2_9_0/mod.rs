@@ -362,6 +362,9 @@ impl GetWattage for Bitaxe290 {
 impl GetTuningTarget for Bitaxe290 {
     // N/A
 }
+impl GetScaledTuningTarget for Bitaxe290 {
+    // N/A
+}
 impl GetLightFlashing for Bitaxe290 {
     // N/A
 }

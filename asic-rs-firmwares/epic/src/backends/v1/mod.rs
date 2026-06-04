@@ -826,6 +826,34 @@ fn parse_tuning_target_from_stats(
     algorithm_drives_power: bool,
 ) -> Option<TuningTarget> {
     let target = tuning_value_as_f64(stats.get("Target")?)?;
+    parse_tuning_target_value_from_stats(summary, algorithm, stats, target, algorithm_drives_power)
+}
+
+fn parse_scaled_tuning_target_from_stats(
+    summary: &Value,
+    algorithm: &str,
+    stats: &Value,
+    algorithm_drives_power: bool,
+) -> Option<TuningTarget> {
+    let throttle_target = stats.get("Throttle Target").and_then(tuning_value_as_f64);
+    let error_throttle_target = stats
+        .get("Error Throttle Target")
+        .and_then(tuning_value_as_f64);
+    let target = [throttle_target, error_throttle_target]
+        .into_iter()
+        .flatten()
+        .min_by(f64::total_cmp)?;
+
+    parse_tuning_target_value_from_stats(summary, algorithm, stats, target, algorithm_drives_power)
+}
+
+fn parse_tuning_target_value_from_stats(
+    summary: &Value,
+    algorithm: &str,
+    stats: &Value,
+    target: f64,
+    algorithm_drives_power: bool,
+) -> Option<TuningTarget> {
     let unit = stats
         .get("Unit")
         .and_then(Value::as_str)
@@ -876,6 +904,22 @@ impl GetTuningTarget for PowerPlayV1 {
 
             let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
             parse_tuning_target_from_stats(summary, algorithm, stats, true)
+        })
+    }
+}
+
+impl GetScaledTuningTarget for PowerPlayV1 {
+    fn parse_scaled_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        data.get(&DataField::TuningTarget).and_then(|summary| {
+            if !summary
+                .pointer("/PerpetualTune/Running")
+                .and_then(Value::as_bool)?
+            {
+                return None;
+            }
+
+            let (algorithm, stats) = first_perpetual_tune_algorithm(summary)?;
+            parse_scaled_tuning_target_from_stats(summary, algorithm, stats, true)
         })
     }
 }
@@ -1603,6 +1647,64 @@ mod tests {
         assert_eq!(config.step, 5);
 
         Ok(())
+    }
+
+    #[test]
+    fn parse_scaled_tuning_target_uses_lower_throttle_target() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let summary = serde_json::json!({
+            "Mining": {
+                "Algorithm": "SHA-256"
+            },
+            "PerpetualTune": {
+                "Running": true,
+                "Algorithm": {
+                    "VoltageOptimizer": {
+                        "Target": 143,
+                        "Throttle Target": 120,
+                        "Error Throttle Target": 95,
+                        "Unit": "TH/s"
+                    }
+                }
+            }
+        });
+        let data = HashMap::from([(DataField::TuningTarget, summary)]);
+
+        assert_eq!(
+            miner.parse_scaled_tuning_target(&data),
+            Some(TuningTarget::HashRate(HashRate {
+                value: 95.0,
+                unit: HashRateUnit::TeraHash,
+                algo: "SHA-256".to_string(),
+            }))
+        );
+    }
+
+    #[test]
+    fn parse_scaled_tuning_target_uses_lower_power_throttle_target() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let summary = serde_json::json!({
+            "Mining": {
+                "Algorithm": "SHA-256"
+            },
+            "PerpetualTune": {
+                "Running": true,
+                "Algorithm": {
+                    "PowerTune": {
+                        "Target": 3000,
+                        "Throttle Target": 2600,
+                        "Error Throttle Target": 2800,
+                        "Unit": "W"
+                    }
+                }
+            }
+        });
+        let data = HashMap::from([(DataField::TuningTarget, summary)]);
+
+        assert_eq!(
+            miner.parse_scaled_tuning_target(&data),
+            Some(TuningTarget::Power(Power::from_watts(2600.0)))
+        );
     }
 
     #[test]

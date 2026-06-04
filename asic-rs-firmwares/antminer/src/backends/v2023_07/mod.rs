@@ -673,6 +673,8 @@ impl GetWattage for AntMinerV202307 {
 
 impl GetTuningTarget for AntMinerV202307 {}
 
+impl GetScaledTuningTarget for AntMinerV202307 {}
+
 impl GetFluidTemperature for AntMinerV202307 {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
         // For S21+ Hyd models, use inlet/outlet temperature average

@@ -475,6 +475,8 @@ impl GetTuningTarget for BraiinsV2503 {
     }
 }
 
+impl GetScaledTuningTarget for BraiinsV2503 {}
+
 impl GetLightFlashing for BraiinsV2503 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)

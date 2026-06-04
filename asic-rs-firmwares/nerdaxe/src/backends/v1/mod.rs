@@ -368,6 +368,7 @@ impl GetWattage for NerdAxeV1 {
     }
 }
 impl GetTuningTarget for NerdAxeV1 {}
+impl GetScaledTuningTarget for NerdAxeV1 {}
 impl GetLightFlashing for NerdAxeV1 {}
 impl GetMessages for NerdAxeV1 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
