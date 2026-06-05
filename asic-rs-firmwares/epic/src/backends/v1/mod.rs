@@ -19,10 +19,12 @@ use asic_rs_core::{
         fan::FanData,
         firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
+        message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
+    util::unix_timestamp_secs,
 };
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use asic_rs_makes_epic::hardware::EPicControlBoard;
@@ -382,6 +384,14 @@ impl GetDataLocations for PowerPlayV1 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/HBs"),
+                    tag: None,
+                },
+            )],
+            DataField::Messages => vec![(
+                WEB_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
                     tag: None,
                 },
             )],
@@ -930,7 +940,28 @@ impl GetLightFlashing for PowerPlayV1 {
     }
 }
 
-impl GetMessages for PowerPlayV1 {}
+impl GetMessages for PowerPlayV1 {
+    fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
+        let mut messages = Vec::new();
+        let timestamp = unix_timestamp_secs();
+
+        if let Some(last_error) = data
+            .get(&DataField::Messages)
+            .and_then(|v| v.pointer("/Status/Last Error"))
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+        {
+            messages.push(MinerMessage::new(
+                timestamp as u32,
+                0,
+                last_error.to_string(),
+                MessageSeverity::Error,
+            ));
+        }
+
+        messages
+    }
+}
 
 impl GetUptime for PowerPlayV1 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
@@ -1650,6 +1681,26 @@ mod tests {
     }
 
     #[test]
+    fn parse_messages_uses_summary_status_last_error() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let summary = serde_json::json!({
+            "Status": {
+                "Operating State": "AdjustingClockVoltage",
+                "Last Command": "autostart",
+                "Last Command Result": null,
+                "Last Error": "Clock voltage adjustment failed"
+            }
+        });
+        let data = HashMap::from([(DataField::Messages, summary)]);
+
+        let messages = miner.parse_messages(&data);
+
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].message, "Clock voltage adjustment failed");
+        assert_eq!(messages[0].severity, MessageSeverity::Error);
+    }
+
+    #[test]
     fn parse_scaled_tuning_target_uses_lower_throttle_target() {
         let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
         let summary = serde_json::json!({
@@ -1771,6 +1822,11 @@ mod tests {
         println!(
             "fanconfig {}",
             serde_json::to_string_pretty(&miner.get_fan_config().await?)?
+        );
+
+        println!(
+            "messages {}",
+            serde_json::to_string_pretty(&miner.get_messages().await)?
         );
 
         assert_eq!(miner_data.ip, ip);
