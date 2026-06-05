@@ -494,6 +494,9 @@ impl GetHashboards for PowerPlayV1 {
             .and_then(|v| v.as_u64())
             .and_then(|chips| u16::try_from(chips).ok())
             .or(self.device_info.hardware.chips);
+        let hashes_per_clock = api_data
+            .pointer("/Capabilities/Performance Estimator/Hashes Per Second Per Chip")
+            .and_then(|v| v.as_f64());
 
         // Active status
         if let Some(boards) = api_data
@@ -561,21 +564,6 @@ impl GetHashboards for PowerPlayV1 {
                             }
                             .as_unit(HashRateUnit::default())
                         });
-                    hashboard.expected_hashrate = hashrate_arr
-                        .and_then(|arr| {
-                            Some((
-                                arr.first().and_then(|v| v.as_f64())?,
-                                arr.get(1).and_then(|v| v.as_f64())?,
-                            ))
-                        })
-                        .map(|(actual, ratio)| {
-                            HashRate {
-                                value: actual / ratio,
-                                unit: HashRateUnit::MegaHash,
-                                algo: "SHA256".to_string(),
-                            }
-                            .as_unit(HashRateUnit::default())
-                        });
                     hashboard.voltage = board
                         .get("Input Voltage")
                         .and_then(|v| v.as_f64())
@@ -584,6 +572,17 @@ impl GetHashboards for PowerPlayV1 {
                         .get("Core Clock Avg")
                         .and_then(|v| v.as_f64())
                         .map(Frequency::from_megahertz);
+                    hashboard.expected_hashrate = board_chip_count
+                        .zip(hashes_per_clock)
+                        .zip(hashboard.frequency)
+                        .map(|((chips, hashes_per_clock), frequency)| {
+                            HashRate {
+                                value: chips as f64 * hashes_per_clock * frequency.as_megahertz(),
+                                unit: HashRateUnit::MegaHash,
+                                algo: "SHA256".to_string(),
+                            }
+                            .as_unit(HashRateUnit::default())
+                        });
                     hashboard.board_temperature = board
                         .get("Temperature")
                         .and_then(|v| v.as_f64())
