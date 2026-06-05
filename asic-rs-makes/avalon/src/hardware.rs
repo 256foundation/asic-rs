@@ -1,4 +1,4 @@
-use asic_rs_core::data::{board::MinerControlBoard, device::MinerHardware};
+use asic_rs_core::data::{board::MinerControlBoard, collector::FromValue, device::MinerHardware};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
@@ -124,6 +124,12 @@ impl AvalonMinerControlBoard {
             "MM4V1_X3" => Some(Self::MM4v1X3),
             _ => None,
         }
+    }
+}
+
+impl FromValue for AvalonMinerControlBoard {
+    fn from_value(value: &serde_json::Value) -> Option<Self> {
+        Self::parse(value.as_str()?)
     }
 }
 

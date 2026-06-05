@@ -1,5 +1,7 @@
+use asic_rs_core::data::collector::FromValue;
 use asic_rs_core::data::{board::MinerControlBoard, device::MinerHardware};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use strum::Display;
 
 use crate::models::AntMinerModel;
@@ -318,6 +320,12 @@ impl AntMinerControlBoard {
             "ZYNQ7007" => Some(Self::Xilinx),
             _ => None,
         }
+    }
+}
+
+impl FromValue for AntMinerControlBoard {
+    fn from_value(value: &Value) -> Option<Self> {
+        Self::parse(value.as_str()?)
     }
 }
 

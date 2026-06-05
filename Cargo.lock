@@ -423,6 +423,7 @@ dependencies = [
  "asic-rs-core",
  "pyo3",
  "serde",
+ "serde_json",
  "strum",
 ]
 

@@ -1,4 +1,4 @@
-use asic_rs_core::data::board::MinerControlBoard;
+use asic_rs_core::data::{board::MinerControlBoard, collector::FromValue};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
@@ -15,6 +15,12 @@ impl MarathonControlBoard {
             s if s.starts_with("MARACB") => Some(Self::MaraCB),
             _ => None,
         }
+    }
+}
+
+impl FromValue for MarathonControlBoard {
+    fn from_value(value: &serde_json::Value) -> Option<Self> {
+        Self::parse(value.as_str()?)
     }
 }
 

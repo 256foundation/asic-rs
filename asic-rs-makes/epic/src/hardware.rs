@@ -1,5 +1,7 @@
+use asic_rs_core::data::collector::FromValue;
 use asic_rs_core::data::{board::MinerControlBoard, device::MinerHardware};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use strum::Display;
 
 use crate::models::EPicModel;
@@ -31,9 +33,15 @@ impl EPicControlBoard {
     pub fn parse(s: &str) -> Option<Self> {
         let cb_model = s.trim().replace(' ', "").to_uppercase();
         match cb_model.as_ref() {
-            "EPICUMC" => Some(Self::EPicUMC),
+            "EPICUMC" | "UMC" => Some(Self::EPicUMC),
             _ => None,
         }
+    }
+}
+
+impl FromValue for EPicControlBoard {
+    fn from_value(value: &Value) -> Option<Self> {
+        Self::parse(value.as_str()?)
     }
 }
 

@@ -347,14 +347,24 @@ impl GetDataLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
-            DataField::ControlBoardVersion => vec![(
-                WEB_CAPABILITIES,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/Control Board Version/cpuHardware"),
-                    tag: None,
-                },
-            )],
+            DataField::ControlBoardVersion => vec![
+                (
+                    WEB_CAPABILITIES,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/Control Board Version/cpuHardware"),
+                        tag: Some("cpu"),
+                    },
+                ),
+                (
+                    WEB_CAPABILITIES,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/Control Board Version/platform"),
+                        tag: Some("platform"),
+                    },
+                ),
+            ],
             DataField::SerialNumber => vec![(
                 WEB_CAPABILITIES,
                 DataExtractor {
@@ -463,7 +473,20 @@ impl GetControlBoardVersion for PowerPlayV1 {
         &self,
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
-        let cb_type = data.extract::<String>(DataField::ControlBoardVersion)?;
+        if let Some(cb) =
+            data.extract_nested::<EPicControlBoard>(DataField::ControlBoardVersion, "platform")
+        {
+            return Some(cb.into());
+        }
+
+        if let Some(cb) =
+            data.extract_nested::<AntMinerControlBoard>(DataField::ControlBoardVersion, "platform")
+        {
+            return Some(cb.into());
+        }
+
+        // Fallback for older versions that do not have platform.
+        let cb_type = data.extract_nested::<String>(DataField::ControlBoardVersion, "cpu")?;
         match cb_type.as_str() {
             s if s.to_uppercase().contains("AMLOGIC") => {
                 Some(AntMinerControlBoard::AMLogic).map(|cb| cb.into())
