@@ -421,8 +421,8 @@ impl GetControlBoardVersion for ProtoV1 {
         &self,
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
-        data.extract::<String>(DataField::ControlBoardVersion)
-            .and_then(|s| ProtoControlBoard::parse(&s).map(Into::into))
+        data.extract::<ProtoControlBoard>(DataField::ControlBoardVersion)
+            .map(Into::into)
     }
 }
 
@@ -606,6 +606,8 @@ impl GetTuningTarget for ProtoV1 {
             .map(|watts| TuningTarget::Power(Power::from_watts(watts)))
     }
 }
+
+impl GetScaledTuningTarget for ProtoV1 {}
 
 // No endpoint reports locate-LED state, so it's set-only.
 impl GetLightFlashing for ProtoV1 {}
