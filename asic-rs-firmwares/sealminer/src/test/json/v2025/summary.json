@@ -1,1 +1,45 @@
-{"STATUS":[{"STATUS":"S","When":1773869546,"Code":11,"Msg":"Summary","Description":"bdminer 4.11.1"}],"SUMMARY":[{"Elapsed":2481,"MHS av":206860473.51,"MHS 5s":368479432.78,"MHS 1m":197599714.10,"MHS 5m":199742402.75,"MHS 15m":194087385.26,"Found Blocks":0,"Getworks":264,"Accepted":1421,"Rejected":3,"Hardware Errors":54,"Utility":34.37,"Discarded":1650,"Stale":0,"Get Failures":0,"Local Work":97055,"Remote Failures":0,"Network Blocks":2,"Total MH":513216843003.0000,"Work Utility":2889807.43,"Difficulty Accepted":118444032.00000000,"Difficulty Rejected":655360.00000000,"Difficulty Stale":0.00000000,"Best Share":33318911,"Device Hardware%":0.0000,"Device Rejected%":0.5485,"Pool Rejected%":0.5503,"Pool Stale%":0.0000,"Last getwork":1773869546}],"id":1}
+{
+  "STATUS": [
+    {
+      "Code": 11,
+      "Description": "bdminer 4.11.1",
+      "Msg": "Summary",
+      "STATUS": "S",
+      "When": 1773869546
+    }
+  ],
+  "SUMMARY": [
+    {
+      "Accepted": 1421,
+      "Best Share": 33318911,
+      "Device Hardware%": 0.0,
+      "Device Rejected%": 0.5485,
+      "Difficulty Accepted": 118444032.0,
+      "Difficulty Rejected": 655360.0,
+      "Difficulty Stale": 0.0,
+      "Discarded": 1650,
+      "Elapsed": 2481,
+      "Found Blocks": 0,
+      "Get Failures": 0,
+      "Getworks": 264,
+      "Hardware Errors": 54,
+      "Last getwork": 1773869546,
+      "Local Work": 97055,
+      "MHS 15m": 194087385.26,
+      "MHS 1m": 197599714.1,
+      "MHS 5m": 199742402.75,
+      "MHS 5s": 368479432.78,
+      "MHS av": 206860473.51,
+      "Network Blocks": 2,
+      "Pool Rejected%": 0.5503,
+      "Pool Stale%": 0.0,
+      "Rejected": 3,
+      "Remote Failures": 0,
+      "Stale": 0,
+      "Total MH": 513216843003.0,
+      "Utility": 34.37,
+      "Work Utility": 2889807.43
+    }
+  ],
+  "id": 1
+}

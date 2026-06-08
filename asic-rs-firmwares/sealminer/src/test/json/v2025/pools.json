@@ -1,1 +1,52 @@
-{"STATUS":[{"STATUS":"S","When":1773869546,"Code":7,"Msg":"1 Pool(s)","Description":"bdminer 4.11.1"}],"POOLS":[{"POOL":0,"URL":"stratum+tcp://stratum.braiins.com:3333","Status":"Alive","Priority":0,"Quota":1,"Long Poll":"N","Getworks":84,"Accepted":322,"Rejected":1,"Works":35726,"Discarded":590,"Stale":0,"Get Failures":0,"Remote Failures":0,"User":"Dow_Mining.SealMinerA2","Last Share Time":1773869544,"Diff1 Shares":42270720,"Proxy Type":"","Proxy":"","Difficulty Accepted":41746432.00000000,"Difficulty Rejected":131072.00000000,"Difficulty Stale":0.00000000,"Last Share Difficulty":262144.00000000,"Work Difficulty":262144.00000000,"Has Stratum":true,"Stratum Active":true,"Stratum URL":"stratum.braiins.com","Stratum Difficulty":262144.00000000,"Has Vmask":true,"Has GBT":false,"Best Share":8834293,"Pool Rejected%":0.3130,"Pool Stale%":0.0000,"Bad Work":0,"Current Block Height":941198,"Current Block Version":536870912}],"id":1}
+{
+  "POOLS": [
+    {
+      "Accepted": 322,
+      "Bad Work": 0,
+      "Best Share": 8834293,
+      "Current Block Height": 941198,
+      "Current Block Version": 536870912,
+      "Diff1 Shares": 42270720,
+      "Difficulty Accepted": 41746432.0,
+      "Difficulty Rejected": 131072.0,
+      "Difficulty Stale": 0.0,
+      "Discarded": 590,
+      "Get Failures": 0,
+      "Getworks": 84,
+      "Has GBT": false,
+      "Has Stratum": true,
+      "Has Vmask": true,
+      "Last Share Difficulty": 262144.0,
+      "Last Share Time": 1773869544,
+      "Long Poll": "N",
+      "POOL": 0,
+      "Pool Rejected%": 0.313,
+      "Pool Stale%": 0.0,
+      "Priority": 0,
+      "Proxy": "",
+      "Proxy Type": "",
+      "Quota": 1,
+      "Rejected": 1,
+      "Remote Failures": 0,
+      "Stale": 0,
+      "Status": "Alive",
+      "Stratum Active": true,
+      "Stratum Difficulty": 262144.0,
+      "Stratum URL": "stratum.braiins.com",
+      "URL": "stratum+tcp://stratum.braiins.com:3333",
+      "User": "Dow_Mining.SealMinerA2",
+      "Work Difficulty": 262144.0,
+      "Works": 35726
+    }
+  ],
+  "STATUS": [
+    {
+      "Code": 7,
+      "Description": "bdminer 4.11.1",
+      "Msg": "1 Pool(s)",
+      "STATUS": "S",
+      "When": 1773869546
+    }
+  ],
+  "id": 1
+}

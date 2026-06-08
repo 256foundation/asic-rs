@@ -224,18 +224,18 @@ def test_miner_hardware_accepts_new_shape_and_keeps_compat_properties() -> None:
     ).hardware
 
     assert explicit.fans == 4
-    assert explicit.boards == 3
+    assert explicit.board_count == 3
     assert explicit.chips == 179
-    assert explicit.board_chips == [60, 59, 60]
+    assert explicit.boards == [60, 59, 60]
     assert explicit.model_dump() == {"fans": 4, "boards": [60, 59, 60]}
 
     uniform = MinerHardwareModel.model_validate(
         {"hardware": {"fans": 4, "boards": [60, 60, 60]}}
     ).hardware
 
-    assert uniform.boards == 3
+    assert uniform.board_count == 3
     assert uniform.chips == 180
-    assert uniform.board_chips == [60, 60, 60]
+    assert uniform.boards == [60, 60, 60]
 
 
 def test_miner_hardware_rejects_legacy_shape() -> None:
