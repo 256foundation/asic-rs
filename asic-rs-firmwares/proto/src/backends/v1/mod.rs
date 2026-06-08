@@ -85,8 +85,8 @@ impl ProtoV1 {
         }
     }
 
-    /// Parse board/fan counts from a `/api/v1/hardware` response. `boards` is the
-    /// highest slot number (chassis capacity), since slots can be sparse.
+    /// Parse board/fan counts from a `/api/v1/hardware` response. `boards` is
+    /// slot-indexed by chassis position, since slots can be sparse.
     fn hardware_from_response(hardware: &Value) -> MinerHardware {
         let boards = hardware
             .pointer("/hardware-info/hashboards-info")
@@ -96,18 +96,29 @@ impl ProtoV1 {
             .and_then(Value::as_array);
 
         MinerHardware {
-            boards: boards.and_then(|b| {
-                b.iter()
+            boards: boards.map(|b| {
+                let board_count = b
+                    .iter()
                     .filter_map(|board| board.get("slot").and_then(Value::as_u64))
                     .max()
-                    .or(Some(b.len() as u64))
-                    .map(|count| count as u8)
+                    .unwrap_or(b.len() as u64) as usize;
+                let mut boards = vec![None; board_count];
+                for board in b {
+                    let slot = board.get("slot").and_then(Value::as_u64).unwrap_or(0);
+                    let Some(position) = slot.checked_sub(1).map(|slot| slot as usize) else {
+                        continue;
+                    };
+                    if let Some(expected_chips) = board
+                        .get("mining_asic_count")
+                        .and_then(Value::as_u64)
+                        .and_then(|count| u16::try_from(count).ok())
+                        && let Some(board) = boards.get_mut(position)
+                    {
+                        *board = Some(expected_chips);
+                    }
+                }
+                boards
             }),
-            // TODO: rigs are heterogeneous/sparse, so a single model-level chip
-            // count can't represent them and the core's `chips * boards` would
-            // misreport. Left None for now; real counts are per-`BoardData` and
-            // the working total is in `total_chips`.
-            chips: None,
             fans: fans.map(|f| f.len() as u8),
         }
     }
@@ -469,9 +480,10 @@ impl GetHashboards for ProtoV1 {
                     .get("mining_asic_count")
                     .and_then(Value::as_u64)
                     .map(|v| v as u16);
+                let position = slot.saturating_sub(1) as u8;
                 let mut hashboard = BoardData::new(
-                    slot.saturating_sub(1) as u8,
-                    self.device_info.hardware.chips,
+                    position,
+                    self.device_info.hardware.chips_for_board(position as usize),
                 );
                 hashboard.expected_chips = asic_count.or(hashboard.expected_chips);
                 hashboard.working_chips = asic_count;
@@ -1087,10 +1099,13 @@ mod tests {
             Some(semver::Version::parse("1.8.0").expect("version parses")),
             ProtoV1::hardware_from_response(&parse_fixture(HARDWARE)),
         );
-        assert_eq!(miner.device_info.hardware.boards, Some(4));
+        assert_eq!(miner.device_info.hardware.board_count(), Some(4));
+        assert_eq!(miner.device_info.hardware.total_chips(), Some(480));
+        assert_eq!(
+            miner.device_info.hardware.boards,
+            Some(vec![Some(120), Some(120), Some(120), Some(120)])
+        );
         assert_eq!(miner.device_info.hardware.fans, Some(4));
-        // chips is intentionally None at the model level (see hardware_from_response).
-        assert_eq!(miner.device_info.hardware.chips, None);
 
         let mock_api = MockAPIClient::new(command_results());
 
@@ -1111,6 +1126,7 @@ mod tests {
         assert!(hashboards[0].intake_temperature.is_some());
         assert!(hashboards[0].outlet_temperature.is_some());
         assert!(hashboards[0].voltage.is_some());
+        assert_eq!(hashboards[0].expected_chips, Some(120));
         assert_eq!(hashboards[0].working_chips, Some(120));
 
         let mut collector = DataCollector::new_with_client(&miner, &mock_api);
@@ -1126,9 +1142,7 @@ mod tests {
         assert_eq!(parsed.serial_number.as_deref(), Some("PROTO-SIM-b6bdaf86"));
         assert_eq!(parsed.expected_hashboards, Some(4));
         assert_eq!(parsed.expected_fans, Some(4));
-        // Model-level chips is None, so the core's chips*boards aggregate is None;
-        // the real counts live per-board and in total_chips.
-        assert_eq!(parsed.expected_chips, None);
+        assert_eq!(parsed.expected_chips, Some(480));
         assert_eq!(parsed.total_chips, Some(480));
         assert_eq!(parsed.hashboards.len(), 4);
         assert!(parsed.hashboards[0].chips.is_empty());
@@ -1215,6 +1229,105 @@ mod tests {
         );
         assert!(parsed.wattage.expect("wattage").as_watts() > 3000.0);
         Ok(())
+    }
+
+    #[test]
+    fn sparse_hardware_slots_preserve_capacity_and_parse_populated_boards() {
+        let hardware = json!({
+            "hardware-info": {
+                "hashboards-info": [
+                    {"slot": 1, "hb_sn": "HB-1", "mining_asic_count": 120},
+                    {"slot": 3, "hb_sn": "HB-3", "mining_asic_count": 118},
+                    {"slot": 4, "hb_sn": "HB-4", "mining_asic_count": 119},
+                    {"slot": 6, "hb_sn": "HB-6", "mining_asic_count": 120},
+                    {"slot": 7, "hb_sn": "HB-7", "mining_asic_count": 117},
+                    {"slot": 9, "hb_sn": "HB-9", "mining_asic_count": 116}
+                ],
+                "fans-info": [
+                    {"slot": 1},
+                    {"slot": 2},
+                    {"slot": 3},
+                    {"slot": 4}
+                ]
+            }
+        });
+        let discovered = ProtoV1::hardware_from_response(&hardware);
+
+        assert_eq!(discovered.board_count(), Some(9));
+        assert_eq!(
+            discovered.boards,
+            Some(vec![
+                Some(120),
+                None,
+                Some(118),
+                Some(119),
+                None,
+                Some(120),
+                Some(117),
+                None,
+                Some(116),
+            ])
+        );
+        assert_eq!(discovered.total_chips(), Some(710));
+        assert_eq!(discovered.fans, Some(4));
+
+        let miner = ProtoV1::new(
+            IpAddr::from([127, 0, 0, 1]),
+            asic_rs_makes_proto::models::ProtoModel::Rig,
+            Some(semver::Version::parse("1.8.0").expect("version parses")),
+            discovered,
+        );
+        let mut data = HashMap::new();
+        data.insert(
+            DataField::Hashboards,
+            json!({
+                "hardware": hardware.pointer("/hardware-info/hashboards-info").expect("boards"),
+                "mining": {
+                    "ideal_hashrate_ghs": 900_000.0,
+                    "status": "Mining",
+                    "hashboards_mining": 6
+                },
+                "telemetry": []
+            }),
+        );
+
+        let hashboards = miner.parse_hashboards(&data);
+        assert_eq!(hashboards.len(), 6);
+        assert_eq!(
+            hashboards
+                .iter()
+                .map(|board| board.position)
+                .collect::<Vec<_>>(),
+            vec![0, 2, 3, 5, 6, 8]
+        );
+        assert_eq!(
+            hashboards
+                .iter()
+                .map(|board| board.expected_chips)
+                .collect::<Vec<_>>(),
+            vec![
+                Some(120),
+                Some(118),
+                Some(119),
+                Some(120),
+                Some(117),
+                Some(116),
+            ]
+        );
+        assert_eq!(
+            hashboards
+                .iter()
+                .map(|board| board.working_chips)
+                .collect::<Vec<_>>(),
+            vec![
+                Some(120),
+                Some(118),
+                Some(119),
+                Some(120),
+                Some(117),
+                Some(116),
+            ]
+        );
     }
 
     #[test]

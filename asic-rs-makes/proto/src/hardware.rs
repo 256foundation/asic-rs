@@ -25,9 +25,10 @@ mod tests {
         // Counts are unknown until the rig is queried, so the static mapping
         // intentionally leaves them empty.
         let hardware = MinerHardware::from(ProtoModel::Rig);
-        assert_eq!(hardware.chips, None);
         assert_eq!(hardware.fans, None);
         assert_eq!(hardware.boards, None);
+        assert_eq!(hardware.board_count(), None);
+        assert_eq!(hardware.total_chips(), None);
     }
 }
 
