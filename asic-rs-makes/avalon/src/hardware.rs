@@ -60,7 +60,11 @@ impl From<AvalonMinerModel> for MinerHardware {
                 fans: Some(4),
             },
             AvalonMinerModel::Avalon1466 => Self {
-                boards: None,
+                boards: Some(vec![Some(176), Some(176), Some(176)]),
+                fans: Some(2),
+            },
+            AvalonMinerModel::Avalon15 => Self {
+                boards: Some(vec![Some(160), Some(160), Some(160)]),
                 fans: Some(2),
             },
             AvalonMinerModel::Avalon1566 => Self {
@@ -94,6 +98,8 @@ pub enum AvalonMinerControlBoard {
     MM3v1,
     #[serde(rename = "MM4v1X3")]
     MM4v1X3,
+    #[serde(rename = "MM4v2X3")]
+    MM4v2X3,
 }
 
 impl AvalonMinerControlBoard {
@@ -104,6 +110,7 @@ impl AvalonMinerControlBoard {
             "MM3V1_X3" => Some(Self::MM3v1X3),
             "MM3V1" => Some(Self::MM3v1),
             "MM4V1_X3" => Some(Self::MM4v1X3),
+            "MM4V2_X3" => Some(Self::MM4v2X3),
             _ => None,
         }
     }
