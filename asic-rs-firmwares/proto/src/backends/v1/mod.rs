@@ -564,10 +564,13 @@ impl GetHashboards for ProtoV1 {
 
 impl GetHashrate for ProtoV1 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::Hashrate, |ths| HashRate {
-            value: ths,
-            unit: HashRateUnit::TeraHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::Hashrate, |ths| {
+            HashRate {
+                value: ths,
+                unit: HashRateUnit::TeraHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
