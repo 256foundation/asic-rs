@@ -784,20 +784,26 @@ impl GetHashrate for PowerPlayV1 {
             })
         });
 
-        Some(HashRate {
-            value: total_hashrate,
-            unit: HashRateUnit::MegaHash,
-            algo: "SHA256".to_string(),
-        })
+        Some(
+            HashRate {
+                value: total_hashrate,
+                unit: HashRateUnit::MegaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default()),
+        )
     }
 }
 
 impl GetExpectedHashrate for PowerPlayV1 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
-            value: f,
-            unit: HashRateUnit::TeraHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| {
+            HashRate {
+                value: f,
+                unit: HashRateUnit::TeraHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
@@ -907,11 +913,14 @@ fn parse_tuning_target_value_from_stats(
         .unwrap_or("SHA256")
         .to_string();
 
-    Some(TuningTarget::HashRate(HashRate {
-        value: target,
-        unit: hr_unit,
-        algo,
-    }))
+    Some(TuningTarget::HashRate(
+        HashRate {
+            value: target,
+            unit: hr_unit,
+            algo,
+        }
+        .as_unit(HashRateUnit::default()),
+    ))
 }
 
 fn to_non_negative_u32_target(value: f64, label: &str) -> anyhow::Result<u32> {

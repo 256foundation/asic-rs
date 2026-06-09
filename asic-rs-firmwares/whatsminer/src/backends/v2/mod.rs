@@ -411,7 +411,7 @@ impl GetHashrate for WhatsMinerV2 {
                 unit: HashRateUnit::MegaHash,
                 algo: "SHA256".to_string(),
             }
-            .as_unit(HashRateUnit::TeraHash)
+            .as_unit(HashRateUnit::default())
         })
     }
 }
@@ -423,7 +423,7 @@ impl GetExpectedHashrate for WhatsMinerV2 {
                 unit: HashRateUnit::GigaHash,
                 algo: "SHA256".to_string(),
             }
-            .as_unit(HashRateUnit::TeraHash)
+            .as_unit(HashRateUnit::default())
         })
     }
 }

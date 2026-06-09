@@ -422,20 +422,26 @@ impl GetHashboards for BraiinsV2109 {
 
 impl GetHashrate for BraiinsV2109 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
-            value: f,
-            unit: HashRateUnit::MegaHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::Hashrate, |f| {
+            HashRate {
+                value: f,
+                unit: HashRateUnit::MegaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
 
 impl GetExpectedHashrate for BraiinsV2109 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
-            value: f,
-            unit: HashRateUnit::MegaHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| {
+            HashRate {
+                value: f,
+                unit: HashRateUnit::MegaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }

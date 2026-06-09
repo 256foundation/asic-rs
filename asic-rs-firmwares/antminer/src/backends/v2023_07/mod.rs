@@ -502,7 +502,7 @@ impl GetHashrate for AntMinerV202307 {
                 unit: HashRateUnit::GigaHash,
                 algo: "SHA256".to_string(),
             }
-            .as_unit(HashRateUnit::TeraHash)
+            .as_unit(HashRateUnit::default())
         })
     }
 }
@@ -515,7 +515,7 @@ impl GetExpectedHashrate for AntMinerV202307 {
                 unit: HashRateUnit::GigaHash,
                 algo: "SHA256".to_string(),
             }
-            .as_unit(HashRateUnit::TeraHash)
+            .as_unit(HashRateUnit::default())
         })
     }
 }

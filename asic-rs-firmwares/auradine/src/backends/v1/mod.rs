@@ -983,20 +983,26 @@ impl GetHashboards for AuradineV1 {
 
 impl GetHashrate for AuradineV1 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::Hashrate, |value| HashRate {
-            value,
-            unit: HashRateUnit::MegaHash,
-            algo: String::from("SHA256"),
+        data.extract_map::<f64, _>(DataField::Hashrate, |value| {
+            HashRate {
+                value,
+                unit: HashRateUnit::MegaHash,
+                algo: String::from("SHA256"),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
 
 impl GetExpectedHashrate for AuradineV1 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |value| HashRate {
-            value,
-            unit: HashRateUnit::TeraHash,
-            algo: String::from("SHA256"),
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |value| {
+            HashRate {
+                value,
+                unit: HashRateUnit::TeraHash,
+                algo: String::from("SHA256"),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
@@ -1069,11 +1075,14 @@ impl GetWattage for AuradineV1 {
 impl GetTuningTarget for AuradineV1 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         if let Some(ths) = data.extract::<f64>(DataField::TuningTarget) {
-            return Some(TuningTarget::HashRate(HashRate {
-                value: ths,
-                unit: HashRateUnit::TeraHash,
-                algo: String::from("SHA256"),
-            }));
+            return Some(TuningTarget::HashRate(
+                HashRate {
+                    value: ths,
+                    unit: HashRateUnit::TeraHash,
+                    algo: String::from("SHA256"),
+                }
+                .as_unit(HashRateUnit::default()),
+            ));
         }
 
         let mode = data.get(&DataField::TuningTarget)?.as_object()?;
@@ -1083,11 +1092,14 @@ impl GetTuningTarget for AuradineV1 {
         }
 
         if let Some(ths) = mode.get("Ths").and_then(Value::as_f64) {
-            return Some(TuningTarget::HashRate(HashRate {
-                value: ths,
-                unit: HashRateUnit::TeraHash,
-                algo: String::from("SHA256"),
-            }));
+            return Some(TuningTarget::HashRate(
+                HashRate {
+                    value: ths,
+                    unit: HashRateUnit::TeraHash,
+                    algo: String::from("SHA256"),
+                }
+                .as_unit(HashRateUnit::default()),
+            ));
         }
 
         match mode.get("Mode").and_then(Value::as_str) {

@@ -663,10 +663,13 @@ impl MaraV1 {
                         let hashrate =
                             chip.get("hashrate_avg")
                                 .and_then(|hr| hr.as_f64())
-                                .map(|value| HashRate {
-                                    value,
-                                    unit: HashRateUnit::GigaHash,
-                                    algo: "SHA256".to_string(),
+                                .map(|value| {
+                                    HashRate {
+                                        value,
+                                        unit: HashRateUnit::GigaHash,
+                                        algo: "SHA256".to_string(),
+                                    }
+                                    .as_unit(HashRateUnit::default())
                                 });
 
                         let voltage = chip
@@ -806,20 +809,26 @@ impl GetHashboards for MaraV1 {
 
 impl GetHashrate for MaraV1 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::Hashrate, |rate| HashRate {
-            value: rate,
-            unit: HashRateUnit::GigaHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::Hashrate, |rate| {
+            HashRate {
+                value: rate,
+                unit: HashRateUnit::GigaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
 
 impl GetExpectedHashrate for MaraV1 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |rate| HashRate {
-            value: rate,
-            unit: HashRateUnit::GigaHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |rate| {
+            HashRate {
+                value: rate,
+                unit: HashRateUnit::GigaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }

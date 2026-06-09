@@ -28,7 +28,7 @@ use asic_rs_core::{
 use asic_rs_makes_avalon::hardware::AvalonMinerControlBoard;
 use async_trait::async_trait;
 use macaddr::MacAddr;
-use measurements::{AngularVelocity, Power, Temperature, Voltage};
+use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use rpc::AvalonMinerRPCAPI;
 use serde_json::{Value, json};
 
@@ -301,6 +301,14 @@ impl GetDataLocations for AvalonAMiner {
                     tag: None,
                 },
             )],
+            DataField::SerialNumber => vec![(
+                RPC_VERSION,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/VERSION/0/DNA"),
+                    tag: None,
+                },
+            )],
             DataField::ApiVersion => vec![(
                 RPC_VERSION,
                 DataExtractor {
@@ -329,7 +337,7 @@ impl GetDataLocations for AvalonAMiner {
                 RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0/STATS/GHSmm"),
+                    key: Some("/STATS/0/MM ID0/GHSmm"),
                     tag: None,
                 },
             )],
@@ -440,7 +448,11 @@ impl GetMAC for AvalonAMiner {
     }
 }
 
-impl GetSerialNumber for AvalonAMiner {}
+impl GetSerialNumber for AvalonAMiner {
+    fn parse_serial_number(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+        data.extract::<String>(DataField::SerialNumber)
+    }
+}
 
 impl GetControlBoardVersion for AvalonAMiner {
     fn parse_control_board_version(
@@ -448,8 +460,11 @@ impl GetControlBoardVersion for AvalonAMiner {
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
         data.extract::<String>(DataField::ControlBoardVersion)
-            .and_then(|s| AvalonMinerControlBoard::parse(&s))
-            .map(|cb| cb.into())
+            .map(|s| {
+                AvalonMinerControlBoard::parse(&s)
+                    .map(|cb| cb.into())
+                    .unwrap_or_else(|| MinerControlBoard::unknown(s))
+            })
     }
 }
 
@@ -481,36 +496,56 @@ impl GetHashboards for AvalonAMiner {
         };
         let chip_info = data.get(&DataField::Chips).and_then(|v| v.as_object());
 
+        fn array_f64(stats: &serde_json::Map<String, Value>, key: &str, idx: usize) -> Option<f64> {
+            stats
+                .get(key)
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.get(idx))
+                .and_then(|v| v.as_f64())
+        }
+
+        fn average_array_f64(stats: &serde_json::Map<String, Value>, key: &str) -> Option<f64> {
+            let values = stats
+                .get(key)
+                .and_then(|v| v.as_array())?
+                .iter()
+                .filter_map(|v| v.as_f64())
+                .collect::<Vec<_>>();
+
+            if values.is_empty() {
+                None
+            } else {
+                Some(values.iter().sum::<f64>() / values.len() as f64)
+            }
+        }
+
         for board in hashboards.iter_mut() {
             let idx = board.position as usize;
 
-            board.hashrate = hb_info
-                .get("MGHS")
-                .and_then(|v| v.as_array())
-                .and_then(|arr| arr.get(idx))
-                .and_then(|v| v.as_f64())
-                .map(|r| {
-                    HashRate {
-                        value: r,
-                        unit: HashRateUnit::GigaHash,
-                        algo: "SHA256".to_string(),
-                    }
-                    .as_unit(HashRateUnit::default())
-                });
+            board.hashrate = array_f64(hb_info, "MGHS", idx).map(|r| {
+                HashRate {
+                    value: r,
+                    unit: HashRateUnit::GigaHash,
+                    algo: "SHA256".to_string(),
+                }
+                .as_unit(HashRateUnit::default())
+            });
 
-            board.board_temperature = hb_info
-                .get("MTavg")
-                .and_then(|v| v.as_array())
-                .and_then(|arr| arr.get(idx))
-                .and_then(|v| v.as_f64())
-                .map(Temperature::from_celsius);
+            board.board_temperature =
+                array_f64(hb_info, "MTavg", idx).map(Temperature::from_celsius);
 
-            board.intake_temperature = hb_info
-                .get("ITemp")
-                .and_then(|v| v.as_array())
-                .and_then(|arr| arr.get(idx))
-                .and_then(|v| v.as_f64())
-                .map(Temperature::from_celsius);
+            board.outlet_temperature =
+                array_f64(hb_info, "MTmax", idx).map(Temperature::from_celsius);
+
+            board.intake_temperature =
+                array_f64(hb_info, "ITemp", idx).map(Temperature::from_celsius);
+
+            board.voltage = array_f64(hb_info, "MVavg", idx).map(Voltage::from_millivolts);
+
+            board.frequency = average_array_f64(hb_info, &format!("SF{idx}"))
+                .or_else(|| average_array_f64(hb_info, &format!("ATABD{idx}")))
+                .or_else(|| hb_info.get("Freq").and_then(|v| v.as_f64()))
+                .map(Frequency::from_megahertz);
 
             board.active = board.hashrate.as_ref().map(|h| h.value > 0.0);
             if chip_info.is_none() {
@@ -576,20 +611,26 @@ impl GetHashboards for AvalonAMiner {
 
 impl GetHashrate for AvalonAMiner {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
-            value: f,
-            unit: HashRateUnit::MegaHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::Hashrate, |f| {
+            HashRate {
+                value: f,
+                unit: HashRateUnit::MegaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
 
 impl GetExpectedHashrate for AvalonAMiner {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| HashRate {
-            value: f,
-            unit: HashRateUnit::GigaHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| {
+            HashRate {
+                value: f,
+                unit: HashRateUnit::GigaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
@@ -727,8 +768,10 @@ impl SupportsFanConfig for AvalonAMiner {
 
 #[cfg(test)]
 mod tests {
+    use asic_rs_core::data::board::MinerControlBoard;
     use asic_rs_core::test::api::MockAPIClient;
     use asic_rs_makes_avalon::models::AvalonMinerModel;
+    use serde_json::json;
 
     use super::*;
     use crate::test::json::AVALON_A_STATS_PARSED;
@@ -741,8 +784,24 @@ mod tests {
             command: "stats",
             parameters: None,
         };
+        let version_cmd: MinerCommand = MinerCommand::RPC {
+            command: "version",
+            parameters: None,
+        };
 
         results.insert(stats_cmd, Value::from_str(AVALON_A_STATS_PARSED)?);
+        results.insert(
+            version_cmd,
+            json!({
+                "STATUS": [{"STATUS": "S", "Msg": "CGMiner versions"}],
+                "VERSION": [{
+                    "API": "3.7",
+                    "DNA": "02010000cbd2fd6d",
+                    "HWTYPE": "MM4v2_X3",
+                    "VERSION": "24102401_25462b2_9ddf522"
+                }]
+            }),
+        );
 
         let mock_api = MockAPIClient::new(results);
 
@@ -775,9 +834,33 @@ mod tests {
         let miner_data = miner.parse_data(data);
 
         assert_eq!(miner_data.uptime, Some(Duration::from_secs(24684)));
+        assert_eq!(
+            miner_data.serial_number,
+            Some("02010000cbd2fd6d".to_string())
+        );
+        assert_eq!(
+            miner_data.control_board_version,
+            Some(MinerControlBoard::known("MM4v2X3".to_string()))
+        );
+        assert_eq!(
+            miner_data.expected_hashrate,
+            Some(HashRate {
+                value: 83.92304,
+                unit: HashRateUnit::TeraHash,
+                algo: "SHA256".to_string()
+            })
+        );
         assert_eq!(miner_data.wattage, Some(Power::from_watts(3189.0)));
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 120);
+        assert_eq!(
+            miner_data.hashboards[0].outlet_temperature,
+            Some(Temperature::from_celsius(77.0))
+        );
+        assert_eq!(
+            miner_data.hashboards[0].frequency,
+            Some(Frequency::from_megahertz(502.0))
+        );
         assert_eq!(
             miner_data.average_temperature,
             Some(Temperature::from_celsius(65.0))

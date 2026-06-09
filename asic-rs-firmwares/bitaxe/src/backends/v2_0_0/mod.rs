@@ -319,10 +319,13 @@ impl GetHashboards for Bitaxe200 {
 }
 impl GetHashrate for Bitaxe200 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::Hashrate, |f| HashRate {
-            value: f,
-            unit: HashRateUnit::GigaHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::Hashrate, |f| {
+            HashRate {
+                value: f,
+                unit: HashRateUnit::GigaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
@@ -342,15 +345,18 @@ impl GetExpectedHashrate for Bitaxe200 {
             Frequency::from_megahertz,
         );
 
-        Some(HashRate {
-            value: core_count as f64
-                * total_chips.unwrap_or(0) as f64
-                * board_frequency
-                    .unwrap_or(Frequency::from_megahertz(0f64))
-                    .as_gigahertz(),
-            unit: HashRateUnit::GigaHash,
-            algo: "SHA256".to_string(),
-        })
+        Some(
+            HashRate {
+                value: core_count as f64
+                    * total_chips.unwrap_or(0) as f64
+                    * board_frequency
+                        .unwrap_or(Frequency::from_megahertz(0f64))
+                        .as_gigahertz(),
+                unit: HashRateUnit::GigaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default()),
+        )
     }
 }
 impl GetFans for Bitaxe200 {

@@ -433,18 +433,24 @@ impl GetHashboards for SealMinerV2025 {
                 let hashrate = stats
                     .get(format!("{i} MHS(Sample)"))
                     .and_then(|v| v.as_f64())
-                    .map(|mhs| HashRate {
-                        value: mhs,
-                        unit: HashRateUnit::MegaHash,
-                        algo: "SHA256".to_string(),
+                    .map(|mhs| {
+                        HashRate {
+                            value: mhs,
+                            unit: HashRateUnit::MegaHash,
+                            algo: "SHA256".to_string(),
+                        }
+                        .as_unit(HashRateUnit::default())
                     });
                 let ideal_hashrate = stats
                     .get(format!("{i} MHS(Ideal)"))
                     .and_then(|v| v.as_f64())
-                    .map(|mhs| HashRate {
-                        value: mhs,
-                        unit: HashRateUnit::MegaHash,
-                        algo: "SHA256".to_string(),
+                    .map(|mhs| {
+                        HashRate {
+                            value: mhs,
+                            unit: HashRateUnit::MegaHash,
+                            algo: "SHA256".to_string(),
+                        }
+                        .as_unit(HashRateUnit::default())
                     });
 
                 let tuned = stats
@@ -475,20 +481,26 @@ impl GetHashboards for SealMinerV2025 {
 
 impl GetHashrate for SealMinerV2025 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::Hashrate, |mhs| HashRate {
-            value: mhs,
-            unit: HashRateUnit::MegaHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::Hashrate, |mhs| {
+            HashRate {
+                value: mhs,
+                unit: HashRateUnit::MegaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
 
 impl GetExpectedHashrate for SealMinerV2025 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |mhs| HashRate {
-            value: mhs,
-            unit: HashRateUnit::MegaHash,
-            algo: "SHA256".to_string(),
+        data.extract_map::<f64, _>(DataField::ExpectedHashrate, |mhs| {
+            HashRate {
+                value: mhs,
+                unit: HashRateUnit::MegaHash,
+                algo: "SHA256".to_string(),
+            }
+            .as_unit(HashRateUnit::default())
         })
     }
 }
@@ -931,16 +943,16 @@ mod tests {
         assert_eq!(
             miner_data.hashrate,
             Some(HashRate {
-                value: 206860473.51,
-                unit: HashRateUnit::MegaHash,
+                value: 206.86047351,
+                unit: HashRateUnit::TeraHash,
                 algo: "SHA256".to_string()
             })
         );
         assert_eq!(
             miner_data.expected_hashrate,
             Some(HashRate {
-                value: 230839407.28559,
-                unit: HashRateUnit::MegaHash,
+                value: 230.83940728559,
+                unit: HashRateUnit::TeraHash,
                 algo: "SHA256".to_string()
             })
         );
