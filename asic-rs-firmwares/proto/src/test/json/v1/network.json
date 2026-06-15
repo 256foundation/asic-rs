@@ -1,1 +1,10 @@
-{"network-info":{"hostname":"proto-miner-af86","mac":"02:00:00:AD:66:39","ip_address":"192.168.8.163","netmask":"255.255.255.0","gateway":"192.168.2.1","dhcp":true}}
+{
+  "network-info": {
+    "dhcp": true,
+    "gateway": "192.168.2.1",
+    "hostname": "proto-miner-af86",
+    "ip_address": "192.168.8.163",
+    "mac": "02:00:00:AD:66:39",
+    "netmask": "255.255.255.0"
+  }
+}

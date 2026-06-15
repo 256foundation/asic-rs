@@ -1,19 +1,19 @@
 {
   "mining-status": {
-    "status": "Mining",
-    "reboot_uptime_s": 28,
-    "mining_uptime_s": 28,
-    "hashrate_ghs": 141147.4350314711,
-    "average_hashrate_ghs": 141147.4350314711,
-    "ideal_hashrate_ghs": 145000,
-    "power_usage_watts": 3447.008523267969,
-    "power_target_watts": 3400,
-    "power_efficiency_jth": 24.327524179778106,
-    "average_hb_temp_c": 55.63875649874286,
     "average_asic_temp_c": 71.90268170247448,
+    "average_hashrate_ghs": 141147.4350314711,
     "average_hb_efficiency_jth": 24.327524179778106,
-    "hw_errors": 0,
+    "average_hb_temp_c": 55.63875649874286,
     "hashboards_installed": 4,
-    "hashboards_mining": 4
+    "hashboards_mining": 4,
+    "hashrate_ghs": 141147.4350314711,
+    "hw_errors": 0,
+    "ideal_hashrate_ghs": 145000,
+    "mining_uptime_s": 28,
+    "power_efficiency_jth": 24.327524179778106,
+    "power_target_watts": 3400,
+    "power_usage_watts": 3447.008523267969,
+    "reboot_uptime_s": 28,
+    "status": "Mining"
   }
 }
