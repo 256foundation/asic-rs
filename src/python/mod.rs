@@ -40,7 +40,7 @@ mod asic_rs {
         device::{DeviceInfo, MinerHardware},
         fan::FanData,
         message::{MessageSeverity, MinerComponent, MinerMessage},
-        miner::{MinerData, TuningTargetHashRate, TuningTargetMode, TuningTargetPower},
+        miner::{MinerData, PyTuningTarget as TuningTarget},
         pool::{PoolData, PoolGroupData, PoolScheme, PoolURL},
     };
 }

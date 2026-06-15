@@ -19,6 +19,7 @@ from pyasic_rs.data import (
     MinerHardware,
     MinerMessage,
     MiningMode,
+    TuningTarget,
 )
 
 
@@ -544,6 +545,16 @@ def test_tagged_config_constructors_have_fixed_discriminants() -> None:
         FanConfig.manual(75, mode="auto")
 
 
+def test_tagged_config_repr_is_readable() -> None:
+    assert repr(FanConfig.auto(65.0)) == (
+        "FanConfig.auto(target_temp=65.0, idle_speed=None)"
+    )
+    assert repr(FanConfig.auto(65.0, 25)) == (
+        "FanConfig.auto(target_temp=65.0, idle_speed=25)"
+    )
+    assert repr(FanConfig.manual(75)) == "FanConfig.manual(fan_speed=75)"
+
+
 @pytest.mark.parametrize(
     ("mode", "name"),
     [
@@ -573,6 +584,33 @@ def test_mining_mode_json_schema_exposes_enum() -> None:
     schema = MiningModeModel.model_json_schema()
 
     assert schema["properties"]["mode"]["enum"] == ["Low", "Normal", "High"]
+
+
+def test_tuning_target_variant_repr_is_readable() -> None:
+    target = TuningTarget.mode(MiningMode.Normal)
+    assert isinstance(target, TuningTarget)
+    assert target.variant == "mode"
+    assert target.target_mode == MiningMode.Normal
+    assert repr(target) == "TuningTarget.mode(mode=Normal)"
+    assert str(target) == "TuningTarget.mode(mode=Normal)"
+
+    assert repr(TuningTarget.power(3250.0)) == "TuningTarget.power(watts=3250.0)"
+    assert repr(TuningTarget.hashrate(HashRate(110.0, HashRateUnit.TH))) == (
+        "TuningTarget.hashrate(hashrate=110 TH/s)"
+    )
+
+    model = MinerDataModel.model_validate(
+        {
+            "miner": minimal_miner_data(
+                tuning_target={"type": "mode", "value": "Normal"}
+            )
+        }
+    )
+
+    assert isinstance(model.miner.tuning_target, TuningTarget)
+    assert model.miner.tuning_target.target_mode == MiningMode.Normal
+    assert repr(model.miner.tuning_target) == "TuningTarget.mode(mode=Normal)"
+    assert str(model.miner.tuning_target) == "TuningTarget.mode(mode=Normal)"
 
 
 def test_nested_data_model_round_trips_hashrate_payload() -> None:

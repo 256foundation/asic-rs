@@ -130,58 +130,119 @@ pub struct MinerData {
 }
 
 #[cfg(feature = "python")]
-pub use python_tuning_target::{TuningTargetHashRate, TuningTargetMode, TuningTargetPower};
+pub use python_tuning_target::PyTuningTarget;
 
 #[cfg(feature = "python")]
 mod python_tuning_target {
     use asic_rs_pydantic::{
         PyPydanticType, PydanticSchemaMode, get_required_field, literal_schema,
-        pydantic_typed_dict_schema, tagged_union_schema, union_schema,
+        pydantic_typed_dict_schema, tagged_union_schema,
     };
     use measurements::Power;
     use pyo3::{exceptions::PyValueError, prelude::*, types::PyAnyMethods};
 
     use super::{HashRate, MiningMode, TuningTarget};
 
-    #[pyclass(from_py_object, module = "asic_rs")]
-    #[derive(Debug, Clone)]
-    pub struct TuningTargetPower {
-        pub watts: f64,
+    #[pyclass(name = "TuningTarget", skip_from_py_object, module = "asic_rs")]
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum PyTuningTarget {
+        Power { watts: f64 },
+        HashRate { target_hashrate: HashRate },
+        Mode { target_mode: MiningMode },
     }
 
     #[pymethods]
-    impl TuningTargetPower {
+    impl PyTuningTarget {
+        #[staticmethod]
+        fn power(watts: f64) -> Self {
+            Self::Power { watts }
+        }
+
+        #[staticmethod]
+        fn hashrate(hashrate: HashRate) -> Self {
+            Self::HashRate {
+                target_hashrate: hashrate,
+            }
+        }
+
+        #[staticmethod]
+        fn mode(mode: MiningMode) -> Self {
+            Self::Mode { target_mode: mode }
+        }
+
         #[getter]
-        fn watts(&self) -> f64 {
-            self.watts
+        fn variant(&self) -> &'static str {
+            match self {
+                Self::Power { .. } => "power",
+                Self::HashRate { .. } => "hashrate",
+                Self::Mode { .. } => "mode",
+            }
+        }
+
+        #[getter]
+        fn watts(&self) -> Option<f64> {
+            match self {
+                Self::Power { watts } => Some(*watts),
+                _ => None,
+            }
+        }
+
+        #[getter]
+        #[pyo3(name = "target_hashrate")]
+        fn py_target_hashrate(&self) -> Option<HashRate> {
+            match self {
+                Self::HashRate { target_hashrate } => Some(target_hashrate.clone()),
+                _ => None,
+            }
+        }
+
+        #[getter]
+        #[pyo3(name = "target_mode")]
+        fn py_target_mode(&self) -> Option<MiningMode> {
+            match self {
+                Self::Mode { target_mode } => Some(*target_mode),
+                _ => None,
+            }
+        }
+
+        fn __repr__(&self) -> String {
+            match self {
+                Self::Power { watts } => format!("TuningTarget.power(watts={watts:?})"),
+                Self::HashRate { target_hashrate } => {
+                    format!("TuningTarget.hashrate(hashrate={target_hashrate})")
+                }
+                Self::Mode { target_mode } => format!("TuningTarget.mode(mode={target_mode})"),
+            }
+        }
+
+        fn __str__(&self) -> String {
+            self.__repr__()
         }
     }
 
-    #[pyclass(from_py_object, module = "asic_rs")]
-    #[derive(Debug, Clone)]
-    pub struct TuningTargetHashRate {
-        pub hashrate: HashRate,
-    }
-
-    #[pymethods]
-    impl TuningTargetHashRate {
-        #[getter]
-        fn hashrate(&self) -> HashRate {
-            self.hashrate.clone()
+    impl From<TuningTarget> for PyTuningTarget {
+        fn from(value: TuningTarget) -> Self {
+            match value {
+                TuningTarget::Power(power) => Self::Power {
+                    watts: power.as_watts(),
+                },
+                TuningTarget::HashRate(hashrate) => Self::HashRate {
+                    target_hashrate: hashrate,
+                },
+                TuningTarget::MiningMode(mode) => Self::Mode { target_mode: mode },
+            }
         }
     }
 
-    #[pyclass(from_py_object, module = "asic_rs")]
-    #[derive(Debug, Clone)]
-    pub struct TuningTargetMode {
-        pub mode: MiningMode,
-    }
-
-    #[pymethods]
-    impl TuningTargetMode {
-        #[getter]
-        fn mode(&self) -> MiningMode {
-            self.mode
+    impl From<PyTuningTarget> for TuningTarget {
+        fn from(value: PyTuningTarget) -> Self {
+            match value {
+                PyTuningTarget::Power { watts } => TuningTarget::Power(Power::from_watts(watts)),
+                PyTuningTarget::HashRate { target_hashrate } => {
+                    TuningTarget::HashRate(target_hashrate)
+                }
+                PyTuningTarget::Mode { target_mode } => TuningTarget::MiningMode(target_mode),
+            }
         }
     }
 
@@ -190,29 +251,13 @@ mod python_tuning_target {
         type Output = pyo3::Bound<'py, pyo3::PyAny>;
         type Error = pyo3::PyErr;
 
-        const OUTPUT_TYPE: pyo3::inspect::PyStaticExpr = {
-            use pyo3::type_hint_union;
-            type_hint_union!(
-                <TuningTargetPower as pyo3::PyTypeInfo>::TYPE_HINT,
-                <TuningTargetHashRate as pyo3::PyTypeInfo>::TYPE_HINT,
-                <TuningTargetMode as pyo3::PyTypeInfo>::TYPE_HINT
-            )
-        };
+        const OUTPUT_TYPE: pyo3::inspect::PyStaticExpr =
+            { <PyTuningTarget as pyo3::PyTypeInfo>::TYPE_HINT };
 
         fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
-            match self {
-                TuningTarget::Power(p) => TuningTargetPower {
-                    watts: p.as_watts(),
-                }
+            PyTuningTarget::from(self)
                 .into_pyobject(py)
-                .map(pyo3::Bound::into_any),
-                TuningTarget::HashRate(hr) => TuningTargetHashRate { hashrate: hr }
-                    .into_pyobject(py)
-                    .map(pyo3::Bound::into_any),
-                TuningTarget::MiningMode(m) => TuningTargetMode { mode: m }
-                    .into_pyobject(py)
-                    .map(pyo3::Bound::into_any),
-            }
+                .map(pyo3::Bound::into_any)
         }
     }
 
@@ -246,38 +291,16 @@ mod python_tuning_target {
             if mode == PydanticSchemaMode::Serialization {
                 return Ok(tagged_union);
             }
-            let power_instance = core_schema.call_method1(
+            let target_instance = core_schema.call_method1(
                 "is_instance_schema",
-                (core_schema.py().get_type::<TuningTargetPower>(),),
+                (core_schema.py().get_type::<PyTuningTarget>(),),
             )?;
-            let hashrate_instance = core_schema.call_method1(
-                "is_instance_schema",
-                (core_schema.py().get_type::<TuningTargetHashRate>(),),
-            )?;
-            let mode_instance = core_schema.call_method1(
-                "is_instance_schema",
-                (core_schema.py().get_type::<TuningTargetMode>(),),
-            )?;
-            union_schema(
-                core_schema,
-                [
-                    power_instance,
-                    hashrate_instance,
-                    mode_instance,
-                    tagged_union,
-                ],
-            )
+            asic_rs_pydantic::union_schema(core_schema, [target_instance, tagged_union])
         }
 
         fn from_pydantic(value: &Bound<'_, PyAny>) -> PyResult<Self> {
-            if let Ok(p) = value.extract::<PyRef<'_, TuningTargetPower>>() {
-                return Ok(TuningTarget::Power(Power::from_watts(p.watts)));
-            }
-            if let Ok(hr) = value.extract::<PyRef<'_, TuningTargetHashRate>>() {
-                return Ok(TuningTarget::HashRate(hr.hashrate.clone()));
-            }
-            if let Ok(m) = value.extract::<PyRef<'_, TuningTargetMode>>() {
-                return Ok(TuningTarget::MiningMode(m.mode));
+            if let Ok(target) = value.extract::<PyRef<'_, PyTuningTarget>>() {
+                return Ok(target.clone().into());
             }
             let type_str: String = get_required_field(value, "type")?.extract()?;
             let v = get_required_field(value, "value")?;
@@ -325,21 +348,9 @@ mod python_tuning_target {
 
         fn to_pydantic_repr_value(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
             use pyo3::IntoPyObject as _;
-            match self {
-                TuningTarget::Power(p) => TuningTargetPower {
-                    watts: p.as_watts(),
-                }
+            PyTuningTarget::from(self.clone())
                 .into_pyobject(py)
-                .map(|b| b.into_any().unbind()),
-                TuningTarget::HashRate(hr) => TuningTargetHashRate {
-                    hashrate: hr.clone(),
-                }
-                .into_pyobject(py)
-                .map(|b| b.into_any().unbind()),
-                TuningTarget::MiningMode(m) => TuningTargetMode { mode: *m }
-                    .into_pyobject(py)
-                    .map(|b| b.into_any().unbind()),
-            }
+                .map(|b| b.into_any().unbind())
         }
     }
 }

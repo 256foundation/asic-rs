@@ -124,6 +124,25 @@ impl FanConfig {
         self.fan_speed()
     }
 
+    fn __repr__(&self) -> String {
+        match self {
+            Self::Auto {
+                target_temp,
+                idle_speed,
+            } => match idle_speed {
+                Some(idle_speed) => {
+                    format!("FanConfig.auto(target_temp={target_temp:?}, idle_speed={idle_speed})")
+                }
+                None => format!("FanConfig.auto(target_temp={target_temp:?}, idle_speed=None)"),
+            },
+            Self::Manual { fan_speed } => format!("FanConfig.manual(fan_speed={fan_speed})"),
+        }
+    }
+
+    fn __str__(&self) -> String {
+        self.__repr__()
+    }
+
     #[classmethod]
     #[pyo3(signature = (_source_type: "object", _handler: "object") -> "object")]
     pub fn __get_pydantic_core_schema__(

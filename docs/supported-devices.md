@@ -15,7 +15,7 @@ Legend:
 
 | Firmware type | Pools Config | Scaling Config | Tuning Config | Fan Config | Light | Power Limit | Restart | Pause/Resume | Upgrade FW | Change PWD | Factory Reset | Read Logs |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| AntMiner Stock | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: |
+| AntMiner Stock | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: |
 | Auradine Stock | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | AvalonMiner Stock | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-list-todo: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | Bitaxe Stock | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
