@@ -6,7 +6,9 @@ use anyhow;
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
+        fan::FanConfig,
         pools::{PoolConfig, PoolGroupConfig},
+        tuning::TuningConfig,
     },
     data::{
         board::{BoardData, MinerControlBoard},
@@ -19,6 +21,7 @@ use asic_rs_core::{
         firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
+        miner::{MiningMode, TuningTarget},
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -56,10 +59,60 @@ impl Display for MinerMode {
         let s = match self {
             MinerMode::Sleep => "1",
             MinerMode::Low => "3",
+            MinerMode::High => "2",
             _ => "0",
         };
         f.write_str(s)
     }
+}
+
+fn miner_mode_config_key(miner_conf: &Value) -> Option<&'static str> {
+    if miner_conf.get("miner-mode").is_some() {
+        Some("miner-mode")
+    } else if miner_conf.get("bitmain-work-mode").is_some() {
+        Some("bitmain-work-mode")
+    } else {
+        None
+    }
+}
+
+fn miner_mode_from_value(mode: &Value) -> Option<MiningMode> {
+    let mode = mode
+        .as_str()
+        .map(str::to_owned)
+        .or_else(|| mode.as_i64().map(|mode| mode.to_string()))?;
+
+    match mode.as_str() {
+        "0" => Some(MiningMode::Normal),
+        "2" => Some(MiningMode::High),
+        "3" => Some(MiningMode::Low),
+        _ => None,
+    }
+}
+
+fn miner_conf_mining_mode(miner_conf: &Value) -> Option<MiningMode> {
+    ["miner-mode", "bitmain-work-mode"]
+        .iter()
+        .filter_map(|key| miner_conf.get(key))
+        .find_map(miner_mode_from_value)
+}
+
+fn bool_from_value(value: &Value) -> Option<bool> {
+    value.as_bool().or_else(|| {
+        value.as_str().and_then(|s| match s {
+            "1" => Some(true),
+            "0" => Some(false),
+            _ if s.eq_ignore_ascii_case("true") => Some(true),
+            _ if s.eq_ignore_ascii_case("false") => Some(false),
+            _ => None,
+        })
+    })
+}
+
+fn u64_from_value(value: &Value) -> Option<u64> {
+    value
+        .as_u64()
+        .or_else(|| value.as_str().and_then(|s| s.parse::<u64>().ok()))
 }
 
 impl AntMinerV202307 {
@@ -188,6 +241,14 @@ impl GetConfigsLocations for AntMinerV202307 {
                 ConfigExtractor {
                     func: get_by_pointer,
                     key: Some("/pools"),
+                    tag: None,
+                },
+            )],
+            ConfigField::Tuning | ConfigField::Fan => vec![(
+                WEB_GET_MINER_CONF,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
                     tag: None,
                 },
             )],
@@ -385,6 +446,14 @@ impl GetDataLocations for AntMinerV202307 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/SUMMARY/0/status"),
+                    tag: None,
+                },
+            )],
+            DataField::TuningTarget => vec![(
+                WEB_MINER_CONF,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
                     tag: None,
                 },
             )],
@@ -674,9 +743,19 @@ impl GetWattage for AntMinerV202307 {
     }
 }
 
-impl GetTuningTarget for AntMinerV202307 {}
+impl GetTuningTarget for AntMinerV202307 {
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        data.get(&DataField::TuningTarget)
+            .and_then(miner_conf_mining_mode)
+            .map(TuningTarget::MiningMode)
+    }
+}
 
-impl GetScaledTuningTarget for AntMinerV202307 {}
+impl GetScaledTuningTarget for AntMinerV202307 {
+    fn parse_scaled_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        self.parse_tuning_target(data)
+    }
+}
 
 impl GetFluidTemperature for AntMinerV202307 {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
@@ -968,15 +1047,87 @@ impl HasAuth for AntMinerV202307 {
 
 #[async_trait]
 impl SupportsTuningConfig for AntMinerV202307 {
+    async fn set_tuning_config(
+        &self,
+        config: TuningConfig,
+        _scaling_config: Option<asic_rs_core::config::scaling::ScalingConfig>,
+    ) -> anyhow::Result<bool> {
+        let mode = match config.target {
+            TuningTarget::MiningMode(MiningMode::Low) => MinerMode::Low,
+            TuningTarget::MiningMode(MiningMode::Normal) => MinerMode::Normal,
+            TuningTarget::MiningMode(MiningMode::High) => MinerMode::High,
+            TuningTarget::Power(_) => {
+                anyhow::bail!("Power tuning target is not supported on Antminer stock firmware")
+            }
+            TuningTarget::HashRate(_) => {
+                anyhow::bail!("Hashrate tuning target is not supported on Antminer stock firmware")
+            }
+        };
+
+        let pre = self.web.get_miner_conf().await?;
+        let Some(mode_key) = miner_mode_config_key(&pre) else {
+            anyhow::bail!("No Antminer mining mode field found in miner config")
+        };
+
+        self.web
+            .set_miner_conf(json!({ mode_key: mode.to_string() }))
+            .await?;
+        Ok(true)
+    }
+
+    fn parse_tuning_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TuningConfig> {
+        data.get(&ConfigField::Tuning)
+            .and_then(miner_conf_mining_mode)
+            .map(|mode| TuningConfig::new(TuningTarget::MiningMode(mode)))
+            .ok_or_else(|| anyhow::anyhow!("No Antminer mining mode found in tuning config"))
+    }
+
     fn supports_tuning_config(&self) -> bool {
-        false
+        true
     }
 }
 
 #[async_trait]
 impl SupportsFanConfig for AntMinerV202307 {
+    async fn set_fan_config(&self, config: FanConfig) -> anyhow::Result<bool> {
+        let payload = match config {
+            FanConfig::Auto { .. } => json!({"bitmain-fan-ctrl": false}),
+            FanConfig::Manual { fan_speed } => json!({
+                "bitmain-fan-ctrl": true,
+                "bitmain-fan-pwm": fan_speed.min(100).to_string(),
+            }),
+        };
+
+        self.web.set_miner_conf(payload).await?;
+        Ok(true)
+    }
+
+    fn parse_fan_config(&self, data: &HashMap<ConfigField, Value>) -> anyhow::Result<FanConfig> {
+        let fan = data
+            .get(&ConfigField::Fan)
+            .ok_or_else(|| anyhow::anyhow!("No fan config data"))?;
+
+        let manual = fan
+            .get("bitmain-fan-ctrl")
+            .and_then(bool_from_value)
+            .unwrap_or(false);
+        let fan_speed = fan
+            .get("bitmain-fan-pwm")
+            .and_then(u64_from_value)
+            .unwrap_or(100);
+
+        if manual {
+            Ok(FanConfig::manual(fan_speed))
+        } else {
+            Ok(FanConfig::auto(0.0, Some(fan_speed)))
+        }
+    }
+
     fn supports_fan_config(&self) -> bool {
-        false
+        true
     }
 }
 
