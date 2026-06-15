@@ -57,6 +57,10 @@ impl AntMinerWebAPI {
         self.auth = auth;
     }
 
+    pub fn username(&self) -> &str {
+        self.auth.username.as_str()
+    }
+
     pub fn with_timeout(ip: IpAddr, timeout: Duration, auth: MinerAuth) -> Self {
         let mut client = Self::new(ip, auth);
         client.port = 80;
@@ -92,6 +96,40 @@ impl AntMinerWebAPI {
         if status.is_success() {
             let json_data = response.json().await.map_err(|e| anyhow!(e.to_string()))?;
             Ok(json_data)
+        } else {
+            bail!("HTTP request failed with status code {}", status);
+        }
+    }
+
+    async fn send_web_text_command(
+        &self,
+        command: &str,
+        parameters: Option<Value>,
+        method: Method,
+    ) -> Result<String> {
+        let url = format!("http://{}:{}/cgi-bin/{}.cgi", self.ip, self.port, command);
+        let response = self.execute_web_request(&url, &method, parameters).await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            bail!("HTTP request failed with status code {}", status);
+        }
+
+        response.text().await.map_err(|e| anyhow!(e.to_string()))
+    }
+
+    async fn send_web_status_command(
+        &self,
+        command: &str,
+        parameters: Option<Value>,
+        method: Method,
+    ) -> Result<bool> {
+        let url = format!("http://{}:{}/cgi-bin/{}.cgi", self.ip, self.port, command);
+        let response = self.execute_web_request(&url, &method, parameters).await?;
+
+        let status = response.status();
+        if status.is_success() {
+            Ok(true)
         } else {
             bail!("HTTP request failed with status code {}", status);
         }
@@ -157,6 +195,27 @@ impl AntMinerWebAPI {
     pub async fn reboot(&self) -> Result<Value> {
         self.send_web_command("reboot", false, None, Method::POST)
             .await
+    }
+
+    pub async fn read_logs(&self) -> Result<String> {
+        self.send_web_text_command("log", None, Method::GET).await
+    }
+
+    pub async fn factory_reset(&self) -> Result<bool> {
+        self.send_web_status_command("reset_conf", None, Method::POST)
+            .await
+    }
+
+    pub async fn change_password(&self, password: &str) -> Result<bool> {
+        let payload = json!({
+            "curPwd": self.auth.password.expose_secret(),
+            "newPwd": password,
+            "confirmPwd": password,
+        });
+        let response = self
+            .send_web_command("passwd", true, Some(payload), Method::POST)
+            .await?;
+        Ok(response.get("stats").and_then(Value::as_str) == Some("success"))
     }
 
     pub async fn upgrade_firmware(&self, image: FirmwareImage) -> Result<()> {

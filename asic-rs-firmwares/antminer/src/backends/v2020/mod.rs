@@ -1067,21 +1067,41 @@ impl Resume for AntMinerV2020 {
     }
 }
 
+#[async_trait]
 impl ChangePassword for AntMinerV2020 {
+    async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
+        let success = self.web.change_password(password).await?;
+        if success {
+            let username = self.web.username().to_string();
+            self.set_auth(MinerAuth::new(username, password));
+        }
+        Ok(success)
+    }
+
     fn supports_change_password(&self) -> bool {
-        false
+        true
     }
 }
 
+#[async_trait]
 impl ReadLogs for AntMinerV2020 {
+    async fn read_logs(&self) -> anyhow::Result<String> {
+        self.web.read_logs().await
+    }
+
     fn supports_read_logs(&self) -> bool {
-        false
+        true
     }
 }
 
+#[async_trait]
 impl FactoryReset for AntMinerV2020 {
+    async fn factory_reset(&self) -> anyhow::Result<bool> {
+        self.web.factory_reset().await
+    }
+
     fn supports_factory_reset(&self) -> bool {
-        false
+        true
     }
 }
 
