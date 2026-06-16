@@ -57,6 +57,10 @@ impl AntMinerWebAPI {
         self.auth = auth;
     }
 
+    pub fn auth(&self) -> MinerAuth {
+        self.auth.clone()
+    }
+
     pub fn username(&self) -> &str {
         self.auth.username.as_str()
     }

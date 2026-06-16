@@ -997,12 +997,31 @@ impl Resume for AntMinerV202307 {
 #[async_trait]
 impl ChangePassword for AntMinerV202307 {
     async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
-        let success = self.web.change_password(password).await?;
-        if success {
-            let username = self.web.username().to_string();
-            self.set_auth(MinerAuth::new(username, password));
+        let original_auth = self.web.auth();
+        let new_auth = MinerAuth::new(original_auth.username.clone(), password);
+        let result = self.web.change_password(password).await;
+
+        match result {
+            Ok(false) => Ok(false),
+            Ok(true) => {
+                self.set_auth(new_auth);
+                if self.web.get_miner_conf().await.is_ok() {
+                    Ok(true)
+                } else {
+                    self.set_auth(original_auth);
+                    Ok(false)
+                }
+            }
+            Err(err) => {
+                self.set_auth(new_auth);
+                if self.web.get_miner_conf().await.is_ok() {
+                    Ok(true)
+                } else {
+                    self.set_auth(original_auth);
+                    Err(err)
+                }
+            }
         }
-        Ok(success)
     }
 
     fn supports_change_password(&self) -> bool {
