@@ -11,7 +11,7 @@ use asic_rs_core::{
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
         miner::{Miner, MinerAuth, MinerConstructor},
-        model::MinerModel,
+        model::{MinerModel, UnknownMinerModel},
     },
     util,
 };
@@ -23,6 +23,7 @@ use async_trait::async_trait;
 pub enum BraiinsCompatibleModel {
     AntMiner(AntMinerModel),
     Braiins(BraiinsModel),
+    Unknown(UnknownMinerModel),
 }
 
 impl Display for BraiinsCompatibleModel {
@@ -30,6 +31,7 @@ impl Display for BraiinsCompatibleModel {
         match self {
             Self::AntMiner(m) => m.fmt(f),
             Self::Braiins(m) => m.fmt(f),
+            Self::Unknown(m) => m.fmt(f),
         }
     }
 }
@@ -39,6 +41,7 @@ impl From<BraiinsCompatibleModel> for MinerHardware {
         match model {
             BraiinsCompatibleModel::AntMiner(m) => m.into(),
             BraiinsCompatibleModel::Braiins(m) => m.into(),
+            BraiinsCompatibleModel::Unknown(m) => m.into(),
         }
     }
 }
@@ -48,6 +51,14 @@ impl MinerModel for BraiinsCompatibleModel {
         match self {
             Self::AntMiner(m) => m.make_name(),
             Self::Braiins(m) => m.make_name(),
+            Self::Unknown(m) => m.make_name(),
+        }
+    }
+    fn is_known(&self) -> bool {
+        match self {
+            Self::AntMiner(m) => m.is_known(),
+            Self::Braiins(m) => m.is_known(),
+            Self::Unknown(m) => m.is_known(),
         }
     }
 }
@@ -79,9 +90,21 @@ impl MinerFirmware for BraiinsFirmware {
                 .replace("BITMAIN ", "")
                 .replace("S19XP", "S19 XP");
 
-            return AntMinerMake::parse_model(model.clone())
-                .map(BraiinsCompatibleModel::AntMiner)
-                .or_else(|_| BraiinsMake::parse_model(model).map(BraiinsCompatibleModel::Braiins));
+            let antminer = AntMinerMake::parse_model(model.clone())
+                .ok()
+                .filter(MinerModel::is_known)
+                .map(BraiinsCompatibleModel::AntMiner);
+
+            let braiins = BraiinsMake::parse_model(model.clone())
+                .ok()
+                .filter(MinerModel::is_known)
+                .map(BraiinsCompatibleModel::Braiins);
+
+            return Ok(antminer
+                .or(braiins)
+                .unwrap_or(BraiinsCompatibleModel::Unknown(UnknownMinerModel {
+                    name: model,
+                })));
         }
 
         Err(ModelSelectionError::NoModelResponse)

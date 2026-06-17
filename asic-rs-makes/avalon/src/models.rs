@@ -1,3 +1,4 @@
+use asic_rs_core::traits::model::MinerModel;
 use std::str::FromStr;
 
 use asic_rs_core::errors::ModelSelectionError;
@@ -57,9 +58,12 @@ impl FromStr for AvalonMinerModel {
     }
 }
 
-impl asic_rs_core::traits::model::MinerModel for AvalonMinerModel {
+impl MinerModel for AvalonMinerModel {
     fn make_name(&self) -> String {
         "Avalonminer".to_string()
+    }
+    fn is_known(&self) -> bool {
+        !matches!(self, Self::Unknown(_))
     }
 }
 

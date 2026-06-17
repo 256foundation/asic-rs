@@ -8,6 +8,7 @@ use crate::{data::device::MinerHardware, errors::ModelSelectionError};
 
 pub trait MinerModel: Display + Into<MinerHardware> + Clone + Any {
     fn make_name(&self) -> String;
+    fn is_known(&self) -> bool;
 }
 
 #[derive(Debug, Clone)]
@@ -30,6 +31,9 @@ impl From<UnknownMinerModel> for MinerHardware {
 impl MinerModel for UnknownMinerModel {
     fn make_name(&self) -> String {
         "Unknown".to_string()
+    }
+    fn is_known(&self) -> bool {
+        false
     }
 }
 

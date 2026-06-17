@@ -59,6 +59,14 @@ impl MinerModel for EPicCompatibleModel {
             Self::Unknown(m) => m.make_name(),
         }
     }
+    fn is_known(&self) -> bool {
+        match self {
+            Self::AntMiner(m) => m.is_known(),
+            Self::WhatsMiner(m) => m.is_known(),
+            Self::EPic(m) => m.is_known(),
+            Self::Unknown(m) => m.is_known(),
+        }
+    }
 }
 
 #[derive(Default, Debug)]

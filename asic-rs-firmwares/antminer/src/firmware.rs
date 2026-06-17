@@ -56,6 +56,12 @@ impl MinerModel for AntMinerCompatibleModel {
             Self::Unknown(m) => m.make_name(),
         }
     }
+    fn is_known(&self) -> bool {
+        match self {
+            Self::AntMiner(m) => m.is_known(),
+            Self::Unknown(m) => m.is_known(),
+        }
+    }
 }
 
 #[derive(Default, Debug)]

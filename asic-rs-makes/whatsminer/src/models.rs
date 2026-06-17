@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use asic_rs_core::errors::ModelSelectionError;
+use asic_rs_core::traits::model::MinerModel;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
@@ -1017,9 +1018,12 @@ impl FromStr for WhatsMinerModel {
     }
 }
 
-impl asic_rs_core::traits::model::MinerModel for WhatsMinerModel {
+impl MinerModel for WhatsMinerModel {
     fn make_name(&self) -> String {
         "Whatsminer".to_string()
+    }
+    fn is_known(&self) -> bool {
+        !matches!(self, Self::Unknown(_))
     }
 }
 

@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use asic_rs_core::errors::ModelSelectionError;
+use asic_rs_core::traits::model::MinerModel;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
@@ -22,9 +23,12 @@ impl FromStr for ProtoModel {
     }
 }
 
-impl asic_rs_core::traits::model::MinerModel for ProtoModel {
+impl MinerModel for ProtoModel {
     fn make_name(&self) -> String {
         "Proto".to_string()
+    }
+    fn is_known(&self) -> bool {
+        !matches!(self, Self::Unknown(_))
     }
 }
 

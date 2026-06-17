@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use asic_rs_core::errors::ModelSelectionError;
+use asic_rs_core::traits::model::MinerModel;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
@@ -27,9 +28,12 @@ impl FromStr for BitaxeModel {
     }
 }
 
-impl asic_rs_core::traits::model::MinerModel for BitaxeModel {
+impl MinerModel for BitaxeModel {
     fn make_name(&self) -> String {
         "Bitaxe".to_string()
+    }
+    fn is_known(&self) -> bool {
+        !matches!(self, Self::Unknown(_))
     }
 }
 
