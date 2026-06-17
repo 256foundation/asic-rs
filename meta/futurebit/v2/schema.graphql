@@ -1,0 +1,1041 @@
+# FutureBit Apollo API v2 GraphQL schema
+# Generated from https://github.com/jstefanop/apolloapi-v2/tree/d2be4826b9767d95214642a5b2db23b323c52b20/src/graphql/typeDefs
+
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+# Source: base.js
+  directive @auth on FIELD_DEFINITION
+
+  type Query {
+    _: Boolean
+  }
+
+  type Mutation {
+    _: Boolean
+  }
+
+  type Error {
+    message: String!
+    path: String
+    type: String
+    severity: String
+    reasons: [ErrorReason]
+  }
+
+  type ErrorReason {
+    path: String
+    message: String
+    reason: String
+  }
+
+# Source: auth.js
+  extend type Query {
+    Auth: AuthActions
+  }
+
+  enum AuthStatus { pending, done }
+
+  type AuthActions {
+    login(input: AuthLoginInput!): AuthLoginOutput!
+    status: AuthStatusOutput!
+    changePassword(input: AuthChangePasswordInput!): AuthChangePasswordOutput! @auth
+    setup(input: AuthSetupInput!): AuthSetupOutput!
+  }
+
+  input AuthLoginInput {
+    password: String!
+  }
+
+  type AuthLoginOutput {
+    result: AuthLoginResult
+    error: Error
+  }
+
+  type AuthLoginResult {
+    accessToken: String!
+  }
+
+  type AuthStatusOutput {
+    result: AuthStatusResult
+    error: Error
+  }
+
+  type AuthStatusResult {
+    status: AuthStatus!
+  }
+
+  input AuthChangePasswordInput {
+    password: String!
+  }
+
+  type AuthChangePasswordOutput {
+    error: Error
+  }
+
+  input AuthSetupInput {
+    password: String!
+  }
+
+  type AuthSetupOutput {
+    error: Error
+  }
+
+# Source: logs.js
+  extend type Query {
+    Logs: LogsActions
+  }
+
+  enum LogType {
+    CKPOOL
+    MINER
+    NODE
+    SYSLOG
+  }
+
+  type LogsActions {
+    read(input: LogReadInput!): LogReadOutput! @auth
+  }
+
+  input LogReadInput {
+    logType: LogType!
+    lines: Int
+  }
+
+  type LogReadOutput {
+    result: LogReadResult
+    error: Error
+  }
+
+  type LogReadResult {
+    content: String!
+    timestamp: String
+  }
+
+# Source: mcu.js
+  extend type Query {
+    Mcu: McuActions
+  }
+
+  type McuActions {
+    stats: McuStatsOutput! @auth
+    wifiScan: McuWifiScanOutput! @auth
+    wifiConnect(input: McuWifiConnectInput!): McuWifiConnectOutput! @auth
+    wifiDisconnect: McuWifiDisconnectOutput! @auth
+    reboot: EmptyOutput! @auth
+    shutdown: EmptyOutput! @auth
+    version: McuAppVersionOutput! @auth
+    update: EmptyOutput! @auth
+    updateProgress: McuUpdateProgressOutput! @auth
+  }
+
+  type McuStatsOutput {
+    result: McuStatsResult
+    error: Error
+  }
+
+  type McuStatsResult {
+    stats: McuStats!
+  }
+
+  type McuStats {
+    timestamp: String!
+    hostname: String
+    operatingSystem: String
+    uptime: String
+    loadAverage: String
+    architecture: String
+    temperature: Int
+    minerTemperature: Float
+    minerFanSpeed: Int
+    bfgminerLog: String
+    activeWifi: String
+    network: [NetworkStats!]
+    memory: MemoryStats
+    cpu: CpuStats
+    disks: [DiskStats!]
+  }
+
+  type MemoryStats {
+    total: Float
+    available: Float
+    used: Float
+    cache: Float
+    swap: Float
+  }
+
+  type CpuStats {
+    threads: Int
+    usedPercent: Float
+  }
+
+  type NetworkStats {
+    name: String
+    address: String
+    mac: String
+  }
+
+  type DiskStats {
+    total: Float
+    used: Float
+    mountPoint: String
+  }
+
+  type McuWifiScanOutput {
+    result: McuWifiScanResult
+    error: Error
+  }
+
+  type McuWifiScanResult {
+    wifiScan: [McuWifiScan]
+  }
+
+  type McuWifiScan {
+    ssid: String
+    mode: String
+    channel: Int
+    rate: Int
+    signal: Int
+    security: String
+    inuse: Boolean
+  }
+
+  input McuWifiConnectInput {
+    ssid: String!
+    passphrase: String
+  }
+
+  type McuWifiConnectOutput {
+    result: McuWifiConnectResult
+    error: Error
+  }
+
+  type McuWifiConnectResult {
+    address: String!
+  }
+
+  type McuWifiDisconnectOutput {
+    error: Error
+  }
+
+  type McuAppVersionOutput {
+    result: String
+    error: Error
+  }
+
+  type McuUpdateProgressOutput {
+    result: McuUpdateProgressResult
+    error: Error
+  }
+
+  type McuUpdateProgressResult {
+    value: Int
+  }
+
+# Source: miner.js
+  extend type Query {
+    Miner: MinerActions
+  }
+
+  type MinerActions {
+    start: EmptyOutput! @auth
+    stop: EmptyOutput! @auth
+    restart: EmptyOutput! @auth
+    stats: MinerStatsOutput!
+    online: MinerOnlineOutput!
+    resetBlockFoundFlag: EmptyOutput! @auth
+  }
+
+  type EmptyOutput {
+    error: Error
+  }
+
+  type MinerStatsOutput {
+    result: MinerStatsResult
+    error: Error
+  }
+
+  type MinerStatsResult {
+    stats: [MinerStats]
+    ckpool: MinerStatsCkpool
+  }
+
+  type MinerStats {
+    uuid: String
+    version: String
+    date: String
+    comport: String
+    statVersion: String
+    versions: MinerStatsVersion
+    master: MinerStatsMaster
+    pool: MinerStatsPool
+    fans: MinerStatsFans
+    temperature: MinerStatsTemperature
+    slots: MinerStatsSlots
+    slaves: [MinerStatsSlave]
+  }
+
+  type MinerStatsVersion {
+    miner: String
+    minerDate: String
+    minerDebug: String
+    mspVer: String
+  }
+
+  type MinerStatsMaster {
+    upTime: Int
+    diff: Int
+    boards: Int
+    errorSpi: Int
+    osc: Int
+    hwAddr: String
+    boardsI: Float
+    boardsW: Float
+    wattPerGHs: Float
+    intervals: MinerStatsMasterIntervals
+  }
+
+  type MinerStatsMasterIntervals {
+    int_30: MinerStatsMasterInterval
+    int_300: MinerStatsMasterInterval
+    int_900: MinerStatsMasterInterval
+    int_3600: MinerStatsMasterInterval
+    int_0: MinerStatsMasterInterval
+  }
+
+  type MinerStatsMasterInterval {
+    name: String
+    interval: Int
+    bySol: Float
+    byDiff: Float
+    byPool: Float
+    byJobs: Float
+    solutions: Float
+    errors: Float
+    errorRate: Float
+    chipSpeed: Float
+    chipRestarts: Int
+  }
+
+  type MinerStatsPool {
+    host: String
+    port: Int
+    userName: String
+    diff: Float
+    intervals: MinerStatsPoolIntervals
+  }
+
+  type MinerStatsPoolIntervals {
+    int_0: MinerStatsPoolInterval
+  }
+
+  type MinerStatsPoolInterval {
+    name: String
+    interval: Int
+    jobs: Int
+    cleanFlags: Int
+    sharesSent: Float
+    sharesAccepted: Float
+    sharesRejected: Float
+    solutionsAccepted: Float
+    minRespTime: Float
+    avgRespTime: Float
+    maxRespTime: Float
+    shareLoss: Float
+    poolTotal: Float
+    inService: Int
+    subscribeError: Int
+    diffChanges: Int
+    reconnections: Int
+    reconnectionsOnErrors: Int
+    defaultJobShares: Int
+    staleJobShares: Int
+    duplicateShares: Int
+    lowDifficultyShares: Int
+    pwcSharesSent: Int
+    pwcSharesDropped: Int
+    bigDiffShares: Int
+    belowTargetShare: Int
+    pwcRestart: Int
+    statOverflow: Int
+  }
+
+  type MinerStatsFans {
+    int_0: MinerStatsFan
+  }
+
+  type MinerStatsFan {
+    rpm: [Int]
+  }
+
+  type MinerStatsTemperature {
+    count: Float
+    min: Float
+    avr: Float
+    max: Float
+  }
+
+  type MinerStatsSlots {
+    int_0: MinerStatsSlot
+  }
+
+  type MinerStatsSlot {
+    revision: Int
+    spiNum: Int
+    spiLen: Int
+    pwrNum: Int
+    pwrLen: Int
+    btcNum: Int
+    specVoltage: Int
+    chips: Int
+    pwrOn: Int
+    pwrOnTarget: Int
+    revAdc: Int
+    temperature: Float
+    temperature1: Float
+    ocp: Float
+    heaterErr: Int
+    heaterErrNum: Int
+    inOHOsc: Int
+    ohOscNum: Int
+    ohOscTime: Int
+    overheats: Int
+    overheatsTime: Int
+    lowCurrRst: Int
+    currents: [Int]
+    brokenPwc: Int
+    solutions: Float
+    errors: Float
+    ghs: Float
+    errorRate: Float
+    chipRestarts: Int
+    wattPerGHs: Float
+    tmpAlert: MinerStatsTmpAlert
+    osc: Int
+    oscStopChip: String
+  }
+
+  type MinerStatsTmpAlert {
+    alertLo: Int
+    alertHi: Int
+    numWrite: Int
+  }
+
+  type MinerStatsSlave {
+    id: Int
+    uid: String
+    ver: String
+    rx: Int
+    err: Float
+    time: Int
+    ping: Int
+  }
+
+  type MinerStatsCkpool {
+    pool: MinerStatsCkpoolPool
+    users: [MinerStatsCkpoolUsers]
+    blockFound: Boolean
+  }
+
+  type MinerStatsCkpoolPool {
+    runtime: Float
+    lastupdate: Int
+    Users: Int
+    Workers: Int
+    Idle: Int
+    Disconnected: Int
+    hashrate1m: String
+    hashrate5m: String
+    hashrate15m: String
+    hashrate1hr: String
+    hashrate6hr: String
+    hashrate1d: String
+    hashrate7d: String
+    diff: Float
+    accepted: Float
+    rejected: Float
+    bestshare: Float
+    SPS1m: Float
+    SPS5m: Float
+    SPS15m: Float
+    SPS1h: Float
+  }
+
+  type MinerStatsCkpoolUsers {
+    hashrate1m: String
+    hashrate5m: String
+    hashrate1hr: String
+    hashrate1d: String
+    hashrate7d: String
+    lastshare: Int
+    workers: Int
+    shares: Float
+    bestshare: Float
+    bestever: Float
+    authorised: Float
+    worker: [MinerStatsCkpoolWorker]
+  }
+
+  type MinerStatsCkpoolWorker {
+    workername: String
+    hashrate1m: String
+    hashrate5m: String
+    hashrate1hr: String
+    hashrate1d: String
+    hashrate7d: String
+    lastshare: Int
+    shares: Float
+    bestshare: Float
+    bestever: Float
+  }
+
+  type MinerOnlineOutput {
+    result: MinerOnlineResult
+    error: Error
+  }
+
+  type MinerOnlineResult {
+    online: MinerOnline!
+  }
+
+  type MinerOnline {
+    timestamp: String!
+    status: String!
+  }
+
+# Source: node.js
+  extend type Query {
+    Node: NodeActions
+  }
+
+  type NodeActions {
+    start: EmptyOutput! @auth
+    stop: EmptyOutput! @auth
+    stats: NodeStatsOutput!
+    conf: NodeConfOutput! @auth
+    formatProgress: NodeFormatProgressOutput! @auth
+    format: EmptyOutput! @auth
+    online: NodeOnlineOutput!
+    recentBlocks(count: Int): NodeRecentBlocksOutput!
+  }
+
+  type NodeStatsOutput {
+    result: NodeStatsResult
+    error: Error
+  }
+
+  type NodeStatsResult {
+    stats: NodeStats!
+  }
+
+  type NodeStats {
+    timestamp: String!
+    blockchainInfo: BlockchainInfo
+    connectionCount: Int
+    miningInfo: MiningInfo
+    peerInfo: [PeerInfo]
+    networkInfo: NetworkInfo
+    error: LoadingError
+  }
+
+  type BlockchainInfo {
+    blocks: Int
+    blockTime: Int
+    headers: Int
+    sizeOnDisk: String
+    verificationprogress: Float
+  }
+
+  type MiningInfo {
+    difficulty: Float
+    networkhashps: Float
+  }
+
+  type PeerInfo {
+    addr: String
+    subver: String
+  }
+
+  type NetworkInfo {
+    version: String
+    subversion: String
+    localaddresses: [LocalAddress]
+    connections_in: Int
+    connections_out: Int
+  }
+
+  type LocalAddress {
+    address: String
+    port: Int
+    score: Int
+  }
+
+  type LoadingError {
+    code: String
+    message: String
+  }
+
+  type NodeConfOutput {
+    result: NodeConfResult
+    error: Error
+  }
+
+  type NodeConfResult {
+    bitcoinConf: String!
+  }
+
+  type NodeFormatProgressOutput {
+    result: NodeFormatProgressResult
+    error: Error
+  }
+
+  type NodeFormatProgressResult {
+    value: Int
+  }
+
+  type NodeOnlineOutput {
+    result: NodeOnlineResult
+    error: Error
+  }
+
+  type NodeOnlineResult {
+    online: NodeOnline!
+  }
+
+  type NodeOnline {
+    timestamp: String!
+    status: String!
+  }
+
+  type NodeRecentBlocksOutput {
+    result: NodeRecentBlocksResult
+    error: Error
+  }
+
+  type NodeRecentBlocksResult {
+    blocks: [BlockInfo!]!
+    error: String
+  }
+
+  type BlockInfo {
+    id: String!
+    height: Int!
+    version: Int!
+    timestamp: Int!
+    bits: Int!
+    nonce: Int!
+    difficulty: Float!
+    merkle_root: String!
+    tx_count: Int!
+    size: Int!
+    weight: Int!
+    previousblockhash: String!
+    mediantime: Int!
+    stale: Boolean!
+    error: String
+    errorUpdatedAt: String
+    extras: BlockExtras
+  }
+
+  type BlockExtras {
+    reward: Float!
+    coinbaseRaw: String
+    totalFees: Float
+    avgFee: Float
+    avgFeeRate: Float
+    avgTxSize: Float
+    totalInputs: Int
+    totalOutputs: Int
+    totalOutputAmt: Float
+    segwitTotalTxs: Int
+    segwitTotalSize: Int
+    segwitTotalWeight: Int
+    virtualSize: Float
+    coinbaseAddress: String
+    pool: PoolInfo
+  }
+
+  type PoolInfo {
+    id: Int
+    name: String
+    slug: String
+  }
+
+# Source: pools.js
+  extend type Query {
+    Pool: PoolActions
+  }
+
+  type PoolActions {
+    list: PoolListOutput! @auth
+    create(input: PoolCreateInput!): PoolCreateOutput! @auth
+    update(input: PoolUpdateInput!): PoolUpdateOutput! @auth
+    updateAll(input: PoolUpdateAllInput!): PoolsUpdateOutput! @auth
+    delete(input: PoolDeleteInput!): EmptyOutput! @auth
+  }
+
+  type PoolListOutput {
+    result: PoolListResult
+    error: Error
+  }
+
+  type PoolListResult {
+    pools: [Pool!]!
+  }
+
+  input PoolCreateInput {
+    enabled: Boolean!
+    donation: Int
+    url: String!
+    username: String
+    password: String
+    proxy: String
+    index: Int
+  }
+
+  type PoolCreateOutput {
+    result: PoolCreateResult
+    error: Error
+  }
+
+  type PoolCreateResult {
+    pool: Pool!
+  }
+
+  input PoolUpdateInput {
+    id: Int!
+    enabled: Boolean
+    donation: Int
+    url: String
+    username: String
+    password: String
+    proxy: String
+  }
+
+  type PoolUpdateOutput {
+    result: PoolUpdateResult
+    error: Error
+  }
+
+  type PoolUpdateResult {
+    pool: Pool!
+  }
+
+  input PoolDeleteInput {
+    id: Int!
+  }
+
+  input PoolUpdateAllInputItem {
+    index: Int!
+    donation: Int
+    enabled: Boolean!
+    url: String!
+    username: String
+    password: String
+    proxy: String
+  }
+
+  input PoolUpdateAllInput {
+    pools: [PoolUpdateAllInputItem!]!
+  }
+
+  type PoolsUpdateOutput {
+    result: PoolsUpdateResult
+    error: Error
+  }
+
+  type PoolsUpdateResult {
+    pools: [Pool!]!
+  }
+
+  type Pool {
+    id: Int!
+    enabled: Boolean!
+    donation: Int
+    url: String!
+    username: String
+    password: String
+    proxy: String
+    index: Int!
+  }
+
+# Source: services.js
+  extend type Query {
+    Services: ServicesActions
+  }
+
+  type ServicesActions {
+    stats(input: StatusInput): StatusOutput! @auth
+  }
+
+  input StatusInput {
+    serviceName: String
+  }
+
+  type StatusOutput {
+    result: Status
+    error: Error
+  }
+
+  type Status {
+    data: [StatusData!]!
+  }
+
+  type StatusData {
+    id: String
+    serviceName: String
+    status: String
+    requestedStatus: String
+    requestedAt: String
+    lastChecked: String
+  }
+
+# Source: settings.js
+  extend type Query {
+    Settings: SettingsActions
+  }
+
+  enum MinerMode { eco, balanced, turbo, custom }
+  enum TemperatureUnit { f, c }
+  enum NodeSoftware { core_25_1, core_28_1, core_29_2, knots_29_2 }
+
+  type SettingsActions {
+    list: SettingListOutput! @auth
+    read: SettingsUpdateOutput! @auth
+    update(input: SettingsUpdateInput!): SettingsUpdateOutput! @auth
+  }
+
+  type SettingListOutput {
+    result: SettingListResult
+    error: Error
+  }
+
+  type SettingListResult {
+    settings: [Settings!]!
+  }
+
+  type SettingsUpdateOutput {
+    result: SettingsUpdateResult
+    error: Error
+  }
+
+  type SettingsUpdateResult {
+    settings: Settings!
+  }
+
+  input SettingsUpdateInput {
+    agree: Boolean
+    minerMode: MinerMode
+    voltage: Float
+    frequency: Int
+    fan: Int
+    fan_low: Int
+    fan_high: Int
+    apiAllow: Boolean
+    customApproval: Boolean
+    connectedWifi: String
+    leftSidebarVisibility: Boolean
+    leftSidebarExtended: Boolean
+    rightSidebarVisibility: Boolean
+    temperatureUnit: TemperatureUnit
+    powerLedOff: Boolean
+    nodeRpcPassword: String
+    nodeEnableTor: Boolean
+    nodeUserConf: String
+    nodeEnableSoloMining: Boolean
+    nodeMaxConnections: Int
+    nodeAllowLan: Boolean
+    btcsig: String
+    startdiff: Int
+    nodeSoftware: NodeSoftware
+  }
+
+  type Settings {
+    id: Int!
+    agree: Boolean
+    createdAt: String!
+    minerMode: MinerMode!
+    voltage: Float!
+    frequency: Int!
+    fan: Int
+    fan_low: Int!
+    fan_high: Int!
+    apiAllow: Boolean
+    customApproval: Boolean
+    connectedWifi: String
+    leftSidebarVisibility: Boolean!
+    leftSidebarExtended: Boolean!
+    rightSidebarVisibility: Boolean!
+    temperatureUnit: TemperatureUnit!
+    powerLedOff: Boolean
+    nodeRpcPassword: String
+    nodeEnableTor: Boolean
+    nodeUserConf: String
+    nodeEnableSoloMining: Boolean
+    nodeMaxConnections: Int
+    nodeAllowLan: Boolean
+    btcsig: String
+    startdiff: Int
+    nodeSoftware: NodeSoftware
+  }
+
+# Source: solo.js
+  extend type Query {
+    Solo: SoloActions
+  }
+
+  type SoloActions {
+    status: SoloStatusOutput! @auth
+    start: SoloOutput! @auth
+    stop: SoloOutput! @auth
+    restart: SoloOutput! @auth
+    stats: SoloStatsOutput! @auth
+  }
+
+  type SoloOutput {
+    success: Boolean!
+    error: Error
+  }
+
+  type SoloStatusOutput {
+    result: SoloStatus
+    error: Error
+  }
+
+  type SoloStatus {
+    status: String
+  }
+
+  type SoloStatsOutput {
+    result: SoloStats
+    error: Error
+  }
+
+  type SoloStats {
+    status: String
+    pool: SoloStatsPool
+    users: [SoloStatsUsers]
+    blockFound: Boolean
+    error: Error
+    timestamp: String
+  }
+
+  type SoloStatsPool {
+    runtime: Float
+    lastupdate: Int
+    Users: Int
+    Workers: Int
+    Idle: Int
+    Disconnected: Int
+    hashrate1m: String
+    hashrate5m: String
+    hashrate15m: String
+    hashrate1hr: String
+    hashrate6hr: String
+    hashrate1d: String
+    hashrate7d: String
+    diff: Float
+    accepted: Float
+    rejected: Float
+    bestshare: Float
+    SPS1m: Float
+    SPS5m: Float
+    SPS15m: Float
+    SPS1h: Float
+  }
+
+  type SoloStatsUsers {
+    hashrate1m: String
+    hashrate5m: String
+    hashrate1hr: String
+    hashrate1d: String
+    hashrate7d: String
+    lastshare: Int
+    workers: Int
+    shares: Float
+    bestshare: Float
+    bestever: Float
+    authorised: Float
+    worker: [SoloStatsWorker]
+  }
+
+  type SoloStatsWorker {
+    workername: String
+    hashrate1m: String
+    hashrate5m: String
+    hashrate1hr: String
+    hashrate1d: String
+    hashrate7d: String
+    lastshare: Int
+    shares: Float
+    bestshare: Float
+    bestever: Float
+  }
+
+# Source: timeSeries.js
+  extend type Query {
+    TimeSeries: TimeSeriesActions
+  }
+
+  type TimeSeriesActions {
+    stats(input: TimeSeriesInput!): TimeSeriesStatsOutput! @auth
+  }
+
+  input TimeSeriesInput {
+    startDate: String
+    endDate: String
+    "Aggregation interval: 'day' (default, 30 days), 'hour' (24h), '10min' (6h)"
+    interval: TimeSeriesInterval
+    itemId: String
+    "Source of time series data: 'miner' (default) or 'solo'"
+    source: TimeSeriesSource
+  }
+
+  enum TimeSeriesInterval {
+    "Aggregate by day (default: last 30 days)"
+    day
+    "Aggregate by hour (default: last 24 hours)"
+    hour
+    "Aggregate by 10 minutes (default: last 6 hours)"
+    tenmin
+  }
+
+  enum TimeSeriesSource {
+    miner
+    solo
+  }
+
+  type TimeSeriesStatsOutput {
+    result: TimeSeriesStats
+    error: Error
+  }
+
+  type TimeSeriesStats {
+    data: [TimeSeriesData!]!
+  }
+
+  "Miner and Solo time series data (fields depend on source)"
+  type TimeSeriesData {
+    date: String
+    "Miner fields"
+    hashrate: Float
+    accepted: Float
+    poolHashrate: Float
+    rejected: Float
+    sent: Float
+    errors: Float
+    watts: Float
+    temperature: Float
+    voltage: Float
+    chipSpeed: Float
+    fanRpm: Float
+    "Solo fields"
+    users: Float
+    workers: Float
+    idle: Float
+    disconnected: Float
+    hashrate15m: Float
+    bestshare: Float
+  }

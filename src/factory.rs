@@ -165,6 +165,11 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
     ));
 
     // Stock firmwares — checked last so non-stock take priority
+    #[cfg(feature = "futurebit")]
+    registry.push(Arc::new(
+        asic_rs_firmwares_futurebit::firmware::ApolloFirmware::default(),
+    ));
+
     #[cfg(feature = "whatsminer")]
     registry.push(Arc::new(
         asic_rs_firmwares_whatsminer::firmware::WhatsMinerFirmware::default(),

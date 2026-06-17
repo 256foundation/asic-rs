@@ -64,6 +64,7 @@ dependencies = [
  "asic-rs-firmwares-bitaxe",
  "asic-rs-firmwares-braiins",
  "asic-rs-firmwares-epic",
+ "asic-rs-firmwares-futurebit",
  "asic-rs-firmwares-luxminer",
  "asic-rs-firmwares-marathon",
  "asic-rs-firmwares-nerdaxe",
@@ -77,6 +78,7 @@ dependencies = [
  "asic-rs-makes-bitaxe",
  "asic-rs-makes-braiins",
  "asic-rs-makes-epic",
+ "asic-rs-makes-futurebit",
  "asic-rs-makes-marathon",
  "asic-rs-makes-nerdaxe",
  "asic-rs-makes-proto",
@@ -236,6 +238,24 @@ dependencies = [
  "sha2",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "asic-rs-firmwares-futurebit"
+version = "0.6.1"
+dependencies = [
+ "anyhow",
+ "asic-rs-core",
+ "asic-rs-makes-futurebit",
+ "async-trait",
+ "macaddr",
+ "measurements",
+ "once_cell",
+ "pyo3",
+ "reqwest",
+ "semver",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -428,6 +448,17 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-epic"
+version = "0.6.1"
+dependencies = [
+ "asic-rs-core",
+ "pyo3",
+ "serde",
+ "serde_json",
+ "strum",
+]
+
+[[package]]
+name = "asic-rs-makes-futurebit"
 version = "0.6.1"
 dependencies = [
  "asic-rs-core",

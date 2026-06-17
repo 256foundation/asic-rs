@@ -16,6 +16,8 @@ pub use asic_rs_firmwares_bitaxe as bitaxe;
 pub use asic_rs_firmwares_braiins as braiins;
 #[cfg(feature = "epic")]
 pub use asic_rs_firmwares_epic as epic;
+#[cfg(feature = "futurebit")]
+pub use asic_rs_firmwares_futurebit as futurebit;
 #[cfg(feature = "luxminer")]
 pub use asic_rs_firmwares_luxminer as luxminer;
 #[cfg(feature = "marathon")]
@@ -24,6 +26,8 @@ pub use asic_rs_firmwares_marathon as marathon;
 pub use asic_rs_firmwares_nerdaxe as nerdaxe;
 #[cfg(feature = "proto")]
 pub use asic_rs_firmwares_proto as proto;
+#[cfg(feature = "sealminer")]
+pub use asic_rs_firmwares_sealminer as sealminer;
 #[cfg(feature = "vnish")]
 pub use asic_rs_firmwares_vnish as vnish;
 #[cfg(feature = "whatsminer")]

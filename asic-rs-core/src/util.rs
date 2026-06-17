@@ -183,7 +183,6 @@ pub async fn send_web_command(
         .await
         .map_err(|_| tracing::debug!("received no response data from miner"))
         .ok()?;
-
     tracing::trace!("got response from miner: {text}");
     Some((text, headers, status))
 }
