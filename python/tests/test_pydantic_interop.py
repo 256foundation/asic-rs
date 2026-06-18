@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -644,11 +645,13 @@ def test_nested_data_model_round_trips_hashrate_payload() -> None:
     }
 
 
-def test_miner_data_serializes_uptime_seconds() -> None:
+def test_miner_data_serializes_uptime_as_timedelta() -> None:
     model = MinerDataModel.model_validate({"miner": minimal_miner_data(uptime=1.25)})
 
     assert isinstance(model.miner, MinerData)
-    assert model.model_dump()["miner"]["uptime"] == 1.0
+    # uptime is a Duration -> serialized as datetime.timedelta (matches the
+    # `uptime` type stub and the get_uptime() method), not a bare float.
+    assert model.model_dump()["miner"]["uptime"] == timedelta(seconds=1.25)
 
 
 def test_miner_data_control_board_uses_model_shape() -> None:
