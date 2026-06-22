@@ -14,6 +14,7 @@ use crate::{
         collector::{ConfigCollector, ConfigField, ConfigLocation},
         fan::FanConfig,
         pools::PoolGroupConfig,
+        preset::PresetInfo,
         scaling::ScalingConfig,
         temperature::TemperatureConfig,
         tuning::TuningConfig,
@@ -43,12 +44,24 @@ pub trait MinerConstructor {
 }
 
 pub trait Miner:
-    GetMinerData + HasMinerControl + SupportsConfigs + UpgradeFirmware + HasAuth + HasDefaultAuth
+    GetMinerData
+    + HasMinerControl
+    + SupportsConfigs
+    + SupportsPresets
+    + UpgradeFirmware
+    + HasAuth
+    + HasDefaultAuth
 {
 }
 
 impl<
-    T: GetMinerData + HasMinerControl + SupportsConfigs + UpgradeFirmware + HasAuth + HasDefaultAuth,
+    T: GetMinerData
+        + HasMinerControl
+        + SupportsConfigs
+        + SupportsPresets
+        + UpgradeFirmware
+        + HasAuth
+        + HasDefaultAuth,
 > Miner for T
 {
 }
@@ -809,6 +822,22 @@ pub trait SetTuningPercent {
     }
     /// Defaults to `false`; backends that support throttling override this.
     fn supports_set_tuning_percent(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+pub trait SupportsPresets {
+    /// List the firmware's available autotune/overclock presets.
+    ///
+    /// Selecting a preset is done through [`SupportsTuningConfig::set_tuning_config`]
+    /// with a [`TuningTarget::Preset`], and the active preset is surfaced via
+    /// [`GetTuningTarget::get_tuning_target`].
+    async fn get_presets(&self) -> Vec<PresetInfo> {
+        Vec::new()
+    }
+    /// Defaults to `false`; backends with named presets override this.
+    fn supports_presets(&self) -> bool {
         false
     }
 }

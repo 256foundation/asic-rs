@@ -821,6 +821,9 @@ fn tuning_config_to_v3_rpc(config: &TuningConfig) -> anyhow::Result<(&'static st
         TuningTarget::HashRate(_) => {
             anyhow::bail!("HashRate tuning target is not supported on WhatsMiner")
         }
+        TuningTarget::Preset(_) => {
+            anyhow::bail!("Preset tuning target is not supported on WhatsMiner")
+        }
     }
 }
 
@@ -1204,3 +1207,4 @@ mod integration_tests {
 impl SupportsTemperatureConfig for WhatsMinerV3 {}
 impl GetTuningPercent for WhatsMinerV3 {}
 impl SetTuningPercent for WhatsMinerV3 {}
+impl SupportsPresets for WhatsMinerV3 {}

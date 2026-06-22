@@ -4,8 +4,8 @@ use super::typing::{PyAwaitable, future_into_py};
 use asic_rs_core::data::collector::DataField;
 use asic_rs_core::{
     config::{
-        fan::FanConfig, pools::PoolGroupConfig as PoolGroup, scaling::ScalingConfig,
-        temperature::TemperatureConfig, tuning::TuningConfig,
+        fan::FanConfig, pools::PoolGroupConfig as PoolGroup, preset::PresetInfo,
+        scaling::ScalingConfig, temperature::TemperatureConfig, tuning::TuningConfig,
     },
     data::{
         board::BoardData,
@@ -182,6 +182,11 @@ impl Miner {
     #[getter]
     fn supports_set_tuning_percent(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_set_tuning_percent())
+    }
+    /// Whether this miner exposes named autotune/overclock presets.
+    #[getter]
+    fn supports_presets(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_presets())
     }
     /// Whether this miner supports restart commands.
     #[getter]
@@ -665,6 +670,17 @@ impl Miner {
         future_into_py(py, async move {
             let inner = inner.read().await;
             Ok(inner.set_tuning_percent(percent).await.ok())
+        })
+    }
+    /// Await the firmware's available autotune/overclock presets.
+    ///
+    /// Select one with `set_tuning_config(TuningConfig.preset(name))`; the active
+    /// preset is reported by `get_tuning_target()` as a `TuningTarget.preset`.
+    pub fn get_presets<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<PresetInfo>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_presets().await)
         })
     }
     /// Replace the configured mining pool groups.

@@ -1187,3 +1187,5 @@ mod tests {
         assert!(miner_data.expected_hashrate.is_some());
     }
 }
+
+impl SupportsPresets for BraiinsV2505 {}

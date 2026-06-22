@@ -31,6 +31,7 @@ mod asic_rs {
     use asic_rs_core::config::{
         fan::{FanConfig, FanMode},
         pools::{PoolConfig as Pool, PoolGroupConfig as PoolGroup},
+        preset::PresetInfo,
         scaling::ScalingConfig,
         temperature::TemperatureConfig,
         tuning::TuningConfig,

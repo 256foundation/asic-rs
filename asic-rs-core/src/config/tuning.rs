@@ -41,6 +41,7 @@ impl TuningConfig {
             TuningTarget::Power(_) => "power",
             TuningTarget::HashRate(_) => "hashrate",
             TuningTarget::MiningMode(_) => "mode",
+            TuningTarget::Preset(_) => "preset",
         }
     }
 
@@ -64,6 +65,14 @@ impl TuningConfig {
     pub fn target_mode(&self) -> Option<crate::data::miner::MiningMode> {
         match &self.target {
             TuningTarget::MiningMode(m) => Some(*m),
+            _ => None,
+        }
+    }
+
+    /// Target preset name, or `None` if targeting power, hashrate, or mining mode.
+    pub fn target_preset(&self) -> Option<&str> {
+        match &self.target {
+            TuningTarget::Preset(name) => Some(name),
             _ => None,
         }
     }
@@ -109,6 +118,11 @@ impl TuningConfig {
         Self::new(TuningTarget::MiningMode(mode))
     }
 
+    #[classmethod]
+    fn preset(_cls: &Bound<'_, pyo3::types::PyType>, name: String) -> Self {
+        Self::new(TuningTarget::Preset(name))
+    }
+
     #[getter]
     #[pyo3(name = "variant")]
     fn py_variant(&self) -> &'static str {
@@ -134,6 +148,13 @@ impl TuningConfig {
     #[pyo3(name = "target_mode")]
     fn py_target_mode(&self) -> Option<crate::data::miner::MiningMode> {
         self.target_mode()
+    }
+
+    /// Target preset name, or `None` if targeting power, hashrate, or mining mode.
+    #[getter]
+    #[pyo3(name = "target_preset")]
+    fn py_target_preset(&self) -> Option<String> {
+        self.target_preset().map(str::to_owned)
     }
 
     #[getter]
@@ -200,9 +221,13 @@ mod python_impls {
                     })?;
                     TuningTarget::MiningMode(mode)
                 }
+                "preset" => {
+                    let name: String = get_required_field(&obj, "target_preset")?.extract()?;
+                    TuningTarget::Preset(name)
+                }
                 _ => {
                     return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                        "Unknown TuningConfig variant '{variant}', expected 'power', 'hashrate', or 'mode'",
+                        "Unknown TuningConfig variant '{variant}', expected 'power', 'hashrate', 'mode', or 'preset'",
                     )));
                 }
             };

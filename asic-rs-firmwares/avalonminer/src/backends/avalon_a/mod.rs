@@ -873,3 +873,5 @@ mod tests {
         Ok(())
     }
 }
+
+impl SupportsPresets for AvalonAMiner {}

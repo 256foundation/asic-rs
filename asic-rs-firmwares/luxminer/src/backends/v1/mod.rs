@@ -1593,3 +1593,5 @@ mod tests {
         Ok(())
     }
 }
+
+impl SupportsPresets for LuxMinerV1 {}

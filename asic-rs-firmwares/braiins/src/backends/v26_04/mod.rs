@@ -1069,3 +1069,5 @@ mod tests {
         );
     }
 }
+
+impl SupportsPresets for BraiinsV2604 {}

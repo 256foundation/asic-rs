@@ -1818,3 +1818,5 @@ mod tests {
         Ok(())
     }
 }
+
+impl SupportsPresets for AuradineV1 {}

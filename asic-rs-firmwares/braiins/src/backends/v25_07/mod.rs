@@ -1176,3 +1176,5 @@ mod tests {
         );
     }
 }
+
+impl SupportsPresets for BraiinsV2507 {}

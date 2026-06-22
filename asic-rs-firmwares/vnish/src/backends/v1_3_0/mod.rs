@@ -5,6 +5,7 @@ use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
         pools::PoolGroupConfig,
+        preset::PresetInfo,
         temperature::TemperatureConfig,
     },
     data::{
@@ -17,6 +18,7 @@ use asic_rs_core::{
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
+        miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -106,6 +108,10 @@ impl GetDataLocations for VnishV130 {
         };
         const WEB_FACTORY_INFO: MinerCommand = MinerCommand::WebAPI {
             command: "chains/factory-info",
+            parameters: None,
+        };
+        const WEB_SETTINGS: MinerCommand = MinerCommand::WebAPI {
+            command: "settings",
             parameters: None,
         };
 
@@ -297,6 +303,14 @@ impl GetDataLocations for VnishV130 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/miner/miner_status/throttled"),
+                    tag: None,
+                },
+            )],
+            DataField::TuningTarget => vec![(
+                WEB_SETTINGS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner/overclock/preset"),
                     tag: None,
                 },
             )],
@@ -618,7 +632,18 @@ impl GetTuningPercent for VnishV130 {
     }
 }
 
-impl GetTuningTarget for VnishV130 {}
+impl GetTuningTarget for VnishV130 {
+    /// On VNish the active tuning target is the selected autotune preset
+    /// (`miner.overclock.preset` in `/settings`).
+    fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
+        let preset = data.get(&DataField::TuningTarget)?;
+        preset
+            .as_str()
+            .map(String::from)
+            .or_else(|| preset.as_i64().map(|n| n.to_string()))
+            .map(TuningTarget::Preset)
+    }
+}
 
 impl GetScaledTuningTarget for VnishV130 {}
 impl GetTuningCapabilities for VnishV130 {}
@@ -870,6 +895,41 @@ impl SetTuningPercent for VnishV130 {
         let percent = percent.clamp(20, 100);
         self.web.throttle(percent).await?;
         Ok(true)
+    }
+}
+
+#[async_trait]
+impl SupportsPresets for VnishV130 {
+    fn supports_presets(&self) -> bool {
+        true
+    }
+
+    /// VNish exposes its autotune presets at `/autotune/presets`, each
+    /// `{ "name": "5560", "pretty": "5560 watt ~ 175 TH", "status": "tuned" }`.
+    async fn get_presets(&self) -> Vec<PresetInfo> {
+        let Ok(presets) = self.web.autotune_presets().await else {
+            return Vec::new();
+        };
+        let list = presets
+            .as_array()
+            .cloned()
+            .or_else(|| {
+                presets
+                    .get("presets")
+                    .and_then(|p| p.as_array())
+                    .cloned()
+            })
+            .unwrap_or_default();
+        list.iter()
+            .filter_map(|p| {
+                let name = p.get("name")?.as_str()?.to_string();
+                Some(PresetInfo {
+                    name,
+                    pretty: p.get("pretty").and_then(|v| v.as_str()).map(String::from),
+                    status: p.get("status").and_then(|v| v.as_str()).map(String::from),
+                })
+            })
+            .collect()
     }
 }
 

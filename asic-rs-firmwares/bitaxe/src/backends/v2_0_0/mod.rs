@@ -677,3 +677,5 @@ mod tests {
         )
     }
 }
+
+impl SupportsPresets for Bitaxe200 {}

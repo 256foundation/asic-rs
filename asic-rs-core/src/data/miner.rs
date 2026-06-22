@@ -29,6 +29,8 @@ pub enum TuningTarget {
     HashRate(HashRate),
     /// Target a named mining mode.
     MiningMode(MiningMode),
+    /// Target a named firmware preset (e.g. VNish autotune presets).
+    Preset(String),
 }
 
 impl TuningTarget {
@@ -158,6 +160,7 @@ mod python_tuning_target {
         Power { watts: f64 },
         HashRate { target_hashrate: HashRate },
         Mode { target_mode: MiningMode },
+        Preset { name: String },
     }
 
     #[pymethods]
@@ -179,12 +182,18 @@ mod python_tuning_target {
             Self::Mode { target_mode: mode }
         }
 
+        #[staticmethod]
+        fn preset(name: String) -> Self {
+            Self::Preset { name }
+        }
+
         #[getter]
         fn variant(&self) -> &'static str {
             match self {
                 Self::Power { .. } => "power",
                 Self::HashRate { .. } => "hashrate",
                 Self::Mode { .. } => "mode",
+                Self::Preset { .. } => "preset",
             }
         }
 
@@ -214,6 +223,14 @@ mod python_tuning_target {
             }
         }
 
+        #[getter]
+        fn preset_name(&self) -> Option<String> {
+            match self {
+                Self::Preset { name } => Some(name.clone()),
+                _ => None,
+            }
+        }
+
         fn __repr__(&self) -> String {
             match self {
                 Self::Power { watts } => format!("TuningTarget.power(watts={watts:?})"),
@@ -221,6 +238,7 @@ mod python_tuning_target {
                     format!("TuningTarget.hashrate(hashrate={target_hashrate})")
                 }
                 Self::Mode { target_mode } => format!("TuningTarget.mode(mode={target_mode})"),
+                Self::Preset { name } => format!("TuningTarget.preset(name={name:?})"),
             }
         }
 
@@ -239,6 +257,7 @@ mod python_tuning_target {
                     target_hashrate: hashrate,
                 },
                 TuningTarget::MiningMode(mode) => Self::Mode { target_mode: mode },
+                TuningTarget::Preset(name) => Self::Preset { name },
             }
         }
     }
@@ -251,6 +270,7 @@ mod python_tuning_target {
                     TuningTarget::HashRate(target_hashrate)
                 }
                 PyTuningTarget::Mode { target_mode } => TuningTarget::MiningMode(target_mode),
+                PyTuningTarget::Preset { name } => TuningTarget::Preset(name),
             }
         }
     }
@@ -287,12 +307,17 @@ mod python_tuning_target {
                 "type" => required(literal_schema(core_schema, &["mode"])?),
                 "value" => required(<MiningMode as PyPydanticType>::pydantic_schema(core_schema, mode)?),
             })?;
+            let preset_schema = pydantic_typed_dict_schema!(core_schema, "asic_rs.TuningTargetPreset", {
+                "type" => required(literal_schema(core_schema, &["preset"])?),
+                "value" => required(<String as PyPydanticType>::pydantic_schema(core_schema, mode)?),
+            })?;
             let tagged_union = tagged_union_schema(
                 core_schema,
                 [
                     ("power", power_schema),
                     ("hashrate", hashrate_schema),
                     ("mode", mode_schema),
+                    ("preset", preset_schema),
                 ],
                 "type",
                 Some("asic_rs.TuningTarget"),
@@ -323,8 +348,11 @@ mod python_tuning_target {
                 "mode" => Ok(TuningTarget::MiningMode(
                     <MiningMode as PyPydanticType>::from_pydantic(&v)?,
                 )),
+                "preset" => Ok(TuningTarget::Preset(
+                    <String as PyPydanticType>::from_pydantic(&v)?,
+                )),
                 _ => Err(PyValueError::new_err(format!(
-                    "Unknown TuningTarget type '{type_str}', expected 'power', 'hashrate', or 'mode'"
+                    "Unknown TuningTarget type '{type_str}', expected 'power', 'hashrate', 'mode', or 'preset'"
                 ))),
             }
         }
@@ -349,6 +377,13 @@ mod python_tuning_target {
                     dict.set_item(
                         "value",
                         <MiningMode as PyPydanticType>::to_pydantic_data(m, py)?,
+                    )?;
+                }
+                TuningTarget::Preset(name) => {
+                    dict.set_item("type", "preset")?;
+                    dict.set_item(
+                        "value",
+                        <String as PyPydanticType>::to_pydantic_data(name, py)?,
                     )?;
                 }
             }

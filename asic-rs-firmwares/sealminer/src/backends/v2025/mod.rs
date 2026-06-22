@@ -807,6 +807,9 @@ impl SupportsTuningConfig for SealMinerV2025 {
             TuningTarget::MiningMode(_) => {
                 anyhow::bail!("Mining mode not supported on SealMiner")
             }
+            TuningTarget::Preset(_) => {
+                anyhow::bail!("Preset tuning not supported on SealMiner")
+            }
         }
     }
 
@@ -971,3 +974,5 @@ mod tests {
         assert_eq!(miner_data.pools[0].len(), 1);
     }
 }
+
+impl SupportsPresets for SealMinerV2025 {}
