@@ -1,6 +1,14 @@
 {# custom template based on cargo-doc2readme default #}
 
 {%- if crate -%}
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo/dark/logo.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/logo/light/logo.svg">
+    <img src="docs/logo/light/logo.svg" alt="asic-rs" width="180">
+  </picture>
+</p>
+
 # {{ crate }}
 	{%- if license %} ![License: {{ license }}](https://img.shields.io/badge/license-{{ license | replace("-", "--") | urlencode }}-blue)
 	{%- else %} ![License](https://img.shields.io/crates/l/{{ crate | urlencode }})

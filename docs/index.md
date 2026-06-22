@@ -1,3 +1,8 @@
+![Logo](logo/light/logo.svg#only-light){ width="150" }
+![Logo](logo/dark/logo.svg#only-dark){ width="150" }
+/// caption
+///
+
 # asic-rs
 
 asic-rs is an async miner management and control library for ASIC miners. It
