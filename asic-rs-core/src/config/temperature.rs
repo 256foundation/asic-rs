@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
     feature = "python",
     pyclass(
         name = "TemperatureConfig",
-        skip_from_py_object,
+        from_py_object,
         get_all,
         module = "asic_rs"
     )
@@ -23,38 +23,12 @@ use serde::{Deserialize, Serialize};
 /// but not `hot`). The target chip temperature lives on `FanConfig`.
 pub struct TemperatureConfig {
     /// The temperature at which the fans run at 100%.
+    #[cfg_attr(feature = "python", pydantic(default = None))]
     pub hot: Option<f64>,
     /// The temperature at/above which the miner reboots or triggers thermal scaling.
+    #[cfg_attr(feature = "python", pydantic(default = None))]
     pub danger: Option<f64>,
     /// The minimum temperature the miner must preheat to before it will start.
+    #[cfg_attr(feature = "python", pydantic(default = None))]
     pub minimum: Option<f64>,
-}
-
-#[cfg(feature = "python")]
-mod python_impls {
-    use asic_rs_pydantic::get_optional_field;
-    use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
-
-    use super::TemperatureConfig;
-
-    impl FromPyObject<'_, '_> for TemperatureConfig {
-        type Error = PyErr;
-
-        fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
-            Ok(TemperatureConfig {
-                hot: get_optional_field(&obj, "hot")?
-                    .map(|value| value.extract())
-                    .transpose()?
-                    .flatten(),
-                danger: get_optional_field(&obj, "danger")?
-                    .map(|value| value.extract())
-                    .transpose()?
-                    .flatten(),
-                minimum: get_optional_field(&obj, "minimum")?
-                    .map(|value| value.extract())
-                    .transpose()?
-                    .flatten(),
-            })
-        }
-    }
 }

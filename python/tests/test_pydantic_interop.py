@@ -8,7 +8,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from pyasic_rs.asic_rs import HashAlgorithm, Miner
-from pyasic_rs.config import FanConfig, TuningConfig
+from pyasic_rs.config import FanConfig, Pool, PoolGroup, TemperatureConfig, TuningConfig
 from pyasic_rs.data import (
     ChipData,
     HashRate,
@@ -135,6 +135,61 @@ def test_set_tuning_config_keeps_optional_scaling_config_default() -> None:
     signature = inspect.signature(Miner.set_tuning_config)
 
     assert signature.parameters["scaling_config"].default is None
+
+
+def test_tuning_config_direct_constructor_is_disabled() -> None:
+    with pytest.raises(TypeError, match="cannot create"):
+        TuningConfig()
+
+
+def test_pool_config_constructors_are_keyword_only_and_typed() -> None:
+    signature = inspect.signature(Pool)
+
+    assert list(signature.parameters) == ["url", "username", "password"]
+    assert all(
+        parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        for parameter in signature.parameters.values()
+    )
+
+    pool = Pool(
+        url="stratum+tcp://pool.example.com:3333",
+        username="worker.1",
+        password="x",
+    )
+    group = PoolGroup(name="default", quota=1, pools=[pool])
+
+    assert str(pool.url) == "stratum+tcp://pool.example.com:3333"
+    assert group.model_dump() == {
+        "name": "default",
+        "quota": 1,
+        "pools": [
+            {
+                "url": "stratum+tcp://pool.example.com:3333",
+                "username": "worker.1",
+                "password": "x",
+            }
+        ],
+    }
+
+    with pytest.raises(TypeError):
+        Pool("stratum+tcp://pool.example.com:3333", "worker.1", "x")
+
+
+def test_temperature_config_constructor_defaults_to_none() -> None:
+    signature = inspect.signature(TemperatureConfig)
+
+    assert list(signature.parameters) == ["hot", "danger", "minimum"]
+    assert all(
+        parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        for parameter in signature.parameters.values()
+    )
+    assert all(
+        parameter.default is None for parameter in signature.parameters.values()
+    )
+
+    config = TemperatureConfig(hot=75.0)
+
+    assert config.model_dump() == {"hot": 75.0, "danger": None, "minimum": None}
 
 
 def test_hashrate_validates_and_serializes_as_pydantic_field() -> None:

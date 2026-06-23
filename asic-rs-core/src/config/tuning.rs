@@ -76,17 +76,6 @@ impl TuningConfig {
 #[cfg(feature = "python")]
 #[pymethods]
 impl TuningConfig {
-    #[new]
-    #[pyo3(signature = (target, algorithm = None))]
-    fn py_new(target: &Bound<'_, PyAny>, algorithm: Option<&Bound<'_, PyAny>>) -> PyResult<Self> {
-        let mut config =
-            Self::new(<TuningTarget as asic_rs_pydantic::PyPydanticType>::from_pydantic(target)?);
-        if let Some(algorithm) = algorithm {
-            config.algorithm = Some(asic_rs_pydantic::py_to_string(algorithm)?);
-        }
-        Ok(config)
-    }
-
     #[classmethod]
     #[pyo3(signature = (watts, algorithm = None))]
     fn power(

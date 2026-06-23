@@ -83,6 +83,7 @@ struct PydanticModelAttrOptions {
 #[derive(Default)]
 struct PydanticModelFieldOptions {
     default: Option<Expr>,
+    input_type: Option<LitStr>,
     literal: Option<LitStr>,
 }
 
@@ -101,6 +102,12 @@ impl PydanticModelFieldOptions {
                         return Err(meta.error("duplicate pydantic default"));
                     }
                     options.default = Some(meta.value()?.parse()?);
+                    Ok(())
+                } else if meta.path.is_ident("input_type") {
+                    if options.input_type.is_some() {
+                        return Err(meta.error("duplicate pydantic input_type"));
+                    }
+                    options.input_type = Some(meta.value()?.parse()?);
                     Ok(())
                 } else if meta.path.is_ident("literal") {
                     if options.literal.is_some() {
@@ -239,23 +246,10 @@ fn expand_py_pydantic_model(input: &DeriveInput) -> syn::Result<proc_macro2::Tok
             })
         },
     )?;
-    let new_method = options.new.then(|| {
-        quote! {
-            #[new]
-            #[pyo3(signature = (**kwargs: "object"))]
-            fn new(
-                kwargs: Option<&::pyo3::Bound<'_, ::pyo3::types::PyDict>>,
-            ) -> ::pyo3::PyResult<Self> {
-                let kwargs = kwargs.ok_or_else(|| {
-                    ::pyo3::exceptions::PyValueError::new_err(
-                        "Expected keyword arguments for data model",
-                    )
-                })?;
-                use ::pyo3::types::PyAnyMethods as _;
-                <Self as ::asic_rs_pydantic::PyPydanticType>::from_pydantic(kwargs.as_any())
-            }
-        }
-    });
+    let new_method = options
+        .new
+        .then(|| expand_generated_pydantic_new(input, &name_str))
+        .transpose()?;
     if options.repr && options.no_repr {
         return Err(syn::Error::new_spanned(
             input,
@@ -395,6 +389,125 @@ fn expand_py_pydantic_model(input: &DeriveInput) -> syn::Result<proc_macro2::Tok
             }
         }
     })
+}
+
+fn expand_generated_pydantic_new(
+    input: &DeriveInput,
+    name_str: &LitStr,
+) -> syn::Result<proc_macro2::TokenStream> {
+    let fields = named_struct_fields(input)?;
+    let mut signature_args = Vec::new();
+    let mut fn_args = Vec::new();
+    let mut dict_items = Vec::new();
+
+    for field in fields {
+        let ident = field
+            .ident
+            .as_ref()
+            .ok_or_else(|| syn::Error::new_spanned(field, "expected named field"))?;
+        let options = PydanticModelFieldOptions::parse(field)?;
+        let type_hint = pydantic_field_input_type(field, &options);
+        let key = LitStr::new(&ident.to_string(), ident.span());
+
+        if let Some(default) = &options.default {
+            signature_args.push(quote!(#ident: #type_hint = #default));
+            fn_args.push(quote!(
+                #ident: ::std::option::Option<&::pyo3::Bound<'_, ::pyo3::PyAny>>
+            ));
+            dict_items.push(quote! {
+                if let ::std::option::Option::Some(value) = #ident {
+                    kwargs.set_item(#key, value)?;
+                }
+            });
+        } else if let Some(literal) = &options.literal {
+            signature_args.push(quote!(#ident: #type_hint = #literal));
+            fn_args.push(quote!(
+                #ident: ::std::option::Option<&::pyo3::Bound<'_, ::pyo3::PyAny>>
+            ));
+            dict_items.push(quote! {
+                if let ::std::option::Option::Some(value) = #ident {
+                    kwargs.set_item(#key, value)?;
+                }
+            });
+        } else {
+            signature_args.push(quote!(#ident: #type_hint));
+            fn_args.push(quote!(#ident: &::pyo3::Bound<'_, ::pyo3::PyAny>));
+            dict_items.push(quote! {
+                kwargs.set_item(#key, #ident)?;
+            });
+        }
+    }
+
+    let signature = if signature_args.is_empty() {
+        quote!(() -> #name_str)
+    } else {
+        quote!((*, #(#signature_args),*) -> #name_str)
+    };
+
+    Ok(quote! {
+        #[new]
+        #[pyo3(signature = #signature)]
+        fn new(
+            py: ::pyo3::Python<'_>,
+            #(#fn_args),*
+        ) -> ::pyo3::PyResult<Self> {
+            use ::pyo3::types::{PyAnyMethods as _, PyDict, PyDictMethods as _};
+            let kwargs = PyDict::new(py);
+            #(#dict_items)*
+            <Self as ::asic_rs_pydantic::PyPydanticType>::from_pydantic(kwargs.as_any())
+        }
+    })
+}
+
+fn pydantic_field_input_type(field: &Field, options: &PydanticModelFieldOptions) -> LitStr {
+    if let Some(input_type) = &options.input_type {
+        return input_type.clone();
+    }
+
+    if options.literal.is_some() {
+        return LitStr::new("str", field.span());
+    }
+
+    LitStr::new(&pydantic_type_hint(&field.ty), field.span())
+}
+
+fn pydantic_type_hint(ty: &Type) -> String {
+    match ty {
+        Type::Path(type_path) => {
+            let Some(segment) = type_path.path.segments.last() else {
+                return "object".to_owned();
+            };
+
+            if segment.ident == "Option"
+                && let Some(inner) = generic_type_argument(segment)
+            {
+                return format!("{} | None", pydantic_type_hint(inner));
+            }
+
+            if segment.ident == "Vec"
+                && let Some(inner) = generic_type_argument(segment)
+            {
+                return format!("list[{}]", pydantic_type_hint(inner));
+            }
+
+            match segment.ident.to_string().as_str() {
+                "i8" | "i16" | "i32" | "i64" | "i128" | "isize" | "u8" | "u16" | "u32" | "u64"
+                | "u128" | "usize" => "int".to_owned(),
+                "f32" | "f64" => "float".to_owned(),
+                "bool" => "bool".to_owned(),
+                "String" => "str".to_owned(),
+                "IpAddr" => "IPv4Address | IPv6Address".to_owned(),
+                "MacAddr" => "str".to_owned(),
+                "Duration" => "timedelta | float | int".to_owned(),
+                "AngularVelocity" | "Frequency" | "Power" | "Temperature" | "Voltage" => {
+                    "float".to_owned()
+                }
+                ident => ident.to_owned(),
+            }
+        }
+        Type::Reference(reference) => pydantic_type_hint(&reference.elem),
+        _ => "object".to_owned(),
+    }
 }
 
 fn expand_generated_pydantic_repr(input: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {

@@ -6,7 +6,7 @@ use crate::data::pool::{PoolGroupData, PoolURL};
 
 #[cfg_attr(
     feature = "python",
-    pyclass(name = "Pool", skip_from_py_object, get_all, module = "asic_rs")
+    pyclass(name = "Pool", from_py_object, get_all, module = "asic_rs")
 )]
 #[cfg_attr(
     feature = "python",
@@ -16,6 +16,7 @@ use crate::data::pool::{PoolGroupData, PoolURL};
 /// A writable mining pool endpoint.
 pub struct PoolConfig {
     /// Pool URL including scheme, host, port, and optional Stratum V2 pubkey.
+    #[cfg_attr(feature = "python", pydantic(input_type = "PoolURL | str"))]
     pub url: PoolURL,
     /// Worker username sent to the pool.
     pub username: String,
@@ -25,7 +26,7 @@ pub struct PoolConfig {
 
 #[cfg_attr(
     feature = "python",
-    pyclass(name = "PoolGroup", skip_from_py_object, get_all, module = "asic_rs")
+    pyclass(name = "PoolGroup", from_py_object, get_all, module = "asic_rs")
 )]
 #[cfg_attr(
     feature = "python",
@@ -42,6 +43,7 @@ pub struct PoolGroupConfig {
     /// Pool group quota or priority weight.
     pub quota: u32,
     /// Pools in this group.
+    #[cfg_attr(feature = "python", pydantic(input_type = "list[Pool]"))]
     pub pools: Vec<PoolConfig>,
 }
 
@@ -61,43 +63,6 @@ impl From<PoolGroupData> for PoolGroupConfig {
                     })
                 })
                 .collect(),
-        }
-    }
-}
-
-#[cfg(feature = "python")]
-mod python_impls {
-    use asic_rs_pydantic::get_required_field;
-    use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
-
-    use super::*;
-    use crate::data::pool::PoolURL;
-
-    impl FromPyObject<'_, '_> for PoolConfig {
-        type Error = PyErr;
-
-        fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
-            let url_ob = get_required_field(&obj, "url")?;
-            let url = url_ob
-                .extract::<PoolURL>()
-                .or_else(|_| url_ob.extract::<String>().map(PoolURL::from))?;
-            Ok(PoolConfig {
-                url,
-                username: get_required_field(&obj, "username")?.extract()?,
-                password: get_required_field(&obj, "password")?.extract()?,
-            })
-        }
-    }
-
-    impl FromPyObject<'_, '_> for PoolGroupConfig {
-        type Error = PyErr;
-
-        fn extract(obj: Borrowed<'_, '_, PyAny>) -> PyResult<Self> {
-            Ok(PoolGroupConfig {
-                name: get_required_field(&obj, "name")?.extract()?,
-                quota: get_required_field(&obj, "quota")?.extract()?,
-                pools: get_required_field(&obj, "pools")?.extract()?,
-            })
         }
     }
 }
