@@ -683,7 +683,9 @@ impl GetTuningTarget for AvalonAMiner {
 }
 
 impl GetScaledTuningTarget for AvalonAMiner {}
-
+impl GetDefaultPowerTarget for AvalonAMiner {}
+impl GetMinPowerTarget for AvalonAMiner {}
+impl GetMaxPowerTarget for AvalonAMiner {}
 impl GetLightFlashing for AvalonAMiner {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)

@@ -82,6 +82,7 @@ class DataField:
     AverageTemperature: Final[DataField]
     Chips: Final[DataField]
     ControlBoardVersion: Final[DataField]
+    DefaultPowerTarget: Final[DataField]
     DeviceInfo: Final[DataField]
     Efficiency: Final[DataField]
     ExpectedHashrate: Final[DataField]
@@ -95,7 +96,9 @@ class DataField:
     IsMining: Final[DataField]
     LightFlashing: Final[DataField]
     Mac: Final[DataField]
+    MaxPowerTarget: Final[DataField]
     Messages: Final[DataField]
+    MinPowerTarget: Final[DataField]
     OutletFluidTemperature: Final[DataField]
     Pools: Final[DataField]
     PsuFans: Final[DataField]
@@ -495,6 +498,8 @@ class MinerData:
     @property
     def control_board_version(self, /) -> MinerControlBoard |None: ...
     @property
+    def default_power_target(self, /) -> float |None: ...
+    @property
     def device_info(self, /) -> DeviceInfo: ...
     @property
     def efficiency(self, /) -> float |None: ...
@@ -527,7 +532,11 @@ class MinerData:
     @property
     def mac(self, /) -> str |None: ...
     @property
+    def max_power_target(self, /) -> float |None: ...
+    @property
     def messages(self, /) -> list[MinerMessage]: ...
+    @property
+    def min_power_target(self, /) -> float |None: ...
     def model_dump(self, /, **_kwargs: "object") -> "dict[str, object]": ...
     @classmethod
     def model_json_schema(cls, /, **kwargs: "object") -> "dict[str, object]": ...

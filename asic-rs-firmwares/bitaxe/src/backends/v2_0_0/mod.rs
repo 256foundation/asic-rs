@@ -386,6 +386,9 @@ impl GetTuningTarget for Bitaxe200 {
 impl GetScaledTuningTarget for Bitaxe200 {
     // N/A
 }
+impl GetDefaultPowerTarget for Bitaxe200 {}
+impl GetMinPowerTarget for Bitaxe200 {}
+impl GetMaxPowerTarget for Bitaxe200 {}
 impl GetLightFlashing for Bitaxe200 {
     // N/A
 }

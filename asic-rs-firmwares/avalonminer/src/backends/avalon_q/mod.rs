@@ -627,7 +627,9 @@ impl GetTuningTarget for AvalonQMiner {
 }
 
 impl GetScaledTuningTarget for AvalonQMiner {}
-
+impl GetDefaultPowerTarget for AvalonQMiner {}
+impl GetMinPowerTarget for AvalonQMiner {}
+impl GetMaxPowerTarget for AvalonQMiner {}
 impl GetLightFlashing for AvalonQMiner {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)

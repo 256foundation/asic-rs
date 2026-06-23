@@ -118,6 +118,16 @@ pub struct MinerData {
     pub tuning_target: Option<TuningTarget>,
     /// The current tuning target adjusted by scaling settings, when available.
     pub scaled_tuning_target: Option<TuningTarget>,
+    /// The factory default power target the miner ships with, i.e. the value all
+    /// tuning starts from. Reported by firmwares that expose tuner metadata.
+    #[serde(serialize_with = "serialize_power")]
+    pub default_power_target: Option<Power>,
+    /// The lowest power target the miner accepts, when reported.
+    #[serde(serialize_with = "serialize_power")]
+    pub min_power_target: Option<Power>,
+    /// The highest power target the miner accepts, when reported.
+    #[serde(serialize_with = "serialize_power")]
+    pub max_power_target: Option<Power>,
     /// The current efficiency in W/TH/s (J/TH) of the miner
     pub efficiency: Option<f64>,
     /// The state of the fault/alert light on the miner

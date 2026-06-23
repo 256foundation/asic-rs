@@ -610,6 +610,9 @@ impl GetScaledTuningTarget for BraiinsV2507 {
 }
 
 impl GetFluidTemperature for BraiinsV2507 {}
+impl GetDefaultPowerTarget for BraiinsV2507 {}
+impl GetMinPowerTarget for BraiinsV2507 {}
+impl GetMaxPowerTarget for BraiinsV2507 {}
 
 impl GetPsuFans for BraiinsV2507 {}
 

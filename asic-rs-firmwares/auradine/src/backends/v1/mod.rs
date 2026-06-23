@@ -1118,7 +1118,9 @@ impl GetTuningTarget for AuradineV1 {
 }
 
 impl GetScaledTuningTarget for AuradineV1 {}
-
+impl GetDefaultPowerTarget for AuradineV1 {}
+impl GetMinPowerTarget for AuradineV1 {}
+impl GetMaxPowerTarget for AuradineV1 {}
 impl GetLightFlashing for AuradineV1 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract_map::<u64, _>(DataField::LightFlashing, |code| code == 3)

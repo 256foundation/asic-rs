@@ -139,6 +139,21 @@ impl GetDataLocations for BraiinsV2604 {
                 }
             }"#,
         };
+        const GQL_POWER_TARGET_META_QUERY: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                bosminer {
+                    metadata {
+                        autotuning {
+                            powerTarget {
+                                default
+                                min
+                                max
+                            }
+                        }
+                    }
+                }
+            }"#,
+        };
 
         match data_field {
             DataField::Mac => vec![(
@@ -310,6 +325,30 @@ impl GetDataLocations for BraiinsV2604 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/events/appeals"),
+                    tag: None,
+                },
+            )],
+            DataField::DefaultPowerTarget => vec![(
+                GQL_POWER_TARGET_META_QUERY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/metadata/autotuning/powerTarget/default"),
+                    tag: None,
+                },
+            )],
+            DataField::MinPowerTarget => vec![(
+                GQL_POWER_TARGET_META_QUERY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/metadata/autotuning/powerTarget/min"),
+                    tag: None,
+                },
+            )],
+            DataField::MaxPowerTarget => vec![(
+                GQL_POWER_TARGET_META_QUERY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bosminer/metadata/autotuning/powerTarget/max"),
                     tag: None,
                 },
             )],
@@ -606,6 +645,21 @@ impl GetScaledTuningTarget for BraiinsV2604 {
 }
 
 impl GetFluidTemperature for BraiinsV2604 {}
+impl GetDefaultPowerTarget for BraiinsV2604 {
+    fn parse_default_power_target(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
+        data.extract_map::<i64, _>(DataField::DefaultPowerTarget, |w| Power::from_watts(w as f64))
+    }
+}
+impl GetMinPowerTarget for BraiinsV2604 {
+    fn parse_min_power_target(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
+        data.extract_map::<i64, _>(DataField::MinPowerTarget, |w| Power::from_watts(w as f64))
+    }
+}
+impl GetMaxPowerTarget for BraiinsV2604 {
+    fn parse_max_power_target(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
+        data.extract_map::<i64, _>(DataField::MaxPowerTarget, |w| Power::from_watts(w as f64))
+    }
+}
 
 impl GetPsuFans for BraiinsV2604 {}
 
