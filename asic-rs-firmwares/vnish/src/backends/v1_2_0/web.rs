@@ -100,7 +100,7 @@ impl VnishWebAPI {
     }
 
     pub fn username(&self) -> &str {
-        &self.auth.username
+        self.auth.username()
     }
 
     fn build_client() -> Result<Client, VnishError> {
@@ -123,11 +123,10 @@ impl VnishWebAPI {
             return Ok(());
         }
 
-        let token = match &self.auth.token {
-            Some(token) => token.expose_secret().to_string(),
-            None => {
-                self.authenticate(self.auth.password.expose_secret())
-                    .await?
+        let token = match &self.auth {
+            MinerAuth::TokenAuth(token) => token.expose_secret().to_string(),
+            MinerAuth::UserAndPass(creds) => {
+                self.authenticate(creds.password.expose_secret()).await?
             }
         };
         *self.bearer_token.write().await = Some(token);
@@ -263,7 +262,7 @@ impl VnishWebAPI {
     pub async fn change_password(&self, password: &str) -> anyhow::Result<bool> {
         let settings = json!({
             "password": {
-                "current": self.auth.password.expose_secret(),
+                "current": self.auth.password(),
                 "pw": password,
             },
         });

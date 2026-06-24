@@ -94,7 +94,7 @@ impl PowerPlayWebAPI {
     }
 
     pub fn username(&self) -> &str {
-        &self.auth.username
+        self.auth.username()
     }
 
     fn build_client() -> Result<Client, PowerPlayError> {
@@ -114,7 +114,7 @@ impl PowerPlayWebAPI {
         let checksum = Self::sha256_hex(&bytes).await;
 
         let form = multipart::Form::new()
-            .text("password", self.auth.password.expose_secret().to_string())
+            .text("password", self.auth.password().to_string())
             .text("checksum", checksum)
             .text("keepsettings", "true")
             .part(
@@ -223,7 +223,7 @@ impl PowerPlayWebAPI {
                 p.as_object_mut().map(|m| {
                     m.insert(
                         "password".into(),
-                        Value::String(self.auth.password.expose_secret().to_string()),
+                        Value::String(self.auth.password().to_string()),
                     )
                 });
                 p

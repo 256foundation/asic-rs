@@ -769,7 +769,7 @@ impl HasAuth for WhatsMinerV2 {
     fn set_auth(&mut self, auth: MinerAuth) {
         // WhatsMiner V2 username is always "admin"
         self.rpc
-            .set_auth(MinerAuth::new("admin", auth.password.expose_secret()));
+            .set_auth(MinerAuth::new("admin", auth.password()));
     }
 }
 

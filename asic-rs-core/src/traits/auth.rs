@@ -1,32 +1,62 @@
 pub use secrecy::{ExposeSecret, SecretString};
 
-/// Credentials for authenticating with a miner.
-///
-/// Most firmwares authenticate with a username/password. Some (e.g. VNish) have
-/// no username and authenticate by password only, but also accept a pre-issued
-/// bearer `token`. When a `token` is set, backends that support it use it
-/// directly and skip the password login.
+/// Username/password credentials.
 #[derive(Clone, Debug)]
-pub struct MinerAuth {
+pub struct UserAndPassAuth {
     pub username: String,
     pub password: SecretString,
-    pub token: Option<SecretString>,
+}
+
+/// Credentials for authenticating with a miner.
+///
+/// Most firmwares authenticate with a username/password ([`MinerAuth::UserAndPass`]).
+/// Some (e.g. VNish, BraiinsOS HTTP) accept a pre-issued bearer token instead
+/// ([`MinerAuth::TokenAuth`]). The two modes are mutually exclusive — backends
+/// `match` on the variant to pick the right path.
+#[derive(Clone, Debug)]
+pub enum MinerAuth {
+    /// Username + password login.
+    UserAndPass(UserAndPassAuth),
+    /// Pre-issued bearer token (used directly, no password login).
+    TokenAuth(SecretString),
 }
 
 impl MinerAuth {
+    /// Build username/password credentials.
     pub fn new(username: impl Into<String>, password: impl Into<String>) -> Self {
-        Self {
+        MinerAuth::UserAndPass(UserAndPassAuth {
             username: username.into(),
             password: SecretString::from(password.into()),
-            token: None,
+        })
+    }
+
+    /// Build pre-issued token credentials (e.g. a bearer token).
+    pub fn from_token(token: impl Into<String>) -> Self {
+        MinerAuth::TokenAuth(SecretString::from(token.into()))
+    }
+
+    /// Username for user/pass auth; empty string for token auth.
+    pub fn username(&self) -> &str {
+        match self {
+            MinerAuth::UserAndPass(c) => &c.username,
+            MinerAuth::TokenAuth(_) => "",
         }
     }
 
-    /// Attach a pre-issued auth token (e.g. a bearer token). Backends that
-    /// support token auth use it instead of logging in with the password.
-    pub fn with_token(mut self, token: impl Into<String>) -> Self {
-        self.token = Some(SecretString::from(token.into()));
-        self
+    /// Password for user/pass auth; empty string for token auth.
+    pub fn password(&self) -> &str {
+        match self {
+            MinerAuth::UserAndPass(c) => c.password.expose_secret(),
+            MinerAuth::TokenAuth(_) => "",
+        }
+    }
+
+    /// The pre-issued token, if this is token auth.
+    pub fn token(&self) -> Option<&SecretString> {
+        match self {
+            MinerAuth::TokenAuth(t) => Some(t),
+            MinerAuth::UserAndPass(_) => None,
+        }
     }
 }
 

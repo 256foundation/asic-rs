@@ -12,7 +12,7 @@ use asic_rs_core::{
         firmware::MinerFirmware,
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
-        miner::{ExposeSecret, HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
+        miner::{HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
         model::MinerModel,
     },
     util::build_discovery_client,
@@ -87,7 +87,7 @@ async fn get_model_with_auth(
     let client = build_discovery_client()?;
     let response: Option<Response> = client
         .get(format!("http://{ip}/cgi-bin/miner_type.cgi"))
-        .send_digest_auth((auth.username.as_str(), auth.password.expose_secret()))
+        .send_digest_auth((auth.username(), auth.password()))
         .await
         .ok();
     match response {
@@ -118,7 +118,7 @@ async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::V
     let client = build_discovery_client().ok()?;
     let data: Response = client
         .get(format!("http://{ip}/cgi-bin/summary.cgi"))
-        .send_digest_auth((auth.username.as_str(), auth.password.expose_secret()))
+        .send_digest_auth((auth.username(), auth.password()))
         .await
         .ok()?;
 

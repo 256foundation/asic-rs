@@ -95,8 +95,8 @@ impl AuradineWebAPI {
         let client = self.client()?;
         let payload = json!({
             "command": "token",
-            "user": self.auth.username,
-            "password": self.auth.password.expose_secret(),
+            "user": self.auth.username(),
+            "password": self.auth.password(),
         });
 
         let response = client

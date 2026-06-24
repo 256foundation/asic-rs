@@ -265,7 +265,7 @@ impl WhatsMinerRPCAPI {
         let tokenized_command = format!(
             "{}{}{}{}",
             command,
-            self.auth.password.expose_secret(),
+            self.auth.password(),
             salt,
             timestamp
         );
@@ -292,7 +292,7 @@ impl WhatsMinerRPCAPI {
                     "cmd": command,
                     "param": param,
                     "token": token,
-                    "account": self.auth.username.clone(),
+                    "account": self.auth.username().to_string(),
                     "ts": timestamp,
                 })
             }
@@ -301,7 +301,7 @@ impl WhatsMinerRPCAPI {
                 json!({
                     "cmd": command,
                     "token": token,
-                    "account": self.auth.username.clone(),
+                    "account": self.auth.username().to_string(),
                     "ts": timestamp,
                 })
             }

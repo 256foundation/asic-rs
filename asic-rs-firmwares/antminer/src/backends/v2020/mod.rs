@@ -1071,7 +1071,7 @@ impl Resume for AntMinerV2020 {
 impl ChangePassword for AntMinerV2020 {
     async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
         let original_auth = self.web.auth();
-        let new_auth = MinerAuth::new(original_auth.username.clone(), password);
+        let new_auth = MinerAuth::new(original_auth.username().to_string(), password);
         let result = self.web.change_password(password).await;
 
         match result {

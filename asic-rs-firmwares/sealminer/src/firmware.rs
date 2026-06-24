@@ -10,7 +10,7 @@ use asic_rs_core::{
         firmware::MinerFirmware,
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
-        miner::{ExposeSecret, HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
+        miner::{HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
         model::MinerModel,
     },
     util::{build_discovery_client, send_rpc_command},
@@ -46,8 +46,8 @@ async fn get_system_info(ip: IpAddr, auth: &MinerAuth) -> Option<serde_json::Val
         .header("X-Requested-With", "XMLHttpRequest")
         .body(format!(
             "username={}&origin_pwd={}",
-            auth.username,
-            auth.password.expose_secret()
+            auth.username(),
+            auth.password()
         ))
         .send()
         .await

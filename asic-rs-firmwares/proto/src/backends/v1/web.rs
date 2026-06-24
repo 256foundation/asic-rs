@@ -4,7 +4,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use asic_rs_core::{
     data::command::MinerCommand,
     traits::{
-        auth::{ExposeSecret, MinerAuth},
+        auth::{MinerAuth},
         miner::{APIClient, WebAPIClient},
     },
 };
@@ -79,7 +79,7 @@ impl ProtoWebAPI {
 
     async fn authenticate(&self) -> Result<String> {
         let payload = json!({
-            "password": self.auth.password.expose_secret(),
+            "password": self.auth.password(),
         });
         let response = self
             .client()?

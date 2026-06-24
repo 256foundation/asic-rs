@@ -240,10 +240,10 @@ impl Miner {
         password: String,
         token: Option<String>,
     ) -> PyResult<()> {
-        let mut auth = MinerAuth::new(username, password);
-        if let Some(token) = token {
-            auth = auth.with_token(token);
-        }
+        let auth = match token {
+            Some(token) => MinerAuth::from_token(token),
+            None => MinerAuth::new(username, password),
+        };
         Arc::get_mut(&mut self.inner)
             .ok_or_else(|| PyRuntimeError::new_err("cannot set auth while miner is in use"))?
             .get_mut()

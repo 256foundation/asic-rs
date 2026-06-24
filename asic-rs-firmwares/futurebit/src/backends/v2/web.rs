@@ -64,7 +64,7 @@ impl ApolloGraphQLAPI {
             }"#,
             "variables": {
                 "input": {
-                    "password": self.auth.password.expose_secret(),
+                    "password": self.auth.password(),
                 }
             }
         });

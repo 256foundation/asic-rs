@@ -3,7 +3,7 @@ use std::{net::IpAddr, time::Duration};
 use asic_rs_core::{
     config::pools::{PoolConfig, PoolGroupConfig},
     data::{command::MinerCommand, pool::PoolURL},
-    traits::miner::{APIClient, ExposeSecret, MinerAuth, WebAPIClient},
+    traits::miner::{APIClient, MinerAuth, WebAPIClient},
 };
 use async_trait::async_trait;
 use once_cell::sync::OnceCell;
@@ -53,8 +53,8 @@ impl SealMinerWebAPI {
 
         let body = format!(
             "username={}&origin_pwd={}",
-            self.auth.username,
-            self.auth.password.expose_secret()
+            self.auth.username(),
+            self.auth.password()
         );
         let response = client
             .post(format!("http://{}/cgi-bin/login.php", self.ip))

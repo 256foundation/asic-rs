@@ -36,7 +36,7 @@ impl BraiinsGraphQLAPI {
     }
 
     pub fn username(&self) -> &str {
-        &self.auth.username
+        self.auth.username()
     }
 
     fn build_client() -> anyhow::Result<Client> {
@@ -70,8 +70,8 @@ impl BraiinsGraphQLAPI {
                 }
             }"#,
             "variables": {
-                "username": self.auth.username,
-                "password": self.auth.password.expose_secret(),
+                "username": self.auth.username(),
+                "password": self.auth.password(),
             }
         });
 

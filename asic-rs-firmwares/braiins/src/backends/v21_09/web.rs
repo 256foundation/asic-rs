@@ -51,8 +51,8 @@ impl BraiinsWebAPI {
         let client = self.client()?;
         let body = format!(
             "luci_username={}&luci_password={}",
-            self.auth.username,
-            self.auth.password.expose_secret()
+            self.auth.username(),
+            self.auth.password()
         );
 
         let response = client
