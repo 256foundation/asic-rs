@@ -15,6 +15,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
+        firmware::FirmwareUpdate,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
@@ -857,6 +858,51 @@ impl SupportsScalingConfig for BraiinsV2604 {
 impl UpgradeFirmware for BraiinsV2604 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
+    }
+
+    fn supports_check_firmware_update(&self) -> bool {
+        true
+    }
+
+    /// Reads the installed version and asks BOS to check the vendor's release
+    /// server (`bos.checkForUpgrade`) via the authenticated GraphQL client.
+    async fn check_firmware_update(&self) -> anyhow::Result<FirmwareUpdate> {
+        const GQL_CHECK_UPGRADE: MinerCommand = MinerCommand::GraphQL {
+            command: r#"{
+                bos {
+                    info { version { full } }
+                    checkForUpgrade {
+                        __typename
+                        ... on UpgradeDetail {
+                            latestRelease {
+                                version
+                                releaseDate
+                                url
+                            }
+                        }
+                    }
+                }
+            }"#,
+        };
+        let data = self.graphql.get_api_result(&GQL_CHECK_UPGRADE).await?;
+
+        let s = |p: &str| -> Option<String> {
+            data.pointer(p).and_then(|v| v.as_str()).map(String::from)
+        };
+        let current_version = s("/bos/info/version/full");
+        let latest_version = s("/bos/checkForUpgrade/latestRelease/version");
+        let release_date = s("/bos/checkForUpgrade/latestRelease/releaseDate");
+        let release_url = s("/bos/checkForUpgrade/latestRelease/url");
+        let update_available =
+            latest_version.is_some() && latest_version.as_deref() != current_version.as_deref();
+
+        Ok(FirmwareUpdate {
+            current_version,
+            latest_version,
+            update_available,
+            release_date,
+            release_url,
+        })
     }
 }
 

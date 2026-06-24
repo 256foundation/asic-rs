@@ -1,7 +1,32 @@
 use std::path::Path;
 
 use anyhow::Context;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+use serde::{Deserialize, Serialize};
 use tokio::io::AsyncReadExt;
+
+/// Result of checking a miner for an available firmware update.
+///
+/// Read-only and obtained on demand (a firmware-update check usually hits the
+/// vendor's release server, so it is not part of the regular telemetry poll).
+#[cfg_attr(
+    feature = "python",
+    pyclass(get_all, skip_from_py_object, module = "asic_rs")
+)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct FirmwareUpdate {
+    /// The firmware version currently installed, if known.
+    pub current_version: Option<String>,
+    /// The latest firmware version offered by the vendor, if any.
+    pub latest_version: Option<String>,
+    /// Whether a newer firmware than the installed one is available.
+    pub update_available: bool,
+    /// Release date of the latest firmware, as reported by the vendor.
+    pub release_date: Option<String>,
+    /// URL of the latest firmware release, when provided.
+    pub release_url: Option<String>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FirmwareImage {

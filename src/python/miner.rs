@@ -11,7 +11,7 @@ use asic_rs_core::{
         board::BoardData,
         device::{HashAlgorithm, MinerHardware},
         fan::FanData,
-        firmware::FirmwareImage,
+        firmware::{FirmwareImage, FirmwareUpdate},
         hashrate::HashRate,
         message::MinerMessage,
         miner::{MinerData, TuningTarget},
@@ -210,6 +210,11 @@ impl Miner {
     fn supports_upgrade_firmware(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_upgrade_firmware())
     }
+    /// Whether this miner supports checking for an available firmware update.
+    #[getter]
+    fn supports_check_firmware_update(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_check_firmware_update())
+    }
     /// Whether this miner supports scaling configuration.
     #[getter]
     fn supports_scaling_config(&self, py: Python<'_>) -> bool {
@@ -260,6 +265,18 @@ impl Miner {
                 None => Ok(inner.get_data().await),
                 Some(excl) => Ok(inner.get_data_filtered(excl).await),
             }
+        })
+    }
+    /// Check for an available firmware update (on-demand; queries the vendor's
+    /// release server). Returns `None` if unsupported or the check fails.
+    pub fn check_firmware_update<'a>(
+        &self,
+        py: Python<'a>,
+    ) -> PyResult<PyAwaitable<Option<FirmwareUpdate>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.check_firmware_update().await.ok())
         })
     }
     /// Await the miner MAC address, if exposed by the firmware.
