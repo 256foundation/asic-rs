@@ -711,6 +711,30 @@ def test_miner_data_serializes_uptime_as_timedelta() -> None:
     assert model.model_dump()["miner"]["uptime"] == timedelta(seconds=1.25)
 
 
+def test_miner_data_accepts_uptime_timedelta() -> None:
+    uptime = timedelta(minutes=19, seconds=5)
+
+    model = MinerDataModel.model_validate({"miner": minimal_miner_data(uptime=uptime)})
+
+    assert model.model_dump()["miner"]["uptime"] == uptime
+
+
+@pytest.mark.parametrize(
+    ("uptime", "expected"),
+    [
+        ("PT19M5S", timedelta(minutes=19, seconds=5)),
+        ("P1DT2H3M4.5S", timedelta(days=1, hours=2, minutes=3, seconds=4.5)),
+        ("PT0S", timedelta()),
+    ],
+)
+def test_miner_data_accepts_iso8601_uptime_duration(
+    uptime: str, expected: timedelta
+) -> None:
+    model = MinerDataModel.model_validate({"miner": minimal_miner_data(uptime=uptime)})
+
+    assert model.model_dump()["miner"]["uptime"] == expected
+
+
 def test_miner_data_control_board_uses_model_shape() -> None:
     model = MinerDataModel.model_validate(
         {
