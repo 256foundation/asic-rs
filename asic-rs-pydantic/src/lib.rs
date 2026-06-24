@@ -186,31 +186,13 @@ impl PyPydanticType for MacAddr {
 impl PyPydanticType for Duration {
     fn pydantic_schema<'py>(
         core_schema: &Bound<'py, PyAny>,
-        mode: PydanticSchemaMode,
+        _mode: PydanticSchemaMode,
     ) -> PyResult<Bound<'py, PyAny>> {
-        match mode {
-            PydanticSchemaMode::Validation => core_schema.call_method0("any_schema"),
-            PydanticSchemaMode::Serialization => core_schema.call_method0("timedelta_schema"),
-        }
+        core_schema.call_method0("timedelta_schema")
     }
 
     fn from_pydantic(value: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok(duration) = value.extract::<Self>() {
-            return Ok(duration);
-        }
-        if let Ok(seconds) = value.extract::<f64>()
-            && seconds.is_finite()
-            && seconds >= 0.0
-        {
-            return Ok(Self::from_secs_f64(seconds));
-        }
-        if let Ok(dict) = value.cast::<PyDict>() {
-            let secs = required_dict_item(dict, "secs")?.extract::<u64>()?;
-            return Ok(Self::from_secs(secs));
-        }
-        Err(PyValueError::new_err(
-            "Expected duration as timedelta, non-negative seconds, or {secs} dict",
-        ))
+        value.extract()
     }
 
     fn to_pydantic_data(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
