@@ -30,6 +30,8 @@ pub use asic_rs_firmwares_proto as proto;
 pub use asic_rs_firmwares_sealminer as sealminer;
 #[cfg(feature = "vnish")]
 pub use asic_rs_firmwares_vnish as vnish;
+#[cfg(feature = "volcminer")]
+pub use asic_rs_firmwares_volcminer as volcminer;
 #[cfg(feature = "whatsminer")]
 pub use asic_rs_firmwares_whatsminer as whatsminer;
 

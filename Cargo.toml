@@ -36,6 +36,7 @@ members = [
     "asic-rs-makes/nerdaxe",
     "asic-rs-makes/proto",
     "asic-rs-makes/sealminer",
+    "asic-rs-makes/volcminer",
     "asic-rs-makes/whatsminer",
     "asic-rs-makes/marathon",
     "asic-rs-firmwares/antminer",
@@ -51,6 +52,7 @@ members = [
     "asic-rs-firmwares/proto",
     "asic-rs-firmwares/sealminer",
     "asic-rs-firmwares/vnish",
+    "asic-rs-firmwares/volcminer",
     "asic-rs-firmwares/whatsminer",
     "asic-rs-pydantic",
     "asic-rs-pydantic-macros",
@@ -71,6 +73,7 @@ asic-rs-makes-futurebit = { path = "asic-rs-makes/futurebit", version = "0.7.1" 
 asic-rs-makes-nerdaxe = { path = "asic-rs-makes/nerdaxe", version = "0.7.1" }
 asic-rs-makes-proto = { path = "asic-rs-makes/proto", version = "0.7.1" }
 asic-rs-makes-sealminer = { path = "asic-rs-makes/sealminer", version = "0.7.1" }
+asic-rs-makes-volcminer = { path = "asic-rs-makes/volcminer", version = "0.7.1" }
 asic-rs-makes-whatsminer = { path = "asic-rs-makes/whatsminer", version = "0.7.1" }
 asic-rs-makes-marathon = { path = "asic-rs-makes/marathon", version = "0.7.1" }
 
@@ -87,6 +90,7 @@ asic-rs-firmwares-nerdaxe = { path = "asic-rs-firmwares/nerdaxe", version = "0.7
 asic-rs-firmwares-proto = { path = "asic-rs-firmwares/proto", version = "0.7.1" }
 asic-rs-firmwares-sealminer = { path = "asic-rs-firmwares/sealminer", version = "0.7.1" }
 asic-rs-firmwares-vnish = { path = "asic-rs-firmwares/vnish", version = "0.7.1" }
+asic-rs-firmwares-volcminer = { path = "asic-rs-firmwares/volcminer", version = "0.7.1" }
 asic-rs-firmwares-whatsminer = { path = "asic-rs-firmwares/whatsminer", version = "0.7.1" }
 
 diqwest = "3.2"
@@ -155,6 +159,7 @@ default = [
     "proto",
     "sealminer",
     "vnish",
+    "volcminer",
     "whatsminer",
 ]
 
@@ -172,6 +177,7 @@ nerdaxe = ["dep:asic-rs-firmwares-nerdaxe"]
 proto = ["dep:asic-rs-firmwares-proto"]
 sealminer = ["dep:asic-rs-firmwares-sealminer"]
 vnish = ["dep:asic-rs-firmwares-vnish"]
+volcminer = ["dep:asic-rs-firmwares-volcminer"]
 whatsminer = ["dep:asic-rs-firmwares-whatsminer"]
 
 python = [
@@ -190,6 +196,7 @@ python = [
     "asic-rs-makes-nerdaxe/python",
     "asic-rs-makes-proto/python",
     "asic-rs-makes-sealminer/python",
+    "asic-rs-makes-volcminer/python",
     "asic-rs-makes-whatsminer/python",
     "asic-rs-makes-marathon/python",
     "asic-rs-firmwares-antminer?/python",
@@ -205,6 +212,7 @@ python = [
     "asic-rs-firmwares-proto?/python",
     "asic-rs-firmwares-sealminer?/python",
     "asic-rs-firmwares-vnish?/python",
+    "asic-rs-firmwares-volcminer?/python",
     "asic-rs-firmwares-whatsminer?/python",
 ]
 
@@ -222,6 +230,7 @@ asic-rs-makes-futurebit.workspace = true
 asic-rs-makes-nerdaxe.workspace = true
 asic-rs-makes-proto.workspace = true
 asic-rs-makes-sealminer.workspace = true
+asic-rs-makes-volcminer.workspace = true
 asic-rs-makes-whatsminer.workspace = true
 asic-rs-makes-marathon.workspace = true
 
@@ -238,6 +247,7 @@ asic-rs-firmwares-nerdaxe = { workspace = true, optional = true }
 asic-rs-firmwares-proto = { workspace = true, optional = true }
 asic-rs-firmwares-sealminer = { workspace = true, optional = true }
 asic-rs-firmwares-vnish = { workspace = true, optional = true }
+asic-rs-firmwares-volcminer = { workspace = true, optional = true }
 asic-rs-firmwares-whatsminer = { workspace = true, optional = true }
 
 futures.workspace = true

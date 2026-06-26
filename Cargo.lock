@@ -71,6 +71,7 @@ dependencies = [
  "asic-rs-firmwares-proto",
  "asic-rs-firmwares-sealminer",
  "asic-rs-firmwares-vnish",
+ "asic-rs-firmwares-volcminer",
  "asic-rs-firmwares-whatsminer",
  "asic-rs-makes-antminer",
  "asic-rs-makes-auradine",
@@ -83,6 +84,7 @@ dependencies = [
  "asic-rs-makes-nerdaxe",
  "asic-rs-makes-proto",
  "asic-rs-makes-sealminer",
+ "asic-rs-makes-volcminer",
  "asic-rs-makes-whatsminer",
  "asic-rs-pydantic",
  "async-stream",
@@ -367,6 +369,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "asic-rs-firmwares-volcminer"
+version = "0.7.1"
+dependencies = [
+ "anyhow",
+ "asic-rs-core",
+ "asic-rs-makes-volcminer",
+ "async-trait",
+ "diqwest",
+ "macaddr",
+ "measurements",
+ "once_cell",
+ "pyo3",
+ "reqwest",
+ "semver",
+ "serde_json",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "asic-rs-firmwares-whatsminer"
 version = "0.7.1"
 dependencies = [
@@ -503,6 +525,17 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-sealminer"
+version = "0.7.1"
+dependencies = [
+ "asic-rs-core",
+ "pyo3",
+ "serde",
+ "serde_json",
+ "strum",
+]
+
+[[package]]
+name = "asic-rs-makes-volcminer"
 version = "0.7.1"
 dependencies = [
  "asic-rs-core",
