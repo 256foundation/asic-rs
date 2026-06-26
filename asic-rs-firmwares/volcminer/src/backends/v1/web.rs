@@ -1,17 +1,15 @@
 use std::{net::IpAddr, time::Duration};
 
-use anyhow::{Result, anyhow, bail};
-use asic_rs_core::{
-    config::pools::PoolConfig,
-    data::command::MinerCommand,
-    traits::miner::{APIClient, MinerAuth, WebAPIClient},
-};
+use once_cell::sync::OnceCell;
+
+use anyhow::{Context, Result, anyhow, bail};
+use asic_rs_core::{config::pools::PoolConfig, data::command::MinerCommand, traits::miner::*};
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
-use once_cell::sync::OnceCell;
-use reqwest::{Client, Method};
+use reqwest::{Client, Method, Response};
 use serde_json::Value;
 use tokio::time::sleep;
+use url::form_urlencoded;
 
 use super::{config_form, status_parser};
 
@@ -24,6 +22,7 @@ pub struct VolcMinerWebAPI {
     auth: MinerAuth,
 }
 
+#[allow(dead_code)]
 impl VolcMinerWebAPI {
     pub fn new(ip: IpAddr, auth: MinerAuth) -> Self {
         Self {
@@ -39,85 +38,213 @@ impl VolcMinerWebAPI {
         self.auth = auth;
     }
 
-    #[cfg(test)]
-    pub(super) fn auth(&self) -> &MinerAuth {
-        &self.auth
+    pub fn auth(&self) -> MinerAuth {
+        self.auth.clone()
+    }
+
+    pub fn username(&self) -> &str {
+        self.auth.username()
+    }
+
+    pub fn with_timeout(ip: IpAddr, timeout: Duration, auth: MinerAuth) -> Self {
+        let mut client = Self::new(ip, auth);
+        client.port = 80;
+        client.timeout = timeout;
+        client
     }
 
     fn build_client() -> Result<Client> {
         Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
-            .map_err(|e| anyhow!("failed to create HTTP client: {e}"))
+            .context("failed to create HTTP client")
     }
 
     fn client(&self) -> Result<&Client> {
         self.client.get_or_try_init(Self::build_client)
     }
 
-    fn url(&self, command: &str) -> String {
-        format!("http://{}:{}/cgi-bin/{}.cgi", self.ip, self.port, command)
+    fn form_value(value: &Value) -> String {
+        match value {
+            Value::Null => String::new(),
+            Value::String(value) => value.clone(),
+            Value::Bool(value) => value.to_string(),
+            Value::Number(value) => value.to_string(),
+            Value::Array(_) | Value::Object(_) => value.to_string(),
+        }
     }
 
-    async fn request_text(
+    fn post_body(parameters: Option<Value>) -> Result<Option<String>> {
+        match parameters {
+            None => Ok(None),
+            Some(Value::String(body)) => Ok(Some(body)),
+            Some(Value::Object(fields)) => {
+                let mut serializer = form_urlencoded::Serializer::new(String::new());
+                for (key, value) in fields {
+                    if let Value::Array(values) = value {
+                        for value in values {
+                            serializer.append_pair(&key, &Self::form_value(&value));
+                        }
+                    } else {
+                        serializer.append_pair(&key, &Self::form_value(&value));
+                    }
+                }
+                Ok(Some(serializer.finish()))
+            }
+            Some(_) => bail!("VolcMiner POST parameters must be an object or raw form body string"),
+        }
+    }
+
+    async fn send_web_command(
         &self,
         command: &str,
+        privileged: bool,
+        parameters: Option<Value>,
         method: Method,
-        body: Option<String>,
-    ) -> Result<String> {
-        let client = self.client()?;
-        let url = self.url(command);
-        let mut builder = match method {
-            Method::GET => client.get(url),
-            Method::POST => client.post(url),
-            _ => bail!("Unsupported HTTP method: {method}"),
-        }
-        .timeout(self.timeout);
-
-        if let Some(body) = body {
-            builder = builder
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body(body);
-        }
-
-        let response = builder
-            .send_digest_auth((self.auth.username(), self.auth.password()))
+    ) -> Result<Value> {
+        self.send_web_command_with_timeout(command, privileged, parameters, method, self.timeout)
             .await
-            .map_err(|e| anyhow!("HTTP request failed: {e}"))?;
+    }
+
+    async fn send_web_command_with_timeout(
+        &self,
+        command: &str,
+        _privileged: bool,
+        parameters: Option<Value>,
+        method: Method,
+        timeout: Duration,
+    ) -> Result<Value> {
+        let url = format!("http://{}:{}/cgi-bin/{}.cgi", self.ip, self.port, command);
+
+        let response = self
+            .execute_web_request(&url, &method, parameters.clone(), timeout)
+            .await?;
+
+        let status = response.status();
+        if status.is_success() {
+            let text = response.text().await.map_err(|e| anyhow!(e.to_string()))?;
+            Self::parse_response_json(command, &text)
+        } else {
+            bail!("HTTP request failed with status code {}", status);
+        }
+    }
+
+    async fn send_web_text_command(
+        &self,
+        command: &str,
+        parameters: Option<Value>,
+        method: Method,
+    ) -> Result<String> {
+        let url = format!("http://{}:{}/cgi-bin/{}.cgi", self.ip, self.port, command);
+        let response = self
+            .execute_web_request(&url, &method, parameters, self.timeout)
+            .await?;
 
         let status = response.status();
         if !status.is_success() {
-            bail!("HTTP request failed with status: {status}");
+            bail!("HTTP request failed with status code {}", status);
         }
 
         response.text().await.map_err(|e| anyhow!(e.to_string()))
     }
 
-    async fn request_json(&self, command: &str) -> Result<Value> {
-        let text = self.request_text(command, Method::GET, None).await?;
-        match serde_json::from_str(&text) {
+    async fn send_web_status_command(
+        &self,
+        command: &str,
+        parameters: Option<Value>,
+        method: Method,
+    ) -> Result<bool> {
+        let url = format!("http://{}:{}/cgi-bin/{}.cgi", self.ip, self.port, command);
+        let response = self
+            .execute_web_request(&url, &method, parameters, self.timeout)
+            .await?;
+
+        let status = response.status();
+        if status.is_success() {
+            Ok(true)
+        } else {
+            bail!("HTTP request failed with status code {}", status);
+        }
+    }
+
+    async fn execute_web_request(
+        &self,
+        url: &str,
+        method: &Method,
+        parameters: Option<Value>,
+        timeout: Duration,
+    ) -> Result<Response> {
+        let client = self.client()?;
+
+        let response = match *method {
+            Method::GET => {
+                if parameters.is_some() {
+                    bail!("VolcMiner GET commands do not support parameters");
+                }
+                client
+                    .get(url)
+                    .timeout(timeout)
+                    .send_digest_auth((self.auth.username(), self.auth.password()))
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?
+            }
+            Method::POST => {
+                let body = Self::post_body(parameters)?;
+                let mut builder = client.post(url).timeout(timeout);
+                if let Some(body) = body {
+                    builder = builder
+                        .header("Content-Type", "application/x-www-form-urlencoded")
+                        .body(body);
+                }
+                builder
+                    .send_digest_auth((self.auth.username(), self.auth.password()))
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?
+            }
+            _ => bail!("Unsupported method: {}", method),
+        };
+
+        Ok(response)
+    }
+
+    fn parse_response_json(command: &str, text: &str) -> Result<Value> {
+        match serde_json::from_str(text) {
             Ok(value) => Ok(value),
-            Err(error) if command == "get_miner_status" => status_parser::parse_miner_status_text(&text)
-                .map_err(|fallback_error| {
+            Err(error) if command == "get_miner_status" => {
+                status_parser::parse_miner_status_text(text).map_err(|fallback_error| {
                     anyhow!(
                         "failed to parse {command} JSON: {error}; fallback parser failed: {fallback_error}"
                     )
-                }),
+                })
+            }
             Err(error) => Err(anyhow!("failed to parse {command} JSON: {error}")),
         }
     }
 
-    pub async fn miner_conf(&self) -> Result<Value> {
-        self.request_json("get_miner_conf").await
+    pub async fn get_miner_conf(&self) -> Result<Value> {
+        self.send_web_command("get_miner_conf", false, None, Method::GET)
+            .await
     }
 
-    pub async fn system_info(&self) -> Result<Value> {
-        self.request_json("get_system_info").await
+    pub async fn set_miner_conf(&self, conf: Value) -> Result<Value> {
+        self.send_web_command_with_timeout(
+            "set_miner_conf",
+            false,
+            Some(conf),
+            Method::POST,
+            self.timeout.max(Duration::from_secs(30)),
+        )
+        .await
+    }
+
+    pub async fn get_system_info(&self) -> Result<Value> {
+        self.send_web_command("get_system_info", false, None, Method::GET)
+            .await
     }
 
     async fn conf_metadata(&self) -> config_form::MinerConfMetadata {
         let Ok(text) = self
-            .request_text("get_miner_confV1", Method::GET, None)
+            .send_web_text_command("get_miner_confV1", None, Method::GET)
             .await
         else {
             return config_form::MinerConfMetadata::default();
@@ -137,7 +264,7 @@ impl VolcMinerWebAPI {
     async fn confirm_pools_config(&self, pools: &[PoolConfig]) -> bool {
         for _ in 0..5 {
             if self
-                .miner_conf()
+                .get_miner_conf()
                 .await
                 .map(|config| config_form::pools_match_config(&config, pools))
                 .unwrap_or(false)
@@ -151,12 +278,12 @@ impl VolcMinerWebAPI {
     }
 
     pub async fn set_pools_config(&self, pools: &[PoolConfig]) -> Result<bool> {
-        let current = self.miner_conf().await?;
+        let current = self.get_miner_conf().await?;
         let metadata = self.conf_metadata().await;
         let body = config_form::build_miner_conf_body(&current, &metadata, pools);
 
         if let Err(error) = self
-            .request_text("set_miner_conf", Method::POST, Some(body))
+            .send_web_text_command("set_miner_conf", Some(Value::String(body)), Method::POST)
             .await
             && !self.confirm_pools_config(pools).await
         {
@@ -173,13 +300,12 @@ impl APIClient for VolcMinerWebAPI {
         match command {
             MinerCommand::WebAPI {
                 command,
-                parameters: None,
-            } => self.send_command(command, false, None, Method::GET).await,
-            MinerCommand::WebAPI {
-                parameters: Some(_),
-                ..
-            } => bail!("VolcMiner WebAPI commands do not support parameters"),
-            _ => Err(anyhow!("Unsupported command type for VolcMiner API")),
+                parameters,
+            } => self
+                .send_web_command(command, false, parameters.clone(), Method::GET)
+                .await
+                .map_err(|e| anyhow!(e.to_string())),
+            _ => Err(anyhow!("Unsupported command type for Web client")),
         }
     }
 }
@@ -189,17 +315,11 @@ impl WebAPIClient for VolcMinerWebAPI {
     async fn send_command(
         &self,
         command: &str,
-        _privileged: bool,
+        privileged: bool,
         parameters: Option<Value>,
         method: Method,
     ) -> Result<Value> {
-        if parameters.is_some() {
-            bail!("VolcMiner WebAPI commands do not support parameters");
-        }
-
-        match method {
-            Method::GET => self.request_json(command).await,
-            _ => bail!("Unsupported VolcMiner command method: {method}"),
-        }
+        self.send_web_command(command, privileged, parameters, method)
+            .await
     }
 }

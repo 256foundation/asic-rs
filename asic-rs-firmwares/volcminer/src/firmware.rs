@@ -37,7 +37,7 @@ impl DiscoveryCommands for VolcMinerFirmware {
 
 async fn get_system_info_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<Value> {
     VolcMinerWebAPI::new(ip, auth.clone())
-        .system_info()
+        .get_system_info()
         .await
         .ok()
 }

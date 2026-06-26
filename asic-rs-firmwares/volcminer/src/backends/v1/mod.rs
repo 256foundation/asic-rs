@@ -66,7 +66,7 @@ impl VolcMinerV1 {
     }
 
     #[cfg(test)]
-    fn web_auth(&self) -> &MinerAuth {
+    fn web_auth(&self) -> MinerAuth {
         self.web.auth()
     }
 
