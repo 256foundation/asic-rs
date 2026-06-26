@@ -581,13 +581,6 @@ mod tests {
     use super::*;
     use crate::firmware::VolcMinerFirmware;
 
-    const LIVE_TEST_POOL_URLS: [&str; 3] = [
-        "stratum+tcp://ltc-na.f2pool.com:3335",
-        "stratum+tcp://ltc-na.f2pool.com:5200",
-        "stratum+tcp://ltc-na.f2pool.com:8888",
-    ];
-    const LIVE_TEST_POOL_USER: &str = "epicblockchain.volcoffice";
-
     fn miner_ip_from_env() -> anyhow::Result<IpAddr> {
         let ip_str = std::env::var("MINER_IP").context("MINER_IP is not set")?;
         IpAddr::from_str(&ip_str).with_context(|| format!("invalid MINER_IP: {ip_str}"))
@@ -602,7 +595,21 @@ mod tests {
         })
     }
 
-    fn live_test_pool_password(current: &[PoolGroupConfig], url: &str) -> String {
+    fn live_test_pool_urls_from_env() -> anyhow::Result<Vec<String>> {
+        let urls = std::env::var("MINER_POOL_URLS").context("MINER_POOL_URLS is not set")?;
+        let urls = urls
+            .split(',')
+            .map(str::trim)
+            .filter(|url| !url.is_empty())
+            .map(str::to_string)
+            .collect::<Vec<_>>();
+        if urls.is_empty() {
+            anyhow::bail!("MINER_POOL_URLS is empty");
+        }
+        Ok(urls)
+    }
+
+    fn live_test_pool_password(current: &[PoolGroupConfig], url: &str, username: &str) -> String {
         std::env::var("MINER_POOL_PASSWORD")
             .ok()
             .or_else(|| {
@@ -611,7 +618,7 @@ mod tests {
                     .flat_map(|group| group.pools.iter())
                     .find_map(|pool| {
                         if pool.url.to_string() == url
-                            && pool.username == LIVE_TEST_POOL_USER
+                            && pool.username == username
                             && !pool.password.is_empty()
                         {
                             Some(pool.password.clone())
@@ -749,10 +756,13 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires live miner and writes pool config; set MINER_IP"]
+    #[ignore = "requires live miner and writes pool config; set MINER_IP, MINER_POOL_URLS, and MINER_POOL_USERNAME"]
     async fn set_pools_config_live_test() -> anyhow::Result<()> {
         let ip = miner_ip_from_env()?;
         let auth = miner_auth_from_env();
+        let pool_urls = live_test_pool_urls_from_env()?;
+        let pool_username =
+            std::env::var("MINER_POOL_USERNAME").context("MINER_POOL_USERNAME is not set")?;
 
         let miner = VolcMinerFirmware::default()
             .build_miner(ip, auth.as_ref())
@@ -762,12 +772,12 @@ mod tests {
         let current = miner.get_pools_config().await?;
         println!("current pools {}", serde_json::to_string_pretty(&current)?);
 
-        let pools = LIVE_TEST_POOL_URLS
+        let pools = pool_urls
             .iter()
             .map(|url| PoolConfig {
-                url: PoolURL::from((*url).to_string()),
-                username: LIVE_TEST_POOL_USER.to_string(),
-                password: live_test_pool_password(&current, url),
+                url: PoolURL::from(url.to_string()),
+                username: pool_username.clone(),
+                password: live_test_pool_password(&current, url, &pool_username),
             })
             .collect::<Vec<_>>();
         let target = vec![PoolGroupConfig {
