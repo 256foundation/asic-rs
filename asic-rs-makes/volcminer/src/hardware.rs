@@ -1,6 +1,37 @@
-use asic_rs_core::data::device::MinerHardware;
+use asic_rs_core::data::{board::MinerControlBoard, collector::FromValue, device::MinerHardware};
+use serde::{Deserialize, Serialize};
+use strum::Display;
 
 use crate::models::VolcMinerModel;
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display)]
+pub enum VolcMinerControlBoard {
+    #[serde(rename = "Xilinx")]
+    Xilinx,
+}
+
+impl VolcMinerControlBoard {
+    pub fn parse(s: &str) -> Option<Self> {
+        let normalized = s.trim().to_ascii_lowercase();
+        if normalized.contains("xilinx") {
+            Some(Self::Xilinx)
+        } else {
+            None
+        }
+    }
+}
+
+impl FromValue for VolcMinerControlBoard {
+    fn from_value(value: &serde_json::Value) -> Option<Self> {
+        Self::parse(value.as_str()?)
+    }
+}
+
+impl From<VolcMinerControlBoard> for MinerControlBoard {
+    fn from(cb: VolcMinerControlBoard) -> Self {
+        MinerControlBoard::known(cb.to_string())
+    }
+}
 
 impl From<VolcMinerModel> for MinerHardware {
     fn from(value: VolcMinerModel) -> Self {

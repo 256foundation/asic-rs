@@ -7,7 +7,7 @@ use asic_rs_core::{
         pools::{PoolConfig, PoolGroupConfig},
     },
     data::{
-        board::BoardData,
+        board::{BoardData, MinerControlBoard},
         collector::{DataCollector, DataExtractor, DataField, DataLocation, get_by_pointer},
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
@@ -23,6 +23,7 @@ use measurements::{AngularVelocity, Frequency, Temperature};
 use serde_json::Value;
 
 use crate::firmware::VolcMinerFirmware;
+use asic_rs_makes_volcminer::hardware::VolcMinerControlBoard;
 
 pub mod web;
 
@@ -241,6 +242,14 @@ impl GetDataLocations for VolcMinerV1 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/cgminer_version"),
+                    tag: None,
+                },
+            )],
+            DataField::ControlBoardVersion => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/system_kernel_version"),
                     tag: None,
                 },
             )],
@@ -491,7 +500,16 @@ impl SupportsPoolsConfig for VolcMinerV1 {
 }
 
 impl GetSerialNumber for VolcMinerV1 {}
-impl GetControlBoardVersion for VolcMinerV1 {}
+impl GetControlBoardVersion for VolcMinerV1 {
+    fn parse_control_board_version(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<MinerControlBoard> {
+        data.get(&DataField::ControlBoardVersion)
+            .and_then(Value::as_str)
+            .and_then(|kernel| VolcMinerControlBoard::parse(kernel).map(Into::into))
+    }
+}
 impl GetExpectedHashrate for VolcMinerV1 {}
 impl GetPsuFans for VolcMinerV1 {}
 impl GetFluidTemperature for VolcMinerV1 {}
