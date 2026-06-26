@@ -96,6 +96,10 @@ impl FirmwareIdentification for VolcMinerFirmware {
         response.body.contains("VolcMiner")
             || response.auth_header.contains("blackMiner Configuration")
     }
+
+    fn is_stock(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
@@ -140,6 +144,7 @@ mod tests {
 
         assert_eq!(firmware.to_string(), "VolcMiner Stock");
         assert_eq!(firmware.get_discovery_commands(), vec![HTTP_WEB_ROOT]);
+        assert!(firmware.is_stock());
     }
 
     #[test]
