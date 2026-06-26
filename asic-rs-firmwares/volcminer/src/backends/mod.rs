@@ -11,7 +11,6 @@ pub mod v1;
 pub struct VolcMiner;
 
 impl MinerConstructor for VolcMiner {
-    #[allow(clippy::new_ret_no_self)]
     fn new(ip: IpAddr, model: impl MinerModel, _: Option<semver::Version>) -> Box<dyn Miner> {
         Box::new(VolcMinerV1::new(ip, model))
     }
