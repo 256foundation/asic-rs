@@ -156,7 +156,7 @@ async fn test_volcminer_v1_parse_data() -> anyhow::Result<()> {
     );
     assert_eq!(
         miner_data.control_board_version,
-        Some(VolcMinerControlBoard::Xilinx.into())
+        Some(VolcMinerControlBoard::TVXilinx.into())
     );
     assert_eq!(miner_data.fans.len(), 4);
     assert_eq!(miner_data.hashboards.len(), 1);

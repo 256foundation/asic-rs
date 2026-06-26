@@ -6,15 +6,15 @@ use crate::models::VolcMinerModel;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display)]
 pub enum VolcMinerControlBoard {
-    #[serde(rename = "Xilinx")]
-    Xilinx,
+    #[serde(rename = "TVXilinx")]
+    TVXilinx,
 }
 
 impl VolcMinerControlBoard {
     pub fn parse(s: &str) -> Option<Self> {
         let normalized = s.trim().to_ascii_lowercase();
         if normalized.contains("xilinx") {
-            Some(Self::Xilinx)
+            Some(Self::TVXilinx)
         } else {
             None
         }
