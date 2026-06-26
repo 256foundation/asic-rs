@@ -567,7 +567,7 @@ impl HasAuth for VolcMinerV1 {
 
 impl HasDefaultAuth for VolcMinerV1 {
     fn default_auth() -> MinerAuth {
-        MinerAuth::new("root", "root")
+        MinerAuth::new("root", "ltc@dog")
     }
 }
 
