@@ -28,9 +28,28 @@ use asic_rs_makes_volcminer::hardware::VolcMinerControlBoard;
 pub mod web;
 
 mod config_form;
+mod rpc;
 mod status_parser;
 
+use rpc::VolcMinerRPCAPI;
 use web::VolcMinerWebAPI;
+
+const RPC_VERSION: MinerCommand = MinerCommand::RPC {
+    command: "version",
+    parameters: None,
+};
+const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
+    command: "summary",
+    parameters: None,
+};
+const RPC_STATS: MinerCommand = MinerCommand::RPC {
+    command: "stats",
+    parameters: None,
+};
+const RPC_POOLS: MinerCommand = MinerCommand::RPC {
+    command: "pools",
+    parameters: None,
+};
 
 const WEB_STATUS: MinerCommand = MinerCommand::WebAPI {
     command: "get_miner_status",
@@ -48,6 +67,7 @@ const WEB_SYSTEM_INFO: MinerCommand = MinerCommand::WebAPI {
 #[derive(Debug)]
 pub struct VolcMinerV1 {
     ip: IpAddr,
+    rpc: VolcMinerRPCAPI,
     web: VolcMinerWebAPI,
     device_info: DeviceInfo,
 }
@@ -56,6 +76,7 @@ impl VolcMinerV1 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         Self {
             ip,
+            rpc: VolcMinerRPCAPI::new(ip),
             web: VolcMinerWebAPI::new(ip, Self::default_auth()),
             device_info: DeviceInfo::new(
                 model,
@@ -147,6 +168,64 @@ impl VolcMinerV1 {
         data.get(&field)
     }
 
+    fn value_by_keys<'a>(value: &'a Value, keys: &[&str]) -> Option<&'a Value> {
+        keys.iter().find_map(|key| value.get(*key))
+    }
+
+    fn parse_rpc_hashboards(status: &Value) -> Vec<BoardData> {
+        let has_rpc_chain_fields = status
+            .as_object()
+            .map(|fields| fields.keys().any(|key| key.starts_with("chain_acn")))
+            .unwrap_or(false);
+        if !has_rpc_chain_fields {
+            return vec![];
+        }
+
+        (1..=9)
+            .filter_map(|idx| {
+                let chips_key = format!("chain_acn{idx}");
+                let rate_key = format!("chain_rate{idx}");
+                let temp_key = format!("temp{idx}");
+                let acs_key = format!("chain_acs{idx}");
+                let chips = status
+                    .get(chips_key.as_str())
+                    .and_then(Self::parse_u64)
+                    .and_then(|chips| u16::try_from(chips).ok());
+                let hashrate = status
+                    .get(rate_key.as_str())
+                    .and_then(Self::parse_f64)
+                    .map(|rate| Self::scrypt_hashrate(rate, HashRateUnit::MegaHash));
+                let temperature = status
+                    .get(temp_key.as_str())
+                    .and_then(Self::parse_temperature);
+                let chain_acs = status
+                    .get(acs_key.as_str())
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .trim();
+
+                let active = chips
+                    .map(|chips| chips > 0)
+                    .or_else(|| hashrate.as_ref().map(|hashrate| hashrate.value > 0.0));
+                if active != Some(true) && temperature.is_none() && chain_acs.is_empty() {
+                    return None;
+                }
+
+                let mut board = BoardData::new((idx - 1) as u8, None);
+                board.working_chips = chips;
+                board.frequency = status
+                    .get("frequency")
+                    .and_then(Self::parse_f64)
+                    .map(Frequency::from_megahertz);
+                board.board_temperature = temperature;
+                board.hashrate = hashrate;
+                board.active = active;
+                board.tuned = active;
+                Some(board)
+            })
+            .collect()
+    }
+
     fn configured_pools(config: &Value) -> Vec<PoolConfig> {
         config
             .get("pools")
@@ -180,6 +259,7 @@ impl VolcMinerV1 {
 impl APIClient for VolcMinerV1 {
     async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
+            MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             _ => Err(anyhow::anyhow!(
                 "Unsupported command type for VolcMiner API"
@@ -237,14 +317,24 @@ impl GetDataLocations for VolcMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::ApiVersion => vec![(
-                WEB_SYSTEM_INFO,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/cgminer_version"),
-                    tag: None,
-                },
-            )],
+            DataField::ApiVersion => vec![
+                (
+                    WEB_SYSTEM_INFO,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/cgminer_version"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_VERSION,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/VERSION/0/API"),
+                        tag: None,
+                    },
+                ),
+            ],
             DataField::ControlBoardVersion => vec![(
                 WEB_SYSTEM_INFO,
                 DataExtractor {
@@ -253,22 +343,60 @@ impl GetDataLocations for VolcMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::Hashrate | DataField::Uptime | DataField::IsMining => vec![(
-                WEB_STATUS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/summary"),
-                    tag: None,
-                },
-            )],
-            DataField::Fans | DataField::Hashboards | DataField::Pools => vec![(
-                WEB_STATUS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some(""),
-                    tag: None,
-                },
-            )],
+            DataField::Hashrate | DataField::Uptime | DataField::IsMining => vec![
+                (
+                    WEB_STATUS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/summary"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_SUMMARY,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/SUMMARY/0"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::Fans | DataField::Hashboards => vec![
+                (
+                    WEB_STATUS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/1"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::Pools => vec![
+                (
+                    WEB_STATUS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_POOLS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/POOLS"),
+                        tag: None,
+                    },
+                ),
+            ],
             _ => vec![],
         }
     }
@@ -328,17 +456,26 @@ impl GetFirmwareVersion for VolcMinerV1 {
 
 impl GetHashrate for VolcMinerV1 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        let hashrate = Self::status(data, DataField::Hashrate)?
-            .get("ghs5s")
-            .and_then(Self::parse_f64)?;
+        let summary = Self::status(data, DataField::Hashrate)?;
+        let hashrate =
+            Self::value_by_keys(summary, &["MHS 5s", "ghs5s"]).and_then(Self::parse_f64)?;
         Some(Self::scrypt_hashrate(hashrate, HashRateUnit::MegaHash))
     }
 }
 
 impl GetHashboards for VolcMinerV1 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        Self::status(data, DataField::Hashboards)
-            .and_then(|status| status.get("devs"))
+        let Some(status) = Self::status(data, DataField::Hashboards) else {
+            return vec![];
+        };
+
+        let rpc_hashboards = Self::parse_rpc_hashboards(status);
+        if !rpc_hashboards.is_empty() {
+            return rpc_hashboards;
+        }
+
+        status
+            .get("devs")
             .and_then(Value::as_array)
             .into_iter()
             .flatten()
@@ -399,35 +536,36 @@ impl GetFans for VolcMinerV1 {
 
 impl GetPools for VolcMinerV1 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
-        let pools = Self::status(data, DataField::Pools)
-            .and_then(|status| status.get("pools"))
-            .and_then(Value::as_array)
+        let Some(status) = Self::status(data, DataField::Pools) else {
+            return vec![];
+        };
+        let pools = status
+            .as_array()
+            .or_else(|| status.get("pools").and_then(Value::as_array))
+            .or_else(|| status.get("POOLS").and_then(Value::as_array))
             .into_iter()
             .flatten()
             .map(|pool| {
-                let url = pool
-                    .get("url")
+                let url = Self::value_by_keys(pool, &["URL", "url"])
                     .and_then(Value::as_str)
                     .filter(|url| !url.is_empty())
                     .map(|url| PoolURL::from(url.to_string()));
                 PoolData {
-                    position: pool
-                        .get("index")
+                    position: Self::value_by_keys(pool, &["POOL", "index"])
                         .and_then(Self::parse_u64)
                         .and_then(|idx| u16::try_from(idx).ok()),
                     url,
-                    accepted_shares: pool.get("accepted").and_then(Self::parse_u64),
-                    rejected_shares: pool.get("rejected").and_then(Self::parse_u64),
-                    active: pool
-                        .get("status")
+                    accepted_shares: Self::value_by_keys(pool, &["Accepted", "accepted"])
+                        .and_then(Self::parse_u64),
+                    rejected_shares: Self::value_by_keys(pool, &["Rejected", "rejected"])
+                        .and_then(Self::parse_u64),
+                    active: Self::value_by_keys(pool, &["Status", "status"])
                         .and_then(Value::as_str)
                         .map(|status| status.eq_ignore_ascii_case("alive")),
-                    alive: pool
-                        .get("status")
+                    alive: Self::value_by_keys(pool, &["Status", "status"])
                         .and_then(Value::as_str)
                         .map(|status| status.eq_ignore_ascii_case("alive")),
-                    user: pool
-                        .get("user")
+                    user: Self::value_by_keys(pool, &["User", "user"])
                         .and_then(Value::as_str)
                         .filter(|user| !user.is_empty())
                         .map(str::to_string),
@@ -450,7 +588,7 @@ impl GetPools for VolcMinerV1 {
 impl GetUptime for VolcMinerV1 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         Self::status(data, DataField::Uptime)
-            .and_then(|summary| summary.get("elapsed"))
+            .and_then(|summary| Self::value_by_keys(summary, &["Elapsed", "elapsed"]))
             .and_then(Self::parse_u64)
             .map(Duration::from_secs)
     }
