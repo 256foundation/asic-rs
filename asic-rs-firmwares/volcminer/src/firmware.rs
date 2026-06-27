@@ -21,15 +21,15 @@ use serde_json::Value;
 use crate::backends::v1::{VolcMinerV1, web::VolcMinerWebAPI};
 
 #[derive(Default, Debug)]
-pub struct VolcMinerFirmware {}
+pub struct VolcMinerStockFirmware {}
 
-impl Display for VolcMinerFirmware {
+impl Display for VolcMinerStockFirmware {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "VolcMiner Stock")
     }
 }
 
-impl DiscoveryCommands for VolcMinerFirmware {
+impl DiscoveryCommands for VolcMinerStockFirmware {
     fn get_discovery_commands(&self) -> Vec<MinerCommand> {
         vec![HTTP_WEB_ROOT]
     }
@@ -79,7 +79,7 @@ async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::V
 }
 
 #[async_trait]
-impl MinerFirmware for VolcMinerFirmware {
+impl MinerFirmware for VolcMinerStockFirmware {
     async fn get_model(ip: IpAddr) -> Result<impl MinerModel, ModelSelectionError> {
         let default = VolcMinerV1::default_auth();
         get_model_with_auth(ip, &default).await
@@ -91,7 +91,7 @@ impl MinerFirmware for VolcMinerFirmware {
     }
 }
 
-impl FirmwareIdentification for VolcMinerFirmware {
+impl FirmwareIdentification for VolcMinerStockFirmware {
     fn identify_web(&self, response: &WebResponse<'_>) -> bool {
         response.body.contains("VolcMiner")
             || response.auth_header.contains("blackMiner Configuration")
@@ -103,7 +103,7 @@ impl FirmwareIdentification for VolcMinerFirmware {
 }
 
 #[async_trait]
-impl FirmwareEntry for VolcMinerFirmware {
+impl FirmwareEntry for VolcMinerStockFirmware {
     async fn build_miner(
         &self,
         ip: IpAddr,
@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn display_and_discovery_match_stock_volcminer() {
-        let firmware = VolcMinerFirmware::default();
+        let firmware = VolcMinerStockFirmware::default();
 
         assert_eq!(firmware.to_string(), "VolcMiner Stock");
         assert_eq!(firmware.get_discovery_commands(), vec![HTTP_WEB_ROOT]);
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn identifies_stock_web_responses() {
-        let firmware = VolcMinerFirmware::default();
+        let firmware = VolcMinerStockFirmware::default();
 
         assert!(firmware.identify_web(&web_response("VolcMiner", "")));
         assert!(firmware.identify_web(&web_response("", "blackMiner Configuration")));

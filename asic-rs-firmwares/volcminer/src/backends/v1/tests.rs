@@ -5,7 +5,7 @@ use serde_json::json;
 
 use super::rpc::VolcMinerRPCAPI;
 use super::*;
-use crate::firmware::VolcMinerFirmware;
+use crate::firmware::VolcMinerStockFirmware;
 
 fn miner_ip_from_env() -> anyhow::Result<IpAddr> {
     let ip_str = std::env::var("MINER_IP").context("MINER_IP is not set")?;
@@ -304,7 +304,7 @@ async fn parse_data_live_test() -> anyhow::Result<()> {
     let ip = miner_ip_from_env()?;
     let auth = miner_auth_from_env();
 
-    let miner = VolcMinerFirmware::default()
+    let miner = VolcMinerStockFirmware::default()
         .build_miner(ip, auth.as_ref())
         .await
         .context("no miner detected at MINER_IP")?;
@@ -332,7 +332,7 @@ async fn set_pools_config_live_test() -> anyhow::Result<()> {
     let pool_username =
         std::env::var("MINER_POOL_USERNAME").context("MINER_POOL_USERNAME is not set")?;
 
-    let miner = VolcMinerFirmware::default()
+    let miner = VolcMinerStockFirmware::default()
         .build_miner(ip, auth.as_ref())
         .await
         .context("no miner detected at MINER_IP")?;

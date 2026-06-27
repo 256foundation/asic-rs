@@ -22,7 +22,7 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Temperature};
 use serde_json::Value;
 
-use crate::firmware::VolcMinerFirmware;
+use crate::firmware::VolcMinerStockFirmware;
 use asic_rs_makes_volcminer::hardware::VolcMinerControlBoard;
 
 pub mod web;
@@ -80,7 +80,7 @@ impl VolcMinerV1 {
             web: VolcMinerWebAPI::new(ip, Self::default_auth()),
             device_info: DeviceInfo::new(
                 model,
-                VolcMinerFirmware::default(),
+                VolcMinerStockFirmware::default(),
                 HashAlgorithm::Scrypt,
             ),
         }
