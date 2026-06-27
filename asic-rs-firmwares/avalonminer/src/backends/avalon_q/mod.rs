@@ -514,19 +514,25 @@ impl GetHashboards for AvalonQMiner {
 
             if let Some(hb_info) = hb_info {
                 let key = format!("HB{idx}");
+                let Some(board_info) = hb_info.get(&key) else {
+                    continue;
+                };
 
-                let temps: Vec<f64> = hb_info[&key]["PVT_T0"]
-                    .as_array()
+                let temps: Vec<f64> = board_info
+                    .get("PVT_T0")
+                    .and_then(|v| v.as_array())
                     .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
 
-                let volts: Vec<f64> = hb_info[&key]["PVT_V0"]
-                    .as_array()
+                let volts: Vec<f64> = board_info
+                    .get("PVT_V0")
+                    .and_then(|v| v.as_array())
                     .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
 
-                let works: Vec<f64> = hb_info[&key]["MW0"]
-                    .as_array()
+                let works: Vec<f64> = board_info
+                    .get("MW0")
+                    .and_then(|v| v.as_array())
                     .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
                     .unwrap_or_default();
 
@@ -721,6 +727,33 @@ mod tests {
 
     use super::*;
     use crate::test::json::{DEVS_COMMAND, PARSED_STATS_COMMAND, POOLS_COMMAND, VERSION_COMMAND};
+
+    #[test]
+    fn parse_hashboards_missing_hbinfo_entries_do_not_panic() {
+        let miner = AvalonQMiner::new(IpAddr::from([127, 0, 0, 1]), AvalonMinerModel::AvalonHomeQ);
+        let summary = json!({
+            "summary": {
+                "MGHS": [100.0],
+                "HBITemp": [50.0],
+                "ITemp": [40.0],
+            }
+        });
+
+        let mut data = HashMap::new();
+        data.insert(DataField::Hashboards, summary.clone());
+        data.insert(DataField::Chips, json!({}));
+        let hashboards = miner.parse_hashboards(&data);
+        assert!(hashboards[0].hashrate.is_some());
+        assert!(hashboards[0].chips.is_empty());
+
+        let mut data = HashMap::new();
+        data.insert(DataField::Hashboards, summary);
+        data.insert(DataField::Chips, json!({"HB0": {}}));
+        let hashboards = miner.parse_hashboards(&data);
+        assert!(hashboards[0].hashrate.is_some());
+        assert!(hashboards[0].chips.is_empty());
+        assert_eq!(hashboards[0].working_chips, Some(0));
+    }
 
     #[tokio::test]
 
