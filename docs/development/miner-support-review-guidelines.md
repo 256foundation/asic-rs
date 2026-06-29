@@ -20,7 +20,7 @@ for behavior that cannot be validated with static fixtures.
 7. Implement supported controls if live endpoints exist; return unsupported only after checking.
 8. Verify live API method, endpoint, payload, auth, and response parsing instead of assuming browser or Antminer behavior.
 9. Add ignored live tests for destructive or hardware-dependent actions.
-10. Promote reusable cross-firmware behavior to core or shared utilities, not backend-local helpers.
+10. Keep backend-specific behavior self-contained unless a shared data model or core contract requires otherwise.
 
 ## Backend Structure
 
@@ -63,9 +63,8 @@ after it. Keep the full parsing behavior in one place unless it is reused by
 multiple public paths or multiple firmware versions.
 
 For hashboards, avoid fixed upper bounds like `1..=9` unless the protocol truly
-requires that range. Prefer deriving chain indexes from response keys such as
-`chain_acnN`, or use `device_info.hardware.board_count()` when model metadata is
-known.
+requires that range. Prefer deriving board indexes from the response data, or use
+`device_info.hardware.board_count()` when model metadata is known.
 
 For fans, iterate `self.device_info.hardware.fans.unwrap_or(default)` rather than
 hardcoding four fans. Filter stopped fans consistently with the existing backend
