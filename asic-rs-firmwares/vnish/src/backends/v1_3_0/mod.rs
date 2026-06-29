@@ -714,7 +714,7 @@ impl GetIsMining for VnishV130 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
             .map(|state| state == "mining" || state == "auto-tuning")
-            .unwrap_or(false)
+            .unwrap_or(true)
     }
 }
 

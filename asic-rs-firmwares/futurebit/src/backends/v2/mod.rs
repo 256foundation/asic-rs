@@ -614,7 +614,7 @@ impl GetUptime for ApolloV2 {
 impl GetIsMining for ApolloV2 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         let Some(status) = data.get(&DataField::IsMining) else {
-            return false;
+            return true;
         };
 
         status.as_bool().unwrap_or_else(|| {

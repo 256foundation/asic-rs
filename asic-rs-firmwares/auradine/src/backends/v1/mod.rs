@@ -1163,21 +1163,10 @@ impl GetIsMining for AuradineV1 {
             }
 
             if let Some(is_sleeping) = is_mining_data.get("sleep").and_then(Value::as_bool) {
-                return !is_sleeping;
-            }
-
-            if let Some(hashrate) = is_mining_data.get("hashrate").and_then(Value::as_f64) {
-                return hashrate > 0.0;
-            }
-
-            if let Some(hashrate) = is_mining_data.get("hashrate").and_then(Value::as_i64) {
-                return hashrate > 0;
+                return is_sleeping;
             }
         }
-
-        data.extract::<f64>(DataField::Hashrate)
-            .map(|hr| hr > 0.0)
-            .unwrap_or(false)
+        true
     }
 }
 

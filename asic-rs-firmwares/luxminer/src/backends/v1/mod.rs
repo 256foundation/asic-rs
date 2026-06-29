@@ -888,13 +888,7 @@ impl GetUptime for LuxMinerV1 {
     }
 }
 
-impl GetIsMining for LuxMinerV1 {
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract::<f64>(DataField::IsMining)
-            .map(|hr| hr > 0.0)
-            .unwrap_or(false)
-    }
-}
+impl GetIsMining for LuxMinerV1 {}
 
 impl GetPools for LuxMinerV1 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {

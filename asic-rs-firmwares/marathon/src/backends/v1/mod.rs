@@ -943,7 +943,7 @@ impl GetIsMining for MaraV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
             .map(|status| status == "Mining")
-            .unwrap_or(false)
+            .unwrap_or(true)
     }
 }
 

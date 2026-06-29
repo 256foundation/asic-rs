@@ -636,8 +636,7 @@ impl GetIsMining for AntMinerV202307 {
                     && status_lower != "sleep"
                     && status_lower != "1"
             })
-            .or_else(|| data.extract::<f64>(DataField::Hashrate).map(|hr| hr > 0.0))
-            .unwrap_or(false)
+            .unwrap_or(true)
     }
 }
 

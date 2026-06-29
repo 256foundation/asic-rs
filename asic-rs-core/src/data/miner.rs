@@ -132,7 +132,8 @@ pub struct MinerData {
     pub messages: Vec<MinerMessage>,
     /// The total uptime of the miner's system
     pub uptime: Option<Duration>,
-    /// Whether the hashing process is currently running
+    /// Whether the hashing process is currently running,
+    /// false if paused, true if running, even if the hashrate is 0
     pub is_mining: bool,
     /// The current pools configured on the miner
     pub pools: Vec<PoolGroupData>,

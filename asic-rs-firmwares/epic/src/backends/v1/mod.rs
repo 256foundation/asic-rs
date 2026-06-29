@@ -1009,7 +1009,7 @@ impl GetIsMining for PowerPlayV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
             .map(|state| state != "Idling")
-            .unwrap_or(false)
+            .unwrap_or(true)
     }
 }
 

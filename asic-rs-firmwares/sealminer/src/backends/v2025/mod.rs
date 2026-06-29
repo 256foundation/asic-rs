@@ -610,11 +610,7 @@ impl GetUptime for SealMinerV2025 {
     }
 }
 
-impl GetIsMining for SealMinerV2025 {
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        self.parse_hashrate(data).is_some_and(|hr| hr.value > 0.0)
-    }
-}
+impl GetIsMining for SealMinerV2025 {}
 
 impl GetPools for SealMinerV2025 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {

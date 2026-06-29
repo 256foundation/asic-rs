@@ -399,12 +399,7 @@ impl GetUptime for Bitaxe290 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
-impl GetIsMining for Bitaxe290 {
-    fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        let hashrate = self.parse_hashrate(data);
-        hashrate.as_ref().is_some_and(|hr| hr.value > 0.0)
-    }
-}
+impl GetIsMining for Bitaxe290 {}
 impl GetPools for Bitaxe290 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let main_url =
