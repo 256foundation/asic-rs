@@ -28,7 +28,7 @@ Legend:
 | SealMiner Stock | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | UMC OS | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: |
 | VNish | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: |
-| VolcMiner Stock | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
+| VolcMiner Stock | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: |
 | WhatsMiner Stock | :lucide-list-todo: | :lucide-x: | :lucide-list-todo: | :lucide-x: | :lucide-list-todo: | :lucide-list-todo: | :lucide-list-todo: | :lucide-list-todo: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 
 ## Exact Supported Models
@@ -204,7 +204,7 @@ Legend:
 ??? quote "VolcMiner (1 model across 1 family)"
 
 	??? note "D1 family (1 model)"
-		 - [x] `VOLCMINER D1` (also: `VolcMiner D1`)
+		 - [x] `VOLCMINER D1`
 ??? quote "WhatsMiner (499 models across 32 families)"
 
 	??? note "M20 family (7 models)"
