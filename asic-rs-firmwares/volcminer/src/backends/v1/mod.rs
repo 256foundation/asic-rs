@@ -14,7 +14,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
-        hashrate::HashRate,
+        hashrate::{HashRate, HashRateUnit},
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -377,7 +377,11 @@ impl GetHashboards for VolcMinerV1 {
                 let hashrate = stats_data
                     .get(&format!("chain_rate{idx}"))
                     .and_then(Self::parse_f64)
-                    .map(HashRate::new_scrypt_mh);
+                    .map(|rate| HashRate {
+                        value: rate,
+                        unit: HashRateUnit::MegaHash,
+                        algo: "Scrypt".to_string(),
+                    });
 
                 let temperature = stats_data
                     .get(&format!("temp{idx}"))
@@ -440,7 +444,11 @@ impl GetHashboards for VolcMinerV1 {
             board.hashrate = dev
                 .get("chain_rate")
                 .and_then(Self::parse_f64)
-                .map(HashRate::new_scrypt_mh);
+                .map(|rate| HashRate {
+                    value: rate,
+                    unit: HashRateUnit::MegaHash,
+                    algo: "Scrypt".to_string(),
+                });
             let active = board
                 .working_chips
                 .map(|chips| chips > 0)
@@ -461,7 +469,11 @@ impl GetHashrate for VolcMinerV1 {
             .get("MHS 5s")
             .or_else(|| summary.get("ghs5s"))
             .and_then(Self::parse_f64)?;
-        Some(HashRate::new_scrypt_mh(hashrate))
+        Some(HashRate {
+            value: hashrate,
+            unit: HashRateUnit::MegaHash,
+            algo: "Scrypt".to_string(),
+        })
     }
 }
 
