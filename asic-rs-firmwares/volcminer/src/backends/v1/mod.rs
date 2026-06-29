@@ -477,6 +477,8 @@ impl GetHashrate for VolcMinerV1 {
     }
 }
 
+impl GetExpectedHashrate for VolcMinerV1 {}
+
 impl GetFans for VolcMinerV1 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let mut fans = Vec::new();
@@ -498,6 +500,8 @@ impl GetFans for VolcMinerV1 {
         fans
     }
 }
+
+impl GetLightFlashing for VolcMinerV1 {}
 
 impl GetUptime for VolcMinerV1 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
@@ -601,15 +605,12 @@ impl GetControlBoardVersion for VolcMinerV1 {
     }
 }
 
-impl GetExpectedHashrate for VolcMinerV1 {}
-impl GetPsuFans for VolcMinerV1 {}
-impl GetFluidTemperature for VolcMinerV1 {}
 impl GetWattage for VolcMinerV1 {}
-impl GetTuningPercent for VolcMinerV1 {}
 impl GetTuningTarget for VolcMinerV1 {}
 impl GetScaledTuningTarget for VolcMinerV1 {}
+impl GetFluidTemperature for VolcMinerV1 {}
+impl GetPsuFans for VolcMinerV1 {}
 impl GetTuningCapabilities for VolcMinerV1 {}
-impl GetLightFlashing for VolcMinerV1 {}
 impl GetMessages for VolcMinerV1 {}
 
 impl SetFaultLight for VolcMinerV1 {
@@ -752,14 +753,14 @@ impl ChangePassword for VolcMinerV1 {
     }
 }
 
-impl FactoryReset for VolcMinerV1 {
-    fn supports_factory_reset(&self) -> bool {
+impl ReadLogs for VolcMinerV1 {
+    fn supports_read_logs(&self) -> bool {
         false
     }
 }
 
-impl ReadLogs for VolcMinerV1 {
-    fn supports_read_logs(&self) -> bool {
+impl FactoryReset for VolcMinerV1 {
+    fn supports_factory_reset(&self) -> bool {
         false
     }
 }
@@ -771,15 +772,13 @@ impl SupportsScalingConfig for VolcMinerV1 {
     }
 }
 
-#[async_trait]
-impl SupportsTuningConfig for VolcMinerV1 {}
-
-#[async_trait]
-impl SupportsFanConfig for VolcMinerV1 {}
-
-impl SupportsTemperatureConfig for VolcMinerV1 {}
 impl UpgradeFirmware for VolcMinerV1 {}
-impl SetTuningPercent for VolcMinerV1 {}
+
+impl HasDefaultAuth for VolcMinerV1 {
+    fn default_auth() -> MinerAuth {
+        MinerAuth::new("root", "ltc@dog")
+    }
+}
 
 impl HasAuth for VolcMinerV1 {
     fn set_auth(&mut self, auth: MinerAuth) {
@@ -787,11 +786,15 @@ impl HasAuth for VolcMinerV1 {
     }
 }
 
-impl HasDefaultAuth for VolcMinerV1 {
-    fn default_auth() -> MinerAuth {
-        MinerAuth::new("root", "ltc@dog")
-    }
-}
+#[async_trait]
+impl SupportsTuningConfig for VolcMinerV1 {}
+
+#[async_trait]
+impl SupportsFanConfig for VolcMinerV1 {}
+
+impl SupportsTemperatureConfig for VolcMinerV1 {}
+impl GetTuningPercent for VolcMinerV1 {}
+impl SetTuningPercent for VolcMinerV1 {}
 
 #[cfg(test)]
 mod tests;
