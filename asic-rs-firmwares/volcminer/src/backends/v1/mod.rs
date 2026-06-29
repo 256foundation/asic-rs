@@ -251,7 +251,7 @@ impl GetDataLocations for VolcMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::Hashrate | DataField::Uptime | DataField::IsMining => vec![
+            DataField::Hashrate | DataField::IsMining => vec![
                 (
                     WEB_MINER_STATUS,
                     DataExtractor {
@@ -265,6 +265,24 @@ impl GetDataLocations for VolcMinerV1 {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/SUMMARY/0"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::Uptime => vec![
+                (
+                    WEB_MINER_STATUS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/summary/elapsed"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_SUMMARY,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/SUMMARY/0/Elapsed"),
                         tag: None,
                     },
                 ),
@@ -505,7 +523,9 @@ impl GetLightFlashing for VolcMinerV1 {}
 
 impl GetUptime for VolcMinerV1 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
-        data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
+        data.get(&DataField::Uptime)
+            .and_then(Self::parse_u64)
+            .map(Duration::from_secs)
     }
 }
 
