@@ -396,7 +396,7 @@ impl GetHashboards for VolcMinerV1 {
                     continue;
                 }
 
-                let mut board = BoardData::new((idx - 1) as u8, None);
+                let mut board = BoardData::new(idx - 1, None);
                 board.working_chips = chips;
                 board.frequency = stats_data
                     .get("frequency")
