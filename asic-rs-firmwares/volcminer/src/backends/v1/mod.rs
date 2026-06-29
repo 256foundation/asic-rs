@@ -8,11 +8,13 @@ use asic_rs_core::{
     },
     data::{
         board::{BoardData, MinerControlBoard},
-        collector::{DataCollector, DataExtractor, DataField, DataLocation, get_by_pointer},
+        collector::{
+            DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
+        },
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
-        hashrate::{HashRate, HashRateUnit},
+        hashrate::HashRate,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -33,36 +35,6 @@ mod status_parser;
 
 use rpc::VolcMinerRPCAPI;
 use web::VolcMinerWebAPI;
-
-const RPC_VERSION: MinerCommand = MinerCommand::RPC {
-    command: "version",
-    parameters: None,
-};
-const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
-    command: "summary",
-    parameters: None,
-};
-const RPC_STATS: MinerCommand = MinerCommand::RPC {
-    command: "stats",
-    parameters: None,
-};
-const RPC_POOLS: MinerCommand = MinerCommand::RPC {
-    command: "pools",
-    parameters: None,
-};
-
-const WEB_STATUS: MinerCommand = MinerCommand::WebAPI {
-    command: "get_miner_status",
-    parameters: None,
-};
-const WEB_CONFIG: MinerCommand = MinerCommand::WebAPI {
-    command: "get_miner_conf",
-    parameters: None,
-};
-const WEB_SYSTEM_INFO: MinerCommand = MinerCommand::WebAPI {
-    command: "get_system_info",
-    parameters: None,
-};
 
 #[derive(Debug)]
 pub struct VolcMinerV1 {
@@ -155,104 +127,6 @@ impl VolcMinerV1 {
             temps.iter().sum::<f64>() / temps.len() as f64,
         ))
     }
-
-    fn scrypt_hashrate(value: f64, unit: HashRateUnit) -> HashRate {
-        HashRate {
-            value,
-            unit,
-            algo: "Scrypt".to_string(),
-        }
-    }
-
-    fn status(data: &HashMap<DataField, Value>, field: DataField) -> Option<&Value> {
-        data.get(&field)
-    }
-
-    fn value_by_keys<'a>(value: &'a Value, keys: &[&str]) -> Option<&'a Value> {
-        keys.iter().find_map(|key| value.get(*key))
-    }
-
-    fn parse_rpc_hashboards(status: &Value) -> Vec<BoardData> {
-        let has_rpc_chain_fields = status
-            .as_object()
-            .map(|fields| fields.keys().any(|key| key.starts_with("chain_acn")))
-            .unwrap_or(false);
-        if !has_rpc_chain_fields {
-            return vec![];
-        }
-
-        (1..=9)
-            .filter_map(|idx| {
-                let chips_key = format!("chain_acn{idx}");
-                let rate_key = format!("chain_rate{idx}");
-                let temp_key = format!("temp{idx}");
-                let acs_key = format!("chain_acs{idx}");
-                let chips = status
-                    .get(chips_key.as_str())
-                    .and_then(Self::parse_u64)
-                    .and_then(|chips| u16::try_from(chips).ok());
-                let hashrate = status
-                    .get(rate_key.as_str())
-                    .and_then(Self::parse_f64)
-                    .map(|rate| Self::scrypt_hashrate(rate, HashRateUnit::MegaHash));
-                let temperature = status
-                    .get(temp_key.as_str())
-                    .and_then(Self::parse_temperature);
-                let chain_acs = status
-                    .get(acs_key.as_str())
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .trim();
-
-                let active = chips
-                    .map(|chips| chips > 0)
-                    .or_else(|| hashrate.as_ref().map(|hashrate| hashrate.value > 0.0));
-                if active != Some(true) && temperature.is_none() && chain_acs.is_empty() {
-                    return None;
-                }
-
-                let mut board = BoardData::new((idx - 1) as u8, None);
-                board.working_chips = chips;
-                board.frequency = status
-                    .get("frequency")
-                    .and_then(Self::parse_f64)
-                    .map(Frequency::from_megahertz);
-                board.board_temperature = temperature;
-                board.hashrate = hashrate;
-                board.active = active;
-                board.tuned = active;
-                Some(board)
-            })
-            .collect()
-    }
-
-    fn configured_pools(config: &Value) -> Vec<PoolConfig> {
-        config
-            .get("pools")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(|pool| {
-                let url = pool.get("url").and_then(Value::as_str).unwrap_or_default();
-                if url.is_empty() {
-                    return None;
-                }
-                Some(PoolConfig {
-                    url: PoolURL::from(url.to_string()),
-                    username: pool
-                        .get("user")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                        .to_string(),
-                    password: pool
-                        .get("pass")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                        .to_string(),
-                })
-            })
-            .collect()
-    }
 }
 
 #[async_trait]
@@ -269,10 +143,14 @@ impl APIClient for VolcMinerV1 {
 }
 
 impl GetConfigsLocations for VolcMinerV1 {
-    fn get_configs_locations(&self, config_field: ConfigField) -> Vec<ConfigLocation> {
-        match config_field {
+    fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
+        const WEB_GET_MINER_CONF: MinerCommand = MinerCommand::WebAPI {
+            command: "get_miner_conf",
+            parameters: None,
+        };
+        match data_field {
             ConfigField::Pools => vec![(
-                WEB_CONFIG,
+                WEB_GET_MINER_CONF,
                 ConfigExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -292,6 +170,36 @@ impl CollectConfigs for VolcMinerV1 {
 
 impl GetDataLocations for VolcMinerV1 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
+        const RPC_VERSION: MinerCommand = MinerCommand::RPC {
+            command: "version",
+            parameters: None,
+        };
+
+        const RPC_STATS: MinerCommand = MinerCommand::RPC {
+            command: "stats",
+            parameters: None,
+        };
+
+        const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
+            command: "summary",
+            parameters: None,
+        };
+
+        const RPC_POOLS: MinerCommand = MinerCommand::RPC {
+            command: "pools",
+            parameters: None,
+        };
+
+        const WEB_SYSTEM_INFO: MinerCommand = MinerCommand::WebAPI {
+            command: "get_system_info",
+            parameters: None,
+        };
+
+        const WEB_MINER_STATUS: MinerCommand = MinerCommand::WebAPI {
+            command: "get_miner_status",
+            parameters: None,
+        };
+
         match data_field {
             DataField::Mac => vec![(
                 WEB_SYSTEM_INFO,
@@ -345,7 +253,7 @@ impl GetDataLocations for VolcMinerV1 {
             )],
             DataField::Hashrate | DataField::Uptime | DataField::IsMining => vec![
                 (
-                    WEB_STATUS,
+                    WEB_MINER_STATUS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/summary"),
@@ -363,7 +271,7 @@ impl GetDataLocations for VolcMinerV1 {
             ],
             DataField::Fans | DataField::Hashboards => vec![
                 (
-                    WEB_STATUS,
+                    WEB_MINER_STATUS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -381,7 +289,7 @@ impl GetDataLocations for VolcMinerV1 {
             ],
             DataField::Pools => vec![
                 (
-                    WEB_STATUS,
+                    WEB_MINER_STATUS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some(""),
@@ -422,175 +330,166 @@ impl CollectData for VolcMinerV1 {
 
 impl GetMAC for VolcMinerV1 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
-        data.get(&DataField::Mac)
-            .and_then(Value::as_str)
-            .and_then(|s| MacAddr::from_str(s).ok())
+        data.extract::<String>(DataField::Mac)
+            .and_then(|s| MacAddr::from_str(&s).ok())
     }
 }
 
 impl GetHostname for VolcMinerV1 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
-        data.get(&DataField::Hostname)
-            .and_then(Value::as_str)
-            .map(str::to_string)
+        data.extract::<String>(DataField::Hostname)
     }
 }
 
 impl GetApiVersion for VolcMinerV1 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
-        data.get(&DataField::ApiVersion)
-            .and_then(Value::as_str)
-            .filter(|s| !s.is_empty())
-            .map(str::to_string)
+        data.extract::<String>(DataField::ApiVersion)
     }
 }
 
 impl GetFirmwareVersion for VolcMinerV1 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
-        data.get(&DataField::FirmwareVersion)
-            .and_then(Value::as_str)
-            .filter(|s| !s.is_empty())
-            .map(str::to_string)
-    }
-}
-
-impl GetHashrate for VolcMinerV1 {
-    fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        let summary = Self::status(data, DataField::Hashrate)?;
-        let hashrate =
-            Self::value_by_keys(summary, &["MHS 5s", "ghs5s"]).and_then(Self::parse_f64)?;
-        Some(Self::scrypt_hashrate(hashrate, HashRateUnit::MegaHash))
+        data.extract::<String>(DataField::FirmwareVersion)
     }
 }
 
 impl GetHashboards for VolcMinerV1 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let Some(status) = Self::status(data, DataField::Hashboards) else {
+        let Some(stats_data) = data.get(&DataField::Hashboards).and_then(Value::as_object) else {
             return vec![];
         };
 
-        let rpc_hashboards = Self::parse_rpc_hashboards(status);
-        if !rpc_hashboards.is_empty() {
-            return rpc_hashboards;
-        }
+        let mut chain_indexes = stats_data
+            .keys()
+            .filter_map(|key| key.strip_prefix("chain_acn"))
+            .filter_map(|idx| idx.parse::<u8>().ok())
+            .collect::<Vec<_>>();
+        chain_indexes.sort_unstable();
 
-        status
-            .get("devs")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .enumerate()
-            .map(|(position, dev)| {
-                let position = dev
-                    .get("index")
-                    .and_then(Self::parse_u64)
-                    .and_then(|idx| u8::try_from(idx.saturating_sub(1)).ok())
-                    .unwrap_or(position as u8);
-                let mut board = BoardData::new(position, None);
-                board.working_chips = dev
-                    .get("chain_acn")
+        if !chain_indexes.is_empty() {
+            let mut hashboards = Vec::with_capacity(chain_indexes.len());
+            for idx in chain_indexes {
+                let chips = stats_data
+                    .get(&format!("chain_acn{idx}"))
                     .and_then(Self::parse_u64)
                     .and_then(|chips| u16::try_from(chips).ok());
-                board.frequency = dev
-                    .get("freq")
-                    .and_then(|value| match value {
-                        Value::String(value) => Self::parse_number_tokens(value).into_iter().next(),
-                        _ => Self::parse_f64(value),
-                    })
-                    .map(Frequency::from_megahertz);
-                board.board_temperature = dev.get("temp").and_then(Self::parse_temperature);
-                board.hashrate = dev
-                    .get("chain_rate")
+
+                let hashrate = stats_data
+                    .get(&format!("chain_rate{idx}"))
                     .and_then(Self::parse_f64)
-                    .map(|rate| Self::scrypt_hashrate(rate, HashRateUnit::MegaHash));
-                let active = board
-                    .working_chips
+                    .map(HashRate::new_scrypt_mh);
+
+                let temperature = stats_data
+                    .get(&format!("temp{idx}"))
+                    .and_then(Self::parse_temperature);
+
+                let chain_acs = stats_data
+                    .get(&format!("chain_acs{idx}"))
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .trim();
+
+                let active = chips
                     .map(|chips| chips > 0)
-                    .or_else(|| board.hashrate.as_ref().map(|hashrate| hashrate.value > 0.0));
+                    .or_else(|| hashrate.as_ref().map(|hashrate| hashrate.value > 0.0));
+                if active != Some(true) && temperature.is_none() && chain_acs.is_empty() {
+                    continue;
+                }
+
+                let mut board = BoardData::new((idx - 1) as u8, None);
+                board.working_chips = chips;
+                board.frequency = stats_data
+                    .get("frequency")
+                    .and_then(Self::parse_f64)
+                    .map(Frequency::from_megahertz);
+                board.board_temperature = temperature;
+                board.hashrate = hashrate;
                 board.active = active;
                 board.tuned = active;
-                board
-            })
-            .collect()
+                hashboards.push(board);
+            }
+
+            return hashboards;
+        }
+
+        let Some(devs) = stats_data.get("devs").and_then(Value::as_array) else {
+            return vec![];
+        };
+
+        let mut hashboards = Vec::with_capacity(devs.len());
+        for (position, dev) in devs.iter().enumerate() {
+            let position = dev
+                .get("index")
+                .and_then(Self::parse_u64)
+                .and_then(|idx| u8::try_from(idx.saturating_sub(1)).ok())
+                .unwrap_or(position as u8);
+
+            let mut board = BoardData::new(position, None);
+            board.working_chips = dev
+                .get("chain_acn")
+                .and_then(Self::parse_u64)
+                .and_then(|chips| u16::try_from(chips).ok());
+            board.frequency = dev
+                .get("freq")
+                .and_then(|value| match value {
+                    Value::String(value) => Self::parse_number_tokens(value).into_iter().next(),
+                    _ => Self::parse_f64(value),
+                })
+                .map(Frequency::from_megahertz);
+            board.board_temperature = dev.get("temp").and_then(Self::parse_temperature);
+            board.hashrate = dev
+                .get("chain_rate")
+                .and_then(Self::parse_f64)
+                .map(HashRate::new_scrypt_mh);
+            let active = board
+                .working_chips
+                .map(|chips| chips > 0)
+                .or_else(|| board.hashrate.as_ref().map(|hashrate| hashrate.value > 0.0));
+            board.active = active;
+            board.tuned = active;
+            hashboards.push(board);
+        }
+
+        hashboards
+    }
+}
+
+impl GetHashrate for VolcMinerV1 {
+    fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
+        let summary = data.get(&DataField::Hashrate)?;
+        let hashrate = summary
+            .get("MHS 5s")
+            .or_else(|| summary.get("ghs5s"))
+            .and_then(Self::parse_f64)?;
+        Some(HashRate::new_scrypt_mh(hashrate))
     }
 }
 
 impl GetFans for VolcMinerV1 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
-        let Some(status) = Self::status(data, DataField::Fans) else {
-            return vec![];
-        };
+        let mut fans = Vec::new();
 
-        (1..=4)
-            .filter_map(|idx| {
+        if let Some(status) = data.get(&DataField::Fans) {
+            for idx in 1..=self.device_info.hardware.fans.unwrap_or(4) {
                 let key = format!("fan{idx}");
-                let rpm = status.get(key.as_str()).and_then(Self::parse_fan_rpm)?;
-                Some(FanData {
-                    position: (idx - 1) as i16,
-                    rpm: Some(AngularVelocity::from_rpm(rpm)),
-                })
-            })
-            .collect()
-    }
-}
-
-impl GetPools for VolcMinerV1 {
-    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
-        let Some(status) = Self::status(data, DataField::Pools) else {
-            return vec![];
-        };
-        let pools = status
-            .as_array()
-            .or_else(|| status.get("pools").and_then(Value::as_array))
-            .or_else(|| status.get("POOLS").and_then(Value::as_array))
-            .into_iter()
-            .flatten()
-            .map(|pool| {
-                let url = Self::value_by_keys(pool, &["URL", "url"])
-                    .and_then(Value::as_str)
-                    .filter(|url| !url.is_empty())
-                    .map(|url| PoolURL::from(url.to_string()));
-                PoolData {
-                    position: Self::value_by_keys(pool, &["POOL", "index"])
-                        .and_then(Self::parse_u64)
-                        .and_then(|idx| u16::try_from(idx).ok()),
-                    url,
-                    accepted_shares: Self::value_by_keys(pool, &["Accepted", "accepted"])
-                        .and_then(Self::parse_u64),
-                    rejected_shares: Self::value_by_keys(pool, &["Rejected", "rejected"])
-                        .and_then(Self::parse_u64),
-                    active: Self::value_by_keys(pool, &["Status", "status"])
-                        .and_then(Value::as_str)
-                        .map(|status| status.eq_ignore_ascii_case("alive")),
-                    alive: Self::value_by_keys(pool, &["Status", "status"])
-                        .and_then(Value::as_str)
-                        .map(|status| status.eq_ignore_ascii_case("alive")),
-                    user: Self::value_by_keys(pool, &["User", "user"])
-                        .and_then(Value::as_str)
-                        .filter(|user| !user.is_empty())
-                        .map(str::to_string),
+                if let Some(rpm) = status.get(key.as_str()).and_then(Self::parse_fan_rpm)
+                    && rpm > 0.0
+                {
+                    fans.push(FanData {
+                        position: (idx - 1) as i16,
+                        rpm: Some(AngularVelocity::from_rpm(rpm)),
+                    });
                 }
-            })
-            .collect::<Vec<_>>();
-
-        if pools.is_empty() {
-            vec![]
-        } else {
-            vec![PoolGroupData {
-                name: "default".to_string(),
-                quota: 1,
-                pools,
-            }]
+            }
         }
+
+        fans
     }
 }
 
 impl GetUptime for VolcMinerV1 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
-        Self::status(data, DataField::Uptime)
-            .and_then(|summary| Self::value_by_keys(summary, &["Elapsed", "elapsed"]))
-            .and_then(Self::parse_u64)
-            .map(Duration::from_secs)
+        data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
@@ -602,38 +501,79 @@ impl GetIsMining for VolcMinerV1 {
     }
 }
 
-#[async_trait]
-impl SupportsPoolsConfig for VolcMinerV1 {
-    fn parse_pools_config(
-        &self,
-        data: &HashMap<ConfigField, Value>,
-    ) -> Result<Vec<PoolGroupConfig>> {
-        let Some(config) = data.get(&ConfigField::Pools) else {
-            return Ok(vec![]);
+impl GetPools for VolcMinerV1 {
+    fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
+        let Some(pools_data) = data.get(&DataField::Pools) else {
+            return vec![];
         };
-        let pools = Self::configured_pools(config);
-        if pools.is_empty() {
-            Ok(vec![])
-        } else {
-            Ok(vec![PoolGroupConfig {
+
+        let Some(pools_array) = pools_data
+            .as_array()
+            .or_else(|| pools_data.get("pools").and_then(Value::as_array))
+            .or_else(|| pools_data.get("POOLS").and_then(Value::as_array))
+        else {
+            return vec![PoolGroupData {
                 name: "default".to_string(),
                 quota: 1,
-                pools,
-            }])
+                pools: vec![],
+            }];
+        };
+
+        let mut pools = Vec::with_capacity(pools_array.len());
+        for (idx, pool_info) in pools_array.iter().enumerate() {
+            let url = pool_info
+                .get("URL")
+                .or_else(|| pool_info.get("url"))
+                .and_then(Value::as_str)
+                .filter(|url| !url.is_empty())
+                .map(|url| PoolURL::from(url.to_string()));
+
+            let position = pool_info
+                .get("POOL")
+                .or_else(|| pool_info.get("index"))
+                .and_then(Self::parse_u64)
+                .and_then(|idx| u16::try_from(idx).ok())
+                .or_else(|| u16::try_from(idx).ok());
+
+            let accepted_shares = pool_info
+                .get("Accepted")
+                .or_else(|| pool_info.get("accepted"))
+                .and_then(Self::parse_u64);
+
+            let rejected_shares = pool_info
+                .get("Rejected")
+                .or_else(|| pool_info.get("rejected"))
+                .and_then(Self::parse_u64);
+
+            let status = pool_info
+                .get("Status")
+                .or_else(|| pool_info.get("status"))
+                .and_then(Value::as_str)
+                .map(|status| status.eq_ignore_ascii_case("alive"));
+
+            let user = pool_info
+                .get("User")
+                .or_else(|| pool_info.get("user"))
+                .and_then(Value::as_str)
+                .filter(|user| !user.is_empty())
+                .map(str::to_string);
+
+            pools.push(PoolData {
+                position,
+                url,
+                accepted_shares,
+                rejected_shares,
+                active: status,
+                alive: status,
+                user,
+            });
         }
-    }
 
-    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> Result<bool> {
-        let pools = config
-            .into_iter()
-            .flat_map(|group| group.pools)
-            .take(3)
-            .collect::<Vec<_>>();
-        self.web.set_pools_config(&pools).await
-    }
-
-    fn supports_pools_config(&self) -> bool {
-        true
+        vec![PoolGroupData {
+            name: "default".to_string(),
+            quota: 1,
+            pools,
+        }]
     }
 }
 
@@ -648,6 +588,7 @@ impl GetControlBoardVersion for VolcMinerV1 {
             .and_then(|kernel| VolcMinerControlBoard::parse(kernel).map(Into::into))
     }
 }
+
 impl GetExpectedHashrate for VolcMinerV1 {}
 impl GetPsuFans for VolcMinerV1 {}
 impl GetFluidTemperature for VolcMinerV1 {}
@@ -673,9 +614,80 @@ impl SetPowerLimit for VolcMinerV1 {
 }
 
 #[async_trait]
+impl SupportsPoolsConfig for VolcMinerV1 {
+    fn parse_pools_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> Result<Vec<PoolGroupConfig>> {
+        let Some(pools_data) = data.get(&ConfigField::Pools) else {
+            return Ok(vec![]);
+        };
+
+        let Some(pools_array) = pools_data.get("pools").and_then(Value::as_array) else {
+            return Ok(vec![PoolGroupConfig {
+                name: "default".to_string(),
+                quota: 1,
+                pools: vec![],
+            }]);
+        };
+
+        let mut pools = Vec::with_capacity(pools_array.len());
+        for pool in pools_array {
+            let Some(url) = pool.get("url").and_then(Value::as_str) else {
+                continue;
+            };
+            if url.is_empty() {
+                continue;
+            }
+
+            let username = pool
+                .get("user")
+                .and_then(Value::as_str)
+                .map(String::from)
+                .unwrap_or_default();
+            let password = pool
+                .get("pass")
+                .and_then(Value::as_str)
+                .map(String::from)
+                .unwrap_or_default();
+
+            pools.push(PoolConfig {
+                url: PoolURL::from(url.to_string()),
+                username,
+                password,
+            });
+        }
+
+        pools.truncate(3);
+
+        Ok(vec![PoolGroupConfig {
+            name: "default".to_string(),
+            quota: 1,
+            pools,
+        }])
+    }
+
+    async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> Result<bool> {
+        let mut pools = config
+            .into_iter()
+            .flat_map(|group| group.pools)
+            .collect::<Vec<_>>();
+        pools.truncate(3);
+        self.web.set_pools_config(&pools).await
+    }
+
+    fn supports_pools_config(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
 impl Restart for VolcMinerV1 {
     fn supports_restart(&self) -> bool {
-        false
+        true
+    }
+    async fn restart(&self) -> anyhow::Result<bool> {
+        Ok(self.web.reboot().await.is_ok())
     }
 }
 
@@ -693,9 +705,38 @@ impl Resume for VolcMinerV1 {
     }
 }
 
+#[async_trait]
 impl ChangePassword for VolcMinerV1 {
+    async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
+        let original_auth = self.web.auth();
+        let new_auth = MinerAuth::new(original_auth.username().to_string(), password);
+        let result = self.web.change_password(password).await;
+
+        match result {
+            Ok(false) => Ok(false),
+            Ok(true) => {
+                self.set_auth(new_auth);
+                if self.web.get_miner_conf().await.is_ok() {
+                    Ok(true)
+                } else {
+                    self.set_auth(original_auth);
+                    Ok(false)
+                }
+            }
+            Err(err) => {
+                self.set_auth(new_auth);
+                if self.web.get_miner_conf().await.is_ok() {
+                    Ok(true)
+                } else {
+                    self.set_auth(original_auth);
+                    Err(err)
+                }
+            }
+        }
+    }
+
     fn supports_change_password(&self) -> bool {
-        false
+        true
     }
 }
 

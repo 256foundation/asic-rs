@@ -7,7 +7,6 @@ use strum::Display;
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display)]
 pub enum VolcMinerModel {
     #[serde(alias = "VOLCMINER D1")]
-    #[serde(alias = "VolcMiner D1")]
     D1,
     #[strum(to_string = "{0}")]
     Unknown(String),

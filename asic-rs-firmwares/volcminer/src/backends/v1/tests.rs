@@ -1,11 +1,41 @@
 use anyhow::{self, Context};
-use asic_rs_core::{test::api::MockAPIClient, traits::entry::FirmwareEntry};
+use asic_rs_core::{
+    data::{command::MinerCommand, hashrate::HashRateUnit},
+    test::api::MockAPIClient,
+    traits::entry::FirmwareEntry,
+};
 use asic_rs_makes_volcminer::{hardware::VolcMinerControlBoard, models::VolcMinerModel};
 use serde_json::json;
 
 use super::rpc::VolcMinerRPCAPI;
 use super::*;
 use crate::firmware::VolcMinerStockFirmware;
+
+const RPC_VERSION: MinerCommand = MinerCommand::RPC {
+    command: "version",
+    parameters: None,
+};
+const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
+    command: "summary",
+    parameters: None,
+};
+const RPC_STATS: MinerCommand = MinerCommand::RPC {
+    command: "stats",
+    parameters: None,
+};
+const RPC_POOLS: MinerCommand = MinerCommand::RPC {
+    command: "pools",
+    parameters: None,
+};
+
+const WEB_MINER_STATUS: MinerCommand = MinerCommand::WebAPI {
+    command: "get_miner_status",
+    parameters: None,
+};
+const WEB_SYSTEM_INFO: MinerCommand = MinerCommand::WebAPI {
+    command: "get_system_info",
+    parameters: None,
+};
 
 fn miner_ip_from_env() -> anyhow::Result<IpAddr> {
     let ip_str = std::env::var("MINER_IP").context("MINER_IP is not set")?;
@@ -103,7 +133,7 @@ async fn test_volcminer_v1_parse_data() -> anyhow::Result<()> {
         }),
     );
     results.insert(
-        WEB_STATUS,
+        WEB_MINER_STATUS,
         json!({
             "summary": {
                 "elapsed": "42",
@@ -158,7 +188,7 @@ async fn test_volcminer_v1_parse_data() -> anyhow::Result<()> {
         miner_data.control_board_version,
         Some(VolcMinerControlBoard::TVXilinx.into())
     );
-    assert_eq!(miner_data.fans.len(), 4);
+    assert_eq!(miner_data.fans.len(), 2);
     assert_eq!(miner_data.hashboards.len(), 1);
     assert_eq!(miner_data.hashboards[0].working_chips, Some(120));
     assert_eq!(miner_data.pools.len(), 1);

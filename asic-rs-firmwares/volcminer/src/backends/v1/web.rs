@@ -7,7 +7,7 @@ use asic_rs_core::{config::pools::PoolConfig, data::command::MinerCommand, trait
 use async_trait::async_trait;
 use diqwest::WithDigestAuth;
 use reqwest::{Client, Method, Response};
-use serde_json::Value;
+use serde_json::{Value, json};
 use tokio::time::sleep;
 use url::form_urlencoded;
 
@@ -235,6 +235,29 @@ impl VolcMinerWebAPI {
             self.timeout.max(Duration::from_secs(30)),
         )
         .await
+    }
+
+    pub async fn reboot(&self) -> Result<bool> {
+        self.send_web_status_command("reboot", None, Method::GET)
+            .await
+    }
+
+    pub async fn change_password(&self, password: &str) -> Result<bool> {
+        let payload = json!({
+            "cur_pwd": self.auth.password(),
+            "new_pwd": password,
+        });
+        let response = self
+            .send_web_text_command("passwdV1", Some(payload), Method::POST)
+            .await?;
+        let response = response
+            .rsplit_once("\n\n")
+            .map(|(_, body)| body)
+            .unwrap_or(&response);
+        let response = serde_json::from_str::<Value>(response.trim())
+            .context("failed to parse VolcMiner password response")?;
+
+        Ok(response.get("code").and_then(Value::as_str) == Some("200"))
     }
 
     pub async fn get_system_info(&self) -> Result<Value> {

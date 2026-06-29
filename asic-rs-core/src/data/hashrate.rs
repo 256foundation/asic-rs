@@ -194,6 +194,15 @@ pub struct HashRate {
 }
 
 impl HashRate {
+    /// Create a Scrypt hashrate in megahashes per second.
+    pub fn new_scrypt_mh(rate: f64) -> Self {
+        Self {
+            value: rate,
+            unit: HashRateUnit::MegaHash,
+            algo: "Scrypt".to_string(),
+        }
+    }
+
     /// Return this hashrate converted into another unit.
     pub fn as_unit(self, unit: HashRateUnit) -> Self {
         let base = self.value * self.unit.to_multiplier() as f64; // Convert to base unit.
