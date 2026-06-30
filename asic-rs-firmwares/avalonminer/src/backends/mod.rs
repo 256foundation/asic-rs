@@ -1,7 +1,6 @@
 pub mod avalon_a;
 pub mod avalon_q;
 pub(crate) mod rpc;
-pub(crate) mod summary;
 
 use std::{any::Any, net::IpAddr};
 
