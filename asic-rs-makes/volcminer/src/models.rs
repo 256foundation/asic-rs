@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use asic_rs_core::{errors::ModelSelectionError, traits::model::MinerModel};
+use asic_rs_core::{
+    data::device::HashAlgorithm, errors::ModelSelectionError, traits::model::MinerModel,
+};
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
@@ -28,6 +30,10 @@ impl MinerModel for VolcMinerModel {
 
     fn is_known(&self) -> bool {
         !matches!(self, Self::Unknown(_))
+    }
+
+    fn hash_algorithm(&self) -> HashAlgorithm {
+        HashAlgorithm::Scrypt
     }
 }
 

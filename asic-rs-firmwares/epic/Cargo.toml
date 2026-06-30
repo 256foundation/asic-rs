@@ -13,6 +13,7 @@ workspace = true
 asic-rs-core.workspace = true
 asic-rs-makes-antminer.workspace = true
 asic-rs-makes-epic.workspace = true
+asic-rs-makes-volcminer.workspace = true
 asic-rs-makes-whatsminer.workspace = true
 
 async-trait.workspace = true

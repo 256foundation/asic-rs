@@ -228,6 +228,7 @@ dependencies = [
  "asic-rs-core",
  "asic-rs-makes-antminer",
  "asic-rs-makes-epic",
+ "asic-rs-makes-volcminer",
  "asic-rs-makes-whatsminer",
  "async-trait",
  "macaddr",

@@ -4,11 +4,17 @@ use std::{
     str::FromStr,
 };
 
-use crate::{data::device::MinerHardware, errors::ModelSelectionError};
+use crate::{
+    data::device::{HashAlgorithm, MinerHardware},
+    errors::ModelSelectionError,
+};
 
 pub trait MinerModel: Display + Into<MinerHardware> + Clone + Any {
     fn make_name(&self) -> String;
     fn is_known(&self) -> bool;
+    fn hash_algorithm(&self) -> HashAlgorithm {
+        HashAlgorithm::SHA256
+    }
 }
 
 #[derive(Debug, Clone)]

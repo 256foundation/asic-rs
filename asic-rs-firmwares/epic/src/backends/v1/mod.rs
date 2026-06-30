@@ -49,10 +49,18 @@ pub struct PowerPlayV1 {
 impl PowerPlayV1 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
+        let hash_algorithm = model.hash_algorithm();
         PowerPlayV1 {
             ip,
             web: PowerPlayWebAPI::new(ip, 4028, auth),
-            device_info: DeviceInfo::new(model, EPicFirmware::default(), HashAlgorithm::SHA256),
+            device_info: DeviceInfo::new(model, EPicFirmware::default(), hash_algorithm),
+        }
+    }
+
+    fn coin_type_for_hash_algorithm(hash_algorithm: HashAlgorithm) -> &'static str {
+        match hash_algorithm {
+            HashAlgorithm::Scrypt => "LTC",
+            _ => "BTC",
         }
     }
 
@@ -1196,7 +1204,7 @@ impl SupportsPoolsConfig for PowerPlayV1 {
         anyhow::ensure!(!groups.is_empty(), "No non-empty pool groups provided");
         anyhow::ensure!(groups.len() <= 3, "ePIC supports up to 3 pool groups");
 
-        let coin = "BTC";
+        let coin = Self::coin_type_for_hash_algorithm(self.device_info.algo);
         let unique_id_enabled = false;
 
         if let [group] = groups.as_slice() {
@@ -1582,7 +1590,10 @@ mod tests {
     use std::sync::Arc;
 
     use anyhow::{self, Context};
-    use asic_rs_core::test::{api::MockAPIClient, util::get_miner};
+    use asic_rs_core::{
+        test::{api::MockAPIClient, util::get_miner},
+        traits::firmware::MinerFirmware,
+    };
     use asic_rs_makes_antminer::models::AntMinerModel;
 
     use super::*;
@@ -1876,6 +1887,60 @@ mod tests {
         assert_eq!(miner_data.ip, ip);
         assert!(miner_data.timestamp > 0);
         assert!(!miner_data.schema_version.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore = "requires live miner and writes pool config; set MINER_IP"]
+    async fn set_pools_config_live_test_increment_worker() -> anyhow::Result<()> {
+        let ip_str = std::env::var("MINER_IP").context("MINER_IP is not set")?;
+        let ip =
+            IpAddr::from_str(&ip_str).with_context(|| format!("invalid MINER_IP: {ip_str}"))?;
+
+        let model = EPicFirmware::get_model(ip).await?;
+        let miner = PowerPlayV1::new(ip, model);
+
+        let current = miner.get_pools_config().await?;
+        println!("current pools {}", serde_json::to_string_pretty(&current)?);
+        anyhow::ensure!(!current.is_empty(), "miner has no pool groups configured");
+
+        let target = current
+            .iter()
+            .map(|group| PoolGroupConfig {
+                name: group.name.clone(),
+                quota: group.quota,
+                pools: group
+                    .pools
+                    .iter()
+                    .map(|pool| PoolConfig {
+                        url: pool.url.clone(),
+                        username: format!("{}1", pool.username),
+                        password: pool.password.clone(),
+                    })
+                    .collect(),
+            })
+            .collect::<Vec<_>>();
+
+        assert!(miner.set_pools_config(target.clone()).await?);
+
+        let updated = miner.get_pools_config().await?;
+        println!("updated pools {}", serde_json::to_string_pretty(&updated)?);
+
+        for expected in target.iter().flat_map(|group| group.pools.iter()) {
+            let updated_pool = updated
+                .iter()
+                .flat_map(|group| group.pools.iter())
+                .find(|pool| pool.url == expected.url && pool.username == expected.username)
+                .with_context(|| {
+                    format!(
+                        "target pool config was not written: {} {}",
+                        expected.url, expected.username
+                    )
+                })?;
+
+            assert_eq!(updated_pool.password, expected.password);
+        }
 
         Ok(())
     }

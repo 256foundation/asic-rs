@@ -1,7 +1,10 @@
 use std::{fmt, fmt::Display, net::IpAddr};
 
 use asic_rs_core::{
-    data::{command::MinerCommand, device::MinerHardware},
+    data::{
+        command::MinerCommand,
+        device::{HashAlgorithm, MinerHardware},
+    },
     discovery::HTTP_WEB_ROOT,
     errors::ModelSelectionError,
     traits::{
@@ -17,12 +20,14 @@ use asic_rs_core::{
 };
 use asic_rs_makes_antminer::{make::AntMinerMake, models::AntMinerModel};
 use asic_rs_makes_epic::{make::EPicMake, models::EPicModel};
+use asic_rs_makes_volcminer::{make::VolcMinerMake, models::VolcMinerModel};
 use asic_rs_makes_whatsminer::{make::WhatsMinerMake, models::WhatsMinerModel};
 use async_trait::async_trait;
 
 #[derive(Clone)]
 pub enum EPicCompatibleModel {
     AntMiner(AntMinerModel),
+    VolcMiner(VolcMinerModel),
     WhatsMiner(WhatsMinerModel),
     EPic(EPicModel),
     Unknown(UnknownMinerModel),
@@ -32,6 +37,7 @@ impl Display for EPicCompatibleModel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::AntMiner(m) => m.fmt(f),
+            Self::VolcMiner(m) => m.fmt(f),
             Self::WhatsMiner(m) => m.fmt(f),
             Self::EPic(m) => m.fmt(f),
             Self::Unknown(m) => m.fmt(f),
@@ -43,6 +49,7 @@ impl From<EPicCompatibleModel> for MinerHardware {
     fn from(model: EPicCompatibleModel) -> Self {
         match model {
             EPicCompatibleModel::AntMiner(m) => m.into(),
+            EPicCompatibleModel::VolcMiner(m) => m.into(),
             EPicCompatibleModel::WhatsMiner(m) => m.into(),
             EPicCompatibleModel::EPic(m) => m.into(),
             EPicCompatibleModel::Unknown(m) => m.into(),
@@ -54,6 +61,7 @@ impl MinerModel for EPicCompatibleModel {
     fn make_name(&self) -> String {
         match self {
             Self::AntMiner(m) => m.make_name(),
+            Self::VolcMiner(m) => m.make_name(),
             Self::WhatsMiner(m) => m.make_name(),
             Self::EPic(m) => m.make_name(),
             Self::Unknown(m) => m.make_name(),
@@ -62,9 +70,20 @@ impl MinerModel for EPicCompatibleModel {
     fn is_known(&self) -> bool {
         match self {
             Self::AntMiner(m) => m.is_known(),
+            Self::VolcMiner(m) => m.is_known(),
             Self::WhatsMiner(m) => m.is_known(),
             Self::EPic(m) => m.is_known(),
             Self::Unknown(m) => m.is_known(),
+        }
+    }
+
+    fn hash_algorithm(&self) -> HashAlgorithm {
+        match self {
+            Self::AntMiner(m) => m.hash_algorithm(),
+            Self::VolcMiner(m) => m.hash_algorithm(),
+            Self::WhatsMiner(m) => m.hash_algorithm(),
+            Self::EPic(m) => m.hash_algorithm(),
+            Self::Unknown(m) => m.hash_algorithm(),
         }
     }
 }
@@ -117,6 +136,12 @@ impl MinerFirmware for EPicFirmware {
         if model_upper.starts_with("ANTMINER") {
             AntMinerMake::parse_model(model_upper.clone())
                 .map(EPicCompatibleModel::AntMiner)
+                .or(Ok(EPicCompatibleModel::Unknown(UnknownMinerModel {
+                    name: model_upper,
+                })))
+        } else if model_upper.starts_with("VOLCMINER") {
+            VolcMinerMake::parse_model(model_upper.clone())
+                .map(EPicCompatibleModel::VolcMiner)
                 .or(Ok(EPicCompatibleModel::Unknown(UnknownMinerModel {
                     name: model_upper,
                 })))
