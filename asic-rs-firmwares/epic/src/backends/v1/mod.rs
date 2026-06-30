@@ -1380,6 +1380,9 @@ impl SupportsTuningConfig for PowerPlayV1 {
             TuningTarget::MiningMode(_) => {
                 anyhow::bail!("MiningMode tuning target is not supported on ePIC PowerPlay")
             }
+            TuningTarget::Preset(_) => {
+                anyhow::bail!("Preset tuning target is not supported on ePIC PowerPlay")
+            }
         };
 
         let Some(scaling) = scaling_config else {
@@ -1584,6 +1587,8 @@ impl HasAuth for PowerPlayV1 {
 impl SupportsTemperatureConfig for PowerPlayV1 {}
 impl GetTuningPercent for PowerPlayV1 {}
 impl SetTuningPercent for PowerPlayV1 {}
+
+impl SupportsPresets for PowerPlayV1 {}
 
 #[cfg(test)]
 mod tests {

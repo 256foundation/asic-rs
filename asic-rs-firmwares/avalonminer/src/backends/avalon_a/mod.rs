@@ -770,6 +770,8 @@ impl SupportsTemperatureConfig for AvalonAMiner {}
 impl GetTuningPercent for AvalonAMiner {}
 impl SetTuningPercent for AvalonAMiner {}
 
+impl SupportsPresets for AvalonAMiner {}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::data::board::MinerControlBoard;

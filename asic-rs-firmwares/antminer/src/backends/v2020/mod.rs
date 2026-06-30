@@ -1175,6 +1175,9 @@ impl SupportsTuningConfig for AntMinerV2020 {
             TuningTarget::HashRate(_) => {
                 anyhow::bail!("Hashrate tuning target is not supported on Antminer stock firmware")
             }
+            TuningTarget::Preset(_) => {
+                anyhow::bail!("Preset tuning target is not supported on Antminer stock firmware")
+            }
         };
 
         let pre = self.web.get_miner_conf().await?;
@@ -1240,6 +1243,8 @@ impl SupportsFanConfig for AntMinerV2020 {
 impl SupportsTemperatureConfig for AntMinerV2020 {}
 impl GetTuningPercent for AntMinerV2020 {}
 impl SetTuningPercent for AntMinerV2020 {}
+
+impl SupportsPresets for AntMinerV2020 {}
 
 #[cfg(test)]
 mod tests {

@@ -1000,6 +1000,8 @@ impl SupportsTemperatureConfig for BraiinsV2109 {}
 impl GetTuningPercent for BraiinsV2109 {}
 impl SetTuningPercent for BraiinsV2109 {}
 
+impl SupportsPresets for BraiinsV2109 {}
+
 #[cfg(test)]
 mod tests {
     use asic_rs_core::test::api::MockAPIClient;

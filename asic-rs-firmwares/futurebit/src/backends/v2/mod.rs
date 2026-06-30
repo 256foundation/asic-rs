@@ -808,6 +808,8 @@ impl SupportsTemperatureConfig for ApolloV2 {}
 impl GetTuningPercent for ApolloV2 {}
 impl SetTuningPercent for ApolloV2 {}
 
+impl SupportsPresets for ApolloV2 {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

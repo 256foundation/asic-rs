@@ -807,6 +807,9 @@ impl SupportsTuningConfig for SealMinerV2025 {
             TuningTarget::MiningMode(_) => {
                 anyhow::bail!("Mining mode not supported on SealMiner")
             }
+            TuningTarget::Preset(_) => {
+                anyhow::bail!("Preset tuning not supported on SealMiner")
+            }
         }
     }
 
@@ -844,6 +847,8 @@ impl HasDefaultAuth for SealMinerV2025 {
 impl SupportsTemperatureConfig for SealMinerV2025 {}
 impl GetTuningPercent for SealMinerV2025 {}
 impl SetTuningPercent for SealMinerV2025 {}
+
+impl SupportsPresets for SealMinerV2025 {}
 
 #[cfg(test)]
 mod tests {
