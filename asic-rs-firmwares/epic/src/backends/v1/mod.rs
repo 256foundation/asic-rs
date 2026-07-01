@@ -28,6 +28,7 @@ use asic_rs_core::{
 };
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use asic_rs_makes_epic::hardware::EPicControlBoard;
+use asic_rs_makes_volcminer::hardware::VolcMinerControlBoard;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -488,6 +489,19 @@ impl GetControlBoardVersion for PowerPlayV1 {
             return Some(cb.into());
         }
 
+        if let Some(platform) =
+            data.extract_nested::<String>(DataField::ControlBoardVersion, "platform")
+        {
+            let is_volcminer_platform = platform.trim().eq_ignore_ascii_case("TVXilinx");
+            let is_volcminer_model = self.device_info.make.eq_ignore_ascii_case("VolcMiner");
+
+            if (is_volcminer_platform || is_volcminer_model)
+                && let Some(cb) = VolcMinerControlBoard::parse(&platform)
+            {
+                return Some(cb.into());
+            }
+        }
+
         if let Some(cb) =
             data.extract_nested::<AntMinerControlBoard>(DataField::ControlBoardVersion, "platform")
         {
@@ -496,6 +510,7 @@ impl GetControlBoardVersion for PowerPlayV1 {
 
         // Fallback for older versions that do not have platform.
         let cb_type = data.extract_nested::<String>(DataField::ControlBoardVersion, "cpu")?;
+
         match cb_type.as_str() {
             s if s.to_uppercase().contains("AMLOGIC") => {
                 Some(AntMinerControlBoard::AMLogic).map(|cb| cb.into())
@@ -504,6 +519,12 @@ impl GetControlBoardVersion for PowerPlayV1 {
                 Some(AntMinerControlBoard::BeagleBoneBlack).map(|cb| cb.into())
             }
             s if s.to_uppercase().contains("XILINX") => {
+                if self.device_info.make.eq_ignore_ascii_case("VolcMiner")
+                    && let Some(cb) = VolcMinerControlBoard::parse(s)
+                {
+                    return Some(cb.into());
+                }
+
                 Some(AntMinerControlBoard::Xilinx).map(|cb| cb.into())
             }
             _ => Some(EPicControlBoard::EPicUMC).map(|cb| cb.into()),
@@ -1595,6 +1616,7 @@ mod tests {
         traits::firmware::MinerFirmware,
     };
     use asic_rs_makes_antminer::models::AntMinerModel;
+    use asic_rs_makes_volcminer::models::VolcMinerModel;
 
     use super::*;
     use crate::test::json::v1::{
@@ -1753,6 +1775,55 @@ mod tests {
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].message, "Clock voltage adjustment failed");
         assert_eq!(messages[0].severity, MessageSeverity::Error);
+    }
+
+    #[test]
+    fn parse_control_board_prefers_tv_xilinx_platform_over_cpu_xilinx() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let data = HashMap::from([(
+            DataField::ControlBoardVersion,
+            serde_json::json!({
+                "cpu": "Xilinx Zynq Platform",
+                "platform": "TVXilinx",
+            }),
+        )]);
+
+        assert_eq!(
+            miner.parse_control_board_version(&data),
+            Some(VolcMinerControlBoard::TVXilinx.into())
+        );
+    }
+
+    #[test]
+    fn parse_control_board_keeps_generic_xilinx_as_antminer_for_antminer() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let data = HashMap::from([(
+            DataField::ControlBoardVersion,
+            serde_json::json!({
+                "platform": "Xilinx",
+            }),
+        )]);
+
+        assert_eq!(
+            miner.parse_control_board_version(&data),
+            Some(AntMinerControlBoard::Xilinx.into())
+        );
+    }
+
+    #[test]
+    fn parse_control_board_uses_generic_xilinx_for_volcminer_model() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), VolcMinerModel::D1);
+        let data = HashMap::from([(
+            DataField::ControlBoardVersion,
+            serde_json::json!({
+                "platform": "Xilinx",
+            }),
+        )]);
+
+        assert_eq!(
+            miner.parse_control_board_version(&data),
+            Some(VolcMinerControlBoard::TVXilinx.into())
+        );
     }
 
     #[test]
