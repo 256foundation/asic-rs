@@ -28,7 +28,7 @@ use asic_rs_core::{
 };
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use asic_rs_makes_epic::hardware::EPicControlBoard;
-use asic_rs_makes_volcminer::hardware::VolcMinerControlBoard;
+use asic_rs_makes_volcminer::{hardware::VolcMinerControlBoard, make::VolcMinerMake};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
@@ -489,11 +489,12 @@ impl GetControlBoardVersion for PowerPlayV1 {
             return Some(cb.into());
         }
 
+        let is_volcminer_model = self.device_info.make == VolcMinerMake::default().to_string();
+
         if let Some(platform) =
             data.extract_nested::<String>(DataField::ControlBoardVersion, "platform")
         {
             let is_volcminer_platform = platform.trim().eq_ignore_ascii_case("TVXilinx");
-            let is_volcminer_model = self.device_info.make.eq_ignore_ascii_case("VolcMiner");
 
             if (is_volcminer_platform || is_volcminer_model)
                 && let Some(cb) = VolcMinerControlBoard::parse(&platform)
@@ -519,9 +520,7 @@ impl GetControlBoardVersion for PowerPlayV1 {
                 Some(AntMinerControlBoard::BeagleBoneBlack).map(|cb| cb.into())
             }
             s if s.to_uppercase().contains("XILINX") => {
-                if self.device_info.make.eq_ignore_ascii_case("VolcMiner")
-                    && let Some(cb) = VolcMinerControlBoard::parse(s)
-                {
+                if is_volcminer_model && let Some(cb) = VolcMinerControlBoard::parse(s) {
                     return Some(cb.into());
                 }
 
