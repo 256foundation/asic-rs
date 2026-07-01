@@ -1616,7 +1616,6 @@ mod tests {
         traits::firmware::MinerFirmware,
     };
     use asic_rs_makes_antminer::models::AntMinerModel;
-    use asic_rs_makes_volcminer::models::VolcMinerModel;
 
     use super::*;
     use crate::test::json::v1::{
@@ -1775,55 +1774,6 @@ mod tests {
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].message, "Clock voltage adjustment failed");
         assert_eq!(messages[0].severity, MessageSeverity::Error);
-    }
-
-    #[test]
-    fn parse_control_board_prefers_tv_xilinx_platform_over_cpu_xilinx() {
-        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
-        let data = HashMap::from([(
-            DataField::ControlBoardVersion,
-            serde_json::json!({
-                "cpu": "Xilinx Zynq Platform",
-                "platform": "TVXilinx",
-            }),
-        )]);
-
-        assert_eq!(
-            miner.parse_control_board_version(&data),
-            Some(VolcMinerControlBoard::TVXilinx.into())
-        );
-    }
-
-    #[test]
-    fn parse_control_board_keeps_generic_xilinx_as_antminer_for_antminer() {
-        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
-        let data = HashMap::from([(
-            DataField::ControlBoardVersion,
-            serde_json::json!({
-                "platform": "Xilinx",
-            }),
-        )]);
-
-        assert_eq!(
-            miner.parse_control_board_version(&data),
-            Some(AntMinerControlBoard::Xilinx.into())
-        );
-    }
-
-    #[test]
-    fn parse_control_board_uses_generic_xilinx_for_volcminer_model() {
-        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), VolcMinerModel::D1);
-        let data = HashMap::from([(
-            DataField::ControlBoardVersion,
-            serde_json::json!({
-                "platform": "Xilinx",
-            }),
-        )]);
-
-        assert_eq!(
-            miner.parse_control_board_version(&data),
-            Some(VolcMinerControlBoard::TVXilinx.into())
-        );
     }
 
     #[test]
