@@ -616,6 +616,7 @@ impl GetMAC for MaraV1 {
 }
 
 impl GetSerialNumber for MaraV1 {}
+impl SupportsTimezoneConfig for MaraV1 {}
 
 impl GetHostname for MaraV1 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {

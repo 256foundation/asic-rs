@@ -429,6 +429,7 @@ impl GetTuningCapabilities for BraiinsV2109 {
         Some(power_target_capabilities(power_target))
     }
 }
+impl SupportsTimezoneConfig for BraiinsV2109 {}
 
 impl GetHashboards for BraiinsV2109 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {

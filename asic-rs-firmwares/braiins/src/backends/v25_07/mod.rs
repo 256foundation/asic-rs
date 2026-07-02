@@ -635,6 +635,7 @@ impl GetTuningCapabilities for BraiinsV2507 {
         Some(tuner_constraints_capabilities(tuner))
     }
 }
+impl SupportsTimezoneConfig for BraiinsV2507 {}
 
 impl GetPsuFans for BraiinsV2507 {}
 

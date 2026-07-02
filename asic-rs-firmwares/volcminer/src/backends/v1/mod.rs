@@ -813,6 +813,7 @@ impl SupportsTuningConfig for VolcMinerV1 {}
 impl SupportsFanConfig for VolcMinerV1 {}
 
 impl SupportsTemperatureConfig for VolcMinerV1 {}
+impl SupportsTimezoneConfig for VolcMinerV1 {}
 impl GetTuningPercent for VolcMinerV1 {}
 impl SetTuningPercent for VolcMinerV1 {}
 

@@ -6,6 +6,7 @@ use asic_rs_core::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
         pools::PoolGroupConfig,
         temperature::TemperatureConfig,
+        timezone::TimezoneConfig,
     },
     data::{
         board::{BoardData, ChipData, MinerControlBoard},
@@ -66,12 +67,24 @@ impl GetConfigsLocations for VnishV130 {
             command: "summary",
             parameters: None,
         };
+        const WEB_SETTINGS: MinerCommand = MinerCommand::WebAPI {
+            command: "settings",
+            parameters: None,
+        };
         match data_field {
             ConfigField::Temperature => vec![(
                 WEB_SUMMARY,
                 ConfigExtractor {
                     func: get_by_pointer,
                     key: Some("/miner"),
+                    tag: None,
+                },
+            )],
+            ConfigField::Timezone => vec![(
+                WEB_SETTINGS,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/regional/timezone"),
                     tag: None,
                 },
             )],
@@ -1016,6 +1029,53 @@ impl SupportsTemperatureConfig for VnishV130 {
                 .pointer("/cooling/min_startup_water_temp")
                 .and_then(|v| v.as_f64()),
         })
+    }
+}
+
+#[async_trait]
+impl SupportsTimezoneConfig for VnishV130 {
+    fn supports_timezone_config(&self) -> bool {
+        true
+    }
+
+    /// VNish 1.3.x stores a fixed UTC offset (e.g. `"GMT+2"`) under
+    /// `/regional/timezone` in `/settings` — same shape as 1.2.x. No DST, no list
+    /// endpoint, so fall back to the whole-hour offsets.
+    fn parse_timezone_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TimezoneConfig> {
+        const DEFAULT_OFFSETS: &[&str] = &[
+            "GMT-12", "GMT-11", "GMT-10", "GMT-9", "GMT-8", "GMT-7", "GMT-6", "GMT-5", "GMT-4",
+            "GMT-3", "GMT-2", "GMT-1", "GMT+0", "GMT+1", "GMT+2", "GMT+3", "GMT+4", "GMT+5",
+            "GMT+6", "GMT+7", "GMT+8", "GMT+9", "GMT+10", "GMT+11", "GMT+12", "GMT+13", "GMT+14",
+        ];
+        let obj = data
+            .get(&ConfigField::Timezone)
+            .ok_or_else(|| anyhow::anyhow!("No timezone data returned"))?;
+        let timezone = obj
+            .pointer("/current")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        Ok(TimezoneConfig {
+            timezone,
+            available: DEFAULT_OFFSETS.iter().map(|s| s.to_string()).collect(),
+        })
+    }
+
+    async fn set_timezone_config(&self, config: TimezoneConfig) -> anyhow::Result<bool> {
+        let timezone = match config.timezone {
+            Some(tz) => tz,
+            None => anyhow::bail!("Timezone config has no timezone to set"),
+        };
+        let mut settings = self.web.settings().await?;
+        match settings.pointer_mut("/regional/timezone") {
+            Some(tz) => {
+                tz["current"] = json!(timezone);
+            }
+            None => anyhow::bail!("VNish settings has no /regional/timezone"),
+        }
+        self.web.set_settings(settings).await.map(|_| true)
     }
 }
 

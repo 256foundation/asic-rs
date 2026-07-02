@@ -544,6 +544,7 @@ impl UpgradeFirmware for Bitaxe290 {
 }
 
 impl HasAuth for Bitaxe290 {}
+impl SupportsTimezoneConfig for Bitaxe290 {}
 impl HasDefaultAuth for Bitaxe290 {}
 
 #[async_trait]

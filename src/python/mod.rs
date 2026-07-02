@@ -33,6 +33,7 @@ mod asic_rs {
         pools::{PoolConfig as Pool, PoolGroupConfig as PoolGroup},
         scaling::ScalingConfig,
         temperature::TemperatureConfig,
+        timezone::TimezoneConfig,
         tuning::TuningConfig,
     };
     #[pymodule_export]

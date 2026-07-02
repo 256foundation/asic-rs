@@ -792,6 +792,7 @@ impl GetFluidTemperature for AntMinerV202307 {
 
 impl GetPsuFans for AntMinerV202307 {}
 impl GetTuningCapabilities for AntMinerV202307 {}
+impl SupportsTimezoneConfig for AntMinerV202307 {}
 
 impl GetMessages for AntMinerV202307 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {

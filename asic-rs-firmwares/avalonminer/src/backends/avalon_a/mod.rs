@@ -469,6 +469,7 @@ impl GetControlBoardVersion for AvalonAMiner {
 }
 
 impl GetHostname for AvalonAMiner {}
+impl SupportsTimezoneConfig for AvalonAMiner {}
 
 impl GetApiVersion for AvalonAMiner {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {

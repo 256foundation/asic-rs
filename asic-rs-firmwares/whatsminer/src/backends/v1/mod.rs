@@ -264,6 +264,7 @@ impl GetMAC for WhatsMinerV1 {
 }
 
 impl GetSerialNumber for WhatsMinerV1 {}
+impl SupportsTimezoneConfig for WhatsMinerV1 {}
 impl GetHostname for WhatsMinerV1 {}
 impl GetApiVersion for WhatsMinerV1 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {

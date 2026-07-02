@@ -12,6 +12,7 @@ from .config import (
     Pool,
     PoolGroup,
     ScalingConfig,
+    TimezoneConfig,
     TuningConfig,
 )
 from .factory import MinerFactory
@@ -26,6 +27,7 @@ __all__ = [
     "Pool",
     "PoolGroup",
     "ScalingConfig",
+    "TimezoneConfig",
     "TuningConfig",
     "TuningTarget",
 ]

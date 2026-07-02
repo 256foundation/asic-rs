@@ -17,6 +17,7 @@ pub enum ConfigField {
     Tuning,
     Fan,
     Temperature,
+    Timezone,
 }
 
 /// A function pointer type that takes a JSON `Value` and an optional key,

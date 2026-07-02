@@ -5,7 +5,7 @@ use asic_rs_core::data::collector::DataField;
 use asic_rs_core::{
     config::{
         fan::FanConfig, pools::PoolGroupConfig as PoolGroup, scaling::ScalingConfig,
-        temperature::TemperatureConfig, tuning::TuningConfig,
+        temperature::TemperatureConfig, timezone::TimezoneConfig, tuning::TuningConfig,
     },
     data::{
         board::BoardData,
@@ -222,6 +222,11 @@ impl Miner {
     #[getter]
     fn supports_upgrade_firmware(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_upgrade_firmware())
+    }
+    /// Whether this miner supports reading and writing timezone configuration.
+    #[getter]
+    fn supports_timezone_config(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_timezone_config())
     }
     /// Whether this miner supports scaling configuration.
     #[getter]
@@ -665,6 +670,30 @@ impl Miner {
         future_into_py(py, async move {
             let inner = inner.read().await;
             Ok(inner.set_tuning_percent(percent).await.ok())
+        })
+    }
+    /// Await timezone configuration, or `None` when unsupported/unavailable.
+    pub fn get_timezone_config<'a>(
+        &self,
+        py: Python<'a>,
+    ) -> PyResult<PyAwaitable<Option<TimezoneConfig>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_timezone_config().await.ok())
+        })
+    }
+    /// Set timezone configuration.
+    #[pyo3(signature = (config: "TimezoneConfig"))]
+    pub fn set_timezone_config<'a>(
+        &self,
+        py: Python<'a>,
+        config: TimezoneConfig,
+    ) -> PyResult<PyAwaitable<Option<bool>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.set_timezone_config(config).await.ok())
         })
     }
     /// Replace the configured mining pool groups.

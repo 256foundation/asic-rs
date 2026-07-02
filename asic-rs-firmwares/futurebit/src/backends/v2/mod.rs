@@ -588,6 +588,7 @@ impl GetFans for ApolloV2 {
 }
 
 impl GetPsuFans for ApolloV2 {}
+impl SupportsTimezoneConfig for ApolloV2 {}
 
 impl GetFluidTemperature for ApolloV2 {}
 

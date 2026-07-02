@@ -346,6 +346,7 @@ impl GetMAC for WhatsMinerV3 {
 }
 
 impl GetSerialNumber for WhatsMinerV3 {}
+impl SupportsTimezoneConfig for WhatsMinerV3 {}
 impl GetHostname for WhatsMinerV3 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
