@@ -1,0 +1,19 @@
+{
+  "STATUS": [
+    {
+      "STATUS": "S",
+      "Msg": "CGMiner stats",
+      "Code": 70
+    }
+  ],
+  "STATS": [
+    {
+      "STATS": 0,
+      "ID": "AVALON0",
+      "Elapsed": 117245,
+      "MM ID0:Summary": {},
+      "HBinfo": {}
+    }
+  ],
+  "id": 1
+}

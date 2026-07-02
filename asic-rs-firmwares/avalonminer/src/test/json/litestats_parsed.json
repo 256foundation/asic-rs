@@ -1,0 +1,30 @@
+{
+  "STATUS": [
+    {
+      "STATUS": "S",
+      "Msg": "CGMiner stats",
+      "Code": 70
+    }
+  ],
+  "STATS": [
+    {
+      "MM ID0:Summary": {
+        "STATS": {
+          "Elapsed": 117595,
+          "GHSmm": 96785.71,
+          "MGHS": 93897.4,
+          "ITemp": 37,
+          "HBITemp": 75,
+          "HBOTemp": 77,
+          "MPO": 1600,
+          "Fan1": 2671,
+          "Fan2": 2665,
+          "Fan3": 2661,
+          "Fan4": 2679,
+          "PS": [0, 1221, 2421, 66, 1598, 2422, 1670]
+        }
+      }
+    }
+  ],
+  "id": 1
+}

@@ -36,9 +36,14 @@ pub enum AvalonMinerModel {
     #[serde(alias = "1466")]
     Avalon1466,
     #[serde(alias = "15")]
+    #[serde(alias = "15PRO")]
     Avalon15,
     #[serde(alias = "1566")]
     Avalon1566,
+    #[serde(alias = "1566HA")]
+    Avalon1566Ha,
+    #[serde(alias = "1566HU")]
+    Avalon1566Hu,
     #[serde(alias = "NANO3")]
     AvalonNano3,
     #[serde(alias = "NANO3S")]
@@ -89,5 +94,21 @@ mod tests {
 
         // Assert
         assert_eq!(result, AvalonMinerModel::Unknown("9999".to_string()));
+    }
+
+    #[test]
+    fn recent_model_aliases_parse() {
+        assert_eq!(
+            AvalonMinerModel::from_str("15PRO").unwrap(),
+            AvalonMinerModel::Avalon15
+        );
+        assert_eq!(
+            AvalonMinerModel::from_str("1566HA").unwrap(),
+            AvalonMinerModel::Avalon1566Ha
+        );
+        assert_eq!(
+            AvalonMinerModel::from_str("1566HU").unwrap(),
+            AvalonMinerModel::Avalon1566Hu
+        );
     }
 }

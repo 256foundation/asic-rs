@@ -277,6 +277,10 @@ impl GetDataLocations for AvalonQMiner {
             command: "stats",
             parameters: None,
         };
+        const RPC_LITESTATS: MinerCommand = MinerCommand::RPC {
+            command: "litestats",
+            parameters: None,
+        };
         const RPC_DEVS: MinerCommand = MinerCommand::RPC {
             command: "devs",
             parameters: None,
@@ -319,22 +323,42 @@ impl GetDataLocations for AvalonQMiner {
                     tag: None,
                 },
             )],
-            DataField::ExpectedHashrate => vec![(
-                RPC_STATS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS/GHSmm"),
-                    tag: None,
-                },
-            )],
-            DataField::Hashboards => vec![(
-                RPC_STATS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS"),
-                    tag: Some("summary"),
-                },
-            )],
+            DataField::ExpectedHashrate => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/GHSmm"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_LITESTATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/GHSmm"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::Hashboards => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS"),
+                        tag: Some("summary"),
+                    },
+                ),
+                (
+                    RPC_LITESTATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS"),
+                        tag: Some("summary"),
+                    },
+                ),
+            ],
             DataField::Chips => vec![(
                 RPC_STATS,
                 DataExtractor {
@@ -343,46 +367,148 @@ impl GetDataLocations for AvalonQMiner {
                     tag: None,
                 },
             )],
-            DataField::AverageTemperature => vec![(
-                RPC_STATS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS/ITemp"),
-                    tag: None,
-                },
-            )],
-            DataField::TuningTarget => vec![(
-                RPC_STATS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS/MPO"),
-                    tag: None,
-                },
-            )],
-            DataField::Wattage => vec![(
-                RPC_STATS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS/WALLPOWER"),
-                    tag: None,
-                },
-            )],
-            DataField::Fans => vec![(
-                RPC_STATS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS"),
-                    tag: None,
-                },
-            )],
-            DataField::LightFlashing => vec![(
-                RPC_STATS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/0/MM ID0:Summary/STATS/Led"),
-                    tag: None,
-                },
-            )],
+            DataField::AverageTemperature => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/ITemp"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_LITESTATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/ITemp"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::FluidTemperature => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/ITemp"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_LITESTATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/ITemp"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::OutletFluidTemperature => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/HBOTemp"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_LITESTATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/HBOTemp"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::TuningTarget => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/MPO"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_LITESTATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/MPO"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::Wattage => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/WALLPOWER"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/PS"),
+                        tag: Some("ps"),
+                    },
+                ),
+                (
+                    RPC_LITESTATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/WALLPOWER"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_LITESTATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/PS"),
+                        tag: Some("ps"),
+                    },
+                ),
+            ],
+            DataField::Fans => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_LITESTATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::LightFlashing => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/Led"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_LITESTATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0:Summary/STATS/Led"),
+                        tag: None,
+                    },
+                ),
+            ],
             DataField::Uptime => vec![(
                 RPC_STATS,
                 DataExtractor {
@@ -501,6 +627,9 @@ impl GetHashboards for AvalonQMiner {
 
                 board.inlet_chip_temperature =
                     summary_f64(summary, "ITemp", idx).map(Temperature::from_celsius);
+
+                board.outlet_chip_temperature =
+                    summary_f64(summary, "HBOTemp", idx).map(Temperature::from_celsius);
             }
 
             board.active = board.hashrate.as_ref().map(|h| h.value > 0.0);
@@ -602,10 +731,12 @@ impl GetFans for AvalonQMiner {
             return Vec::new();
         }
 
+        let fan_stats = stats.get("summary").unwrap_or(stats);
+
         (1..=expected_fans)
             .filter_map(|idx| {
                 let key = format!("Fan{idx}");
-                stats
+                fan_stats
                     .get(&key)
                     .and_then(|val| val.as_f64())
                     .map(|rpm| FanData {
@@ -621,7 +752,28 @@ impl GetPsuFans for AvalonQMiner {}
 
 impl GetWattage for AvalonQMiner {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
+        let value = data.get(&DataField::Wattage)?;
+        if let Some(watts) = value.as_f64() {
+            return Some(Power::from_watts(watts));
+        }
+        if let Some(watts) = value.get("WALLPOWER").and_then(Value::as_f64) {
+            return Some(Power::from_watts(watts));
+        }
+        if let Some(ps) = value
+            .get("ps")
+            .or_else(|| value.get("PS"))
+            .and_then(Value::as_array)
+            .or_else(|| value.as_array())
+        {
+            for idx in [4_usize, 5] {
+                if let Some(watts) = ps.get(idx).and_then(Value::as_f64)
+                    && watts > 0.0
+                {
+                    return Some(Power::from_watts(watts));
+                }
+            }
+        }
+        None
     }
 }
 
@@ -648,7 +800,18 @@ impl GetUptime for AvalonQMiner {
     }
 }
 
-impl GetFluidTemperature for AvalonQMiner {}
+impl GetFluidTemperature for AvalonQMiner {
+    fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
+        data.extract_map::<f64, _>(DataField::FluidTemperature, Temperature::from_celsius)
+    }
+
+    fn parse_outlet_fluid_temperature(
+        &self,
+        data: &HashMap<DataField, Value>,
+    ) -> Option<Temperature> {
+        data.extract_map::<f64, _>(DataField::OutletFluidTemperature, Temperature::from_celsius)
+    }
+}
 impl GetIsMining for AvalonQMiner {}
 
 impl GetPools for AvalonQMiner {
@@ -726,7 +889,10 @@ mod tests {
     use asic_rs_makes_avalon::models::AvalonMinerModel;
 
     use super::*;
-    use crate::test::json::{DEVS_COMMAND, PARSED_STATS_COMMAND, POOLS_COMMAND, VERSION_COMMAND};
+    use crate::test::json::{
+        DEVS_COMMAND, PARSED_LITESTATS, PARSED_STATS_COMMAND, PARSED_STATS_EMPTY, POOLS_COMMAND,
+        VERSION_COMMAND,
+    };
 
     #[test]
     fn parse_hashboards_missing_hbinfo_entries_do_not_panic() {
@@ -769,6 +935,10 @@ mod tests {
             command: "stats",
             parameters: None,
         };
+        let litestats_cmd: MinerCommand = MinerCommand::RPC {
+            command: "litestats",
+            parameters: None,
+        };
         let devs_cmd: MinerCommand = MinerCommand::RPC {
             command: "devs",
             parameters: None,
@@ -779,6 +949,7 @@ mod tests {
         };
 
         results.insert(stats_cmd, Value::from_str(PARSED_STATS_COMMAND)?);
+        results.insert(litestats_cmd, Value::from_str(PARSED_STATS_COMMAND)?);
         results.insert(devs_cmd, Value::from_str(DEVS_COMMAND)?);
         results.insert(pools_cmd, Value::from_str(POOLS_COMMAND)?);
         results.insert(version_cmd, Value::from_str(VERSION_COMMAND)?);
@@ -820,6 +991,60 @@ mod tests {
         );
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 160);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_avalon_q_uses_litestats_when_stats_summary_empty() -> anyhow::Result<()> {
+        let miner = AvalonQMiner::new(IpAddr::from([127, 0, 0, 1]), AvalonMinerModel::AvalonHomeQ);
+
+        let mut results = HashMap::new();
+        let stats_cmd = MinerCommand::RPC {
+            command: "stats",
+            parameters: None,
+        };
+        let litestats_cmd = MinerCommand::RPC {
+            command: "litestats",
+            parameters: None,
+        };
+        let devs_cmd = MinerCommand::RPC {
+            command: "devs",
+            parameters: None,
+        };
+
+        results.insert(stats_cmd, Value::from_str(PARSED_STATS_EMPTY)?);
+        results.insert(litestats_cmd, Value::from_str(PARSED_LITESTATS)?);
+        results.insert(devs_cmd, Value::from_str(DEVS_COMMAND)?);
+
+        let mock_api = MockAPIClient::new(results);
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector
+            .collect(&[
+                DataField::Hashboards,
+                DataField::Fans,
+                DataField::Wattage,
+                DataField::FluidTemperature,
+                DataField::OutletFluidTemperature,
+            ])
+            .await;
+
+        let hashboards = miner.parse_hashboards(&data);
+        assert_eq!(hashboards.len(), 1);
+        assert_eq!(
+            hashboards[0].board_temperature,
+            Some(Temperature::from_celsius(75.0))
+        );
+        assert_eq!(miner.parse_fans(&data).len(), 4);
+        assert_eq!(miner.parse_wattage(&data), Some(Power::from_watts(1598.0)));
+        assert_eq!(
+            miner.parse_fluid_temperature(&data),
+            Some(Temperature::from_celsius(37.0))
+        );
+        assert_eq!(
+            miner.parse_outlet_fluid_temperature(&data),
+            Some(Temperature::from_celsius(77.0))
+        );
 
         Ok(())
     }
