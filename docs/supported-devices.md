@@ -124,7 +124,7 @@ Legend:
 		 - [x] `AT1500`
 	??? note "AT2880 family (1 model)"
 		 - [x] `AT2880`
-??? quote "AvalonMiner (19 models across 11 families)"
+??? quote "AvalonMiner (21 models across 11 families)"
 
 	??? note "7xx family (3 models)"
 		 - [x] `721`
@@ -148,9 +148,11 @@ Legend:
 	??? note "14xx family (1 model)"
 		 - [x] `1466`
 	??? note "15 family (1 model)"
-		 - [x] `15`
-	??? note "15xx family (1 model)"
+		 - [x] `15` (also: `15PRO`)
+	??? note "15xx family (3 models)"
 		 - [x] `1566`
+		 - [x] `1566HA`
+		 - [x] `1566HU`
 	??? note "NANO3 family (2 models)"
 		 - [x] `NANO3`
 		 - [x] `NANO3S`
