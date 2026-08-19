@@ -16,6 +16,7 @@ use crate::{
         pools::PoolGroupConfig,
         scaling::ScalingConfig,
         temperature::TemperatureConfig,
+        timezone::TimezoneConfig,
         tuning::TuningConfig,
     },
     data::{
@@ -102,6 +103,7 @@ pub trait SupportsConfigs:
     + SupportsTemperatureConfig
     + SupportsTuningConfig
     + SupportsFanConfig
+    + SupportsTimezoneConfig
 {
 }
 
@@ -111,7 +113,8 @@ impl<
         + SupportsScalingConfig
         + SupportsTemperatureConfig
         + SupportsTuningConfig
-        + SupportsFanConfig,
+        + SupportsFanConfig
+        + SupportsTimezoneConfig,
 > SupportsConfigs for T
 {
 }
@@ -1003,6 +1006,31 @@ pub trait SupportsTemperatureConfig: CollectConfigs {
     }
     /// Defaults to `false`; backends that report configured thermal limits override this.
     fn supports_temperature_config(&self) -> bool {
+        false
+    }
+}
+
+#[async_trait]
+pub trait SupportsTimezoneConfig: CollectConfigs {
+    #[allow(unused_variables)]
+    async fn set_timezone_config(&self, config: TimezoneConfig) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting timezone config is not supported on this platform");
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_timezone_config(&self) -> anyhow::Result<TimezoneConfig> {
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::Timezone]).await;
+        self.parse_timezone_config(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_timezone_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TimezoneConfig> {
+        anyhow::bail!("Getting timezone config is not supported on this platform");
+    }
+
+    fn supports_timezone_config(&self) -> bool {
         false
     }
 }
