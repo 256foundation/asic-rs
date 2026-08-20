@@ -332,6 +332,36 @@ impl MinerFactory {
         }))
     }
 
+    /// Set the number of additional attempts for addresses that fail scanning.
+    pub fn with_scan_retries<'py>(
+        slf: PyRefMut<'py, Self>,
+        retries: u32,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        Ok(Self::update_inner(slf, |inner| {
+            inner.with_scan_retries(retries)
+        }))
+    }
+
+    /// Set the maximum number of failed addresses retried concurrently.
+    pub fn with_retry_concurrent_limit<'py>(
+        slf: PyRefMut<'py, Self>,
+        limit: usize,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        Ok(Self::update_inner(slf, |inner| {
+            inner.with_retry_concurrent_limit(limit)
+        }))
+    }
+
+    /// Set the initial scan retry backoff in milliseconds.
+    pub fn with_scan_retry_backoff_millis<'py>(
+        slf: PyRefMut<'py, Self>,
+        backoff_millis: u64,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        Ok(Self::update_inner(slf, |inner| {
+            inner.with_scan_retry_backoff_millis(backoff_millis)
+        }))
+    }
+
     /// Set the maximum seconds spent identifying a miner after it responds.
     pub fn with_identification_timeout_secs<'py>(
         slf: PyRefMut<'py, Self>,
@@ -339,6 +369,16 @@ impl MinerFactory {
     ) -> PyResult<PyRefMut<'py, Self>> {
         Ok(Self::update_inner(slf, |inner| {
             inner.with_identification_timeout_secs(timeout_secs)
+        }))
+    }
+
+    /// Set the maximum seconds allowed to construct a miner after identification.
+    pub fn with_miner_construction_timeout_secs<'py>(
+        slf: PyRefMut<'py, Self>,
+        timeout_secs: u64,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        Ok(Self::update_inner(slf, |inner| {
+            inner.with_miner_construction_timeout_secs(timeout_secs)
         }))
     }
 
@@ -352,13 +392,53 @@ impl MinerFactory {
         }))
     }
 
-    /// Set how many connectivity attempts are made before identification.
+    /// Set the timeout, in milliseconds, for quick connectivity probes.
+    pub fn with_connectivity_timeout_millis<'py>(
+        slf: PyRefMut<'py, Self>,
+        timeout_millis: u64,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        Ok(Self::update_inner(slf, |inner| {
+            inner.with_connectivity_timeout_millis(timeout_millis)
+        }))
+    }
+
+    /// Set connectivity retries after the initial pass.
     pub fn with_connectivity_retries<'py>(
         slf: PyRefMut<'py, Self>,
         retries: u32,
     ) -> PyResult<PyRefMut<'py, Self>> {
         Ok(Self::update_inner(slf, |inner| {
             inner.with_connectivity_retries(retries)
+        }))
+    }
+
+    /// Set first-pass connectivity probe concurrency.
+    pub fn with_connectivity_concurrent_limit<'py>(
+        slf: PyRefMut<'py, Self>,
+        limit: usize,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        Ok(Self::update_inner(slf, |inner| {
+            inner.with_connectivity_concurrent_limit(limit)
+        }))
+    }
+
+    /// Set retry-pass connectivity probe concurrency.
+    pub fn with_connectivity_retry_concurrent_limit<'py>(
+        slf: PyRefMut<'py, Self>,
+        limit: usize,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        Ok(Self::update_inner(slf, |inner| {
+            inner.with_connectivity_retry_concurrent_limit(limit)
+        }))
+    }
+
+    /// Set the initial connectivity retry delay in milliseconds.
+    pub fn with_connectivity_retry_backoff_millis<'py>(
+        slf: PyRefMut<'py, Self>,
+        backoff_millis: u64,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        Ok(Self::update_inner(slf, |inner| {
+            inner.with_connectivity_retry_backoff_millis(backoff_millis)
         }))
     }
 
@@ -369,6 +449,16 @@ impl MinerFactory {
     ) -> PyResult<PyRefMut<'py, Self>> {
         Ok(Self::update_inner(slf, |inner| {
             inner.with_port_check(enabled)
+        }))
+    }
+
+    /// Exclude hosts that miss all TCP connectivity probes.
+    pub fn with_strict_port_check<'py>(
+        slf: PyRefMut<'py, Self>,
+        enabled: bool,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        Ok(Self::update_inner(slf, |inner| {
+            inner.with_strict_port_check(enabled)
         }))
     }
 

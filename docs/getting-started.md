@@ -57,6 +57,10 @@ construct the matching miner implementation.
 
 Use a subnet, octet selectors, or range string when the exact IP address is not
 known. Large scans use bounded concurrency.
+TCP reachability and application identification are separate stages. The
+default probe limit is 256 addresses with no retry; responsive addresses are
+then identified with a default concurrency of 128. Probe-negative addresses
+are excluded unless strict port checking is disabled.
 
 === "Rust"
 
@@ -66,7 +70,7 @@ known. Large scans use bounded concurrency.
     #[tokio::main]
     async fn main() -> anyhow::Result<()> {
         let miners = MinerFactory::from_subnet("192.168.1.0/24")?
-            .with_concurrent_limit(2500)
+            .with_concurrent_limit(128)
             .scan()
             .await?;
 
@@ -86,7 +90,7 @@ known. Large scans use bounded concurrency.
     async def main() -> None:
         miners = await (
             MinerFactory.from_subnet("192.168.1.0/24")
-            .with_concurrent_limit(2500)
+            .with_concurrent_limit(128)
             .scan()
         )
 

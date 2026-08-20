@@ -15,6 +15,13 @@ use crate::errors::{ModelSelectionError, RPCError};
 
 /// Default read timeout for RPC stream responses.
 pub const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(5);
+/// Default TCP connection timeout for firmware construction HTTP requests.
+pub const DEFAULT_DISCOVERY_HTTP_CONNECT_TIMEOUT: Duration = Duration::from_secs(2);
+/// Default total timeout for each firmware construction HTTP request.
+///
+/// This includes connection establishment, the request, and response-body
+/// processing.
+pub const DEFAULT_DISCOVERY_HTTP_REQUEST_TIMEOUT: Duration = Duration::from_secs(3);
 
 pub fn unix_timestamp_secs() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or_else(
@@ -27,7 +34,11 @@ pub fn unix_timestamp_secs() -> u64 {
 }
 
 pub fn build_discovery_client() -> Result<reqwest::Client, ModelSelectionError> {
+    // Bound connection establishment separately while enforcing a total
+    // deadline across connection, request, and response-body processing.
     reqwest::Client::builder()
+        .connect_timeout(DEFAULT_DISCOVERY_HTTP_CONNECT_TIMEOUT)
+        .timeout(DEFAULT_DISCOVERY_HTTP_REQUEST_TIMEOUT)
         .pool_max_idle_per_host(0)
         .build()
         .map_err(|_| ModelSelectionError::NoModelResponse)

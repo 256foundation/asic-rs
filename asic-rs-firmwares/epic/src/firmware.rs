@@ -112,7 +112,6 @@ impl MinerFirmware for EPicFirmware {
             .send()
             .await
             .map_err(|_| ModelSelectionError::NoModelResponse)?;
-
         let json_data = response
             .json::<serde_json::Value>()
             .await

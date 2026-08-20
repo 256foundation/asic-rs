@@ -8,13 +8,23 @@ differences.
 
 `MinerFactory` owns the scan range and discovery tuning.
 
+Network scans first probe common miner ports concurrently and only then run
+firmware identification. The default limits are 256 addresses for TCP probing
+and 128 addresses for identification, with no TCP retry. `with_concurrent_limit`
+controls identification; connectivity can be tuned independently with the
+`with_connectivity_*` methods. TCP-negative hosts are excluded by default; set
+`with_strict_port_check(false)` to give them a fallback identification pass.
+Firmware construction is capped at five seconds after identification. Its HTTP
+requests use a two-second connection timeout and a three-second total timeout.
+
 === "Rust"
 
     ```rust
     let factory = MinerFactory::from_subnet("192.168.1.0/24")?
-        .with_concurrent_limit(2500)
-        .with_connectivity_timeout_secs(1)
-        .with_identification_timeout_secs(10);
+        .with_concurrent_limit(128)
+        .with_connectivity_timeout_millis(500)
+        .with_identification_timeout_secs(3)
+        .with_miner_construction_timeout_secs(5);
     ```
 
 === "Python"
@@ -22,9 +32,10 @@ differences.
     ```python
     factory = (
         MinerFactory.from_subnet("192.168.1.0/24")
-        .with_concurrent_limit(2500)
-        .with_connectivity_timeout_secs(1)
-        .with_identification_timeout_secs(10)
+        .with_concurrent_limit(128)
+        .with_connectivity_timeout_millis(500)
+        .with_identification_timeout_secs(3)
+        .with_miner_construction_timeout_secs(5)
     )
     ```
 
