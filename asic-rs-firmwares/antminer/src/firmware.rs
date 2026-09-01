@@ -1,6 +1,6 @@
 use std::{fmt, fmt::Display, net::IpAddr};
 
-use asic_rs_core::data::device::{HashAlgorithm, MinerHardware};
+use asic_rs_core::data::device::{FirmwareType, HashAlgorithm, MinerHardware};
 use asic_rs_core::traits::model::{MinerModelAlgorithm, UnknownMinerModel};
 use asic_rs_core::{
     data::command::MinerCommand,
@@ -78,7 +78,7 @@ pub struct AntMinerStockFirmware {}
 
 impl Display for AntMinerStockFirmware {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "AntMiner Stock")
+        write!(f, "{}", FirmwareType::AntMinerStock)
     }
 }
 

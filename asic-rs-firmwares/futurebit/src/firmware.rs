@@ -1,7 +1,7 @@
 use std::{fmt::Display, net::IpAddr};
 
 use asic_rs_core::{
-    data::command::MinerCommand,
+    data::{command::MinerCommand, device::FirmwareType},
     discovery::HTTP_WEB_ROOT,
     errors::ModelSelectionError,
     traits::{
@@ -22,7 +22,7 @@ pub struct ApolloFirmware {}
 
 impl Display for ApolloFirmware {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "FutureBit Stock")
+        write!(f, "{}", FirmwareType::FutureBitStock)
     }
 }
 

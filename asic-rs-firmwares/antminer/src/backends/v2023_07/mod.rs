@@ -16,7 +16,7 @@ use asic_rs_core::{
             DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
         },
         command::MinerCommand,
-        device::DeviceInfo,
+        device::{DeviceInfo, FirmwareType},
         fan::FanData,
         firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
@@ -1237,15 +1237,18 @@ impl SupportsTuningConfig for AntMinerV202307 {
             TuningTarget::MiningMode(MiningMode::Low) => MinerMode::Low,
             TuningTarget::MiningMode(MiningMode::Normal) => MinerMode::Normal,
             TuningTarget::MiningMode(MiningMode::High) => MinerMode::High,
-            TuningTarget::Power(_) => {
-                anyhow::bail!("Power tuning target is not supported on Antminer stock firmware")
-            }
-            TuningTarget::HashRate(_) => {
-                anyhow::bail!("Hashrate tuning target is not supported on Antminer stock firmware")
-            }
-            TuningTarget::Preset(_) => {
-                anyhow::bail!("Preset tuning target is not supported on Antminer stock firmware")
-            }
+            TuningTarget::Power(_) => anyhow::bail!(
+                "Power tuning target is not supported on {} firmware",
+                FirmwareType::AntMinerStock
+            ),
+            TuningTarget::HashRate(_) => anyhow::bail!(
+                "Hashrate tuning target is not supported on {} firmware",
+                FirmwareType::AntMinerStock
+            ),
+            TuningTarget::Preset(_) => anyhow::bail!(
+                "Preset tuning target is not supported on {} firmware",
+                FirmwareType::AntMinerStock
+            ),
         };
 
         let pre = self.web.get_miner_conf().await?;

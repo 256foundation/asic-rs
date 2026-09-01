@@ -4,7 +4,7 @@ use asic_rs_core::traits::model::MinerModelAlgorithm;
 use asic_rs_core::{
     data::{
         command::MinerCommand,
-        device::{HashAlgorithm, MinerHardware},
+        device::{FirmwareType, HashAlgorithm, MinerHardware},
     },
     discovery::HTTP_WEB_ROOT,
     errors::ModelSelectionError,
@@ -96,7 +96,7 @@ pub struct EPicFirmware {}
 
 impl Display for EPicFirmware {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "UMC OS")
+        write!(f, "{}", FirmwareType::UmcOS)
     }
 }
 

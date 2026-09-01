@@ -14,7 +14,7 @@ use asic_rs_core::{
             DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
         },
         command::MinerCommand,
-        device::{DeviceInfo, HashAlgorithm},
+        device::{DeviceInfo, FirmwareType, HashAlgorithm},
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
@@ -797,12 +797,14 @@ fn tuning_config_to_rpc(config: &TuningConfig) -> anyhow::Result<(&'static str, 
             "adjust_power_limit",
             Some(json!({"power_limit": limit.as_watts().to_string()})),
         )),
-        TuningTarget::HashRate(_) => {
-            anyhow::bail!("HashRate tuning target is not supported on WhatsMiner")
-        }
-        TuningTarget::Preset(_) => {
-            anyhow::bail!("Preset tuning target is not supported on WhatsMiner")
-        }
+        TuningTarget::HashRate(_) => anyhow::bail!(
+            "HashRate tuning target is not supported on {}",
+            FirmwareType::WhatsMinerStock
+        ),
+        TuningTarget::Preset(_) => anyhow::bail!(
+            "Preset tuning target is not supported on {}",
+            FirmwareType::WhatsMinerStock
+        ),
     }
 }
 

@@ -1,7 +1,7 @@
 use std::{fmt::Display, net::IpAddr};
 
 use asic_rs_core::{
-    data::command::MinerCommand,
+    data::{command::MinerCommand, device::FirmwareType},
     discovery::{RPC_DEVDETAILS, RPC_VERSION},
     errors::ModelSelectionError,
     traits::{
@@ -23,7 +23,7 @@ pub struct AuradineFirmware {}
 
 impl Display for AuradineFirmware {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Auradine Stock")
+        write!(f, "{}", FirmwareType::AuradineStock)
     }
 }
 

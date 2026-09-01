@@ -4,7 +4,7 @@ use asic_rs_core::traits::model::MinerModelAlgorithm;
 use asic_rs_core::{
     data::{
         command::MinerCommand,
-        device::{HashAlgorithm, MinerHardware},
+        device::{FirmwareType, HashAlgorithm, MinerHardware},
     },
     discovery::{HTTP_WEB_ROOT, RPC_VERSION},
     errors::ModelSelectionError,
@@ -82,7 +82,7 @@ pub struct BraiinsFirmware {}
 
 impl Display for BraiinsFirmware {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Braiins")
+        write!(f, "{}", FirmwareType::Braiins)
     }
 }
 
