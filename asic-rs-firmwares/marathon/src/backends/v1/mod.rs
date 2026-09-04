@@ -939,6 +939,9 @@ impl GetUptime for MaraV1 {
     }
 }
 
+impl GetBestShare for MaraV1 {}
+impl GetSessionBestShare for MaraV1 {}
+
 impl GetIsMining for MaraV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)

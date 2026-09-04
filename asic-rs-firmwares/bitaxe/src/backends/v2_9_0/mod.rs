@@ -199,6 +199,22 @@ impl GetDataLocations for Bitaxe290 {
                     tag: None,
                 },
             )],
+            DataField::BestShare => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("bestDiff"),
+                    tag: None,
+                },
+            )],
+            DataField::SessionBestShare => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("bestSessionDiff"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
@@ -409,6 +425,9 @@ impl GetUptime for Bitaxe290 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
+
+impl GetBestShare for Bitaxe290 {}
+impl GetSessionBestShare for Bitaxe290 {}
 impl GetIsMining for Bitaxe290 {}
 impl GetPools for Bitaxe290 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {

@@ -735,6 +735,9 @@ impl GetUptime for ElphapexV1 {
     }
 }
 
+impl GetBestShare for ElphapexV1 {}
+impl GetSessionBestShare for ElphapexV1 {}
+
 impl GetIsMining for ElphapexV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.get(&DataField::IsMining)

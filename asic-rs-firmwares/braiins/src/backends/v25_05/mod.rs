@@ -627,6 +627,9 @@ impl GetUptime for BraiinsV2505 {
     }
 }
 
+impl GetBestShare for BraiinsV2505 {}
+impl GetSessionBestShare for BraiinsV2505 {}
+
 impl GetIsMining for BraiinsV2505 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.get(&DataField::IsMining).is_some_and(|v| !v.is_null())

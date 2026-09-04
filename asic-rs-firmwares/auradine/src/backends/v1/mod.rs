@@ -1150,6 +1150,9 @@ impl GetUptime for AuradineV1 {
     }
 }
 
+impl GetBestShare for AuradineV1 {}
+impl GetSessionBestShare for AuradineV1 {}
+
 impl GetIsMining for AuradineV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         if let Some(is_mining_data) = data.get(&DataField::IsMining) {

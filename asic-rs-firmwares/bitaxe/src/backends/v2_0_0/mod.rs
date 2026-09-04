@@ -195,6 +195,22 @@ impl GetDataLocations for Bitaxe200 {
                     tag: None,
                 },
             )],
+            DataField::BestShare => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("bestDiff"),
+                    tag: None,
+                },
+            )],
+            DataField::SessionBestShare => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("bestSessionDiff"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
@@ -425,6 +441,9 @@ impl GetUptime for Bitaxe200 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
+
+impl GetBestShare for Bitaxe200 {}
+impl GetSessionBestShare for Bitaxe200 {}
 impl GetIsMining for Bitaxe200 {}
 impl GetPools for Bitaxe200 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
@@ -713,6 +732,8 @@ mod tests {
         assert_eq!(
             &miner_data.wattage,
             &Some(Power::from_watts(2.65000009536743))
-        )
+        );
+        assert_eq!(miner_data.best_share, Some(483_000.0));
+        assert_eq!(miner_data.session_best_share, Some(0.0));
     }
 }

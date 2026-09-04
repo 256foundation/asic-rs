@@ -691,6 +691,9 @@ impl GetUptime for ProtoV1 {
     }
 }
 
+impl GetBestShare for ProtoV1 {}
+impl GetSessionBestShare for ProtoV1 {}
+
 impl GetIsMining for ProtoV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         matches!(

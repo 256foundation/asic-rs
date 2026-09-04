@@ -453,6 +453,14 @@ impl GetDataLocations for AntMinerV2020 {
                     tag: None,
                 },
             )],
+            DataField::BestShare => vec![(
+                RPC_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/SUMMARY/0/Best Share"),
+                    tag: None,
+                },
+            )],
             // `total_rateideal`, by contrast, says nothing about its own
             // scale, so carry STATS' `rate_unit` alongside it.
             DataField::ExpectedHashrate => vec![
@@ -792,6 +800,9 @@ impl GetUptime for AntMinerV2020 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
+
+impl GetBestShare for AntMinerV2020 {}
+impl GetSessionBestShare for AntMinerV2020 {}
 
 impl GetIsMining for AntMinerV2020 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
