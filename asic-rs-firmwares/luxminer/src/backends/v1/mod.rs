@@ -888,6 +888,9 @@ impl GetUptime for LuxMinerV1 {
     }
 }
 
+impl GetBestShare for LuxMinerV1 {}
+impl GetSessionBestShare for LuxMinerV1 {}
+
 impl GetIsMining for LuxMinerV1 {}
 
 impl GetPools for LuxMinerV1 {

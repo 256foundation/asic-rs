@@ -537,6 +537,9 @@ impl GetUptime for BraiinsV2507 {
     }
 }
 
+impl GetBestShare for BraiinsV2507 {}
+impl GetSessionBestShare for BraiinsV2507 {}
+
 impl GetIsMining for BraiinsV2507 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         // 1 -> Not Started

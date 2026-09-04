@@ -146,6 +146,15 @@ pub struct MinerData {
     pub is_mining: bool,
     /// The current pools configured on the miner
     pub pools: Vec<PoolGroupData>,
+    /// Difficulty of the best share found over the miner's lifetime, when reported.
+    ///
+    /// This is a dimensionless share difficulty (not hashrate). Firmware that
+    /// only expose a single best-share value should populate this field and
+    /// leave [`Self::session_best_share`] as `None`.
+    pub best_share: Option<f64>,
+    /// Difficulty of the best share found since the last boot or hashing start,
+    /// when the firmware distinguishes session from all-time.
+    pub session_best_share: Option<f64>,
 }
 
 #[cfg(feature = "python")]

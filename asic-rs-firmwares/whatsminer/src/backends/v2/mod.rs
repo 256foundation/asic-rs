@@ -550,6 +550,9 @@ impl GetUptime for WhatsMinerV2 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
+
+impl GetBestShare for WhatsMinerV2 {}
+impl GetSessionBestShare for WhatsMinerV2 {}
 impl GetIsMining for WhatsMinerV2 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         // mineroff: "true" means mining is OFF

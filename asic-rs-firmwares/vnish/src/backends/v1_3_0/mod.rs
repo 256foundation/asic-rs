@@ -811,6 +811,9 @@ impl GetUptime for VnishV130 {
     }
 }
 
+impl GetBestShare for VnishV130 {}
+impl GetSessionBestShare for VnishV130 {}
+
 impl GetIsMining for VnishV130 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)

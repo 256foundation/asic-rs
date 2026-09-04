@@ -917,6 +917,9 @@ impl GetUptime for AvalonAMiner {
     }
 }
 
+impl GetBestShare for AvalonAMiner {}
+impl GetSessionBestShare for AvalonAMiner {}
+
 impl GetFluidTemperature for AvalonAMiner {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
         data.extract_map::<f64, _>(DataField::FluidTemperature, Temperature::from_celsius)

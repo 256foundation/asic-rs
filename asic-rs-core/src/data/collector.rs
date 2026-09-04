@@ -102,6 +102,12 @@ pub enum DataField {
     /// Pool configuration (addresses, statuses, etc.).
     #[cfg_attr(feature = "python", pydantic(value = "Pools"))]
     Pools,
+    /// Difficulty of the best share found over the miner's lifetime, when reported.
+    #[cfg_attr(feature = "python", pydantic(value = "BestShare"))]
+    BestShare,
+    /// Difficulty of the best share found since the last boot or hashing start, when reported.
+    #[cfg_attr(feature = "python", pydantic(value = "SessionBestShare"))]
+    SessionBestShare,
 }
 
 /// A function pointer type that takes a JSON `Value` and an optional key,

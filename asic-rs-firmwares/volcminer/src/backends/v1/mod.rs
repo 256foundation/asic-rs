@@ -529,6 +529,9 @@ impl GetUptime for VolcMinerV1 {
     }
 }
 
+impl GetBestShare for VolcMinerV1 {}
+impl GetSessionBestShare for VolcMinerV1 {}
+
 impl GetIsMining for VolcMinerV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         self.parse_hashrate(data)

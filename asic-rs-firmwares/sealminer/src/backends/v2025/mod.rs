@@ -611,6 +611,9 @@ impl GetUptime for SealMinerV2025 {
     }
 }
 
+impl GetBestShare for SealMinerV2025 {}
+impl GetSessionBestShare for SealMinerV2025 {}
+
 impl GetIsMining for SealMinerV2025 {}
 
 impl GetPools for SealMinerV2025 {

@@ -18,6 +18,7 @@ use asic_rs_core::{
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         pool::{PoolData, PoolGroupData, PoolScheme, PoolURL},
+        share::parse_share_difficulty,
     },
     traits::{miner::*, model::MinerModel},
     util::unix_timestamp_secs,
@@ -196,6 +197,22 @@ impl GetDataLocations for Bitaxe290 {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some(""),
+                    tag: None,
+                },
+            )],
+            DataField::BestShare => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("bestDiff"),
+                    tag: None,
+                },
+            )],
+            DataField::SessionBestShare => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("bestSessionDiff"),
                     tag: None,
                 },
             )],
@@ -407,6 +424,20 @@ impl GetMessages for Bitaxe290 {
 impl GetUptime for Bitaxe290 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
+    }
+}
+
+impl GetBestShare for Bitaxe290 {
+    fn parse_best_share(&self, data: &HashMap<DataField, Value>) -> Option<f64> {
+        data.get(&DataField::BestShare)
+            .and_then(parse_share_difficulty)
+    }
+}
+
+impl GetSessionBestShare for Bitaxe290 {
+    fn parse_session_best_share(&self, data: &HashMap<DataField, Value>) -> Option<f64> {
+        data.get(&DataField::SessionBestShare)
+            .and_then(parse_share_difficulty)
     }
 }
 impl GetIsMining for Bitaxe290 {}

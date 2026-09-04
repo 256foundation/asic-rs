@@ -176,6 +176,8 @@ pub trait GetMinerData:
     + GetUptime
     + GetIsMining
     + GetPools
+    + GetBestShare
+    + GetSessionBestShare
 {
     /// Asynchronously retrieves standardized information about a miner,
     /// returning it as a `MinerData` struct.
@@ -236,6 +238,8 @@ impl<
         + GetUptime
         + GetIsMining
         + GetPools
+        + GetBestShare
+        + GetSessionBestShare
         + MinerInterface,
 > GetMinerData for T
 {
@@ -278,6 +282,8 @@ impl<
         let is_mining = self.parse_is_mining(&data);
         let messages = self.parse_messages(&data);
         let pools = self.parse_pools(&data);
+        let best_share = self.parse_best_share(&data);
+        let session_best_share = self.parse_session_best_share(&data);
         let device_info = self.get_device_info();
 
         // computed fields
@@ -370,6 +376,8 @@ impl<
             is_mining,
 
             pools,
+            best_share,
+            session_best_share,
         }
     }
 }
@@ -846,6 +854,36 @@ pub trait GetPools: CollectData {
     #[allow(unused_variables)]
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         vec![]
+    }
+}
+
+// Best share difficulty (all-time)
+#[async_trait]
+pub trait GetBestShare: CollectData {
+    #[tracing::instrument(level = "debug")]
+    async fn get_best_share(&self) -> Option<f64> {
+        let mut collector = self.get_collector();
+        let data = collector.collect(&[DataField::BestShare]).await;
+        self.parse_best_share(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_best_share(&self, data: &HashMap<DataField, Value>) -> Option<f64> {
+        None
+    }
+}
+
+// Best share difficulty (this session / since boot)
+#[async_trait]
+pub trait GetSessionBestShare: CollectData {
+    #[tracing::instrument(level = "debug")]
+    async fn get_session_best_share(&self) -> Option<f64> {
+        let mut collector = self.get_collector();
+        let data = collector.collect(&[DataField::SessionBestShare]).await;
+        self.parse_session_best_share(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_session_best_share(&self, data: &HashMap<DataField, Value>) -> Option<f64> {
+        None
     }
 }
 
