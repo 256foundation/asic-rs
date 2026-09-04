@@ -329,6 +329,14 @@ impl GetDataLocations for BraiinsV2507 {
                     tag: None,
                 },
             )],
+            DataField::BestShare => vec![(
+                WEB_MINER_STATS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner_stats/best_share"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
@@ -522,6 +530,9 @@ impl GetUptime for BraiinsV2507 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
+
+impl GetBestShare for BraiinsV2507 {}
+impl GetSessionBestShare for BraiinsV2507 {}
 
 impl GetIsMining for BraiinsV2507 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {

@@ -127,6 +127,8 @@ def minimal_miner_data(**overrides: object) -> dict[str, object]:
         "uptime": None,
         "is_mining": False,
         "pools": [],
+        "best_share": None,
+        "session_best_share": None,
     }
     data.update(overrides)
     return data

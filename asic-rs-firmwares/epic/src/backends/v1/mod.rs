@@ -1228,6 +1228,9 @@ impl GetUptime for PowerPlayV1 {
     }
 }
 
+impl GetBestShare for PowerPlayV1 {}
+impl GetSessionBestShare for PowerPlayV1 {}
+
 impl GetIsMining for PowerPlayV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)

@@ -629,6 +629,9 @@ impl GetUptime for ApolloV2 {
     }
 }
 
+impl GetBestShare for ApolloV2 {}
+impl GetSessionBestShare for ApolloV2 {}
+
 impl GetIsMining for ApolloV2 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         let Some(status) = data.get(&DataField::IsMining) else {

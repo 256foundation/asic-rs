@@ -283,6 +283,10 @@ impl GetDataLocations for AvalonAMiner {
             command: "pools",
             parameters: None,
         };
+        const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
+            command: "summary",
+            parameters: None,
+        };
 
         match data_field {
             DataField::Mac => vec![(
@@ -486,6 +490,14 @@ impl GetDataLocations for AvalonAMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/POOLS"),
+                    tag: None,
+                },
+            )],
+            DataField::BestShare => vec![(
+                RPC_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/SUMMARY/0/Best Share"),
                     tag: None,
                 },
             )],
@@ -915,6 +927,9 @@ impl GetUptime for AvalonAMiner {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
+
+impl GetBestShare for AvalonAMiner {}
+impl GetSessionBestShare for AvalonAMiner {}
 
 impl GetFluidTemperature for AvalonAMiner {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {

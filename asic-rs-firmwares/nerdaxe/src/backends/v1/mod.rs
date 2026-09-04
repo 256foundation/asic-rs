@@ -193,6 +193,22 @@ impl GetDataLocations for NerdAxeV1 {
                     tag: None,
                 },
             )],
+            DataField::BestShare => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("bestDiff"),
+                    tag: None,
+                },
+            )],
+            DataField::SessionBestShare => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("bestSessionDiff"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
@@ -411,6 +427,9 @@ impl GetUptime for NerdAxeV1 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
+
+impl GetBestShare for NerdAxeV1 {}
+impl GetSessionBestShare for NerdAxeV1 {}
 impl GetIsMining for NerdAxeV1 {}
 impl GetPools for NerdAxeV1 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {

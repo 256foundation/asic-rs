@@ -348,6 +348,14 @@ impl GetDataLocations for VnishV130 {
                     tag: None,
                 },
             )],
+            DataField::BestShare => vec![(
+                WEB_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner/best_share"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
@@ -794,6 +802,9 @@ impl GetUptime for VnishV130 {
             })
     }
 }
+
+impl GetBestShare for VnishV130 {}
+impl GetSessionBestShare for VnishV130 {}
 
 impl GetIsMining for VnishV130 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {

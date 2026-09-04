@@ -535,6 +535,14 @@ impl GetDataLocations for LuxMinerV1 {
                     tag: None,
                 },
             )],
+            DataField::BestShare => vec![(
+                RPC_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/SUMMARY/0/Best Share"),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
@@ -887,6 +895,9 @@ impl GetUptime for LuxMinerV1 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
+
+impl GetBestShare for LuxMinerV1 {}
+impl GetSessionBestShare for LuxMinerV1 {}
 
 impl GetIsMining for LuxMinerV1 {}
 

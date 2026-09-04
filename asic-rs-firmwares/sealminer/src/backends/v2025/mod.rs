@@ -227,6 +227,14 @@ impl GetDataLocations for SealMinerV2025 {
                     tag: None,
                 },
             )],
+            DataField::BestShare => vec![(
+                RPC_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/SUMMARY/0/Best Share"),
+                    tag: None,
+                },
+            )],
             DataField::ExpectedHashrate => vec![(
                 RPC_STATS,
                 DataExtractor {
@@ -609,6 +617,9 @@ impl GetUptime for SealMinerV2025 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
+
+impl GetBestShare for SealMinerV2025 {}
+impl GetSessionBestShare for SealMinerV2025 {}
 
 impl GetIsMining for SealMinerV2025 {}
 

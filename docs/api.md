@@ -96,6 +96,8 @@ Common telemetry methods:
 | Hashrate | `get_hashrate` |
 | Fans | `get_fans` |
 | Wattage | `get_wattage` |
+| Best share difficulty | `get_best_share` |
+| Session best share difficulty | `get_session_best_share` |
 | Messages | `get_messages` |
 | Pools | `get_pools` |
 | Mining state | `get_is_mining` |

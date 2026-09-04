@@ -203,6 +203,14 @@ impl GetDataLocations for WhatsMinerV1 {
                     tag: None,
                 },
             )],
+            DataField::BestShare => vec![(
+                RPC_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/SUMMARY/0/Best Share"),
+                    tag: None,
+                },
+            )],
             DataField::ExpectedHashrate => vec![(
                 RPC_SUMMARY,
                 DataExtractor {
@@ -474,6 +482,9 @@ impl GetUptime for WhatsMinerV1 {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
+
+impl GetBestShare for WhatsMinerV1 {}
+impl GetSessionBestShare for WhatsMinerV1 {}
 impl GetIsMining for WhatsMinerV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         // btmineroff: "true" means mining is OFF

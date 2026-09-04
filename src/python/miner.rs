@@ -453,6 +453,22 @@ impl Miner {
             Ok(data.map(|w| w.as_watts()))
         })
     }
+    /// Await all-time best share difficulty, if the firmware reports it.
+    pub fn get_best_share<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<f64>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_best_share().await)
+        })
+    }
+    /// Await session best share difficulty (since boot), if the firmware reports it.
+    pub fn get_session_best_share<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<f64>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_session_best_share().await)
+        })
+    }
     /// Await the current manual throttle percent (100 = unthrottled), if exposed.
     pub fn get_tuning_percent<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<u8>>> {
         let inner = Arc::clone(&self.inner);
