@@ -3,12 +3,20 @@ from __future__ import annotations
 import inspect
 from datetime import timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import BaseModel, ValidationError
 
 from pyasic_rs.asic_rs import HashAlgorithm, Miner
-from pyasic_rs.config import FanConfig, Pool, PoolGroup, TemperatureConfig, TuningConfig
+from pyasic_rs.config import (
+    FanConfig,
+    Pool,
+    PoolGroup,
+    TemperatureConfig,
+    TimezoneConfig,
+    TuningConfig,
+)
 from pyasic_rs.data import (
     ChipData,
     HashRate,
@@ -191,6 +199,36 @@ def test_temperature_config_constructor_defaults_to_none() -> None:
     config = TemperatureConfig(hot=75.0)
 
     assert config.model_dump() == {"hot": 75.0, "danger": None, "minimum": None}
+
+
+def test_timezone_config_takes_zoneinfo_or_iana_names_and_dumps_names() -> None:
+    config = TimezoneConfig(
+        timezone="Europe/Vienna", available=["Europe/Vienna", ZoneInfo("Etc/GMT-2")]
+    )
+
+    # The fields come back as zoneinfo.ZoneInfo, not as the strings passed in.
+    assert isinstance(config.timezone, ZoneInfo)
+    assert config.timezone.key == "Europe/Vienna"
+    assert [tz.key for tz in config.available] == ["Europe/Vienna", "Etc/GMT-2"]
+    assert config.model_dump() == {
+        "timezone": "Europe/Vienna",
+        "available": ["Europe/Vienna", "Etc/GMT-2"],
+    }
+
+    validated = TimezoneConfig.model_validate(
+        {"timezone": ZoneInfo("Etc/GMT-2"), "available": ["UTC"]}
+    )
+    assert validated.timezone.key == "Etc/GMT-2"
+    assert validated.model_dump() == {"timezone": "Etc/GMT-2", "available": ["UTC"]}
+
+    empty = TimezoneConfig()
+    assert empty.timezone is None
+    assert empty.available == []
+    assert TimezoneConfig(timezone=None).timezone is None
+
+    # VNish's "GMT+2" is not an IANA name; the canonical spelling is Etc/GMT-2.
+    with pytest.raises(ValueError, match=r"GMT\+2"):
+        TimezoneConfig(timezone="GMT+2")
 
 
 def test_hashrate_validates_and_serializes_as_pydantic_field() -> None:

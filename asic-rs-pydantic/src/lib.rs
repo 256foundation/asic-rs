@@ -1,5 +1,6 @@
 use std::{fmt::Display, net::IpAddr, str::FromStr, time::Duration};
 
+use chrono_tz::Tz;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use pyo3::{
@@ -180,6 +181,31 @@ impl PyPydanticType for MacAddr {
 
     fn to_pydantic_data(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         Ok(self.to_string().into_pyobject(py)?.into_any().unbind())
+    }
+}
+
+impl PyPydanticType for Tz {
+    fn pydantic_schema<'py>(
+        core_schema: &Bound<'py, PyAny>,
+        _mode: PydanticSchemaMode,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        core_schema.call_method0("str_schema")
+    }
+
+    fn from_pydantic(value: &Bound<'_, PyAny>) -> PyResult<Self> {
+        // A `zoneinfo.ZoneInfo` (what pyo3 hands out for a `Tz`) converts
+        // directly; otherwise the value is an IANA name.
+        if let Ok(tz) = value.extract::<Self>() {
+            return Ok(tz);
+        }
+        let name = value.extract::<String>()?;
+        name.parse().map_err(|error| {
+            PyValueError::new_err(format!("Invalid IANA timezone {name:?}: {error}"))
+        })
+    }
+
+    fn to_pydantic_data(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        Ok(self.name().into_pyobject(py)?.into_any().unbind())
     }
 }
 

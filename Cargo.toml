@@ -118,6 +118,7 @@ ipnet = "2.12"
 rand = "0.10"
 regex = "1.12"
 chrono = "0.4.44"
+chrono-tz = { version = "0.10.4", features = ["serde"] }
 tokio-stream = "0.1.18"
 async-stream = "0.3.6"
 sha2 = "0.10.9"
@@ -134,6 +135,7 @@ rlimit = "0.11"
 secrecy = "0.10"
 
 pyo3 = { version = "0.28.2", features = [
+    "chrono-tz",
     "experimental-async",
     "experimental-inspect",
     "multiple-pymethods",

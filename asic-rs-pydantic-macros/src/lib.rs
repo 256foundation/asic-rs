@@ -498,6 +498,8 @@ fn pydantic_type_hint(ty: &Type) -> String {
                 "String" => "str".to_owned(),
                 "IpAddr" => "IPv4Address | IPv6Address".to_owned(),
                 "MacAddr" => "str".to_owned(),
+                // A `zoneinfo.ZoneInfo` (pyo3 hints it as `datetime.tzinfo`) or an IANA name.
+                "Tz" => "tzinfo | str".to_owned(),
                 "Duration" => "timedelta | float | int".to_owned(),
                 "AngularVelocity" | "Frequency" | "Power" | "Temperature" | "Voltage" => {
                     "float".to_owned()

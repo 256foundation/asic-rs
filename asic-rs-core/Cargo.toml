@@ -24,6 +24,8 @@ tracing.workspace  = true
 tokio.workspace = true
 futures.workspace = true
 secrecy.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
 
 asic-rs-pydantic = { workspace = true, optional = true }
 pyo3 = {workspace = true, optional = true}

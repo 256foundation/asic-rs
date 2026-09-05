@@ -569,6 +569,7 @@ impl GetMAC for AvalonQMiner {
 }
 
 impl GetSerialNumber for AvalonQMiner {}
+impl SupportsTimezoneConfig for AvalonQMiner {}
 
 impl GetHostname for AvalonQMiner {}
 

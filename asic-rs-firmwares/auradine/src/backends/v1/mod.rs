@@ -1058,6 +1058,7 @@ impl GetPsuFans for AuradineV1 {
 }
 
 impl GetFluidTemperature for AuradineV1 {}
+impl SupportsTimezoneConfig for AuradineV1 {}
 
 impl GetWattage for AuradineV1 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {

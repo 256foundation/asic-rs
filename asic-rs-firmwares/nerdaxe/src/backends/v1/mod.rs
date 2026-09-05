@@ -223,6 +223,7 @@ impl GetMAC for NerdAxeV1 {
 }
 
 impl GetSerialNumber for NerdAxeV1 {}
+impl SupportsTimezoneConfig for NerdAxeV1 {}
 impl GetHostname for NerdAxeV1 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)

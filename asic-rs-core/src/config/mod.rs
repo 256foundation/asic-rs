@@ -4,4 +4,5 @@ pub mod pools;
 pub mod preset;
 pub mod scaling;
 pub mod temperature;
+pub mod timezone;
 pub mod tuning;

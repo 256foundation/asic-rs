@@ -10,6 +10,7 @@ workspace = true
 
 [dependencies]
 asic-rs-pydantic-macros.workspace = true
+chrono-tz.workspace = true
 macaddr.workspace = true
 measurements.workspace = true
 pyo3.workspace = true

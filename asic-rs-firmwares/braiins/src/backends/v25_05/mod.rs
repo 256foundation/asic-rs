@@ -3,8 +3,9 @@ use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 use anyhow;
 use asic_rs_core::{
     config::{
-        collector::{ConfigCollector, ConfigField, ConfigLocation},
+        collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
         pools::PoolGroupConfig,
+        timezone::{TimezoneConfig, Tz},
     },
     data::{
         board::BoardData,
@@ -75,7 +76,20 @@ impl APIClient for BraiinsV2505 {
 impl GetConfigsLocations for BraiinsV2505 {
     #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
-        vec![]
+        const GQL_TIMEZONE: MinerCommand = MinerCommand::GraphQL {
+            command: "{ bos { timezone { id } timezoneList { id } } }",
+        };
+        match data_field {
+            ConfigField::Timezone => vec![(
+                GQL_TIMEZONE,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bos"),
+                    tag: None,
+                },
+            )],
+            _ => vec![],
+        }
     }
 }
 
@@ -424,6 +438,65 @@ impl GetTuningCapabilities for BraiinsV2505 {
     ) -> Option<TuningCapabilities> {
         let power_target = data.get(&DataField::TuningCapabilities)?;
         Some(power_target_capabilities(power_target))
+    }
+}
+#[async_trait]
+impl SupportsTimezoneConfig for BraiinsV2505 {
+    fn supports_timezone_config(&self) -> bool {
+        true
+    }
+
+    fn parse_timezone_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TimezoneConfig> {
+        let obj = data
+            .get(&ConfigField::Timezone)
+            .ok_or_else(|| anyhow::anyhow!("No timezone data returned"))?;
+        let timezone = obj
+            .pointer("/timezone/id")
+            .and_then(|v| v.as_str())
+            .map(|id| {
+                id.parse::<Tz>()
+                    .map_err(|_| anyhow::anyhow!("Unknown IANA timezone {id:?}"))
+            })
+            .transpose()?;
+        // BOS ids are IANA names already; drop any the bundled database lacks
+        // rather than failing the whole read over one unknown entry.
+        let available = obj
+            .pointer("/timezoneList")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|t| t.get("id").and_then(|v| v.as_str()))
+                    .filter_map(|id| id.parse::<Tz>().ok())
+                    .collect()
+            })
+            .unwrap_or_default();
+        Ok(TimezoneConfig {
+            timezone,
+            available,
+        })
+    }
+
+    /// BOS speaks IANA natively, so the zone name goes over the wire as is.
+    async fn set_timezone_config(&self, config: TimezoneConfig) -> anyhow::Result<bool> {
+        let timezone = config
+            .timezone
+            .ok_or_else(|| anyhow::anyhow!("Timezone config has no timezone to set"))?;
+        let mutation = r#"mutation ($tz: String!) {
+            bos { setTimezone(timezone: $tz) { __typename } }
+        }"#;
+        let variables = json!({ "tz": timezone.name() });
+        let result = self
+            .graphql
+            .send_graphql_command(mutation, true, Some(variables))
+            .await?;
+        // BosResult is a union; a `BosError` variant signals failure.
+        let typename = result
+            .pointer("/bos/setTimezone/__typename")
+            .and_then(|v| v.as_str());
+        Ok(matches!(typename, Some(t) if t != "BosError"))
     }
 }
 

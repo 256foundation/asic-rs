@@ -354,6 +354,7 @@ impl GetSerialNumber for SealMinerV2025 {
 }
 
 impl GetHostname for SealMinerV2025 {}
+impl SupportsTimezoneConfig for SealMinerV2025 {}
 
 impl GetApiVersion for SealMinerV2025 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
