@@ -786,6 +786,9 @@ impl Validate for WhatsMinerV2 {
 /// Maps a TuningConfig to the WhatsMiner V2 RPC command name and parameter.
 fn tuning_config_to_rpc(config: &TuningConfig) -> anyhow::Result<(&'static str, Option<Value>)> {
     match &config.target {
+        TuningTarget::Manual { .. } => {
+            anyhow::bail!("Manual tuning target is not supported on WhatsMiner")
+        }
         TuningTarget::MiningMode(mode) => {
             let cmd = match mode {
                 MiningMode::Low => "set_low_power",

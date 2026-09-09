@@ -615,6 +615,35 @@ def test_tuning_config_mode_accepts_mining_mode_enum() -> None:
     }
 
 
+def test_tuning_config_manual_round_trips_voltage_and_frequency() -> None:
+    config = TuningConfig.manual(12.6, 485.0)
+    model = TuningConfigModel.model_validate(
+        {
+            "tuning": {
+                "target": {
+                    "type": "manual",
+                    "value": {"voltage": 12.6, "frequency": 485.0},
+                }
+            }
+        }
+    )
+
+    assert config.variant == "manual"
+    assert config.target_voltage == 12.6
+    assert config.target_frequency == 485.0
+    assert model.tuning.target_voltage == 12.6
+    assert model.tuning.target_frequency == 485.0
+    assert model.model_dump() == {
+        "tuning": {
+            "target": {
+                "type": "manual",
+                "value": {"voltage": 12.6, "frequency": 485.0},
+            },
+            "algorithm": None,
+        }
+    }
+
+
 def test_tuning_config_mode_json_schema_exposes_mining_mode_enum() -> None:
     schema = TuningConfigModel.model_json_schema()
 
@@ -726,6 +755,20 @@ def test_tuning_target_variant_repr_is_readable() -> None:
     assert repr(target) == "TuningTarget.mode(mode=Normal)"
     assert str(target) == "TuningTarget.mode(mode=Normal)"
 
+    manual = TuningTarget.manual(12.6, 485.0)
+    assert manual.variant == "manual"
+    assert manual.voltage == 12.6
+    assert manual.frequency == 485.0
+    assert repr(manual) == "TuningTarget.manual(voltage=12.6, frequency=485.0)"
+
+    manual_without_setpoints = TuningTarget.manual()
+    assert manual_without_setpoints.variant == "manual"
+    assert manual_without_setpoints.voltage is None
+    assert manual_without_setpoints.frequency is None
+    assert repr(manual_without_setpoints) == (
+        "TuningTarget.manual(voltage=None, frequency=None)"
+    )
+
     assert repr(TuningTarget.power(3250.0)) == "TuningTarget.power(watts=3250.0)"
     assert repr(TuningTarget.hashrate(HashRate(110.0, HashRateUnit.TH))) == (
         "TuningTarget.hashrate(hashrate=110 TH/s)"
@@ -743,6 +786,38 @@ def test_tuning_target_variant_repr_is_readable() -> None:
     assert model.miner.tuning_target.target_mode == MiningMode.Normal
     assert repr(model.miner.tuning_target) == "TuningTarget.mode(mode=Normal)"
     assert str(model.miner.tuning_target) == "TuningTarget.mode(mode=Normal)"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected_voltage", "expected_frequency"),
+    [
+        ({}, None, None),
+        ({"voltage": 12.6}, 12.6, None),
+        ({"frequency": 485.0}, None, 485.0),
+        ({"voltage": None, "frequency": None}, None, None),
+    ],
+)
+def test_manual_tuning_target_accepts_optional_setpoints(
+    value: dict[str, float | None],
+    expected_voltage: float | None,
+    expected_frequency: float | None,
+) -> None:
+    model = MinerDataModel.model_validate(
+        {
+            "miner": minimal_miner_data(
+                tuning_target={"type": "manual", "value": value}
+            )
+        }
+    )
+
+    assert model.miner.tuning_target is not None
+    assert model.miner.tuning_target.variant == "manual"
+    assert model.miner.tuning_target.voltage == expected_voltage
+    assert model.miner.tuning_target.frequency == expected_frequency
+    assert model.model_dump()["miner"]["tuning_target"] == {
+        "type": "manual",
+        "value": {key: item for key, item in value.items() if item is not None},
+    }
 
 
 def test_nested_data_model_round_trips_hashrate_payload() -> None:

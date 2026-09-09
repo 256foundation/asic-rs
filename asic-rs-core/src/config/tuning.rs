@@ -10,9 +10,10 @@ use crate::data::miner::TuningTarget;
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 /// Desired firmware tuning target.
 ///
-/// A tuning config can target a power limit, a hashrate, or a named mining
-/// mode. The optional algorithm field lets firmwares distinguish tuning
-/// profiles when they support more than one algorithm.
+/// A tuning config can select fixed manual voltage/frequency set points, a
+/// power limit, a hashrate, or a named mining mode. The optional algorithm
+/// field lets firmwares distinguish tuning profiles when they support more
+/// than one algorithm.
 pub struct TuningConfig {
     /// Tuning target requested from the firmware.
     pub target: TuningTarget,
@@ -36,13 +37,34 @@ impl TuningConfig {
         self
     }
 
-    /// Return `"power"`, `"hashrate"`, or `"mode"` for this config target.
+    /// Return the variant name for this config target.
     pub fn variant(&self) -> &'static str {
         match &self.target {
+            TuningTarget::Manual { .. } => "manual",
             TuningTarget::Power(_) => "power",
             TuningTarget::HashRate(_) => "hashrate",
             TuningTarget::MiningMode(_) => "mode",
             TuningTarget::Preset(_) => "preset",
+        }
+    }
+
+    /// Target voltage in volts, or `None` when it is unavailable or not using manual tuning.
+    pub fn target_voltage(&self) -> Option<f64> {
+        match &self.target {
+            TuningTarget::Manual { voltage, .. } => {
+                voltage.as_ref().map(measurements::Voltage::as_volts)
+            }
+            _ => None,
+        }
+    }
+
+    /// Target frequency in megahertz, or `None` when it is unavailable or not using manual tuning.
+    pub fn target_frequency(&self) -> Option<f64> {
+        match &self.target {
+            TuningTarget::Manual { frequency, .. } => frequency
+                .as_ref()
+                .map(measurements::Frequency::as_megahertz),
+            _ => None,
         }
     }
 
@@ -87,6 +109,14 @@ impl TuningConfig {
 #[pymethods]
 impl TuningConfig {
     #[classmethod]
+    fn manual(_cls: &Bound<'_, pyo3::types::PyType>, voltage: f64, frequency: f64) -> Self {
+        Self::new(TuningTarget::Manual {
+            voltage: Some(measurements::Voltage::from_volts(voltage)),
+            frequency: Some(measurements::Frequency::from_megahertz(frequency)),
+        })
+    }
+
+    #[classmethod]
     #[pyo3(signature = (watts, algorithm = None))]
     fn power(
         _cls: &Bound<'_, pyo3::types::PyType>,
@@ -130,6 +160,20 @@ impl TuningConfig {
         self.variant()
     }
 
+    /// Target voltage in volts, or `None` unless using fixed manual tuning.
+    #[getter]
+    #[pyo3(name = "target_voltage")]
+    fn py_target_voltage(&self) -> Option<f64> {
+        self.target_voltage()
+    }
+
+    /// Target frequency in megahertz, or `None` unless using fixed manual tuning.
+    #[getter]
+    #[pyo3(name = "target_frequency")]
+    fn py_target_frequency(&self) -> Option<f64> {
+        self.target_frequency()
+    }
+
     /// Target power in watts, or `None` if targeting hashrate or mining mode.
     #[getter]
     #[pyo3(name = "target_watts")]
@@ -168,7 +212,7 @@ impl TuningConfig {
 #[cfg(feature = "python")]
 mod python_impls {
     use asic_rs_pydantic::{PyPydanticType, get_optional_field, get_required_field};
-    use measurements::Power;
+    use measurements::{Frequency, Power, Voltage};
     use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
 
     use super::TuningConfig;
@@ -198,6 +242,20 @@ mod python_impls {
                 .flatten();
 
             let target = match variant.as_str() {
+                "manual" => {
+                    let voltage = get_optional_field(&obj, "target_voltage")?
+                        .map(|value| value.extract::<Option<f64>>())
+                        .transpose()?
+                        .flatten();
+                    let frequency = get_optional_field(&obj, "target_frequency")?
+                        .map(|value| value.extract::<Option<f64>>())
+                        .transpose()?
+                        .flatten();
+                    TuningTarget::Manual {
+                        voltage: voltage.map(Voltage::from_volts),
+                        frequency: frequency.map(Frequency::from_megahertz),
+                    }
+                }
                 "power" => {
                     let watts: f64 = get_required_field(&obj, "target_watts")?.extract()?;
                     TuningTarget::Power(Power::from_watts(watts))
@@ -228,7 +286,7 @@ mod python_impls {
                 }
                 _ => {
                     return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                        "Unknown TuningConfig variant '{variant}', expected 'power', 'hashrate', 'mode', or 'preset'",
+                        "Unknown TuningConfig variant '{variant}', expected 'manual', 'power', 'hashrate', 'mode', or 'preset'",
                     )));
                 }
             };

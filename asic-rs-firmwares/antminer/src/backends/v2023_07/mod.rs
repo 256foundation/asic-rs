@@ -1235,6 +1235,9 @@ impl SupportsTuningConfig for AntMinerV202307 {
         _scaling_config: Option<asic_rs_core::config::scaling::ScalingConfig>,
     ) -> anyhow::Result<bool> {
         let mode = match config.target {
+            TuningTarget::Manual { .. } => {
+                anyhow::bail!("Manual tuning target is not supported on Antminer stock firmware")
+            }
             TuningTarget::MiningMode(MiningMode::Low) => MinerMode::Low,
             TuningTarget::MiningMode(MiningMode::Normal) => MinerMode::Normal,
             TuningTarget::MiningMode(MiningMode::High) => MinerMode::High,

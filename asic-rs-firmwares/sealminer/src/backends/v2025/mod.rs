@@ -797,6 +797,9 @@ impl SupportsTuningConfig for SealMinerV2025 {
         _scaling_config: Option<ScalingConfig>,
     ) -> anyhow::Result<bool> {
         match config.target {
+            TuningTarget::Manual { .. } => {
+                anyhow::bail!("Manual tuning not supported on SealMiner")
+            }
             TuningTarget::Power(power) => self.set_power_limit(power).await,
             TuningTarget::HashRate(_) => {
                 anyhow::bail!("Hashrate tuning not supported on SealMiner")
