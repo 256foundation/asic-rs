@@ -49,7 +49,6 @@ where
         None => serializer.serialize_none(),
     }
 }
-
 pub(crate) fn serialize_voltage<S>(v: &Option<Voltage>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
