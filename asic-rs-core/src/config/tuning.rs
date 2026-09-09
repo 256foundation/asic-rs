@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::data::miner::TuningTarget;
+use crate::data::miner::{ManualTuningValues, TuningTarget, manual_targets_to_values};
 
 #[cfg_attr(feature = "python", pyclass(skip_from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model)]
@@ -48,22 +48,10 @@ impl TuningConfig {
         }
     }
 
-    /// Target voltage in volts, or `None` when it is unavailable or not using manual tuning.
-    pub fn target_voltage(&self) -> Option<f64> {
+    /// Manual board IDs mapped to (frequency in MHz, voltage in volts).
+    pub fn target_boards(&self) -> Option<ManualTuningValues> {
         match &self.target {
-            TuningTarget::Manual { voltage, .. } => {
-                voltage.as_ref().map(measurements::Voltage::as_volts)
-            }
-            _ => None,
-        }
-    }
-
-    /// Target frequency in megahertz, or `None` when it is unavailable or not using manual tuning.
-    pub fn target_frequency(&self) -> Option<f64> {
-        match &self.target {
-            TuningTarget::Manual { frequency, .. } => frequency
-                .as_ref()
-                .map(measurements::Frequency::as_megahertz),
+            TuningTarget::Manual { boards } => Some(manual_targets_to_values(boards)),
             _ => None,
         }
     }
@@ -109,10 +97,10 @@ impl TuningConfig {
 #[pymethods]
 impl TuningConfig {
     #[classmethod]
-    fn manual(_cls: &Bound<'_, pyo3::types::PyType>, voltage: f64, frequency: f64) -> Self {
+    #[pyo3(signature = (boards = None))]
+    fn manual(_cls: &Bound<'_, pyo3::types::PyType>, boards: Option<ManualTuningValues>) -> Self {
         Self::new(TuningTarget::Manual {
-            voltage: Some(measurements::Voltage::from_volts(voltage)),
-            frequency: Some(measurements::Frequency::from_megahertz(frequency)),
+            boards: crate::data::miner::manual_targets_from_values(boards.unwrap_or_default()),
         })
     }
 
@@ -160,18 +148,11 @@ impl TuningConfig {
         self.variant()
     }
 
-    /// Target voltage in volts, or `None` unless using fixed manual tuning.
+    /// Manual board IDs mapped to (frequency in MHz, voltage in volts).
     #[getter]
-    #[pyo3(name = "target_voltage")]
-    fn py_target_voltage(&self) -> Option<f64> {
-        self.target_voltage()
-    }
-
-    /// Target frequency in megahertz, or `None` unless using fixed manual tuning.
-    #[getter]
-    #[pyo3(name = "target_frequency")]
-    fn py_target_frequency(&self) -> Option<f64> {
-        self.target_frequency()
+    #[pyo3(name = "target_boards")]
+    fn py_target_boards(&self) -> Option<ManualTuningValues> {
+        self.target_boards()
     }
 
     /// Target power in watts, or `None` if targeting hashrate or mining mode.
@@ -212,7 +193,7 @@ impl TuningConfig {
 #[cfg(feature = "python")]
 mod python_impls {
     use asic_rs_pydantic::{PyPydanticType, get_optional_field, get_required_field};
-    use measurements::{Frequency, Power, Voltage};
+    use measurements::Power;
     use pyo3::{Borrowed, PyAny, PyErr, PyResult, conversion::FromPyObject, types::PyAnyMethods};
 
     use super::TuningConfig;
@@ -242,20 +223,11 @@ mod python_impls {
                 .flatten();
 
             let target = match variant.as_str() {
-                "manual" => {
-                    let voltage = get_optional_field(&obj, "target_voltage")?
-                        .map(|value| value.extract::<Option<f64>>())
-                        .transpose()?
-                        .flatten();
-                    let frequency = get_optional_field(&obj, "target_frequency")?
-                        .map(|value| value.extract::<Option<f64>>())
-                        .transpose()?
-                        .flatten();
-                    TuningTarget::Manual {
-                        voltage: voltage.map(Voltage::from_volts),
-                        frequency: frequency.map(Frequency::from_megahertz),
-                    }
-                }
+                "manual" => TuningTarget::Manual {
+                    boards: crate::data::miner::manual_targets_from_values(
+                        get_required_field(&obj, "target_boards")?.extract()?,
+                    ),
+                },
                 "power" => {
                     let watts: f64 = get_required_field(&obj, "target_watts")?.extract()?;
                     TuningTarget::Power(Power::from_watts(watts))

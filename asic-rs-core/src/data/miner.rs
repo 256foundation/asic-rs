@@ -1,4 +1,4 @@
-use std::{net::IpAddr, time::Duration};
+use std::{collections::HashMap, net::IpAddr, time::Duration};
 
 use macaddr::MacAddr;
 use measurements::{Frequency, Power, Temperature, Voltage};
@@ -17,12 +17,63 @@ use super::{
     pool::PoolGroupData,
 };
 use crate::data::{
-    deserialize::{deserialize_frequency, deserialize_macaddr, deserialize_voltage},
-    serialize::{
-        serialize_frequency, serialize_macaddr, serialize_power, serialize_temperature,
-        serialize_voltage,
-    },
+    deserialize::deserialize_macaddr,
+    serialize::{serialize_macaddr, serialize_power, serialize_temperature},
 };
+
+/// Manual set points by board ID: (frequency, voltage). Missing measurements
+/// remain `None`; an empty map means no board set points were reported.
+pub type ManualTuningTargets = HashMap<u8, (Option<Frequency>, Option<Voltage>)>;
+
+/// Scalar manual set points by board ID: (megahertz, volts).
+pub type ManualTuningValues = HashMap<u8, (Option<f64>, Option<f64>)>;
+
+pub(crate) fn manual_targets_to_values(targets: &ManualTuningTargets) -> ManualTuningValues {
+    targets
+        .iter()
+        .map(|(&id, &(frequency, voltage))| {
+            (
+                id,
+                (
+                    frequency.map(|f| f.as_megahertz()),
+                    voltage.map(|v| v.as_volts()),
+                ),
+            )
+        })
+        .collect()
+}
+
+pub(crate) fn manual_targets_from_values(values: ManualTuningValues) -> ManualTuningTargets {
+    values
+        .into_iter()
+        .map(|(id, (frequency, voltage))| {
+            (
+                id,
+                (
+                    frequency.map(Frequency::from_megahertz),
+                    voltage.map(Voltage::from_volts),
+                ),
+            )
+        })
+        .collect()
+}
+
+mod manual_targets_serde {
+    use super::*;
+
+    pub fn serialize<S: serde::Serializer>(
+        targets: &ManualTuningTargets,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        manual_targets_to_values(targets).serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<ManualTuningTargets, D::Error> {
+        ManualTuningValues::deserialize(deserializer).map(manual_targets_from_values)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 /// Firmware tuning target reported by a miner or requested by configuration.
@@ -36,24 +87,10 @@ pub enum TuningTarget {
     /// Set points are optional because some firmware responses report that
     /// tuning is disabled without reporting one or both configured values.
     Manual {
-        /// Fixed voltage set point, if reported.
-        #[serde(
-            default,
-            serialize_with = "serialize_voltage",
-            deserialize_with = "deserialize_voltage",
-            skip_serializing_if = "Option::is_none"
-        )]
-        #[ts(optional, type = "number")]
-        voltage: Option<Voltage>,
-        /// Fixed frequency set point, if reported.
-        #[serde(
-            default,
-            serialize_with = "serialize_frequency",
-            deserialize_with = "deserialize_frequency",
-            skip_serializing_if = "Option::is_none"
-        )]
-        #[ts(optional, type = "number")]
-        frequency: Option<Frequency>,
+        /// Board IDs mapped to (frequency, voltage), serialized as (MHz, volts).
+        #[serde(default, with = "manual_targets_serde")]
+        #[ts(type = "Record<number, [number | null, number | null]>")]
+        boards: ManualTuningTargets,
     },
     /// Target a power limit.
     Power(#[ts(type = "{ watts: number }")] Power),
@@ -185,41 +222,35 @@ pub use python_tuning_target::PyTuningTarget;
 #[cfg(feature = "python")]
 mod python_tuning_target {
     use asic_rs_pydantic::{
-        PyPydanticType, PydanticSchemaMode, get_optional_field, get_required_field, literal_schema,
+        PyPydanticType, PydanticSchemaMode, get_required_field, literal_schema,
         pydantic_typed_dict_schema, tagged_union_schema,
     };
-    use measurements::{Frequency, Power, Voltage};
+    use measurements::Power;
     use pyo3::{exceptions::PyValueError, prelude::*, types::PyAnyMethods};
 
-    use super::{HashRate, MiningMode, TuningTarget};
+    use super::{
+        HashRate, ManualTuningValues, MiningMode, TuningTarget, manual_targets_from_values,
+        manual_targets_to_values,
+    };
 
     #[pyclass(name = "TuningTarget", skip_from_py_object, module = "asic_rs")]
     #[derive(Debug, Clone, PartialEq)]
     pub enum PyTuningTarget {
-        Manual {
-            voltage: Option<f64>,
-            frequency: Option<f64>,
-        },
-        Power {
-            watts: f64,
-        },
-        HashRate {
-            target_hashrate: HashRate,
-        },
-        Mode {
-            target_mode: MiningMode,
-        },
-        Preset {
-            name: String,
-        },
+        Manual { boards: ManualTuningValues },
+        Power { watts: f64 },
+        HashRate { target_hashrate: HashRate },
+        Mode { target_mode: MiningMode },
+        Preset { name: String },
     }
 
     #[pymethods]
     impl PyTuningTarget {
         #[staticmethod]
-        #[pyo3(signature = (voltage = None, frequency = None))]
-        fn manual(voltage: Option<f64>, frequency: Option<f64>) -> Self {
-            Self::Manual { voltage, frequency }
+        #[pyo3(signature = (boards = None))]
+        fn manual(boards: Option<ManualTuningValues>) -> Self {
+            Self::Manual {
+                boards: boards.unwrap_or_default(),
+            }
         }
 
         #[staticmethod]
@@ -255,18 +286,11 @@ mod python_tuning_target {
             }
         }
 
+        /// Board IDs mapped to (frequency in MHz, voltage in volts).
         #[getter]
-        fn voltage(&self) -> Option<f64> {
+        fn boards(&self) -> Option<ManualTuningValues> {
             match self {
-                Self::Manual { voltage, .. } => *voltage,
-                _ => None,
-            }
-        }
-
-        #[getter]
-        fn frequency(&self) -> Option<f64> {
-            match self {
-                Self::Manual { frequency, .. } => *frequency,
+                Self::Manual { boards } => Some(boards.clone()),
                 _ => None,
             }
         }
@@ -307,14 +331,23 @@ mod python_tuning_target {
 
         fn __repr__(&self) -> String {
             match self {
-                Self::Manual { voltage, frequency } => {
-                    let voltage = voltage
-                        .map(|value| format!("{value:?}"))
-                        .unwrap_or_else(|| "None".to_owned());
-                    let frequency = frequency
-                        .map(|value| format!("{value:?}"))
-                        .unwrap_or_else(|| "None".to_owned());
-                    format!("TuningTarget.manual(voltage={voltage}, frequency={frequency})")
+                Self::Manual { boards } => {
+                    let mut entries: Vec<_> = boards.iter().collect();
+                    entries.sort_by_key(|(id, _)| **id);
+                    let entries = entries
+                        .into_iter()
+                        .map(|(id, (frequency, voltage))| {
+                            let frequency = frequency
+                                .map(|v| format!("{v:?}"))
+                                .unwrap_or_else(|| "None".to_owned());
+                            let voltage = voltage
+                                .map(|v| format!("{v:?}"))
+                                .unwrap_or_else(|| "None".to_owned());
+                            format!("{id}: ({frequency}, {voltage})")
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!("TuningTarget.manual(boards={{{entries}}})")
                 }
                 Self::Power { watts } => format!("TuningTarget.power(watts={watts:?})"),
                 Self::HashRate { target_hashrate } => {
@@ -333,9 +366,8 @@ mod python_tuning_target {
     impl From<TuningTarget> for PyTuningTarget {
         fn from(value: TuningTarget) -> Self {
             match value {
-                TuningTarget::Manual { voltage, frequency } => Self::Manual {
-                    voltage: voltage.map(|value| value.as_volts()),
-                    frequency: frequency.map(|value| value.as_megahertz()),
+                TuningTarget::Manual { boards } => Self::Manual {
+                    boards: manual_targets_to_values(&boards),
                 },
                 TuningTarget::Power(power) => Self::Power {
                     watts: power.as_watts(),
@@ -352,9 +384,8 @@ mod python_tuning_target {
     impl From<PyTuningTarget> for TuningTarget {
         fn from(value: PyTuningTarget) -> Self {
             match value {
-                PyTuningTarget::Manual { voltage, frequency } => TuningTarget::Manual {
-                    voltage: voltage.map(Voltage::from_volts),
-                    frequency: frequency.map(Frequency::from_megahertz),
+                PyTuningTarget::Manual { boards } => TuningTarget::Manual {
+                    boards: manual_targets_from_values(boards),
                 },
                 PyTuningTarget::Power { watts } => TuningTarget::Power(Power::from_watts(watts)),
                 PyTuningTarget::HashRate { target_hashrate } => {
@@ -386,10 +417,14 @@ mod python_tuning_target {
             core_schema: &Bound<'py, PyAny>,
             mode: PydanticSchemaMode,
         ) -> PyResult<Bound<'py, PyAny>> {
-            let manual_value_schema = pydantic_typed_dict_schema!(core_schema, "asic_rs.TuningTargetManualValue", {
-                "voltage" => nullable_if(<Voltage as PyPydanticType>::pydantic_schema(core_schema, mode)?, false),
-                "frequency" => nullable_if(<Frequency as PyPydanticType>::pydantic_schema(core_schema, mode)?, false),
-            })?;
+            let number = <Option<f64> as PyPydanticType>::pydantic_schema(core_schema, mode)?;
+            let pair = core_schema.call_method1("tuple_schema", (vec![number.clone(), number],))?;
+            let key_options = pyo3::types::PyDict::new(core_schema.py());
+            use pyo3::types::PyDictMethods;
+            key_options.set_item("ge", 0)?;
+            key_options.set_item("le", u8::MAX)?;
+            let key = core_schema.call_method("int_schema", (), Some(&key_options))?;
+            let manual_value_schema = core_schema.call_method1("dict_schema", (key, pair))?;
             let manual_schema = pydantic_typed_dict_schema!(core_schema, "asic_rs.TuningTargetManual", {
                 "type" => required(literal_schema(core_schema, &["manual"])?),
                 "value" => required(manual_value_schema),
@@ -440,14 +475,7 @@ mod python_tuning_target {
             let v = get_required_field(value, "value")?;
             match type_str.as_str() {
                 "manual" => Ok(TuningTarget::Manual {
-                    voltage: get_optional_field(&v, "voltage")?
-                        .map(|field| <Option<Voltage> as PyPydanticType>::from_pydantic(&field))
-                        .transpose()?
-                        .flatten(),
-                    frequency: get_optional_field(&v, "frequency")?
-                        .map(|field| <Option<Frequency> as PyPydanticType>::from_pydantic(&field))
-                        .transpose()?
-                        .flatten(),
+                    boards: manual_targets_from_values(v.extract()?),
                 }),
                 "power" => Ok(TuningTarget::Power(
                     <Power as PyPydanticType>::from_pydantic(&v)?,
@@ -471,22 +499,9 @@ mod python_tuning_target {
             use pyo3::types::{PyDict, PyDictMethods};
             let dict = PyDict::new(py);
             match self {
-                TuningTarget::Manual { voltage, frequency } => {
-                    let value = PyDict::new(py);
-                    if let Some(voltage) = voltage {
-                        value.set_item(
-                            "voltage",
-                            <Voltage as PyPydanticType>::to_pydantic_data(voltage, py)?,
-                        )?;
-                    }
-                    if let Some(frequency) = frequency {
-                        value.set_item(
-                            "frequency",
-                            <Frequency as PyPydanticType>::to_pydantic_data(frequency, py)?,
-                        )?;
-                    }
+                TuningTarget::Manual { boards } => {
                     dict.set_item("type", "manual")?;
-                    dict.set_item("value", value)?;
+                    dict.set_item("value", manual_targets_to_values(boards))?;
                 }
                 TuningTarget::Power(p) => {
                     dict.set_item("type", "power")?;
@@ -528,47 +543,47 @@ mod python_tuning_target {
 
 #[cfg(test)]
 mod tests {
-    use measurements::{Frequency, Voltage};
-
-    use super::TuningTarget;
+    use super::*;
 
     #[test]
     fn manual_tuning_target_serialization_round_trips() -> anyhow::Result<()> {
         let target = TuningTarget::Manual {
-            voltage: Some(Voltage::from_volts(12.6)),
-            frequency: Some(Frequency::from_megahertz(485.0)),
+            boards: HashMap::from([
+                (
+                    0,
+                    (
+                        Some(Frequency::from_megahertz(480.0)),
+                        Some(Voltage::from_volts(12.6)),
+                    ),
+                ),
+                (
+                    3,
+                    (
+                        Some(Frequency::from_megahertz(490.0)),
+                        Some(Voltage::from_volts(12.7)),
+                    ),
+                ),
+                (7, (None, Some(Voltage::from_volts(12.5)))),
+                (8, (Some(Frequency::from_megahertz(500.0)), None)),
+                (9, (None, None)),
+            ]),
         };
-
         let encoded = serde_json::to_value(&target)?;
         assert_eq!(
             encoded,
-            serde_json::json!({
-                "Manual": {
-                    "voltage": 12.6,
-                    "frequency": 485.0,
-                }
-            })
+            serde_json::json!({"Manual": {"boards": {
+                "0": [480.0, 12.6], "3": [490.0, 12.7], "7": [null, 12.5],
+                "8": [500.0, null], "9": [null, null],
+            }}})
         );
-        let decoded = serde_json::from_value(encoded)?;
-
-        assert_eq!(target, decoded);
-
-        let partial_target = TuningTarget::Manual {
-            voltage: None,
-            frequency: Some(Frequency::from_megahertz(485.0)),
+        assert_eq!(target, serde_json::from_value(encoded)?);
+        let empty = TuningTarget::Manual {
+            boards: HashMap::new(),
         };
-        let encoded = serde_json::to_value(&partial_target)?;
         assert_eq!(
-            encoded,
-            serde_json::json!({
-                "Manual": {
-                    "frequency": 485.0,
-                }
-            })
+            empty,
+            serde_json::from_value(serde_json::to_value(&empty)?)?
         );
-        let decoded = serde_json::from_value(encoded)?;
-
-        assert_eq!(partial_target, decoded);
         Ok(())
     }
 }

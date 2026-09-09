@@ -1097,20 +1097,22 @@ fn parse_manual_tuning_target(summary: &Value) -> TuningTarget {
         .pointer("/Power Supply Stats/Target Voltage")
         .and_then(tuning_value_as_f64)
         .map(Voltage::from_millivolts);
-    let frequency = summary
+    let boards = summary
         .pointer("/HwConfig/Boards Target Clock")
         .and_then(Value::as_array)
-        .and_then(|clocks| {
-            let (clock_sum, clock_count) = clocks
-                .iter()
-                .filter_map(|board| board.get("Data").and_then(tuning_value_as_f64))
-                .fold((0.0, 0usize), |(sum, count), clock| {
-                    (sum + clock, count + 1)
-                });
-            (clock_count > 0).then(|| Frequency::from_megahertz(clock_sum / clock_count as f64))
-        });
+        .into_iter()
+        .flatten()
+        .filter_map(|board| {
+            let id = u8::try_from(board.get("Index")?.as_u64()?).ok()?;
+            let frequency = board
+                .get("Data")
+                .and_then(tuning_value_as_f64)
+                .map(Frequency::from_megahertz);
+            Some((id, (frequency, voltage)))
+        })
+        .collect();
 
-    TuningTarget::Manual { voltage, frequency }
+    TuningTarget::Manual { boards }
 }
 
 fn parse_tuning_target_from_stats(
@@ -1979,8 +1981,22 @@ mod tests {
         });
         let data = HashMap::from([(DataField::TuningTarget, summary.clone())]);
         let expected = TuningTarget::Manual {
-            voltage: Some(Voltage::from_volts(12.6)),
-            frequency: Some(Frequency::from_megahertz(485.0)),
+            boards: HashMap::from([
+                (
+                    0,
+                    (
+                        Some(Frequency::from_megahertz(480.0)),
+                        Some(Voltage::from_volts(12.6)),
+                    ),
+                ),
+                (
+                    1,
+                    (
+                        Some(Frequency::from_megahertz(490.0)),
+                        Some(Voltage::from_volts(12.6)),
+                    ),
+                ),
+            ]),
         };
 
         assert_eq!(miner.parse_tuning_target(&data), Some(expected.clone()));
@@ -2036,8 +2052,7 @@ mod tests {
         let summary = serde_json::json!({ "PerpetualTune": { "Running": false } });
         let data = HashMap::from([(DataField::TuningTarget, summary)]);
         let expected = Some(TuningTarget::Manual {
-            voltage: None,
-            frequency: None,
+            boards: HashMap::new(),
         });
 
         assert_eq!(miner.parse_tuning_target(&data), expected);
@@ -2064,15 +2079,16 @@ mod tests {
         assert_eq!(
             miner.parse_tuning_target(&HashMap::from([(DataField::TuningTarget, voltage_only,)])),
             Some(TuningTarget::Manual {
-                voltage: Some(Voltage::from_volts(12.6)),
-                frequency: None,
+                boards: HashMap::new(),
             })
         );
         assert_eq!(
             miner.parse_tuning_target(&HashMap::from([(DataField::TuningTarget, frequency_only,)])),
             Some(TuningTarget::Manual {
-                voltage: None,
-                frequency: Some(Frequency::from_megahertz(485.0)),
+                boards: HashMap::from([
+                    (0, (Some(Frequency::from_megahertz(480.0)), None)),
+                    (1, (Some(Frequency::from_megahertz(490.0)), None)),
+                ]),
             })
         );
     }
