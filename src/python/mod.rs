@@ -49,7 +49,7 @@ mod asic_rs {
         },
         device::{DeviceInfo, MinerHardware},
         fan::FanData,
-        firmware::{FirmwareStats, PyFirmwareUpdate as FirmwareUpdate},
+        firmware::{FirmwareImage, FirmwareStats, PyFirmwareUpdate as FirmwareUpdate},
         message::{MessageSeverity, MinerComponent, MinerMessage},
         miner::{MinerData, PyTuningTarget as TuningTarget},
         operating_state::OperatingState,

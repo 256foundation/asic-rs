@@ -117,11 +117,17 @@ Python exposes matching `supports_*` properties.
 | `supports_change_password` | `change_password(...)` |
 | `supports_read_logs` | `read_logs()` |
 | `supports_factory_reset` | `factory_reset()` |
+| `supports_prepare_firmware` | `prepare_firmware(...)` |
 | `supports_upgrade_firmware` | `upgrade_firmware(...)` |
 
 All miner handles also expose `revalidate()`, which re-runs that backend's
 firmware discovery checks against the same IP and returns whether the device is
 still valid for the existing miner handle.
+
+`prepare_firmware(...)` is read-only. It validates backend-specific containers
+and may query miner metadata to select a compatible payload, but it never starts
+an upload. The returned `FirmwareImage` contains the filename and bytes that an
+upgrade would use.
 
 === "Rust"
 

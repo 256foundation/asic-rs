@@ -80,9 +80,19 @@ pub enum FirmwareUpdate {
     Remote(String),
 }
 
+/// Firmware bytes ready for validation, preparation, or upload.
+///
+/// For container formats, [`crate::traits::miner::UpgradeFirmware::prepare_firmware`]
+/// may return a different filename and payload selected for the target miner.
+#[cfg_attr(
+    feature = "python",
+    pyclass(skip_from_py_object, get_all, module = "asic_rs")
+)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FirmwareImage {
+    /// Filename presented to the miner during upload.
     pub filename: String,
+    /// Complete firmware payload bytes.
     pub bytes: Vec<u8>,
 }
 
