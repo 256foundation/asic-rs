@@ -55,8 +55,11 @@ impl MinerFirmware for BitaxeFirmware {
         }
     }
 
-    async fn get_version(_ip: IpAddr) -> Option<semver::Version> {
-        None
+    async fn get_version(ip: IpAddr) -> Option<semver::Version> {
+        let (text, _, _) = util::send_web_command(&ip, "/api/system/info").await?;
+        let json_data: serde_json::Value = serde_json::from_str(&text).ok()?;
+        let version_str = json_data["version"].as_str()?.trim_start_matches('v');
+        semver::Version::parse(version_str).ok()
     }
 }
 

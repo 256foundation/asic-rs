@@ -30,22 +30,22 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use semver::Version;
 use serde_json::Value;
-use web::BitaxeWebAPI;
+use web::{Bitaxe2140WebAPI, BitaxeWebAPI};
 
 use crate::firmware::BitaxeFirmware;
 
 mod web;
 
 #[derive(Debug)]
-pub struct Bitaxe290 {
+pub struct Bitaxe2140 {
     ip: IpAddr,
     web: BitaxeWebAPI,
     device_info: DeviceInfo,
 }
 
-impl Bitaxe290 {
+impl Bitaxe2140 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
-        Bitaxe290 {
+        Bitaxe2140 {
             ip,
             web: BitaxeWebAPI::new(ip, 80),
             device_info: DeviceInfo::new(model, BitaxeFirmware::default(), HashAlgorithm::SHA256),
@@ -54,7 +54,7 @@ impl Bitaxe290 {
 }
 
 #[async_trait]
-impl APIClient for Bitaxe290 {
+impl APIClient for Bitaxe2140 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
@@ -63,21 +63,21 @@ impl APIClient for Bitaxe290 {
     }
 }
 
-impl GetConfigsLocations for Bitaxe290 {
+impl GetConfigsLocations for Bitaxe2140 {
     #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         vec![]
     }
 }
 
-impl CollectConfigs for Bitaxe290 {
+impl CollectConfigs for Bitaxe2140 {
     fn get_config_collector(&self) -> ConfigCollector<'_> {
         ConfigCollector::new(self)
     }
 }
 
 #[async_trait]
-impl GetDataLocations for Bitaxe290 {
+impl GetDataLocations for Bitaxe2140 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const WEB_SYSTEM_INFO: MinerCommand = MinerCommand::WebAPI {
             command: "system/info",
@@ -240,49 +240,49 @@ impl GetDataLocations for Bitaxe290 {
     }
 }
 
-impl GetIP for Bitaxe290 {
+impl GetIP for Bitaxe2140 {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
-impl GetDeviceInfo for Bitaxe290 {
+impl GetDeviceInfo for Bitaxe2140 {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info.clone()
     }
 }
 
-impl CollectData for Bitaxe290 {
+impl CollectData for Bitaxe2140 {
     fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self)
     }
 }
 
-impl GetMAC for Bitaxe290 {
+impl GetMAC for Bitaxe2140 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         data.extract::<String>(DataField::Mac)
             .and_then(|s| MacAddr::from_str(&s).ok())
     }
 }
 
-impl GetSerialNumber for Bitaxe290 {
+impl GetSerialNumber for Bitaxe2140 {
     // N/A
 }
-impl GetHostname for Bitaxe290 {
+impl GetHostname for Bitaxe2140 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
     }
 }
-impl GetApiVersion for Bitaxe290 {
+impl GetApiVersion for Bitaxe2140 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
     }
 }
-impl GetFirmwareVersion for Bitaxe290 {
+impl GetFirmwareVersion for Bitaxe2140 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
-impl GetControlBoardVersion for Bitaxe290 {
+impl GetControlBoardVersion for Bitaxe2140 {
     fn parse_control_board_version(
         &self,
         data: &HashMap<DataField, Value>,
@@ -291,7 +291,7 @@ impl GetControlBoardVersion for Bitaxe290 {
             .and_then(|s| BitaxeControlBoard::parse(&s).map(|cb| cb.into()))
     }
 }
-impl GetHashboards for Bitaxe290 {
+impl GetHashboards for Bitaxe2140 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let mut board = BoardData::new(0, self.device_info.hardware.chips_for_board(0));
 
@@ -365,7 +365,7 @@ impl GetHashboards for Bitaxe290 {
         vec![board]
     }
 }
-impl GetHashrate for Bitaxe290 {
+impl GetHashrate for Bitaxe2140 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::Hashrate, |f| {
             HashRate {
@@ -378,7 +378,7 @@ impl GetHashrate for Bitaxe290 {
     }
 }
 
-impl GetExpectedHashrate for Bitaxe290 {
+impl GetExpectedHashrate for Bitaxe2140 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| {
             HashRate {
@@ -390,7 +390,7 @@ impl GetExpectedHashrate for Bitaxe290 {
         })
     }
 }
-impl GetFans for Bitaxe290 {
+impl GetFans for Bitaxe2140 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         data.extract_map_or::<f64, _>(DataField::Fans, Vec::new(), |f| {
             vec![FanData {
@@ -400,28 +400,28 @@ impl GetFans for Bitaxe290 {
         })
     }
 }
-impl GetPsuFans for Bitaxe290 {
+impl GetPsuFans for Bitaxe2140 {
     // N/A
 }
-impl GetFluidTemperature for Bitaxe290 {
+impl GetFluidTemperature for Bitaxe2140 {
     // N/A
 }
-impl GetWattage for Bitaxe290 {
+impl GetWattage for Bitaxe2140 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
 }
-impl GetTuningTarget for Bitaxe290 {
+impl GetTuningTarget for Bitaxe2140 {
     // N/A
 }
-impl GetScaledTuningTarget for Bitaxe290 {
+impl GetScaledTuningTarget for Bitaxe2140 {
     // N/A
 }
-impl GetTuningCapabilities for Bitaxe290 {}
-impl GetLightFlashing for Bitaxe290 {
+impl GetTuningCapabilities for Bitaxe2140 {}
+impl GetLightFlashing for Bitaxe2140 {
     // N/A
 }
-impl GetMessages for Bitaxe290 {
+impl GetMessages for Bitaxe2140 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages = Vec::new();
         let timestamp = unix_timestamp_secs();
@@ -440,26 +440,26 @@ impl GetMessages for Bitaxe290 {
         messages
     }
 }
-impl GetUptime for Bitaxe290 {
+impl GetUptime for Bitaxe2140 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
-impl GetBestShare for Bitaxe290 {
+impl GetBestShare for Bitaxe2140 {
     fn parse_best_share(&self, data: &HashMap<DataField, Value>) -> Option<f64> {
         data.get(&DataField::BestShare)
             .and_then(parse_share_difficulty)
     }
 }
 
-impl GetSessionBestShare for Bitaxe290 {
+impl GetSessionBestShare for Bitaxe2140 {
     fn parse_session_best_share(&self, data: &HashMap<DataField, Value>) -> Option<f64> {
         data.get(&DataField::SessionBestShare)
             .and_then(parse_share_difficulty)
     }
 }
-impl GetOperatingState for Bitaxe290 {
+impl GetOperatingState for Bitaxe2140 {
     fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
         data.get(&DataField::OperatingState)
             .and_then(Value::as_bool)
@@ -473,8 +473,8 @@ impl GetOperatingState for Bitaxe290 {
     }
 }
 
-impl GetIsMining for Bitaxe290 {}
-impl GetPools for Bitaxe290 {
+impl GetIsMining for Bitaxe2140 {}
+impl GetPools for Bitaxe2140 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let main_url =
             data.extract_nested_or::<String>(DataField::Pools, "stratumURL", String::new());
@@ -535,21 +535,21 @@ impl GetPools for Bitaxe290 {
 }
 
 #[async_trait]
-impl SetFaultLight for Bitaxe290 {
+impl SetFaultLight for Bitaxe2140 {
     fn supports_set_fault_light(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SetPowerLimit for Bitaxe290 {
+impl SetPowerLimit for Bitaxe2140 {
     fn supports_set_power_limit(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsPoolsConfig for Bitaxe290 {
+impl SupportsPoolsConfig for Bitaxe2140 {
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {
         Ok(self
             .get_pools()
@@ -565,85 +565,95 @@ impl SupportsPoolsConfig for Bitaxe290 {
 }
 
 #[async_trait]
-impl Restart for Bitaxe290 {
+impl Restart for Bitaxe2140 {
     fn supports_restart(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl Pause for Bitaxe290 {
+impl Pause for Bitaxe2140 {
+    async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+        self.web.pause().await?;
+        Ok(true)
+    }
+
     fn supports_pause(&self) -> bool {
-        false
+        true
     }
 }
 
 #[async_trait]
-impl Resume for Bitaxe290 {
+impl Resume for Bitaxe2140 {
+    async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
+        self.web.resume().await?;
+        Ok(true)
+    }
+
     fn supports_resume(&self) -> bool {
-        false
+        true
     }
 }
 
-impl ChangePassword for Bitaxe290 {
+impl ChangePassword for Bitaxe2140 {
     fn supports_change_password(&self) -> bool {
         false
     }
 }
 
-impl ReadLogs for Bitaxe290 {
+impl ReadLogs for Bitaxe2140 {
     fn supports_read_logs(&self) -> bool {
         false
     }
 }
 
-impl FactoryReset for Bitaxe290 {
+impl FactoryReset for Bitaxe2140 {
     fn supports_factory_reset(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsScalingConfig for Bitaxe290 {
+impl SupportsScalingConfig for Bitaxe2140 {
     fn supports_scaling_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl UpgradeFirmware for Bitaxe290 {
+impl UpgradeFirmware for Bitaxe2140 {
     fn supports_upgrade_firmware(&self) -> bool {
         false
     }
 }
 
-impl HasAuth for Bitaxe290 {}
-impl SupportsTimezoneConfig for Bitaxe290 {}
-impl HasDefaultAuth for Bitaxe290 {}
+impl HasAuth for Bitaxe2140 {}
+impl SupportsTimezoneConfig for Bitaxe2140 {}
+impl HasDefaultAuth for Bitaxe2140 {}
 
-impl Validate for Bitaxe290 {
+impl Validate for Bitaxe2140 {
     type Firmware = BitaxeFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v >= Version::new(2, 9, 0) && *v < Version::new(2, 14, 0))
+        version.is_some_and(|v| *v >= Version::new(2, 14, 0))
     }
 }
 
 #[async_trait]
-impl SupportsTuningConfig for Bitaxe290 {
+impl SupportsTuningConfig for Bitaxe2140 {
     fn supports_tuning_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsFanConfig for Bitaxe290 {
+impl SupportsFanConfig for Bitaxe2140 {
     fn supports_fan_config(&self) -> bool {
         false
     }
 }
 
-impl SupportsTemperatureConfig for Bitaxe290 {}
-impl GetTuningPercent for Bitaxe290 {}
-impl SetTuningPercent for Bitaxe290 {}
-impl SupportsPresets for Bitaxe290 {}
+impl SupportsTemperatureConfig for Bitaxe2140 {}
+impl GetTuningPercent for Bitaxe2140 {}
+impl SetTuningPercent for Bitaxe2140 {}
+impl SupportsPresets for Bitaxe2140 {}
