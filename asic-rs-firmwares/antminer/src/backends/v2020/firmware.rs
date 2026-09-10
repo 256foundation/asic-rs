@@ -93,13 +93,16 @@ fn read_u32_le(bytes: &[u8], offset: usize) -> anyhow::Result<u32> {
 }
 
 async fn parse_bmu_entries(bytes: &[u8]) -> anyhow::Result<Option<Vec<BmuEntry>>> {
-    if bytes.len() < BMU_HEADER_SIZE {
+    if bytes.len() < std::mem::size_of::<u32>() {
         return Ok(None);
     }
 
     let magic = read_u32_le(bytes, 0)?;
     if magic != BMU_MAGIC {
         return Ok(None);
+    }
+    if bytes.len() < BMU_HEADER_SIZE {
+        bail!("BMU header is truncated");
     }
 
     let header_size = read_u32_le(bytes, 8)? as usize;
@@ -455,6 +458,30 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn bmu_malformed_or_truncated_header_returns_error() {
+        let mut truncated = vec![0_u8; BMU_HEADER_SIZE - 1];
+        write_u32_le(&mut truncated, 0, BMU_MAGIC);
+
+        let err = parse_bmu_entries(&truncated).await.unwrap_err();
+
+        assert!(err.to_string().contains("BMU header is truncated"));
+
+        let mut unsupported_header = build_bmu(&[("s21.bin", "X21", "X21", "S21", b"payload")]);
+        write_u32_le(&mut unsupported_header, 8, (BMU_HEADER_SIZE + 1) as u32);
+
+        let err = parse_bmu_entries(&unsupported_header).await.unwrap_err();
+
+        assert!(err.to_string().contains("Unsupported BMU header size"));
+
+        let mut unsupported_item = build_bmu(&[("s21.bin", "X21", "X21", "S21", b"payload")]);
+        write_u32_le(&mut unsupported_item, 16, (BMU_ITEM_FIXED_SIZE - 1) as u32);
+
+        let err = parse_bmu_entries(&unsupported_item).await.unwrap_err();
+
+        assert!(err.to_string().contains("Unsupported BMU item size"));
+    }
+
+    #[tokio::test]
     async fn bmu_truncated_payload_returns_error() {
         let mut bmu = build_bmu(&[("s21.bin", "X21", "X21", "S21", b"payload")]);
         bmu.truncate(bmu.len() - 2);
@@ -476,5 +503,44 @@ mod tests {
         let err = parse_bmu_entries(&bmu).await.unwrap_err();
 
         assert!(err.to_string().contains("BMU payload exceeds file size"));
+    }
+
+    #[tokio::test]
+    async fn bmu_without_a_compatible_entry_returns_error() {
+        let bmu = build_bmu(&[("s19.bin", "X19", "X19", "S19", b"payload")]);
+        let miner = MinerTypeInfo {
+            model: "S21".to_string(),
+            subtype: "X21".to_string(),
+        };
+
+        let err = resolve_firmware_image(FirmwareImage::new("bundle.bmu".to_string(), bmu), &miner)
+            .await
+            .unwrap_err();
+
+        assert!(
+            err.to_string()
+                .contains("No matching firmware image found in BMU bundle")
+        );
+    }
+
+    #[tokio::test]
+    async fn excessive_bmu_nesting_returns_error() {
+        let mut payload = b"firmware".to_vec();
+        for _ in 0..9 {
+            payload = build_bmu(&[("nested.bmu", "X21", "X21", "S21", payload.as_slice())]);
+        }
+        let miner = MinerTypeInfo {
+            model: "S21".to_string(),
+            subtype: "X21".to_string(),
+        };
+
+        let err = resolve_firmware_image(
+            FirmwareImage::new("bundle.bmu".to_string(), payload),
+            &miner,
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.to_string().contains("BMU nesting depth exceeded"));
     }
 }

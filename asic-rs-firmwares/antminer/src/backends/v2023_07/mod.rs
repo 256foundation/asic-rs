@@ -1200,9 +1200,17 @@ impl SupportsScalingConfig for AntMinerV202307 {
 
 #[async_trait]
 impl UpgradeFirmware for AntMinerV202307 {
-    async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
+    async fn prepare_firmware(&self, image: FirmwareImage) -> anyhow::Result<FirmwareImage> {
         let miner = self.get_miner_type_info().await?;
-        let image = resolve_firmware_image(image, &miner).await?;
+        resolve_firmware_image(image, &miner).await
+    }
+
+    fn supports_prepare_firmware(&self) -> bool {
+        true
+    }
+
+    async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
+        let image = self.prepare_firmware(image).await?;
         self.web.upgrade_firmware(image).await?;
         Ok(true)
     }

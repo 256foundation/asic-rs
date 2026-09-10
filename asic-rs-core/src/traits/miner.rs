@@ -1011,6 +1011,21 @@ pub trait ReadLogs {
 
 #[async_trait]
 pub trait UpgradeFirmware {
+    /// Validate and resolve a firmware image without uploading it.
+    ///
+    /// Backends with container formats can use read-only miner metadata to
+    /// select a compatible payload. The returned image is the exact filename
+    /// and bytes that the backend would pass to its upload implementation.
+    #[allow(unused_variables)]
+    async fn prepare_firmware(&self, image: FirmwareImage) -> anyhow::Result<FirmwareImage> {
+        anyhow::bail!("Preparing firmware is not supported on this platform");
+    }
+
+    /// Whether this backend provides non-mutating firmware preparation.
+    fn supports_prepare_firmware(&self) -> bool {
+        false
+    }
+
     #[allow(unused_variables)]
     async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
         anyhow::bail!("Upgrading firmware is not supported on this platform");
