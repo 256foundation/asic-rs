@@ -7,6 +7,7 @@ use asic_rs_core::{
         fan::FanConfig,
         pools::{PoolConfig, PoolGroupConfig},
         scaling::ScalingConfig,
+        timezone::{TimezoneConfig, Tz},
         tuning::TuningConfig,
     },
     data::{
@@ -293,6 +294,10 @@ impl GetConfigsLocations for PowerPlayV1 {
             command: "hashratesplit/config",
             parameters: None,
         };
+        const WEB_TIMEZONE: MinerCommand = MinerCommand::WebAPI {
+            command: "timezone",
+            parameters: None,
+        };
         match data_field {
             ConfigField::Fan => vec![(
                 WEB_SUMMARY,
@@ -330,6 +335,14 @@ impl GetConfigsLocations for PowerPlayV1 {
             )],
             ConfigField::Tuning => vec![(
                 WEB_SUMMARY,
+                ConfigExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
+                    tag: None,
+                },
+            )],
+            ConfigField::Timezone => vec![(
+                WEB_TIMEZONE,
                 ConfigExtractor {
                     func: get_by_pointer,
                     key: Some(""),
@@ -1075,7 +1088,6 @@ impl GetFans for PowerPlayV1 {
 
 impl GetPsuFans for PowerPlayV1 {}
 impl GetTuningCapabilities for PowerPlayV1 {}
-impl SupportsTimezoneConfig for PowerPlayV1 {}
 
 impl GetFluidTemperature for PowerPlayV1 {}
 
@@ -1705,6 +1717,46 @@ impl SupportsFanConfig for PowerPlayV1 {
 }
 
 #[async_trait]
+impl SupportsTimezoneConfig for PowerPlayV1 {
+    fn parse_timezone_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<TimezoneConfig> {
+        let timezone_name = data
+            .get(&ConfigField::Timezone)
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow::anyhow!("No timezone data returned"))?;
+        let timezone = Tz::from_str(timezone_name)
+            .map_err(|_| anyhow::anyhow!("Unknown IANA timezone {timezone_name:?}"))?;
+
+        Ok(TimezoneConfig {
+            timezone: Some(timezone),
+            available: vec![],
+        })
+    }
+
+    async fn set_timezone_config(&self, config: TimezoneConfig) -> anyhow::Result<bool> {
+        let timezone = config
+            .timezone
+            .ok_or_else(|| anyhow::anyhow!("Timezone config has no timezone to set"))?;
+
+        self.web
+            .send_command(
+                "timezone",
+                false,
+                Some(json!({ "param": timezone.name() })),
+                Method::POST,
+            )
+            .await
+            .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
+    }
+
+    fn supports_timezone_config(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
 impl Restart for PowerPlayV1 {
     async fn restart(&self) -> anyhow::Result<bool> {
         self.web
@@ -2304,6 +2356,43 @@ mod tests {
         assert_eq!(config.target_temp(), Some(60.0));
         assert_eq!(config.idle_speed(), Some(20));
         assert_eq!(config.fan_speed(), None);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn parse_timezone_config_from_timezone_endpoint() -> anyhow::Result<()> {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let command = MinerCommand::WebAPI {
+            command: "timezone",
+            parameters: None,
+        };
+        let mock_api = MockAPIClient::new(HashMap::from([(command, json!("America/Toronto"))]));
+        let mut collector = ConfigCollector::new_with_client(&miner, &mock_api);
+
+        let data = collector.collect(&[ConfigField::Timezone]).await;
+        let config = miner.parse_timezone_config(&data)?;
+
+        assert_eq!(config.timezone, Some(Tz::America__Toronto));
+        assert!(config.available.is_empty());
+        assert!(miner.supports_timezone_config());
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_timezone_config_rejects_unknown_timezone() -> anyhow::Result<()> {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let data = HashMap::from([(ConfigField::Timezone, json!("not/a-timezone"))]);
+
+        let Err(error) = miner.parse_timezone_config(&data) else {
+            anyhow::bail!("unknown timezone should fail");
+        };
+
+        assert_eq!(
+            error.to_string(),
+            "Unknown IANA timezone \"not/a-timezone\""
+        );
 
         Ok(())
     }
