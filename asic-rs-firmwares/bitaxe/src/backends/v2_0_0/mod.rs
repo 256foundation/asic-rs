@@ -17,6 +17,7 @@ use asic_rs_core::{
         fan::FanData,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
+        operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolScheme, PoolURL},
         share::parse_share_difficulty,
     },
@@ -84,6 +85,14 @@ impl GetDataLocations for Bitaxe200 {
         };
 
         match data_field {
+            DataField::OperatingState => vec![(
+                WEB_SYSTEM_INFO,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some("miningPaused"),
+                    tag: None,
+                },
+            )],
             DataField::Mac => vec![(
                 WEB_SYSTEM_INFO,
                 DataExtractor {
@@ -456,7 +465,19 @@ impl GetSessionBestShare for Bitaxe200 {
             .and_then(parse_share_difficulty)
     }
 }
-impl GetOperatingState for Bitaxe200 {}
+impl GetOperatingState for Bitaxe200 {
+    fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
+        data.get(&DataField::OperatingState)
+            .and_then(Value::as_bool)
+            .map(|paused| {
+                if paused {
+                    OperatingState::Paused {}
+                } else {
+                    OperatingState::Mining {}
+                }
+            })
+    }
+}
 
 impl GetIsMining for Bitaxe200 {}
 impl GetPools for Bitaxe200 {
