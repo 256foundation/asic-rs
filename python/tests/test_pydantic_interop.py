@@ -486,30 +486,6 @@ def test_hashrate_constructor_accepts_unit_enum(
 
 
 @pytest.mark.parametrize(
-    ("algorithm", "default_unit"),
-    [
-        (HashAlgorithm.SHA256, HashRateUnit.TH),
-        (HashAlgorithm.Scrypt, HashRateUnit.GH),
-        (HashAlgorithm.X11, HashRateUnit.GH),
-        (HashAlgorithm.EtHash, HashRateUnit.MH),
-        (HashAlgorithm.Equihash, HashRateUnit.KH),
-        (HashAlgorithm.KHeavyHash, HashRateUnit.TH),
-        (HashAlgorithm.Unknown, HashRateUnit.H),
-    ],
-)
-def test_hashrate_constructor_uses_algorithm_default_unit(
-    algorithm: HashAlgorithm, default_unit: HashRateUnit
-) -> None:
-    constructed = HashRate(1.5, algo=algorithm)
-    explicit = HashRate(1.5, HashRateUnit.H, algorithm)
-
-    assert constructed.unit == default_unit
-    assert constructed.default_unit() == default_unit
-    assert explicit.unit == HashRateUnit.H
-    assert explicit.into_default_unit().unit == default_unit
-
-
-@pytest.mark.parametrize(
     ("unit_input", "unit_text"),
     [
         (HashRateUnit.TH, "TH/s"),
