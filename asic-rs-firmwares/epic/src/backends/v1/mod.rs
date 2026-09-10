@@ -524,7 +524,7 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
             ],
-            DataField::IsMining => vec![(
+            DataField::IsMining | DataField::OperatingState => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
@@ -1255,6 +1255,8 @@ impl GetUptime for PowerPlayV1 {
 impl GetBestShare for PowerPlayV1 {}
 impl GetSessionBestShare for PowerPlayV1 {}
 
+impl GetOperatingState for PowerPlayV1 {}
+
 impl GetIsMining for PowerPlayV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
@@ -1801,10 +1803,14 @@ impl SupportsPresets for PowerPlayV1 {}
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
 
     use anyhow::{self, Context};
     use asic_rs_core::{
+        data::operating_state::OperatingState,
         test::{api::MockAPIClient, util::get_miner},
         traits::firmware::MinerFirmware,
     };
@@ -1815,6 +1821,119 @@ mod tests {
         CAPABILITIES, CHIP_CLOCKS, CHIP_HASHRATES, CHIP_TEMPS, CHIP_VOLTAGES, NETWORK, SUMMARY,
         TEMPS,
     };
+
+    struct SummaryClient {
+        summary: Value,
+        calls: AtomicUsize,
+    }
+
+    #[async_trait]
+    impl APIClient for SummaryClient {
+        async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
+            assert_eq!(
+                command,
+                &MinerCommand::WebAPI {
+                    command: "summary",
+                    parameters: None
+                }
+            );
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            Ok(self.summary.clone())
+        }
+    }
+
+    #[tokio::test]
+    async fn operating_state_reuses_summary_and_preserves_reported_labels() -> anyhow::Result<()> {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let cases = [
+            ("Mining", OperatingState::Mining {}, true),
+            ("Idling", OperatingState::Idling {}, false),
+            ("Initializing", OperatingState::Initializing {}, true),
+            (
+                "AdjustingClockVoltage",
+                OperatingState::AdjustingClockVoltage {},
+                true,
+            ),
+            ("Error", OperatingState::Error {}, true),
+            (
+                "FutureUmcState",
+                OperatingState::Unknown {
+                    raw: "FutureUmcState".into(),
+                },
+                true,
+            ),
+        ];
+        for (label, expected, is_mining) in cases {
+            let mut summary = Value::from_str(SUMMARY)?;
+            summary["Status"]["Operating State"] = json!(label);
+            let client = SummaryClient {
+                summary,
+                calls: AtomicUsize::new(0),
+            };
+            let mut collector = DataCollector::new_with_client(&miner, &client);
+            let data = collector
+                .collect(&[
+                    DataField::OperatingState,
+                    DataField::IsMining,
+                    DataField::TuningTarget,
+                ])
+                .await;
+            let snapshot = miner.parse_data(data);
+            assert_eq!(snapshot.operating_state, Some(expected.clone()));
+            assert_eq!(snapshot.is_mining, is_mining);
+            assert_eq!(client.calls.load(Ordering::SeqCst), 1);
+            assert_eq!(
+                serde_json::to_value(&snapshot)?["operating_state"],
+                serde_json::to_value(&expected)?,
+            );
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn unavailable_or_excluded_operating_state_is_not_invented() -> anyhow::Result<()> {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        for status in [
+            json!({}),
+            json!({ "Operating State": null }),
+            json!({ "Operating State": true }),
+            json!({ "Operating State": 7 }),
+            json!({ "Operating State": [] }),
+            json!({ "Operating State": {} }),
+            json!({ "Operating State": "" }),
+        ] {
+            let mut summary = Value::from_str(SUMMARY)?;
+            summary["Status"] = status;
+            let client = SummaryClient {
+                summary,
+                calls: AtomicUsize::new(0),
+            };
+            let mut collector = DataCollector::new_with_client(&miner, &client);
+            let data = collector
+                .collect(&[DataField::OperatingState, DataField::IsMining])
+                .await;
+            let snapshot = miner.parse_data(data);
+            assert_eq!(snapshot.operating_state, None);
+            assert!(snapshot.is_mining); // Preserve the legacy fallback, independently.
+        }
+
+        let client = SummaryClient {
+            summary: Value::from_str(SUMMARY)?,
+            calls: AtomicUsize::new(0),
+        };
+        let mut collector = DataCollector::new_with_client(&miner, &client);
+        let data = collector.collect(&[DataField::IsMining]).await;
+        assert_eq!(miner.parse_data(data).operating_state, None);
+
+        let mut legacy = serde_json::to_value(miner.parse_data(HashMap::new()))?;
+        legacy
+            .as_object_mut()
+            .context("snapshot serializes to an object")?
+            .remove("operating_state");
+        let restored: asic_rs_core::data::miner::MinerData = serde_json::from_value(legacy)?;
+        assert_eq!(restored.operating_state, None);
+        Ok(())
+    }
 
     #[tokio::test]
     async fn parse_data_test_antminer_s19xp() -> anyhow::Result<()> {

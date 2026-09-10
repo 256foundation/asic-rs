@@ -443,6 +443,8 @@ impl GetSessionBestShare for NerdAxeV1 {
             .and_then(parse_share_difficulty)
     }
 }
+impl GetOperatingState for NerdAxeV1 {}
+
 impl GetIsMining for NerdAxeV1 {}
 impl GetPools for NerdAxeV1 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {

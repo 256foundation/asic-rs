@@ -4,8 +4,25 @@ use asic_rs_core::data::capabilities::{
 use asic_rs_core::data::device::HashAlgorithm;
 use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
 use asic_rs_core::data::miner::TuningTarget;
+use asic_rs_core::data::operating_state::OperatingState;
 use measurements::Power;
 use serde_json::Value;
+
+/// BOS+ MinerStatus codes from the firmware API, not inferred from hashrate.
+/// https://github.com/braiins/bos-plus-api/blob/ef28e752f80711c54d5587ec8f2cd838fdb34042/proto/bos/v1/miner.proto#L109-L116
+pub(crate) fn parse_operating_state(value: &Value) -> Option<OperatingState> {
+    Some(match value.as_u64()? {
+        0 => return None, // Unspecified is not a reported operating state.
+        1 => OperatingState::Stopped {},
+        2 => OperatingState::Mining {},
+        3 => OperatingState::Paused {},
+        4 => OperatingState::Suspended {},
+        5 => OperatingState::Restricted {},
+        code => OperatingState::Unknown {
+            raw: code.to_string(),
+        },
+    })
+}
 
 /// Build [`TuningCapabilities`] from a BOS GraphQL `powerTarget` metadata object
 /// (`{ default, min, max }`, all in watts). Older GraphQL BraiinsOS backends only
@@ -147,5 +164,79 @@ fn parse_tagged_tuning_target(
         (Some("HASHRATE_TARGET"), _) | (_, Some(2)) => hashrate.or(power),
         (Some("POWER_TARGET"), _) | (_, Some(1)) => power.or(hashrate),
         _ => power.or(hashrate),
+    }
+}
+
+#[cfg(test)]
+mod operating_state_tests {
+    use std::{collections::HashMap, net::IpAddr};
+
+    use asic_rs_core::{
+        data::{
+            collector::{DataCollector, DataField},
+            command::MinerCommand,
+        },
+        test::api::MockAPIClient,
+        traits::miner::Miner,
+    };
+    use asic_rs_makes_antminer::models::AntMinerModel;
+    use serde_json::json;
+
+    use super::*;
+    use crate::backends::{v25_07::BraiinsV2507, v26_04::BraiinsV2604};
+
+    #[tokio::test]
+    async fn rest_status_codes_reach_the_snapshot_for_both_backends() -> anyhow::Result<()> {
+        let ip = IpAddr::from([127, 0, 0, 1]);
+        let miners: [Box<dyn Miner>; 2] = [
+            Box::new(BraiinsV2507::new(ip, AntMinerModel::S21Pro)),
+            Box::new(BraiinsV2604::new(ip, AntMinerModel::S21Pro)),
+        ];
+        let cases = [
+            (1, OperatingState::Stopped {}, false),
+            (2, OperatingState::Mining {}, true),
+            (3, OperatingState::Paused {}, false),
+            (4, OperatingState::Suspended {}, false),
+            (5, OperatingState::Restricted {}, false),
+            (99, OperatingState::Unknown { raw: "99".into() }, false),
+        ];
+        for miner in &miners {
+            for (code, expected, is_mining) in &cases {
+                let mut details: Value =
+                    serde_json::from_str(crate::test::json::v26_04::WEB_MINER_DETAILS_COMMAND)?;
+                details["status"] = json!(code);
+                let client = MockAPIClient::new(HashMap::from([(
+                    MinerCommand::WebAPI {
+                        command: "miner/details",
+                        parameters: None,
+                    },
+                    details,
+                )]));
+                let mut collector = DataCollector::new_with_client(miner.as_ref(), &client);
+                let data = collector
+                    .collect(&[DataField::OperatingState, DataField::IsMining])
+                    .await;
+                let snapshot = miner.parse_data(data);
+                assert_eq!(snapshot.operating_state.as_ref(), Some(expected));
+                assert_eq!(snapshot.is_mining, *is_mining);
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn unspecified_and_invalid_status_codes_are_unavailable() {
+        for value in [
+            json!(0),
+            Value::Null,
+            json!(-1),
+            json!(2.5),
+            json!(true),
+            json!("2"),
+            json!([]),
+            json!({}),
+        ] {
+            assert_eq!(parse_operating_state(&value), None);
+        }
     }
 }

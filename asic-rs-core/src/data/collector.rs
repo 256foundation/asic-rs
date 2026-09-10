@@ -108,6 +108,9 @@ pub enum DataField {
     /// Difficulty of the best share found since the last boot or hashing start, when reported.
     #[cfg_attr(feature = "python", pydantic(value = "SessionBestShare"))]
     SessionBestShare,
+    /// Detailed operating state explicitly reported by firmware.
+    #[cfg_attr(feature = "python", pydantic(value = "OperatingState"))]
+    OperatingState,
 }
 
 /// A function pointer type that takes a JSON `Value` and an optional key,

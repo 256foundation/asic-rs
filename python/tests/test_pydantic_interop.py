@@ -28,6 +28,7 @@ from pyasic_rs.data import (
     MinerHardware,
     MinerMessage,
     MiningMode,
+    OperatingState,
     TuningTarget,
 )
 
@@ -54,6 +55,10 @@ class ChipDataModel(BaseModel):
 
 class MinerDataModel(BaseModel):
     miner: MinerData
+
+
+class OperatingStateModel(BaseModel):
+    state: OperatingState
 
 
 class MinerHardwareModel(BaseModel):
@@ -140,6 +145,66 @@ def minimal_miner_data(**overrides: object) -> dict[str, object]:
     }
     data.update(overrides)
     return data
+
+
+@pytest.mark.parametrize(
+    ("payload", "state"),
+    [
+        ({"type": "Mining"}, OperatingState.Mining()),
+        ({"type": "Idling"}, OperatingState.Idling()),
+        ({"type": "Starting"}, OperatingState.Starting()),
+        ({"type": "Tuning"}, OperatingState.Tuning()),
+        ({"type": "Paused"}, OperatingState.Paused()),
+        ({"type": "AdjustingClockVoltage"}, OperatingState.AdjustingClockVoltage()),
+        ({"type": "Error"}, OperatingState.Error()),
+        ({"type": "Unknown", "raw": "NewFirmwareState"}, OperatingState.Unknown("NewFirmwareState")),
+    ],
+)
+def test_operating_state_survives_typed_snapshot_and_json_round_trips(
+    payload: dict[str, str], state: OperatingState
+) -> None:
+    model = MinerDataModel.model_validate(
+        {"miner": minimal_miner_data(operating_state=payload)}
+    )
+    assert model.miner.operating_state == state
+    assert model.model_dump()["miner"]["operating_state"] == payload
+    assert not model.miner.is_mining
+    restored = MinerDataModel.model_validate_json(model.model_dump_json())
+    assert restored.miner.operating_state == state
+    assert OperatingStateModel(state=state).model_dump() == {"state": payload}
+    assert {state: "group"}[model.miner.operating_state] == "group"
+
+
+def test_unknown_operating_state_retains_raw_label_in_python() -> None:
+    state = OperatingState.Unknown("FutureState / voltage=12.6")
+    assert state.raw == "FutureState / voltage=12.6"
+    assert str(state) == state.raw
+    assert repr(state) == 'OperatingState.Unknown(raw="FutureState / voltage=12.6")'
+    assert str(OperatingState.Mining()) == "Mining"
+    assert repr(OperatingState.Mining()) == "OperatingState.Mining()"
+
+
+def test_operating_state_is_optional_for_older_snapshots() -> None:
+    for payload in [minimal_miner_data(), minimal_miner_data(operating_state=None)]:
+        model = MinerDataModel.model_validate({"miner": payload})
+        assert model.miner.operating_state is None
+        assert model.model_dump()["miner"]["operating_state"] is None
+
+
+def test_operating_state_schema_includes_known_states_and_raw_unknown_labels() -> None:
+    schema = OperatingStateModel.model_json_schema()
+    state_schema = resolve_ref(schema, schema["properties"]["state"])
+    assert state_schema["discriminator"]["propertyName"] == "type"
+    variants = [resolve_ref(schema, item) for item in state_schema["oneOf"]]
+    unknown = next(item for item in variants if item["properties"]["type"].get("const") == "Unknown")
+    assert unknown["properties"]["raw"]["type"] == "string"
+    assert "raw" in unknown["required"]
+
+
+@pytest.mark.parametrize("state", [True, 2, "Mining", {"type": "Unknown"}, {"type": "FutureState"}])
+def test_operating_state_rejects_invalid_typed_values(state: object) -> None:
+    with pytest.raises(ValidationError):
+        OperatingStateModel.model_validate({"state": state})
 
 
 def test_set_tuning_config_keeps_optional_scaling_config_default() -> None:

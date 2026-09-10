@@ -586,6 +586,8 @@ impl GetUptime for WhatsMinerV3 {
 
 impl GetBestShare for WhatsMinerV3 {}
 impl GetSessionBestShare for WhatsMinerV3 {}
+impl GetOperatingState for WhatsMinerV3 {}
+
 impl GetIsMining for WhatsMinerV3 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         // working: "true" means mining is ON
@@ -943,6 +945,18 @@ mod tests {
     use asic_rs_makes_whatsminer::models::WhatsMinerModel;
 
     use super::*;
+
+    #[test]
+    fn boolean_only_firmware_has_no_detailed_operating_state() {
+        let miner = WhatsMinerV3::new(IpAddr::from([127, 0, 0, 1]), WhatsMinerModel::M60SVK30);
+        assert!(miner.get_locations(DataField::OperatingState).is_empty());
+        for is_mining in ["true", "false"] {
+            let data = HashMap::from([(DataField::IsMining, json!(is_mining))]);
+            let snapshot = miner.parse_data(data);
+            assert_eq!(snapshot.operating_state, None);
+            assert_eq!(snapshot.is_mining, is_mining == "true");
+        }
+    }
 
     #[test]
     fn test_parse_is_mining_when_not_working() {

@@ -440,6 +440,8 @@ impl GetSessionBestShare for Bitaxe290 {
             .and_then(parse_share_difficulty)
     }
 }
+impl GetOperatingState for Bitaxe290 {}
+
 impl GetIsMining for Bitaxe290 {}
 impl GetPools for Bitaxe290 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {

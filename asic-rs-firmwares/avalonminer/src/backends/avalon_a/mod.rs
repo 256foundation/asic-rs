@@ -932,6 +932,8 @@ impl GetFluidTemperature for AvalonAMiner {
         data.extract_map::<f64, _>(DataField::OutletFluidTemperature, Temperature::from_celsius)
     }
 }
+impl GetOperatingState for AvalonAMiner {}
+
 impl GetIsMining for AvalonAMiner {}
 
 impl GetPools for AvalonAMiner {

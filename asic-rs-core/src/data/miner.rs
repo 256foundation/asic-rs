@@ -14,6 +14,7 @@ use super::{
     fan::FanData,
     hashrate::HashRate,
     message::MinerMessage,
+    operating_state::OperatingState,
     pool::PoolGroupData,
 };
 use crate::data::{
@@ -211,7 +212,14 @@ pub struct MinerData {
     pub uptime: Option<Duration>,
     /// Whether the hashing process is currently running,
     /// false if paused, true if running, even if the hashrate is 0
+    /// or the firmware is tuning. This legacy flag may default when data is
+    /// missing; use `operating_state` for explicit detailed state telemetry.
     pub is_mining: bool,
+    /// Detailed state explicitly reported by firmware, independent of `is_mining`.
+    /// Unavailable, invalid, and boolean-only status responses leave this `None`.
+    #[serde(default)]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub operating_state: Option<OperatingState>,
     /// The current pools configured on the miner
     pub pools: Vec<PoolGroupData>,
     /// Difficulty of the best share found over the miner's lifetime, when reported.

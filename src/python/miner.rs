@@ -16,6 +16,7 @@ use asic_rs_core::{
         hashrate::HashRate,
         message::MinerMessage,
         miner::{MinerData, TuningTarget},
+        operating_state::OperatingState,
         pool::PoolGroupData,
     },
     traits::{auth::MinerAuth, miner::Miner as MinerTrait},
@@ -527,6 +528,17 @@ impl Miner {
             let inner = inner.read().await;
             let data = inner.get_is_mining().await;
             Ok(data)
+        })
+    }
+    /// Await the detailed operating state explicitly reported by firmware.
+    pub fn get_operating_state<'a>(
+        &self,
+        py: Python<'a>,
+    ) -> PyResult<PyAwaitable<Option<OperatingState>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_operating_state().await)
         })
     }
     /// Await the current mining pool status.

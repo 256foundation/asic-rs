@@ -18,7 +18,7 @@ from .config import (
 from .factory import MinerFactory
 from .listener import MinerListener
 from .miner import Miner
-from .data import TuningTarget
+from .data import OperatingState, TuningTarget
 
 __all__ = [
     "FanConfig",
@@ -32,4 +32,5 @@ __all__ = [
     "TimezoneConfig",
     "TuningConfig",
     "TuningTarget",
+    "OperatingState",
 ]

@@ -52,6 +52,7 @@ mod asic_rs {
         firmware::{FirmwareStats, PyFirmwareUpdate as FirmwareUpdate},
         message::{MessageSeverity, MinerComponent, MinerMessage},
         miner::{MinerData, PyTuningTarget as TuningTarget},
+        operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolScheme, PoolURL},
     };
 }

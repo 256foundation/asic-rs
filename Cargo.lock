@@ -319,6 +319,7 @@ dependencies = [
  "reqwest",
  "semver",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

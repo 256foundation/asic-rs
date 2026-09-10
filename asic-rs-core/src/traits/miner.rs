@@ -31,6 +31,7 @@ use crate::{
         hashrate::{HashRate, HashRateUnit},
         message::MinerMessage,
         miner::{MinerData, TuningTarget},
+        operating_state::OperatingState,
         pool::PoolGroupData,
     },
     traits::firmware::MinerFirmware,
@@ -175,6 +176,7 @@ pub trait GetMinerData:
     + GetMessages
     + GetUptime
     + GetIsMining
+    + GetOperatingState
     + GetPools
     + GetBestShare
     + GetSessionBestShare
@@ -237,6 +239,7 @@ impl<
         + GetMessages
         + GetUptime
         + GetIsMining
+        + GetOperatingState
         + GetPools
         + GetBestShare
         + GetSessionBestShare
@@ -280,6 +283,7 @@ impl<
         let hashboards = self.parse_hashboards(&data);
         let light_flashing = self.parse_light_flashing(&data);
         let is_mining = self.parse_is_mining(&data);
+        let operating_state = self.parse_operating_state(&data);
         let messages = self.parse_messages(&data);
         let pools = self.parse_pools(&data);
         let best_share = self.parse_best_share(&data);
@@ -374,6 +378,7 @@ impl<
             messages,
             uptime,
             is_mining,
+            operating_state,
 
             pools,
             best_share,
@@ -839,6 +844,25 @@ pub trait GetIsMining: CollectData {
     #[allow(unused_variables)]
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         true
+    }
+}
+
+/// Detailed state reported by firmware, never inferred from `is_mining`.
+#[async_trait]
+pub trait GetOperatingState: CollectData {
+    #[tracing::instrument(level = "debug")]
+    async fn get_operating_state(&self) -> Option<OperatingState> {
+        let mut collector = self.get_collector();
+        let data = collector.collect(&[DataField::OperatingState]).await;
+        self.parse_operating_state(&data)
+    }
+
+    /// The default accepts explicit string labels only. Backends with numeric
+    /// codes or vendor-specific labels override this to normalize their states.
+    fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
+        data.get(&DataField::OperatingState)
+            .and_then(Value::as_str)
+            .and_then(OperatingState::from_label)
     }
 }
 

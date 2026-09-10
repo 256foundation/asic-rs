@@ -772,6 +772,8 @@ impl GetUptime for AntMinerV202307 {
 impl GetBestShare for AntMinerV202307 {}
 impl GetSessionBestShare for AntMinerV202307 {}
 
+impl GetOperatingState for AntMinerV202307 {}
+
 impl GetIsMining for AntMinerV202307 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)

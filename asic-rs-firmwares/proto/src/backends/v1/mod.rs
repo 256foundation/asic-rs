@@ -23,6 +23,7 @@ use asic_rs_core::{
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerComponent, MinerMessage},
         miner::TuningTarget,
+        operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{
@@ -352,7 +353,7 @@ impl GetDataLocations for ProtoV1 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![(
+            DataField::IsMining | DataField::OperatingState => vec![(
                 WEB_MINING,
                 DataExtractor {
                     func: get_by_pointer,
@@ -694,6 +695,17 @@ impl GetUptime for ProtoV1 {
 
 impl GetBestShare for ProtoV1 {}
 impl GetSessionBestShare for ProtoV1 {}
+
+impl GetOperatingState for ProtoV1 {
+    fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
+        let label = data.get(&DataField::OperatingState)?.as_str()?;
+        match label {
+            "PoweringOn" => Some(OperatingState::Starting {}),
+            "PoweringOff" => Some(OperatingState::Stopping {}),
+            _ => OperatingState::from_label(label),
+        }
+    }
+}
 
 impl GetIsMining for ProtoV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
@@ -1046,6 +1058,46 @@ mod tests {
 
     fn parse_fixture(raw: &str) -> Value {
         Value::from_str(raw).expect("fixture parses")
+    }
+
+    #[tokio::test]
+    async fn operating_state_preserves_degraded_mining_and_power_transitions() {
+        let miner = ProtoV1::new(
+            IpAddr::from([127, 0, 0, 1]),
+            asic_rs_makes_proto::models::ProtoModel::Rig,
+            None,
+            ProtoV1::hardware_from_response(&parse_fixture(HARDWARE)),
+        );
+        for (label, expected, is_mining) in [
+            ("Mining", OperatingState::Mining {}, true),
+            ("DegradedMining", OperatingState::DegradedMining {}, true),
+            ("PoweringOn", OperatingState::Starting {}, true),
+            ("PoweringOff", OperatingState::Stopping {}, false),
+            (
+                "NewProtoState",
+                OperatingState::Unknown {
+                    raw: "NewProtoState".into(),
+                },
+                false,
+            ),
+        ] {
+            let mut mining = parse_fixture(MINING);
+            mining["mining-status"]["status"] = json!(label);
+            let client = MockAPIClient::new(HashMap::from([(
+                MinerCommand::WebAPI {
+                    command: "/api/v1/mining",
+                    parameters: None,
+                },
+                mining,
+            )]));
+            let mut collector = DataCollector::new_with_client(&miner, &client);
+            let data = collector
+                .collect(&[DataField::OperatingState, DataField::IsMining])
+                .await;
+            let snapshot = miner.parse_data(data);
+            assert_eq!(snapshot.operating_state, Some(expected));
+            assert_eq!(snapshot.is_mining, is_mining);
+        }
     }
 
     fn command_results() -> HashMap<MinerCommand, Value> {

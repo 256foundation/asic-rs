@@ -7,6 +7,7 @@ use asic_rs_core::traits::{
 pub use v1_2_0::VnishV120;
 pub use v1_3_0::VnishV130;
 
+mod operating_state;
 pub mod v1_2_0;
 pub mod v1_3_0;
 

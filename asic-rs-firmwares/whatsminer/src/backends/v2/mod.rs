@@ -553,6 +553,8 @@ impl GetUptime for WhatsMinerV2 {
 
 impl GetBestShare for WhatsMinerV2 {}
 impl GetSessionBestShare for WhatsMinerV2 {}
+impl GetOperatingState for WhatsMinerV2 {}
+
 impl GetIsMining for WhatsMinerV2 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         // mineroff: "true" means mining is OFF

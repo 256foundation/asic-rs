@@ -20,6 +20,7 @@ use asic_rs_core::{
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
+        operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -237,7 +238,7 @@ impl GetDataLocations for BraiinsV2604 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => vec![(
+            DataField::IsMining | DataField::OperatingState => vec![(
                 WEB_MINER_DETAILS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -541,6 +542,12 @@ impl GetUptime for BraiinsV2604 {
 
 impl GetBestShare for BraiinsV2604 {}
 impl GetSessionBestShare for BraiinsV2604 {}
+
+impl GetOperatingState for BraiinsV2604 {
+    fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
+        crate::backends::util::parse_operating_state(data.get(&DataField::OperatingState)?)
+    }
+}
 
 impl GetIsMining for BraiinsV2604 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
