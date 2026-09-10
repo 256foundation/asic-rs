@@ -309,7 +309,15 @@ impl GetDataLocations for VnishV120 {
                     tag: None,
                 },
             )],
-            DataField::IsMining | DataField::OperatingState => vec![(
+            DataField::IsMining => vec![(
+                WEB_STATUS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner_state"),
+                    tag: None,
+                },
+            )],
+            DataField::OperatingState => vec![(
                 WEB_STATUS,
                 DataExtractor {
                     func: get_by_pointer,

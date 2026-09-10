@@ -251,7 +251,25 @@ impl GetDataLocations for VolcMinerV1 {
                     tag: None,
                 },
             )],
-            DataField::Hashrate | DataField::IsMining => vec![
+            DataField::Hashrate => vec![
+                (
+                    WEB_MINER_STATUS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/summary"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_SUMMARY,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/SUMMARY/0"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::IsMining => vec![
                 (
                     WEB_MINER_STATUS,
                     DataExtractor {
@@ -287,7 +305,25 @@ impl GetDataLocations for VolcMinerV1 {
                     },
                 ),
             ],
-            DataField::Fans | DataField::Hashboards => vec![
+            DataField::Fans => vec![
+                (
+                    WEB_MINER_STATUS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/1"),
+                        tag: None,
+                    },
+                ),
+            ],
+            DataField::Hashboards => vec![
                 (
                     WEB_MINER_STATUS,
                     DataExtractor {

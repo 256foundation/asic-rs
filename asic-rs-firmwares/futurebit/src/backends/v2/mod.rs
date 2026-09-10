@@ -348,7 +348,15 @@ impl GetDataLocations for ApolloV2 {
                     tag: None,
                 },
             )],
-            DataField::Hashboards | DataField::Chips => vec![(
+            DataField::Hashboards => vec![(
+                GQL_BOARD,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/Miner/stats/result/stats/0"),
+                    tag: None,
+                },
+            )],
+            DataField::Chips => vec![(
                 GQL_BOARD,
                 DataExtractor {
                     func: get_by_pointer,

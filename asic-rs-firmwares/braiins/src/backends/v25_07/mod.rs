@@ -236,7 +236,15 @@ impl GetDataLocations for BraiinsV2507 {
                     tag: None,
                 },
             )],
-            DataField::IsMining | DataField::OperatingState => vec![(
+            DataField::IsMining => vec![(
+                WEB_MINER_DETAILS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/status"),
+                    tag: None,
+                },
+            )],
+            DataField::OperatingState => vec![(
                 WEB_MINER_DETAILS,
                 DataExtractor {
                     func: get_by_pointer,

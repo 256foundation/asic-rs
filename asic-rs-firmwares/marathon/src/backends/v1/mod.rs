@@ -553,7 +553,15 @@ impl GetDataLocations for MaraV1 {
                     tag: None,
                 },
             )],
-            DataField::IsMining | DataField::OperatingState => vec![(
+            DataField::IsMining => vec![(
+                WEB_BRIEF,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/status"),
+                    tag: None,
+                },
+            )],
+            DataField::OperatingState => vec![(
                 WEB_BRIEF,
                 DataExtractor {
                     func: get_by_pointer,

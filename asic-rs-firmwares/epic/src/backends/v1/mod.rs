@@ -524,7 +524,15 @@ impl GetDataLocations for PowerPlayV1 {
                     },
                 ),
             ],
-            DataField::IsMining | DataField::OperatingState => vec![(
+            DataField::IsMining => vec![(
+                WEB_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/Status/Operating State"),
+                    tag: None,
+                },
+            )],
+            DataField::OperatingState => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,

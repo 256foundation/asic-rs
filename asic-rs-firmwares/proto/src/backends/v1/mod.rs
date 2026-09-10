@@ -353,7 +353,15 @@ impl GetDataLocations for ProtoV1 {
                     tag: None,
                 },
             )],
-            DataField::IsMining | DataField::OperatingState => vec![(
+            DataField::IsMining => vec![(
+                WEB_MINING,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/mining-status/status"),
+                    tag: None,
+                },
+            )],
+            DataField::OperatingState => vec![(
                 WEB_MINING,
                 DataExtractor {
                     func: get_by_pointer,
