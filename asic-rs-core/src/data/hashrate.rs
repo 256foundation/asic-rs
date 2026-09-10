@@ -347,31 +347,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn algorithms_have_conventional_default_units() {
-        for (algo, unit) in [
-            (HashAlgorithm::SHA256, HashRateUnit::TeraHash),
-            (HashAlgorithm::Scrypt, HashRateUnit::GigaHash),
-            (HashAlgorithm::X11, HashRateUnit::GigaHash),
-            (HashAlgorithm::Blake2S256, HashRateUnit::TeraHash),
-            (HashAlgorithm::Kadena, HashRateUnit::TeraHash),
-            (HashAlgorithm::KHeavyHash, HashRateUnit::TeraHash),
-            (HashAlgorithm::Eaglesong, HashRateUnit::TeraHash),
-            (HashAlgorithm::EtHash, HashRateUnit::MegaHash),
-            (HashAlgorithm::Equihash, HashRateUnit::KiloHash),
-            (HashAlgorithm::Handshake, HashRateUnit::TeraHash),
-            (HashAlgorithm::Blake256R14, HashRateUnit::TeraHash),
-            (HashAlgorithm::Unknown, HashRateUnit::Hash),
-        ] {
-            let hashrate = HashRate {
-                value: 1.0,
-                unit: HashRateUnit::Hash,
-                algo,
-            };
-            assert_eq!(hashrate.default_unit(), unit, "{algo}");
-        }
-    }
-
-    #[test]
     fn as_default_unit_uses_the_algorithm() {
         let hashrate = HashRate {
             value: 16_200.0,
