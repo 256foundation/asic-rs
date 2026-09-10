@@ -529,7 +529,7 @@ impl GetHashboards for ApolloV2 {
                     unit: HashRateUnit::GigaHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default())
+                .as_default_unit()
             });
 
         let mut board = BoardData::with_state(0, chips, None, active);
@@ -542,7 +542,7 @@ impl GetHashboards for ApolloV2 {
                     unit: HashRateUnit::GigaHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default())
+                .as_default_unit()
             });
 
         board.board_temperature = as_f64(slot.get("temperature")).map(Temperature::from_celsius);
@@ -566,7 +566,7 @@ impl GetHashrate for ApolloV2 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -579,7 +579,7 @@ impl GetExpectedHashrate for ApolloV2 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }

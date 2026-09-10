@@ -491,7 +491,7 @@ impl GetHashboards for VnishV130 {
                         unit,
                         algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
             board.expected_hashrate = ["/hashrate_ideal", "/hr_nominal"]
                 .iter()
@@ -502,7 +502,7 @@ impl GetHashboards for VnishV130 {
                         unit,
                         algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
             board.board_temperature = chain
                 .pointer("/pcb_temp/max")
@@ -551,7 +551,7 @@ impl GetHashboards for VnishV130 {
                                                 algo,
                                             }
                                         }
-                                        .as_unit(HashRateUnit::default())
+                                        .as_default_unit()
                                     });
                                 let working = hashrate.as_ref().map(|hr| hr.value > 0.0);
                                 ChipData {
@@ -624,7 +624,7 @@ impl GetHashrate for VnishV130 {
                     .unwrap_or(HashRateUnit::GigaHash),
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default()),
+            .as_default_unit(),
         )
     }
 }
@@ -645,7 +645,7 @@ impl GetExpectedHashrate for VnishV130 {
                     .unwrap_or(HashRateUnit::GigaHash),
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default()),
+            .as_default_unit(),
         )
     }
 }

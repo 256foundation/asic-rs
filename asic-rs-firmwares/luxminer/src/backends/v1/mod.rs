@@ -679,7 +679,7 @@ impl GetHashboards for LuxMinerV1 {
                             unit: HashRateUnit::MegaHash,
                             algo: self.device_info.algo,
                         }
-                        .as_unit(HashRateUnit::default())
+                        .as_default_unit()
                     });
                 board.serial_number = dev
                     .get("SerialNumber")
@@ -697,7 +697,7 @@ impl GetHashboards for LuxMinerV1 {
                             unit: HashRateUnit::GigaHash,
                             algo: self.device_info.algo,
                         }
-                        .as_unit(HashRateUnit::default())
+                        .as_default_unit()
                     });
                 board.board_temperature = stats
                     .get(format!("temp_pcb{b_id}"))
@@ -767,7 +767,7 @@ impl GetHashboards for LuxMinerV1 {
                                         unit: HashRateUnit::GigaHash,
                                         algo: self.device_info.algo,
                                     }
-                                    .as_unit(HashRateUnit::default())
+                                    .as_default_unit()
                                 }),
                                 frequency: o
                                     .get("Frequency")
@@ -822,7 +822,7 @@ impl GetHashrate for LuxMinerV1 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -852,7 +852,7 @@ impl GetExpectedHashrate for LuxMinerV1 {
                 unit: HashRateUnit::MegaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default()),
+            .as_default_unit(),
         )
     }
 }

@@ -699,7 +699,7 @@ impl GetHashboards for AuradineV1 {
                         unit: HashRateUnit::MegaHash,
                         algo: self.device_info.algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
                 hashboard.serial_number = serials_data
                     .and_then(|sns| sns.get(position))
@@ -989,7 +989,7 @@ impl GetHashrate for AuradineV1 {
                 unit: HashRateUnit::MegaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -1002,7 +1002,7 @@ impl GetExpectedHashrate for AuradineV1 {
                 unit: HashRateUnit::TeraHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -1082,7 +1082,7 @@ impl GetTuningTarget for AuradineV1 {
                     unit: HashRateUnit::TeraHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default()),
+                .as_default_unit(),
             ));
         }
 
@@ -1099,7 +1099,7 @@ impl GetTuningTarget for AuradineV1 {
                     unit: HashRateUnit::TeraHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default()),
+                .as_default_unit(),
             ));
         }
 

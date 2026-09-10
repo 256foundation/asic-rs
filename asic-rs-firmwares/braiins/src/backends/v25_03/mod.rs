@@ -527,7 +527,7 @@ impl GetHashboards for BraiinsV2503 {
                         unit: HashRateUnit::MegaHash,
                         algo: self.device_info.algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
             board.expected_hashrate = solver.get("nominalMhs").and_then(|v| v.as_f64()).map(|f| {
                 HashRate {
@@ -535,7 +535,7 @@ impl GetHashboards for BraiinsV2503 {
                     unit: HashRateUnit::MegaHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default())
+                .as_default_unit()
             });
 
             // Temperatures are in a list with name/degreesC pairs
@@ -584,7 +584,7 @@ impl GetHashrate for BraiinsV2503 {
                 unit: HashRateUnit::MegaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -597,7 +597,7 @@ impl GetExpectedHashrate for BraiinsV2503 {
                 unit: HashRateUnit::MegaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }

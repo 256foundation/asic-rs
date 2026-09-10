@@ -679,7 +679,7 @@ impl MaraV1 {
                                         unit: HashRateUnit::GigaHash,
                                         algo: self.device_info.algo,
                                     }
-                                    .as_unit(HashRateUnit::default())
+                                    .as_default_unit()
                                 });
 
                         let voltage = chip
@@ -753,7 +753,7 @@ impl GetHashboards for MaraV1 {
                     unit: HashRateUnit::GigaHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default())
+                .as_default_unit()
             });
             board.expected_hashrate = hb.get("hashrate_ideal").and_then(|v| v.as_f64()).map(|f| {
                 HashRate {
@@ -761,7 +761,7 @@ impl GetHashboards for MaraV1 {
                     unit: HashRateUnit::GigaHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default())
+                .as_default_unit()
             });
 
             if let Some(temps_obj) = temps_obj {
@@ -825,7 +825,7 @@ impl GetHashrate for MaraV1 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -838,7 +838,7 @@ impl GetExpectedHashrate for MaraV1 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }

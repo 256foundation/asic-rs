@@ -396,7 +396,7 @@ impl GetHashboards for WhatsMinerV3 {
                         unit: HashRateUnit::TeraHash,
                         algo: self.device_info.algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
             board.expected_hashrate = hashboard_data
                 .pointer(&format!("/edevs/{idx}/factory-hash"))
@@ -407,7 +407,7 @@ impl GetHashboards for WhatsMinerV3 {
                         unit: HashRateUnit::TeraHash,
                         algo: self.device_info.algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
             board.board_temperature = hashboard_data
                 .pointer(&format!("/edevs/{idx}/chip-temp-min"))
@@ -451,7 +451,7 @@ impl GetHashrate for WhatsMinerV3 {
                 unit: HashRateUnit::TeraHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -463,7 +463,7 @@ impl GetExpectedHashrate for WhatsMinerV3 {
                 unit: HashRateUnit::TeraHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }

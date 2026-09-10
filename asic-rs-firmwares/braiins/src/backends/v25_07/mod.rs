@@ -441,7 +441,7 @@ impl GetHashboards for BraiinsV2507 {
                         unit: HashRateUnit::GigaHash,
                         algo: self.device_info.algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
             board.expected_hashrate = chain
                 .pointer("/stats/nominal_hashrate/gigahash_per_second")
@@ -452,7 +452,7 @@ impl GetHashboards for BraiinsV2507 {
                         unit: HashRateUnit::GigaHash,
                         algo: self.device_info.algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
             board.board_temperature = chain
                 .pointer("/board_temp/degree_c")
@@ -491,7 +491,7 @@ impl GetHashrate for BraiinsV2507 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -504,7 +504,7 @@ impl GetExpectedHashrate for BraiinsV2507 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }

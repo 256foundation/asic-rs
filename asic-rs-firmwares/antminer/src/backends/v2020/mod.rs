@@ -661,7 +661,7 @@ impl GetHashboards for AntMinerV2020 {
                         unit,
                         algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
 
             // `temp_pcb{idx}` on older generations; newer ones split the
@@ -728,7 +728,7 @@ impl GetHashrate for AntMinerV2020 {
                 unit,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default()),
+            .as_default_unit(),
         )
     }
 }
@@ -751,7 +751,7 @@ impl GetExpectedHashrate for AntMinerV2020 {
                     .unwrap_or(HashRateUnit::GigaHash),
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default()),
+            .as_default_unit(),
         )
     }
 }
@@ -1443,14 +1443,17 @@ mod tests {
 
         let hashrate = miner_data.hashrate.expect("hashrate");
         assert_eq!(hashrate.algo, HashAlgorithm::Scrypt);
+        assert_eq!(hashrate.unit, HashRateUnit::GigaHash);
         assert_mega_hash(hashrate, 16200.0);
 
         let expected = miner_data.expected_hashrate.expect("expected hashrate");
         assert_eq!(expected.algo, HashAlgorithm::Scrypt);
+        assert_eq!(expected.unit, HashRateUnit::GigaHash);
         assert_mega_hash(expected, 16000.0);
 
         let board = miner_data.hashboards[0].hashrate.clone().expect("board 0");
         assert_eq!(board.algo, HashAlgorithm::Scrypt);
+        assert_eq!(board.unit, HashRateUnit::GigaHash);
         assert_mega_hash(board, 5400.0);
     }
 

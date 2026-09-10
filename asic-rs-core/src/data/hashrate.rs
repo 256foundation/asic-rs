@@ -223,6 +223,28 @@ pub struct HashRate {
 }
 
 impl HashRate {
+    /// Return the conventional display unit for this hashrate's algorithm.
+    pub const fn default_unit(&self) -> HashRateUnit {
+        Self::default_unit_for_algorithm(self.algo)
+    }
+
+    /// Return the conventional display unit for a mining algorithm.
+    pub const fn default_unit_for_algorithm(algo: HashAlgorithm) -> HashRateUnit {
+        match algo {
+            HashAlgorithm::Scrypt | HashAlgorithm::X11 => HashRateUnit::GigaHash,
+            HashAlgorithm::EtHash => HashRateUnit::MegaHash,
+            HashAlgorithm::Equihash => HashRateUnit::KiloHash,
+            HashAlgorithm::SHA256
+            | HashAlgorithm::Blake2S256
+            | HashAlgorithm::Kadena
+            | HashAlgorithm::KHeavyHash
+            | HashAlgorithm::Eaglesong
+            | HashAlgorithm::Handshake
+            | HashAlgorithm::Blake256R14 => HashRateUnit::TeraHash,
+            HashAlgorithm::Unknown => HashRateUnit::Hash,
+        }
+    }
+
     /// Return this hashrate converted into another unit.
     pub fn as_unit(self, unit: HashRateUnit) -> Self {
         let base = self.value * self.unit.to_multiplier() as f64; // Convert to base unit.
@@ -232,6 +254,12 @@ impl HashRate {
             unit,
             algo: self.algo,
         }
+    }
+
+    /// Return this hashrate converted into the conventional unit for its algorithm.
+    pub fn as_default_unit(self) -> Self {
+        let unit = self.default_unit();
+        self.as_unit(unit)
     }
 }
 
@@ -245,18 +273,19 @@ impl HashRate {
         unit: Option<HashRateUnit>,
         algo: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
+        let algo = algo
+            .map(|algo| {
+                let name = py_to_string(algo)?;
+                HashAlgorithm::from_str(&name)
+                    .map_err(|_| PyValueError::new_err(format!("unknown hash algorithm: {name}")))
+            })
+            .transpose()?
+            .unwrap_or(HashAlgorithm::SHA256);
+
         Ok(Self {
             value,
-            unit: unit.unwrap_or_default(),
-            algo: algo
-                .map(|algo| {
-                    let name = py_to_string(algo)?;
-                    HashAlgorithm::from_str(&name).map_err(|_| {
-                        PyValueError::new_err(format!("unknown hash algorithm: {name}"))
-                    })
-                })
-                .transpose()?
-                .unwrap_or(HashAlgorithm::SHA256),
+            unit: unit.unwrap_or_else(|| Self::default_unit_for_algorithm(algo)),
+            algo,
         })
     }
 
@@ -269,6 +298,17 @@ impl HashRate {
     #[pyo3(signature = (unit: "HashRateUnit"))]
     pub fn py_as_unit(&self, unit: HashRateUnit) -> Self {
         self.into_unit(unit)
+    }
+
+    /// Return the conventional display unit for this hashrate's algorithm.
+    #[pyo3(name = "default_unit")]
+    fn py_default_unit(&self) -> HashRateUnit {
+        self.default_unit()
+    }
+
+    /// Return this hashrate converted into the conventional unit for its algorithm.
+    pub fn into_default_unit(&self) -> Self {
+        self.clone().as_default_unit()
     }
 
     fn __float__(&self) -> f64 {
@@ -316,5 +356,49 @@ impl Div<HashRate> for Power {
 
     fn div(self, hash_rate: HashRate) -> Self::Output {
         self.as_watts() / hash_rate.value
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn algorithms_have_conventional_default_units() {
+        for (algo, unit) in [
+            (HashAlgorithm::SHA256, HashRateUnit::TeraHash),
+            (HashAlgorithm::Scrypt, HashRateUnit::GigaHash),
+            (HashAlgorithm::X11, HashRateUnit::GigaHash),
+            (HashAlgorithm::Blake2S256, HashRateUnit::TeraHash),
+            (HashAlgorithm::Kadena, HashRateUnit::TeraHash),
+            (HashAlgorithm::KHeavyHash, HashRateUnit::TeraHash),
+            (HashAlgorithm::Eaglesong, HashRateUnit::TeraHash),
+            (HashAlgorithm::EtHash, HashRateUnit::MegaHash),
+            (HashAlgorithm::Equihash, HashRateUnit::KiloHash),
+            (HashAlgorithm::Handshake, HashRateUnit::TeraHash),
+            (HashAlgorithm::Blake256R14, HashRateUnit::TeraHash),
+            (HashAlgorithm::Unknown, HashRateUnit::Hash),
+        ] {
+            let hashrate = HashRate {
+                value: 1.0,
+                unit: HashRateUnit::Hash,
+                algo,
+            };
+            assert_eq!(hashrate.default_unit(), unit, "{algo}");
+        }
+    }
+
+    #[test]
+    fn as_default_unit_uses_the_algorithm() {
+        let hashrate = HashRate {
+            value: 16_200.0,
+            unit: HashRateUnit::MegaHash,
+            algo: HashAlgorithm::Scrypt,
+        }
+        .as_default_unit();
+
+        assert_eq!(hashrate.unit, HashRateUnit::GigaHash);
+        assert_eq!(hashrate.value, 16.2);
+        assert_eq!(hashrate.to_string(), "16.2 GH/s");
     }
 }

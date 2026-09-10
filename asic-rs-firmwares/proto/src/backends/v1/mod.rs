@@ -531,7 +531,7 @@ impl GetHashboards for ProtoV1 {
                     unit: HashRateUnit::TeraHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default())
+                .as_default_unit()
             });
 
             board.expected_hashrate = ideal_hashrate
@@ -540,7 +540,7 @@ impl GetHashboards for ProtoV1 {
                     unit: HashRateUnit::GigaHash,
                     algo: self.device_info.algo,
                 })
-                .map(|hr| hr.as_unit(HashRateUnit::default()));
+                .map(|hr| hr.as_default_unit());
 
             board.board_temperature = telemetry
                 .pointer("/temperature/average")
@@ -579,7 +579,7 @@ impl GetHashrate for ProtoV1 {
                 unit: HashRateUnit::TeraHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -592,7 +592,7 @@ impl GetExpectedHashrate for ProtoV1 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }

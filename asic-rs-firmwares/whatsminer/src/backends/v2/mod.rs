@@ -356,7 +356,7 @@ impl GetHashboards for WhatsMinerV2 {
                         unit: HashRateUnit::MegaHash,
                         algo: self.device_info.algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
             board.expected_hashrate = hashboard_data
                 .pointer(&format!("/DEVS/{idx}/Factory GHS"))
@@ -367,7 +367,7 @@ impl GetHashboards for WhatsMinerV2 {
                         unit: HashRateUnit::GigaHash,
                         algo: self.device_info.algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
             board.board_temperature = hashboard_data
                 .pointer(&format!("/DEVS/{idx}/Temperature"))
@@ -413,7 +413,7 @@ impl GetHashrate for WhatsMinerV2 {
                 unit: HashRateUnit::MegaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -425,7 +425,7 @@ impl GetExpectedHashrate for WhatsMinerV2 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
