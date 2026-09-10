@@ -240,7 +240,7 @@ jobs:
       - name: Publish crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo workspaces publish --from-git --yes --allow-dirty
+        run: cargo workspaces publish --from-git --yes --allow-dirty --publish-interval 15
 
   release:
     runs-on: ubuntu-24.04
