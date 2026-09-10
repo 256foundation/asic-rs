@@ -241,6 +241,33 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+`data.operating_state` is an optional `OperatingState` enum for firmware that
+reports a detailed runtime state. It distinguishes mining, stable operation,
+startup, tuning, frequency/voltage adjustment, idling, pause, suspension,
+restriction, stopping, restart, cooldown, degraded mining, and errors.
+`Mining` alone does not promise that tuning is complete: `Stable` is only used
+when the firmware explicitly reports it.
+
+ePIC/UMC, VNish, Braiins REST (25.07+), MARA, and Proto populate this field from
+responses already used by the data collector. For example, ePIC’s
+`AdjustingClockVoltage` becomes `OperatingState::AdjustingClockVoltage {}` in
+Rust and `OperatingState.AdjustingClockVoltage()` in Python. VNish’s
+`auto-tuning` becomes `Tuning`; Braiins status `3` becomes `Paused`.
+
+The enum serializes identically in Rust and Python/Pydantic as a tagged object:
+`{"type": "Mining"}` or `{"type": "Unknown", "raw": "FutureFirmwareState"}`.
+Unrecognized labels (and Braiins numeric codes) retain their original value in
+`Unknown.raw`. Rust enums can be matched directly; Python callers can use
+`isinstance(state, OperatingState.Tuning)` or compare against
+`OperatingState.Tuning()`. States are hashable for grouping miners.
+
+Missing, null, invalid, or unsupported state telemetry remains `None`, including
+backends that only expose a boolean, hashrate, or configured work mode. Existing
+`is_mining` behavior is unchanged and may be true during startup or tuning, or
+default when a response is missing. It is not derived from `operating_state`.
+Use `miner.get_operating_state()` to fetch just this field, or exclude
+`DataField.OperatingState` (`DataField::OperatingState` in Rust) from a snapshot.
+
 To reduce collection work, exclude fields from a full data snapshot.
 
 <!-- asic-rs-example:data-exclude rust -->
