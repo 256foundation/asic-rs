@@ -553,7 +553,17 @@ impl GetSessionBestShare for BraiinsV2604 {}
 
 impl GetOperatingState for BraiinsV2604 {
     fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
-        crate::backends::util::parse_operating_state(data.get(&DataField::OperatingState)?)
+        Some(match data.get(&DataField::OperatingState)?.as_u64()? {
+            0 => return None,
+            1 => OperatingState::Stopped {},
+            2 => OperatingState::Mining {},
+            3 => OperatingState::Paused {},
+            4 => OperatingState::Suspended {},
+            5 => OperatingState::Restricted {},
+            code => OperatingState::Unknown {
+                raw: code.to_string(),
+            },
+        })
     }
 }
 

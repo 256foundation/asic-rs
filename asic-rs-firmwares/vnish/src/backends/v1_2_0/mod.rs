@@ -868,7 +868,13 @@ impl GetSessionBestShare for VnishV120 {}
 
 impl GetOperatingState for VnishV120 {
     fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
-        super::operating_state::parse(data.get(&DataField::OperatingState)?)
+        let label = data.get(&DataField::OperatingState)?.as_str()?;
+        match label {
+            "auto-tuning" | "auto_tuning" => Some(OperatingState::Tuning {}),
+            "failure" | "failed" | "broken" => Some(OperatingState::Error {}),
+            "idle" => Some(OperatingState::Idling {}),
+            _ => OperatingState::from_label(label),
+        }
     }
 }
 

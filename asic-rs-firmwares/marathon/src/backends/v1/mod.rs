@@ -17,6 +17,7 @@ use asic_rs_core::{
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
+        operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -951,7 +952,13 @@ impl GetUptime for MaraV1 {
 impl GetBestShare for MaraV1 {}
 impl GetSessionBestShare for MaraV1 {}
 
-impl GetOperatingState for MaraV1 {}
+impl GetOperatingState for MaraV1 {
+    fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
+        data.get(&DataField::OperatingState)
+            .and_then(Value::as_str)
+            .and_then(OperatingState::from_label)
+    }
+}
 
 impl GetIsMining for MaraV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {

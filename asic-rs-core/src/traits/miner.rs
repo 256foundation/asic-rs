@@ -857,12 +857,9 @@ pub trait GetOperatingState: CollectData {
         self.parse_operating_state(&data)
     }
 
-    /// The default accepts explicit string labels only. Backends with numeric
-    /// codes or vendor-specific labels override this to normalize their states.
+    #[allow(unused_variables)]
     fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
-        data.get(&DataField::OperatingState)
-            .and_then(Value::as_str)
-            .and_then(OperatingState::from_label)
+        None
     }
 }
 

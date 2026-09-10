@@ -4,25 +4,8 @@ use asic_rs_core::data::capabilities::{
 use asic_rs_core::data::device::HashAlgorithm;
 use asic_rs_core::data::hashrate::{HashRate, HashRateUnit};
 use asic_rs_core::data::miner::TuningTarget;
-use asic_rs_core::data::operating_state::OperatingState;
 use measurements::Power;
 use serde_json::Value;
-
-/// BOS+ MinerStatus codes from the firmware API, not inferred from hashrate.
-/// https://github.com/braiins/bos-plus-api/blob/ef28e752f80711c54d5587ec8f2cd838fdb34042/proto/bos/v1/miner.proto#L109-L116
-pub(crate) fn parse_operating_state(value: &Value) -> Option<OperatingState> {
-    Some(match value.as_u64()? {
-        0 => return None, // Unspecified is not a reported operating state.
-        1 => OperatingState::Stopped {},
-        2 => OperatingState::Mining {},
-        3 => OperatingState::Paused {},
-        4 => OperatingState::Suspended {},
-        5 => OperatingState::Restricted {},
-        code => OperatingState::Unknown {
-            raw: code.to_string(),
-        },
-    })
-}
 
 /// Build [`TuningCapabilities`] from a BOS GraphQL `powerTarget` metadata object
 /// (`{ default, min, max }`, all in watts). Older GraphQL BraiinsOS backends only
@@ -175,6 +158,7 @@ mod operating_state_tests {
         data::{
             collector::{DataCollector, DataField},
             command::MinerCommand,
+            operating_state::OperatingState,
         },
         test::api::MockAPIClient,
         traits::miner::Miner,
@@ -222,21 +206,5 @@ mod operating_state_tests {
             }
         }
         Ok(())
-    }
-
-    #[test]
-    fn unspecified_and_invalid_status_codes_are_unavailable() {
-        for value in [
-            json!(0),
-            Value::Null,
-            json!(-1),
-            json!(2.5),
-            json!(true),
-            json!("2"),
-            json!([]),
-            json!({}),
-        ] {
-            assert_eq!(parse_operating_state(&value), None);
-        }
     }
 }
