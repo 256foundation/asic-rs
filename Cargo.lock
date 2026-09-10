@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-core"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-pydantic",
@@ -133,7 +133,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-antminer"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -155,7 +155,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-auradine"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -173,7 +173,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-avalonminer"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -190,7 +190,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-bitaxe"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -208,7 +208,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-braiins"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-elphapex"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -247,7 +247,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-epic"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -270,7 +270,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-futurebit"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-luxminer"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -304,7 +304,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-marathon"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -324,7 +324,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-nerdaxe"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -342,7 +342,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-proto"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -361,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-sealminer"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -379,7 +379,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-vnish"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -398,7 +398,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-volcminer"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "anyhow",
  "asic-rs-core",
@@ -418,7 +418,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-firmwares-whatsminer"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "aes",
  "anyhow",
@@ -443,7 +443,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-macros"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "proc-macro2",
@@ -454,7 +454,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-antminer"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -467,7 +467,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-auradine"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -480,7 +480,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-avalon"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -493,7 +493,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-bitaxe"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -506,7 +506,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-braiins"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-elphapex"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -532,7 +532,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-epic"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -545,7 +545,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-futurebit"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -558,7 +558,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-marathon"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "pyo3",
@@ -570,7 +570,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-nerdaxe"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -583,7 +583,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-proto"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -596,7 +596,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-sealminer"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -609,7 +609,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-volcminer"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -622,7 +622,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-whatsminer"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-core",
  "asic-rs-macros",
@@ -635,7 +635,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-pydantic"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-pydantic-macros",
  "chrono-tz",
@@ -646,7 +646,7 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-pydantic-macros"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "asic-rs-pydantic",
  "proc-macro2",
