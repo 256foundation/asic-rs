@@ -225,24 +225,7 @@ pub struct HashRate {
 impl HashRate {
     /// Return the conventional display unit for this hashrate's algorithm.
     pub const fn default_unit(&self) -> HashRateUnit {
-        Self::default_unit_for_algorithm(self.algo)
-    }
-
-    /// Return the conventional display unit for a mining algorithm.
-    pub const fn default_unit_for_algorithm(algo: HashAlgorithm) -> HashRateUnit {
-        match algo {
-            HashAlgorithm::Scrypt | HashAlgorithm::X11 => HashRateUnit::GigaHash,
-            HashAlgorithm::EtHash => HashRateUnit::MegaHash,
-            HashAlgorithm::Equihash => HashRateUnit::KiloHash,
-            HashAlgorithm::SHA256
-            | HashAlgorithm::Blake2S256
-            | HashAlgorithm::Kadena
-            | HashAlgorithm::KHeavyHash
-            | HashAlgorithm::Eaglesong
-            | HashAlgorithm::Handshake
-            | HashAlgorithm::Blake256R14 => HashRateUnit::TeraHash,
-            HashAlgorithm::Unknown => HashRateUnit::Hash,
-        }
+        self.algo.default_hashrate_unit()
     }
 
     /// Return this hashrate converted into another unit.
@@ -284,7 +267,7 @@ impl HashRate {
 
         Ok(Self {
             value,
-            unit: unit.unwrap_or_else(|| Self::default_unit_for_algorithm(algo)),
+            unit: unit.unwrap_or_else(|| algo.default_hashrate_unit()),
             algo,
         })
     }
