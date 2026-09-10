@@ -280,7 +280,7 @@ impl GetHashboards for NerdAxeV1 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         });
         // `vrTemp` is the VR/board sensor; `temp` is the ASIC chip sensor.
         let chip_temp = api_data
@@ -323,7 +323,7 @@ impl GetHashboards for NerdAxeV1 {
                     unit: HashRateUnit::GigaHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default())
+                .as_default_unit()
             });
         if chip_data.is_some() {
             board.chips = vec![ChipData {
@@ -349,7 +349,7 @@ impl GetHashrate for NerdAxeV1 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -379,7 +379,7 @@ impl GetExpectedHashrate for NerdAxeV1 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default()),
+            .as_default_unit(),
         )
     }
 }

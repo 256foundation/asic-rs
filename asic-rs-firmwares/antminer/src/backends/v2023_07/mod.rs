@@ -637,7 +637,7 @@ impl GetHashboards for AntMinerV202307 {
                         unit,
                         algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
 
             // `temp_pcb{idx}` on older generations; newer ones split the
@@ -704,7 +704,7 @@ impl GetHashrate for AntMinerV202307 {
                 unit,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default()),
+            .as_default_unit(),
         )
     }
 }
@@ -727,7 +727,7 @@ impl GetExpectedHashrate for AntMinerV202307 {
                     .unwrap_or(HashRateUnit::GigaHash),
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default()),
+            .as_default_unit(),
         )
     }
 }
@@ -1442,14 +1442,17 @@ mod tests {
 
             let hr = miner_data.hashrate.clone().expect("hashrate");
             assert_eq!(hr.algo, HashAlgorithm::Scrypt, "{model}");
+            assert_eq!(hr.unit, HashRateUnit::GigaHash, "{model}");
             assert_giga_hash(hr, hashrate, model.to_string());
 
             let ex = miner_data.expected_hashrate.clone().expect("expected");
             assert_eq!(ex.algo, HashAlgorithm::Scrypt, "{model}");
+            assert_eq!(ex.unit, HashRateUnit::GigaHash, "{model}");
             assert_giga_hash(ex, expected, model.to_string());
 
             let b0 = miner_data.hashboards[0].hashrate.clone().expect("board 0");
             assert_eq!(b0.algo, HashAlgorithm::Scrypt, "{model}");
+            assert_eq!(b0.unit, HashRateUnit::GigaHash, "{model}");
             assert_giga_hash(b0, board0, model.to_string());
 
             let working: Vec<u16> = miner_data

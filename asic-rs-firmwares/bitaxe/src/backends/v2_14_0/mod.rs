@@ -306,7 +306,7 @@ impl GetHashboards for Bitaxe2140 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         });
         board.expected_hashrate = api_data
             .get("expectedHashrate")
@@ -317,7 +317,7 @@ impl GetHashboards for Bitaxe2140 {
                     unit: HashRateUnit::GigaHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default())
+                .as_default_unit()
             });
         // `vrTemp` is the VR/board sensor; `temp` is the ASIC chip sensor.
         let chip_temp = api_data
@@ -373,7 +373,7 @@ impl GetHashrate for Bitaxe2140 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -386,7 +386,7 @@ impl GetExpectedHashrate for Bitaxe2140 {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }

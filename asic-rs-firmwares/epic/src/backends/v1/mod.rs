@@ -840,7 +840,7 @@ impl GetHashboards for PowerPlayV1 {
                                 unit: HashRateUnit::MegaHash,
                                 algo: self.device_info.algo,
                             }
-                            .as_unit(HashRateUnit::default())
+                            .as_default_unit()
                         });
                     hashboard.voltage = board
                         .get("Input Voltage")
@@ -859,7 +859,7 @@ impl GetHashboards for PowerPlayV1 {
                                 unit: HashRateUnit::MegaHash,
                                 algo: self.device_info.algo,
                             }
-                            .as_unit(HashRateUnit::default())
+                            .as_default_unit()
                         });
                     hashboard.board_temperature = board
                         .get("Temperature")
@@ -991,7 +991,7 @@ impl GetHashboards for PowerPlayV1 {
                                     unit: HashRateUnit::MegaHash,
                                     algo: self.device_info.algo,
                                 }
-                                .as_unit(HashRateUnit::default()),
+                                .as_default_unit(),
                             );
                         }
                     }
@@ -1042,7 +1042,7 @@ impl GetHashrate for PowerPlayV1 {
                 unit: HashRateUnit::MegaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default()),
+            .as_default_unit(),
         )
     }
 }
@@ -1055,7 +1055,7 @@ impl GetExpectedHashrate for PowerPlayV1 {
                 unit: HashRateUnit::TeraHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -1189,7 +1189,7 @@ fn parse_tuning_target_value_from_stats(
             unit: hr_unit,
             algo,
         }
-        .as_unit(HashRateUnit::default()),
+        .as_default_unit(),
     ))
 }
 

@@ -440,7 +440,7 @@ impl GetHashboards for SealMinerV2025 {
                             unit: HashRateUnit::MegaHash,
                             algo: self.device_info.algo,
                         }
-                        .as_unit(HashRateUnit::default())
+                        .as_default_unit()
                     });
                 let ideal_hashrate = stats
                     .get(format!("{i} MHS(Ideal)"))
@@ -451,7 +451,7 @@ impl GetHashboards for SealMinerV2025 {
                             unit: HashRateUnit::MegaHash,
                             algo: self.device_info.algo,
                         }
-                        .as_unit(HashRateUnit::default())
+                        .as_default_unit()
                     });
 
                 let tuned = stats
@@ -488,7 +488,7 @@ impl GetHashrate for SealMinerV2025 {
                 unit: HashRateUnit::MegaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -501,7 +501,7 @@ impl GetExpectedHashrate for SealMinerV2025 {
                 unit: HashRateUnit::MegaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use strum::{Display as StrumDisplay, EnumIter, EnumString};
 use ts_rs::TS;
 
+use crate::data::hashrate::HashRateUnit;
 use crate::traits::{firmware::MinerFirmware, model::MinerModel};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
@@ -157,6 +158,25 @@ pub enum HashAlgorithm {
     #[cfg_attr(feature = "python", pydantic(value = "Unknown"))]
     #[serde(rename = "Unknown")]
     Unknown,
+}
+
+impl HashAlgorithm {
+    /// Return the conventional display unit for this mining algorithm.
+    pub const fn default_hashrate_unit(self) -> HashRateUnit {
+        match self {
+            HashAlgorithm::Scrypt | HashAlgorithm::X11 => HashRateUnit::GigaHash,
+            HashAlgorithm::EtHash => HashRateUnit::MegaHash,
+            HashAlgorithm::Equihash => HashRateUnit::KiloHash,
+            HashAlgorithm::SHA256
+            | HashAlgorithm::Blake2S256
+            | HashAlgorithm::Kadena
+            | HashAlgorithm::KHeavyHash
+            | HashAlgorithm::Eaglesong
+            | HashAlgorithm::Handshake
+            | HashAlgorithm::Blake256R14 => HashRateUnit::TeraHash,
+            HashAlgorithm::Unknown => HashRateUnit::Hash,
+        }
+    }
 }
 
 #[cfg_attr(feature = "python", pymethods)]

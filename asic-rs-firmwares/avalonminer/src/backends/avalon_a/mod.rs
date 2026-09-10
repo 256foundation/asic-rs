@@ -607,7 +607,7 @@ impl GetHashboards for AvalonAMiner {
                         unit: HashRateUnit::GigaHash,
                         algo: self.device_info.algo,
                     }
-                    .as_unit(HashRateUnit::default())
+                    .as_default_unit()
                 });
 
                 board.board_temperature =
@@ -717,7 +717,7 @@ impl GetHashboards for AvalonAMiner {
                     unit: HashRateUnit::GigaHash,
                     algo: self.device_info.algo,
                 }
-                .as_unit(HashRateUnit::default())
+                .as_default_unit()
             });
 
             board.board_temperature =
@@ -806,7 +806,7 @@ impl GetHashrate for AvalonAMiner {
                 unit: HashRateUnit::MegaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
@@ -819,7 +819,7 @@ impl GetExpectedHashrate for AvalonAMiner {
                 unit: HashRateUnit::GigaHash,
                 algo: self.device_info.algo,
             }
-            .as_unit(HashRateUnit::default())
+            .as_default_unit()
         })
     }
 }
