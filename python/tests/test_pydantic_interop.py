@@ -615,29 +615,32 @@ def test_tuning_config_mode_accepts_mining_mode_enum() -> None:
     }
 
 
-def test_tuning_config_manual_round_trips_voltage_and_frequency() -> None:
-    config = TuningConfig.manual(12.6, 485.0)
+def test_tuning_config_manual_round_trips_board_setpoints() -> None:
+    boards = {
+        0: (485.0, 12.6),
+        1: (None, 12.5),
+        2: (500.0, None),
+    }
+    config = TuningConfig.manual(boards)
     model = TuningConfigModel.model_validate(
         {
             "tuning": {
                 "target": {
                     "type": "manual",
-                    "value": {"voltage": 12.6, "frequency": 485.0},
+                    "value": boards,
                 }
             }
         }
     )
 
     assert config.variant == "manual"
-    assert config.target_voltage == 12.6
-    assert config.target_frequency == 485.0
-    assert model.tuning.target_voltage == 12.6
-    assert model.tuning.target_frequency == 485.0
+    assert config.target_boards == boards
+    assert model.tuning.target_boards == boards
     assert model.model_dump() == {
         "tuning": {
             "target": {
                 "type": "manual",
-                "value": {"voltage": 12.6, "frequency": 485.0},
+                "value": boards,
             },
             "algorithm": None,
         }
@@ -755,19 +758,18 @@ def test_tuning_target_variant_repr_is_readable() -> None:
     assert repr(target) == "TuningTarget.mode(mode=Normal)"
     assert str(target) == "TuningTarget.mode(mode=Normal)"
 
-    manual = TuningTarget.manual(12.6, 485.0)
+    boards = {0: (485.0, 12.6), 3: (None, 12.5)}
+    manual = TuningTarget.manual(boards)
     assert manual.variant == "manual"
-    assert manual.voltage == 12.6
-    assert manual.frequency == 485.0
-    assert repr(manual) == "TuningTarget.manual(voltage=12.6, frequency=485.0)"
+    assert manual.boards == boards
+    assert repr(manual) == (
+        "TuningTarget.manual(boards={0: (485.0, 12.6), 3: (None, 12.5)})"
+    )
 
     manual_without_setpoints = TuningTarget.manual()
     assert manual_without_setpoints.variant == "manual"
-    assert manual_without_setpoints.voltage is None
-    assert manual_without_setpoints.frequency is None
-    assert repr(manual_without_setpoints) == (
-        "TuningTarget.manual(voltage=None, frequency=None)"
-    )
+    assert manual_without_setpoints.boards == {}
+    assert repr(manual_without_setpoints) == "TuningTarget.manual(boards={})"
 
     assert repr(TuningTarget.power(3250.0)) == "TuningTarget.power(watts=3250.0)"
     assert repr(TuningTarget.hashrate(HashRate(110.0, HashRateUnit.TH))) == (
@@ -789,34 +791,32 @@ def test_tuning_target_variant_repr_is_readable() -> None:
 
 
 @pytest.mark.parametrize(
-    ("value", "expected_voltage", "expected_frequency"),
+    "boards",
     [
-        ({}, None, None),
-        ({"voltage": 12.6}, 12.6, None),
-        ({"frequency": 485.0}, None, 485.0),
-        ({"voltage": None, "frequency": None}, None, None),
+        {},
+        {0: (None, None)},
+        {0: (485.0, None)},
+        {0: (None, 12.6)},
+        {0: (485.0, 12.6), 3: (490.0, 12.7)},
     ],
 )
-def test_manual_tuning_target_accepts_optional_setpoints(
-    value: dict[str, float | None],
-    expected_voltage: float | None,
-    expected_frequency: float | None,
+def test_manual_tuning_target_accepts_optional_board_setpoints(
+    boards: dict[int, tuple[float | None, float | None]],
 ) -> None:
     model = MinerDataModel.model_validate(
         {
             "miner": minimal_miner_data(
-                tuning_target={"type": "manual", "value": value}
+                tuning_target={"type": "manual", "value": boards}
             )
         }
     )
 
     assert model.miner.tuning_target is not None
     assert model.miner.tuning_target.variant == "manual"
-    assert model.miner.tuning_target.voltage == expected_voltage
-    assert model.miner.tuning_target.frequency == expected_frequency
+    assert model.miner.tuning_target.boards == boards
     assert model.model_dump()["miner"]["tuning_target"] == {
         "type": "manual",
-        "value": {key: item for key, item in value.items() if item is not None},
+        "value": boards,
     }
 
 
