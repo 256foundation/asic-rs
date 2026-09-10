@@ -1244,6 +1244,38 @@ impl GetLightFlashing for PowerPlayV1 {
     }
 }
 
+fn format_last_error(last_error: &Value) -> Option<String> {
+    match last_error {
+        Value::Null => None,
+        Value::String(message) => {
+            let message = message.trim();
+            if message.is_empty() {
+                return None;
+            }
+
+            // Older PowerPlay versions may serialize the externally tagged
+            // MinerError object into a JSON string instead of returning the
+            // object directly.
+            serde_json::from_str::<Value>(message)
+                .ok()
+                .filter(|value| value.is_object())
+                .and_then(|value| format_last_error(&value))
+                .or_else(|| Some(message.to_string()))
+        }
+        Value::Object(error) if error.is_empty() => None,
+        Value::Object(error) if error.len() == 1 => {
+            let (kind, details) = error.iter().next()?;
+            match details {
+                Value::Null => Some(kind.clone()),
+                Value::String(message) if message.trim().is_empty() => Some(kind.clone()),
+                Value::String(message) => Some(message.trim().to_string()),
+                details => Some(format!("{kind}: {details}")),
+            }
+        }
+        value => Some(value.to_string()),
+    }
+}
+
 impl GetMessages for PowerPlayV1 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages = Vec::new();
@@ -1252,13 +1284,12 @@ impl GetMessages for PowerPlayV1 {
         if let Some(last_error) = data
             .get(&DataField::Messages)
             .and_then(|v| v.pointer("/Status/Last Error"))
-            .and_then(Value::as_str)
-            .filter(|s| !s.is_empty())
+            .and_then(format_last_error)
         {
             messages.push(MinerMessage::new(
                 timestamp as u32,
                 0,
-                last_error.to_string(),
+                last_error,
                 MessageSeverity::Error,
             ));
         }
@@ -2140,10 +2171,9 @@ mod tests {
         let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
         let summary = serde_json::json!({
             "Status": {
-                "Operating State": "AdjustingClockVoltage",
-                "Last Command": "autostart",
-                "Last Command Result": null,
-                "Last Error": "Clock voltage adjustment failed"
+                "Last Error": {
+                    "NoHashboardsEnabled": "no hashboards enabled"
+                }
             }
         });
         let data = HashMap::from([(DataField::Messages, summary)]);
@@ -2151,8 +2181,37 @@ mod tests {
         let messages = miner.parse_messages(&data);
 
         assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].message, "Clock voltage adjustment failed");
+        assert_eq!(messages[0].message, "no hashboards enabled");
         assert_eq!(messages[0].severity, MessageSeverity::Error);
+    }
+
+    #[test]
+    fn parse_messages_supports_legacy_string_errors_and_ignores_empty_errors() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+
+        for (last_error, expected) in [
+            (
+                json!("Clock voltage adjustment failed"),
+                Some("Clock voltage adjustment failed"),
+            ),
+            (
+                json!(r#"{"NoHashboardsEnabled":"no hashboards enabled"}"#),
+                Some("no hashboards enabled"),
+            ),
+            (Value::Null, None),
+            (json!(""), None),
+        ] {
+            let data = HashMap::from([(
+                DataField::Messages,
+                json!({ "Status": { "Last Error": last_error } }),
+            )]);
+            let messages = miner.parse_messages(&data);
+
+            assert_eq!(
+                messages.first().map(|message| message.message.as_str()),
+                expected
+            );
+        }
     }
 
     #[test]
