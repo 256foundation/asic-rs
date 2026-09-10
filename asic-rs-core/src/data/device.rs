@@ -37,6 +37,90 @@ impl DeviceInfo {
 }
 
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
+#[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    Clone,
+    Copy,
+    Hash,
+    Serialize,
+    Deserialize,
+    StrumDisplay,
+    EnumString,
+    EnumIter,
+    TS,
+)]
+/// Miner firmware name or family.
+pub enum FirmwareType {
+    #[cfg_attr(feature = "python", pydantic(value = "AntMiner Stock"))]
+    #[serde(rename = "AntMiner Stock")]
+    #[strum(serialize = "AntMiner Stock")]
+    AntMinerStock,
+    #[cfg_attr(feature = "python", pydantic(value = "Auradine Stock"))]
+    #[serde(rename = "Auradine Stock")]
+    #[strum(serialize = "Auradine Stock")]
+    AuradineStock,
+    #[cfg_attr(feature = "python", pydantic(value = "AvalonMiner Stock"))]
+    #[serde(rename = "AvalonMiner Stock")]
+    #[strum(serialize = "AvalonMiner Stock")]
+    AvalonMinerStock,
+    #[cfg_attr(feature = "python", pydantic(value = "Bitaxe Stock"))]
+    #[serde(rename = "Bitaxe Stock")]
+    #[strum(serialize = "Bitaxe Stock")]
+    BitaxeStock,
+    #[cfg_attr(feature = "python", pydantic(value = "Braiins"))]
+    #[serde(rename = "Braiins")]
+    #[strum(serialize = "Braiins")]
+    Braiins,
+    #[cfg_attr(feature = "python", pydantic(value = "Elphapex Stock"))]
+    #[serde(rename = "Elphapex Stock")]
+    #[strum(serialize = "Elphapex Stock")]
+    ElphapexStock,
+    #[cfg_attr(feature = "python", pydantic(value = "FutureBit Stock"))]
+    #[serde(rename = "FutureBit Stock")]
+    #[strum(serialize = "FutureBit Stock")]
+    FutureBitStock,
+    #[cfg_attr(feature = "python", pydantic(value = "LuxOS"))]
+    #[serde(rename = "LuxOS")]
+    #[strum(serialize = "LuxOS")]
+    LuxOS,
+    #[cfg_attr(feature = "python", pydantic(value = "Marathon"))]
+    #[serde(rename = "Marathon")]
+    #[strum(serialize = "Marathon")]
+    Marathon,
+    #[cfg_attr(feature = "python", pydantic(value = "Nerdaxe Stock"))]
+    #[serde(rename = "Nerdaxe Stock")]
+    #[strum(serialize = "Nerdaxe Stock")]
+    NerdaxeStock,
+    #[cfg_attr(feature = "python", pydantic(value = "Proto Stock"))]
+    #[serde(rename = "Proto Stock")]
+    #[strum(serialize = "Proto Stock")]
+    ProtoStock,
+    #[cfg_attr(feature = "python", pydantic(value = "SealMiner Stock"))]
+    #[serde(rename = "SealMiner Stock")]
+    #[strum(serialize = "SealMiner Stock")]
+    SealMinerStock,
+    #[cfg_attr(feature = "python", pydantic(value = "UMC OS"))]
+    #[serde(rename = "UMC OS")]
+    #[strum(serialize = "UMC OS")]
+    UmcOS,
+    #[cfg_attr(feature = "python", pydantic(value = "VNish"))]
+    #[serde(rename = "VNish")]
+    #[strum(serialize = "VNish")]
+    VNish,
+    #[cfg_attr(feature = "python", pydantic(value = "VolcMiner Stock"))]
+    #[serde(rename = "VolcMiner Stock")]
+    #[strum(serialize = "VolcMiner Stock")]
+    VolcMinerStock,
+    #[cfg_attr(feature = "python", pydantic(value = "WhatsMiner Stock"))]
+    #[serde(rename = "WhatsMiner Stock")]
+    #[strum(serialize = "WhatsMiner Stock")]
+    WhatsMinerStock,
+}
+
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", asic_rs_pydantic::py_pydantic_model(getters))]
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Default, TS)]
 /// Expected hardware counts for a miner model.

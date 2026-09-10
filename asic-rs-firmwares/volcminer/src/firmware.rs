@@ -1,7 +1,7 @@
 use std::{fmt::Display, net::IpAddr};
 
 use asic_rs_core::{
-    data::command::MinerCommand,
+    data::{command::MinerCommand, device::FirmwareType},
     discovery::HTTP_WEB_ROOT,
     errors::ModelSelectionError,
     traits::{
@@ -25,7 +25,7 @@ pub struct VolcMinerStockFirmware {}
 
 impl Display for VolcMinerStockFirmware {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "VolcMiner Stock")
+        write!(f, "{}", FirmwareType::VolcMinerStock)
     }
 }
 
