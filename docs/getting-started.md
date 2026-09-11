@@ -1,8 +1,10 @@
 # Getting Started
 
-All network operations are asynchronous. Rust uses `async` methods returning
-`Result<T>` where an operation can fail. Python exposes awaitable methods and
-uses `None` for values or operations that are unavailable for a miner.
+All network operations are asynchronous in Rust and Python. Rust uses `async`
+methods returning `Result<T>` where an operation can fail. Python exposes
+awaitable methods and uses `None` for values or operations that are unavailable
+for a miner. Go methods are synchronous and return `error`; a missing miner is
+`asicrs.ErrNotFound`.
 
 ## Get One Miner
 
@@ -53,6 +55,25 @@ construct the matching miner implementation.
         asyncio.run(main())
     ```
 
+=== "Go"
+
+    ```go
+    factory := asicrs.NewFactory()
+    defer factory.Close()
+
+    miner, err := factory.GetMiner("192.168.1.10")
+    if errors.Is(err, asicrs.ErrNotFound) {
+        return
+    }
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer miner.Close()
+
+    info, err := miner.DeviceInfo()
+    fmt.Printf("Found %s %s\n", info.Make, info.Model)
+    ```
+
 ## Scan A Network
 
 Use a subnet, octet selectors, or range string when the exact IP address is not
@@ -97,7 +118,19 @@ known. Large scans use bounded concurrency.
         asyncio.run(main())
     ```
 
-Range helpers are available in both languages.
+=== "Go"
+
+    ```go
+    factory, err := asicrs.NewFactoryFromSubnet("192.168.1.0/24")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer factory.Close()
+    miners, err := factory.WithConcurrentLimit(2500).Scan()
+    fmt.Printf("Found %d miner(s)\n", len(miners))
+    ```
+
+Range helpers are available in Rust, Python, and Go.
 
 === "Rust"
 
@@ -111,6 +144,13 @@ Range helpers are available in both languages.
     ```python
     by_octets = MinerFactory.from_octets("192", "168", "1", "1-255")
     by_range = MinerFactory.from_range("192.168.1.1-255")
+    ```
+
+=== "Go"
+
+    ```go
+    byOctets, err := asicrs.NewFactoryFromOctets("192", "168", "1", "1-255")
+    byRange, err := asicrs.NewFactoryFromRange("192.168.1.1-255")
     ```
 
 ## Stream Results
@@ -189,6 +229,15 @@ methods are useful when you only need one field.
     print(f"MAC: {mac}")
     ```
 
+=== "Go"
+
+    ```go
+    data, err := miner.GetData()
+    mac, err := miner.GetMAC()
+    fmt.Printf("%s is mining: %v\n", data.IP, data.IsMining)
+    fmt.Printf("MAC: %v\n", mac)
+    ```
+
 Skip expensive fields when you do not need them.
 
 === "Rust"
@@ -207,6 +256,12 @@ Skip expensive fields when you do not need them.
     from pyasic_rs.data import DataField
 
     data = await miner.get_data(exclude=[DataField.Hashboards, DataField.Chips])
+    ```
+
+=== "Go"
+
+    ```go
+    data, err := miner.GetData(asicrs.DataFieldHashboards, asicrs.DataFieldChips)
     ```
 
 ## Authenticate
@@ -230,6 +285,15 @@ credentials before starting concurrent operations on that miner handle.
     data = await miner.get_data()
     ```
 
+=== "Go"
+
+    ```go
+    if err := miner.SetAuth("admin", "secret"); err != nil {
+        log.Fatal(err)
+    }
+    data, err := miner.GetData()
+    ```
+
 ## Control A Miner
 
 Control support depends on miner make, model, and firmware. Check the matching
@@ -250,4 +314,14 @@ support value before exposing controls in user-facing tools.
     if miner.supports_restart:
         restarted = await miner.restart()
         print(f"Restart accepted: {restarted}")
+    ```
+
+=== "Go"
+
+    ```go
+    caps, err := miner.Supports()
+    if caps.Restart {
+        restarted, err := miner.Restart()
+        fmt.Printf("Restart accepted: %v\n", restarted)
+    }
     ```

@@ -1,35 +1,37 @@
 asic-rs is an async miner management and control library for ASIC miners.
-It provides one set of concepts across Rust and Python: a factory discovers
+It provides one set of concepts across Rust, Python, and Go: a factory discovers
 miners, a miner object gathers data and performs supported control operations,
 and shared data/config models describe the result.
 
 The Rust crate is published as `asic-rs`. The Python bindings are published as
 `pyasic_rs` and expose the same high-level API through PyO3 classes and
-Pydantic-compatible data models.
+Pydantic-compatible data models. The Go bindings live in-tree as
+`github.com/256foundation/asic-rs/go/asicrs` and wrap a small C ABI (`asic-rs-ffi`).
 
 ## API Map
 
-| Concept | Rust | Python |
-| --- | --- | --- |
-| Discovery and miner construction | [`MinerFactory`][minerfactory] | `pyasic_rs.MinerFactory` |
-| Miner handle | `Box<dyn Miner>` | `pyasic_rs.Miner` |
-| Full telemetry snapshot | `MinerData` | `pyasic_rs.data.MinerData` |
-| Hashrate values | `HashRate`, `HashRateUnit` | `HashRate`, `HashRateUnit` |
-| Pool configuration | `PoolGroupConfig`, `PoolConfig` | `PoolGroup`, `Pool` |
-| Fan configuration | `FanConfig` | `FanConfig` |
-| Tuning configuration | `TuningConfig` | `TuningConfig` |
-| Optional controls/configs | `supports_*` methods | `supports_*` properties |
+| Concept | Rust | Python | Go |
+| --- | --- | --- | --- |
+| Discovery and miner construction | [`MinerFactory`][minerfactory] | `pyasic_rs.MinerFactory` | `asicrs.Factory` |
+| Miner handle | `Box<dyn Miner>` | `pyasic_rs.Miner` | `asicrs.Miner` |
+| Full telemetry snapshot | `MinerData` | `pyasic_rs.data.MinerData` | `asicrs.MinerData` |
+| Hashrate values | `HashRate`, `HashRateUnit` | `HashRate`, `HashRateUnit` | `HashRate`, `HashRateUnit` |
+| Pool configuration | `PoolGroupConfig`, `PoolConfig` | `PoolGroup`, `Pool` | `PoolGroupConfig`, `PoolConfig` |
+| Fan configuration | `FanConfig` | `FanConfig` | `FanConfig` |
+| Tuning configuration | `TuningConfig` | `TuningConfig` | `TuningConfig` |
+| Optional controls/configs | `supports_*` methods | `supports_*` properties | `Supports()` |
 
-All network operations are asynchronous. Rust methods generally return
-`Result<T>` and use `Option<T>` when a miner does not expose a value. Python
-methods are awaitable and return the Python equivalent, using `None` for missing
-or unsupported values.
+All network operations are asynchronous in Rust and Python. Rust methods
+generally return `Result<T>` and use `Option<T>` when a miner does not expose a
+value. Python methods are awaitable and use `None` for missing or unsupported
+values. Go methods are synchronous (the FFI drives a Tokio runtime) and return
+`error`; a missing miner is `asicrs.ErrNotFound`.
 
 ## Examples
 
 The paired examples below use stable markers so documentation tools can render
-Rust and Python snippets as language tabs while GitHub, PyPI, and docs.rs still
-show both examples plainly.
+Rust, Python, and Go snippets as language tabs while GitHub, PyPI, and docs.rs
+still show the examples plainly.
 
 ### Get One Miner
 
@@ -73,6 +75,40 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
+
+<!-- asic-rs-example:get-miner go -->
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+    "log"
+
+    "github.com/256foundation/asic-rs/go/asicrs"
+)
+
+func main() {
+    factory := asicrs.NewFactory()
+    defer factory.Close()
+
+    miner, err := factory.GetMiner("192.168.1.10")
+    if errors.Is(err, asicrs.ErrNotFound) {
+        return
+    }
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer miner.Close()
+
+    info, err := miner.DeviceInfo()
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Found %s %s\n", info.Make, info.Model)
+}
 ```
 
 ### Scan A Network
@@ -119,7 +155,23 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-Other range constructors are available in both languages:
+<!-- asic-rs-example:scan go -->
+
+```go
+factory, err := asicrs.NewFactoryFromSubnet("192.168.1.0/24")
+if err != nil {
+    log.Fatal(err)
+}
+defer factory.Close()
+
+miners, err := factory.WithConcurrentLimit(2500).Scan()
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Found %d miner(s)\n", len(miners))
+```
+
+Other range constructors are available in Rust, Python, and Go:
 
 <!-- asic-rs-example:ranges rust -->
 
@@ -140,6 +192,13 @@ from pyasic_rs import MinerFactory
 
 by_octets = MinerFactory.from_octets("192", "168", "1", "1-255")
 by_range = MinerFactory.from_range("192.168.1.1-255")
+```
+
+<!-- asic-rs-example:ranges go -->
+
+```go
+byOctets, err := asicrs.NewFactoryFromOctets("192", "168", "1", "1-255")
+byRange, err := asicrs.NewFactoryFromRange("192.168.1.1-255")
 ```
 
 ### Stream Scan Results
@@ -236,6 +295,26 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+<!-- asic-rs-example:data go -->
+
+```go
+factory := asicrs.NewFactory()
+defer factory.Close()
+miner, err := factory.GetMiner("192.168.1.10")
+if err != nil {
+    log.Fatal(err)
+}
+defer miner.Close()
+
+data, err := miner.GetData()
+if err != nil {
+    log.Fatal(err)
+}
+mac, err := miner.GetMAC()
+fmt.Printf("%s is mining: %v\n", data.IP, data.IsMining)
+fmt.Printf("MAC: %v\n", mac)
+```
+
 `data.operating_state` is an optional `OperatingState` enum for firmware that
 reports a detailed runtime state. It distinguishes mining, stable operation,
 startup, tuning, frequency/voltage adjustment, idling, pause, suspension,
@@ -293,6 +372,12 @@ from pyasic_rs.data import DataField
 data = await miner.get_data(exclude=[DataField.Hashboards, DataField.Chips])
 ```
 
+<!-- asic-rs-example:data-exclude go -->
+
+```go
+data, err := miner.GetData(asicrs.DataFieldHashboards, asicrs.DataFieldChips)
+```
+
 ### Authentication
 
 Backends use their built-in default credentials unless you override them.
@@ -329,6 +414,15 @@ if miner is not None:
     data = await miner.get_data()
 ```
 
+<!-- asic-rs-example:auth go -->
+
+```go
+if err := miner.SetAuth("admin", "secret"); err != nil {
+    log.Fatal(err)
+}
+data, err := miner.GetData()
+```
+
 ### Control A Miner
 
 Control support depends on the miner and firmware. Check the matching
@@ -359,6 +453,19 @@ if miner.supports_restart() {
 if miner.supports_restart:
     restarted = await miner.restart()
     print(f"Restart accepted: {restarted}")
+```
+
+<!-- asic-rs-example:control go -->
+
+```go
+caps, err := miner.Supports()
+if err != nil {
+    log.Fatal(err)
+}
+if caps.Restart {
+    restarted, err := miner.Restart()
+    fmt.Printf("Restart accepted: %v\n", restarted)
+}
 ```
 
 ### Configure Pools, Fans, And Tuning
@@ -435,6 +542,27 @@ if miner.supports_tuning_config:
     await miner.set_tuning_config(TuningConfig.power(3200.0))
 ```
 
+<!-- asic-rs-example:config go -->
+
+```go
+caps, _ := miner.Supports()
+if caps.PoolsConfig {
+    pool, err := asicrs.NewPool("stratum+tcp://pool.example.com:3333", "worker.1", "x")
+    if err != nil {
+        log.Fatal(err)
+    }
+    _, err = miner.SetPoolsConfig([]asicrs.PoolGroupConfig{{
+        Name: "default", Quota: 1, Pools: []asicrs.PoolConfig{pool},
+    }})
+}
+if caps.FanConfig {
+    _, err := miner.SetFanConfig(asicrs.NewFanConfigManual(80))
+}
+if caps.TuningConfig {
+    _, err := miner.SetTuningConfig(asicrs.TuningConfig{Target: asicrs.PowerTarget(3200)}, nil)
+}
+```
+
 ## Python Data Models
 
 Python data/config classes are backed by Rust structs and implement a
@@ -458,5 +586,14 @@ print(snapshot.model_dump())
 
 Use `model_validate`, `model_dump`, and `model_json_schema` on supported model
 classes when integrating with Python validation or API layers.
+
+## Go Bindings
+
+The Go module is `github.com/256foundation/asic-rs/go/asicrs`. It uses cgo
+against `asic-rs-ffi`; build the native library with `make -C go ffi` before
+`go test` or `go build`. Factory and miner handles must be `Close()`d.
+
+See `go/README.md` for packaging notes. Streaming scans and `MinerListener` are
+not wrapped yet; use `Scan()` and `GetMiner`.
 
 [minerfactory]: https://docs.rs/asic-rs/latest/asic_rs/struct.MinerFactory.html

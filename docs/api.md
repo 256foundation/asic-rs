@@ -1,8 +1,9 @@
 # API Guide
 
-The Rust and Python APIs intentionally share names and behavior. This page
+The Rust, Python, and Go APIs intentionally share names and behavior. This page
 summarizes the user-facing surface and points out the few language-specific
-differences.
+differences. Go methods are synchronous and return `error`; a missing miner is
+`asicrs.ErrNotFound`. See `go/README.md` for cgo build notes.
 
 ## Discovery
 
@@ -42,26 +43,36 @@ apply explicit connection and total-request deadlines.
     )
     ```
 
-| Operation | Rust | Python |
-| --- | --- | --- |
-| Known IP | `get_miner(ip).await?` | `await get_miner(ip)` |
-| Full scan | `scan().await?` | `await scan()` |
-| Stream found miners | `scan_stream()` | `scan_stream()` |
-| Stream every IP | `scan_stream_with_ip()` | `scan_stream_with_ip()` |
+=== "Go"
+
+    ```go
+    factory, err := asicrs.NewFactoryFromSubnet("192.168.1.0/24")
+    factory.WithConcurrentLimit(2500).
+        WithConnectivityTimeoutSecs(1).
+        WithConnectivityRetries(0).
+        WithIdentificationTimeoutSecs(10)
+    ```
+
+| Operation | Rust | Python | Go |
+| --- | --- | --- | --- |
+| Known IP | `get_miner(ip).await?` | `await get_miner(ip)` | `GetMiner(ip)` |
+| Full scan | `scan().await?` | `await scan()` | `Scan()` |
+| Stream found miners | `scan_stream()` | `scan_stream()` | not wrapped yet |
+| Stream every IP | `scan_stream_with_ip()` | `scan_stream_with_ip()` | not wrapped yet |
 
 ## Miner Identity
 
 Miner identity is available without awaiting because it is known when the miner
 handle is constructed.
 
-| Value | Rust | Python |
-| --- | --- | --- |
-| IP address | `miner.get_ip()` | `miner.ip` |
-| Make | `miner.get_device_info().make` | `miner.make` |
-| Model | `miner.get_device_info().model` | `miner.model` |
-| Firmware | `miner.get_device_info().firmware` | `miner.firmware` |
-| Algorithm | `miner.get_device_info().algo` | `miner.algo` |
-| Hardware shape | `miner.get_device_info().hardware` | `miner.hardware` |
+| Value | Rust | Python | Go |
+| --- | --- | --- | --- |
+| IP address | `miner.get_ip()` | `miner.ip` | `miner.IP()` |
+| Make | `miner.get_device_info().make` | `miner.make` | `miner.DeviceInfo().Make` |
+| Model | `miner.get_device_info().model` | `miner.model` | `miner.DeviceInfo().Model` |
+| Firmware | `miner.get_device_info().firmware` | `miner.firmware` | `miner.DeviceInfo().Firmware` |
+| Algorithm | `miner.get_device_info().algo` | `miner.algo` | `miner.DeviceInfo().Algo` |
+| Hardware shape | `miner.get_device_info().hardware` | `miner.hardware` | `miner.DeviceInfo().Hardware` |
 
 ## Data Collection
 
@@ -82,6 +93,14 @@ fields when a caller does not need the whole snapshot.
     data = await miner.get_data()
     hashrate = await miner.get_hashrate()
     fans = await miner.get_fans()
+    ```
+
+=== "Go"
+
+    ```go
+    data, err := miner.GetData()
+    hashrate, err := miner.GetHashrate()
+    fans, err := miner.GetFans()
     ```
 
 Common telemetry methods:
@@ -105,7 +124,8 @@ Common telemetry methods:
 ## Controls And Capability Checks
 
 Not every miner supports every control. Rust exposes `supports_*()` methods;
-Python exposes matching `supports_*` properties.
+Python exposes matching `supports_*` properties; Go returns them from
+`Supports()`.
 
 | Capability | Control |
 | --- | --- |
@@ -142,6 +162,15 @@ upgrade would use.
     ```python
     if miner.supports_set_power_limit:
         await miner.set_power_limit(3200.0)
+    ```
+
+=== "Go"
+
+    ```go
+    caps, _ := miner.Supports()
+    if caps.SetPowerLimit {
+        _, err := miner.SetPowerLimit(3200.0)
+    }
     ```
 
 ## Configuration Models

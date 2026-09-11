@@ -13,8 +13,8 @@ instructions belong here.
 
 ## Authoring Rules
 
-Use Zensical content tabs in site pages when showing equivalent Rust and Python
-examples:
+Use Zensical content tabs in site pages when showing equivalent Rust, Python,
+and Go examples:
 
 ````markdown
 === "Rust"
@@ -28,11 +28,20 @@ examples:
     ```python
     miner = await factory.get_miner("192.168.1.10")
     ```
+
+=== "Go"
+
+    ```go
+    miner, err := factory.GetMiner("192.168.1.10")
+    ```
 ````
 
 Keep `docs-shared/guide.md` in plain Markdown. It is included directly in
 Rustdoc and is also the Python package README, so it should avoid Zensical-only
 syntax.
+
+Go packaging and cgo notes live in `go/README.md`. Rebuild the FFI artifacts
+with `make -C go ffi` before running Go tests.
 
 ## Regenerate The Root README
 
