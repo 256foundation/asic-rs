@@ -23,3 +23,11 @@ __pycache__/
 .ruff_cache/
 .venv/
 *.egg-info/
+
+# Go FFI artifacts (built by `make -C go ffi`).
+go/asic_go/lib/*.so
+go/asic_go/lib/*.dylib
+go/asic_go/lib/*.a
+go/asic_go/lib/*.dll
+go/asic_go/lib/*.lib
+asic-rs-ffi/include/asic_rs_ffi.h
