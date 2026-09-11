@@ -59,6 +59,7 @@ members = [
     "asic-rs-firmwares/whatsminer",
     "asic-rs-pydantic",
     "asic-rs-pydantic-macros",
+    "asic-rs-ffi",
 ]
 
 [workspace.dependencies]
