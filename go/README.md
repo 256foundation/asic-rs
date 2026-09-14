@@ -20,11 +20,14 @@ make -C go ffi
 make -C go test
 ```
 
-Optional examples (need a miner on the network):
+The build installs the artifact paths reported by Cargo, honoring `CARGO_TARGET_DIR`
+and Cargo target-directory/target configuration.
+
+Optional examples, run from the repository root (need a miner on the network):
 
 ```sh
-ASIC_MINER_IP=192.168.1.42 go run ./examples/get_data
-ASIC_SUBNET=192.168.1.0/24 go run ./examples/scan
+ASIC_MINER_IP=192.168.1.42 go -C go run ./examples/get_data
+ASIC_SUBNET=192.168.1.0/24 go -C go run ./examples/scan
 ```
 
 ## Use as a dependency

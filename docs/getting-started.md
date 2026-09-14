@@ -71,6 +71,9 @@ construct the matching miner implementation.
     defer miner.Close()
 
     info, err := miner.DeviceInfo()
+    if err != nil {
+        log.Fatal(err)
+    }
     fmt.Printf("Found %s %s\n", info.Make, info.Model)
     ```
 
@@ -127,6 +130,12 @@ known. Large scans use bounded concurrency.
     }
     defer factory.Close()
     miners, err := factory.WithConcurrentLimit(2500).Scan()
+    if err != nil {
+        log.Fatal(err)
+    }
+    for _, miner := range miners {
+        defer miner.Close()
+    }
     fmt.Printf("Found %d miner(s)\n", len(miners))
     ```
 
@@ -233,9 +242,17 @@ methods are useful when you only need one field.
 
     ```go
     data, err := miner.GetData()
+    if err != nil {
+        log.Fatal(err)
+    }
     mac, err := miner.GetMAC()
+    if err != nil {
+        log.Fatal(err)
+    }
     fmt.Printf("%s is mining: %v\n", data.IP, data.IsMining)
-    fmt.Printf("MAC: %v\n", mac)
+    if mac != nil {
+        fmt.Printf("MAC: %s\n", *mac)
+    }
     ```
 
 Skip expensive fields when you do not need them.
@@ -262,6 +279,9 @@ Skip expensive fields when you do not need them.
 
     ```go
     data, err := miner.GetData(asic_go.DataFieldHashboards, asic_go.DataFieldChips)
+    if err != nil {
+        log.Fatal(err)
+    }
     ```
 
 ## Authenticate
@@ -292,6 +312,9 @@ credentials before starting concurrent operations on that miner handle.
         log.Fatal(err)
     }
     data, err := miner.GetData()
+    if err != nil {
+        log.Fatal(err)
+    }
     ```
 
 ## Control A Miner
@@ -320,8 +343,14 @@ support value before exposing controls in user-facing tools.
 
     ```go
     caps, err := miner.Supports()
+    if err != nil {
+        log.Fatal(err)
+    }
     if caps.Restart {
         restarted, err := miner.Restart()
+        if err != nil {
+            log.Fatal(err)
+        }
         fmt.Printf("Restart accepted: %v\n", restarted)
     }
     ```

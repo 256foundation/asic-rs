@@ -178,6 +178,9 @@ miners, err := factory.WithConcurrentLimit(2500).Scan()
 if err != nil {
     log.Fatal(err)
 }
+for _, miner := range miners {
+    defer miner.Close()
+}
 fmt.Printf("Found %d miner(s)\n", len(miners))
 ```
 
@@ -316,8 +319,13 @@ if err != nil {
     log.Fatal(err)
 }
 mac, err := miner.GetMAC()
+if err != nil {
+    log.Fatal(err)
+}
 fmt.Printf("%s is mining: %v\n", data.IP, data.IsMining)
-fmt.Printf("MAC: %v\n", mac)
+if mac != nil {
+    fmt.Printf("MAC: %s\n", *mac)
+}
 ```
 
 `data.operating_state` is an optional `OperatingState` enum for firmware that
@@ -370,6 +378,9 @@ data = await miner.get_data(exclude=[DataField.Hashboards, DataField.Chips])
 
 ```go
 data, err := miner.GetData(asic_go.DataFieldHashboards, asic_go.DataFieldChips)
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 #### Authentication
@@ -415,6 +426,9 @@ if err := miner.SetAuth("admin", "secret"); err != nil {
     log.Fatal(err)
 }
 data, err := miner.GetData()
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 #### Control A Miner
@@ -448,6 +462,9 @@ if err != nil {
 }
 if caps.Restart {
     restarted, err := miner.Restart()
+    if err != nil {
+        log.Fatal(err)
+    }
     fmt.Printf("Restart accepted: %v\n", restarted)
 }
 ```
@@ -519,7 +536,10 @@ if miner.supports_tuning_config:
 <!-- asic-rs-example:config go -->
 
 ```go
-caps, _ := miner.Supports()
+caps, err := miner.Supports()
+if err != nil {
+    log.Fatal(err)
+}
 if caps.PoolsConfig {
     pool, err := asic_go.NewPool("stratum+tcp://pool.example.com:3333", "worker.1", "x")
     if err != nil {
@@ -528,12 +548,19 @@ if caps.PoolsConfig {
     _, err = miner.SetPoolsConfig([]asic_go.PoolGroupConfig{{
         Name: "default", Quota: 1, Pools: []asic_go.PoolConfig{pool},
     }})
+    if err != nil {
+        log.Fatal(err)
+    }
 }
 if caps.FanConfig {
-    _, err := miner.SetFanConfig(asic_go.NewFanConfigManual(80))
+    if _, err := miner.SetFanConfig(asic_go.NewFanConfigManual(80)); err != nil {
+        log.Fatal(err)
+    }
 }
 if caps.TuningConfig {
-    _, err := miner.SetTuningConfig(asic_go.TuningConfig{Target: asic_go.PowerTarget(3200)}, nil)
+    if _, err := miner.SetTuningConfig(asic_go.TuningConfig{Target: asic_go.PowerTarget(3200)}, nil); err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 

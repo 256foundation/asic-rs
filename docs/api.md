@@ -47,6 +47,9 @@ apply explicit connection and total-request deadlines.
 
     ```go
     factory, err := asic_go.NewFactoryFromSubnet("192.168.1.0/24")
+    if err != nil {
+        log.Fatal(err)
+    }
     factory.WithConcurrentLimit(2500).
         WithConnectivityTimeoutSecs(1).
         WithConnectivityRetries(0).
@@ -65,14 +68,23 @@ apply explicit connection and total-request deadlines.
 Miner identity is available without awaiting because it is known when the miner
 handle is constructed.
 
+In Go, retrieve the identity and handle its error before reading fields:
+
+```go
+info, err := miner.DeviceInfo()
+if err != nil {
+    log.Fatal(err)
+}
+```
+
 | Value | Rust | Python | Go |
 | --- | --- | --- | --- |
 | IP address | `miner.get_ip()` | `miner.ip` | `miner.IP()` |
-| Make | `miner.get_device_info().make` | `miner.make` | `miner.DeviceInfo().Make` |
-| Model | `miner.get_device_info().model` | `miner.model` | `miner.DeviceInfo().Model` |
-| Firmware | `miner.get_device_info().firmware` | `miner.firmware` | `miner.DeviceInfo().Firmware` |
-| Algorithm | `miner.get_device_info().algo` | `miner.algo` | `miner.DeviceInfo().Algo` |
-| Hardware shape | `miner.get_device_info().hardware` | `miner.hardware` | `miner.DeviceInfo().Hardware` |
+| Make | `miner.get_device_info().make` | `miner.make` | `info.Make` |
+| Model | `miner.get_device_info().model` | `miner.model` | `info.Model` |
+| Firmware | `miner.get_device_info().firmware` | `miner.firmware` | `info.Firmware` |
+| Algorithm | `miner.get_device_info().algo` | `miner.algo` | `info.Algo` |
+| Hardware shape | `miner.get_device_info().hardware` | `miner.hardware` | `info.Hardware` |
 
 ## Data Collection
 
@@ -99,6 +111,9 @@ fields when a caller does not need the whole snapshot.
 
     ```go
     data, err := miner.GetData()
+    if err != nil {
+        log.Fatal(err)
+    }
     hashrate, err := miner.GetHashrate()
     fans, err := miner.GetFans()
     ```
@@ -167,9 +182,15 @@ upgrade would use.
 === "Go"
 
     ```go
-    caps, _ := miner.Supports()
+    caps, err := miner.Supports()
+    if err != nil {
+        log.Fatal(err)
+    }
     if caps.SetPowerLimit {
         _, err := miner.SetPowerLimit(3200.0)
+        if err != nil {
+            log.Fatal(err)
+        }
     }
     ```
 
