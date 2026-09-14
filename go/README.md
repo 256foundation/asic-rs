@@ -72,3 +72,10 @@ Hashrate conversions return an error for invalid units. For a display value in
 the conventional unit for its algorithm, use `HashRate.IntoDefaultUnit()`.
 See [the API guide](../docs/api.md#binding-names-and-wire-formats) for the naming
 map, Python compatibility aliases, and JSON format differences.
+
+## Release versions
+
+The release workflow tags the shared release commit as both `vX.Y.Z` and
+`go/vX.Y.Z`. The latter is the version tag for the module rooted in `go/`,
+so consumers can select it with `go get github.com/256foundation/asic-rs/go/asic_go@vX.Y.Z`.
+Build the native library from the matching release checkout.
