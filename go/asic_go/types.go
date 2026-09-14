@@ -69,45 +69,101 @@ const (
 	HashRateUnitYottaHash HashRateUnit = "YottaHash"
 )
 
-// Multiplier returns the factor to convert this unit to H/s.
-func (u HashRateUnit) Multiplier() float64 {
-	switch u {
+// ParseHashRateUnit accepts Rust variant names and the unit aliases accepted by Rust/Python.
+func ParseHashRateUnit(value string) (HashRateUnit, error) {
+	normalized := strings.NewReplacer(" ", "", "_", "").Replace(strings.ToUpper(strings.TrimSpace(value)))
+	names := []HashRateUnit{HashRateUnitHash, HashRateUnitKiloHash, HashRateUnitMegaHash,
+		HashRateUnitGigaHash, HashRateUnitTeraHash, HashRateUnitPetaHash, HashRateUnitExaHash,
+		HashRateUnitZettaHash, HashRateUnitYottaHash}
+	prefixes := []string{"", "K", "M", "G", "T", "P", "E", "Z", "Y"}
+	for i, name := range names {
+		short := prefixes[i] + "H"
+		if normalized == strings.ToUpper(string(name)) || normalized == short || normalized == short+"S" || normalized == short+"/S" {
+			return name, nil
+		}
+	}
+	return "", fmt.Errorf("unknown hash rate unit: %q", value)
+}
+
+// UnmarshalJSON validates a unit and normalizes display aliases to Rust's wire names.
+func (u *HashRateUnit) UnmarshalJSON(b []byte) error {
+	var name string
+	if err := json.Unmarshal(b, &name); err != nil {
+		return err
+	}
+	unit, err := ParseHashRateUnit(name)
+	if err != nil {
+		return err
+	}
+	*u = unit
+	return nil
+}
+
+// MarshalJSON always uses the Rust wire name, including for a display alias.
+func (u HashRateUnit) MarshalJSON() ([]byte, error) {
+	unit, err := ParseHashRateUnit(string(u))
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(string(unit))
+}
+
+// Multiplier returns the factor to convert this unit to H/s, rejecting invalid units.
+func (u HashRateUnit) Multiplier() (float64, error) {
+	unit, err := ParseHashRateUnit(string(u))
+	if err != nil {
+		return 0, err
+	}
+	switch unit {
 	case HashRateUnitHash:
-		return 1
+		return 1, nil
 	case HashRateUnitKiloHash:
-		return 1e3
+		return 1e3, nil
 	case HashRateUnitMegaHash:
-		return 1e6
+		return 1e6, nil
 	case HashRateUnitGigaHash:
-		return 1e9
+		return 1e9, nil
 	case HashRateUnitTeraHash:
-		return 1e12
+		return 1e12, nil
 	case HashRateUnitPetaHash:
-		return 1e15
+		return 1e15, nil
 	case HashRateUnitExaHash:
-		return 1e18
+		return 1e18, nil
 	case HashRateUnitZettaHash:
-		return 1e21
+		return 1e21, nil
 	case HashRateUnitYottaHash:
-		return 1e24
+		return 1e24, nil
 	default:
-		return 1
+		return 0, fmt.Errorf("unknown hash rate unit: %q", unit)
 	}
 }
 
 // AsUnit converts hr into the requested unit.
-func (hr HashRate) AsUnit(unit HashRateUnit) HashRate {
-	base := hr.Value * hr.Unit.Multiplier()
+func (hr HashRate) AsUnit(unit HashRateUnit) (HashRate, error) {
+	source, err := hr.Unit.Multiplier()
+	if err != nil {
+		return HashRate{}, err
+	}
+	target, err := unit.Multiplier()
+	if err != nil {
+		return HashRate{}, err
+	}
+	unit, err = ParseHashRateUnit(string(unit))
+	if err != nil {
+		return HashRate{}, err
+	}
+	base := hr.Value * source
 	return HashRate{
-		Value: base / unit.Multiplier(),
+		Value: base / target,
 		Unit:  unit,
 		Algo:  hr.Algo,
-	}
+	}, nil
 }
 
 // TH returns the hashrate in TH/s.
-func (hr HashRate) TH() float64 {
-	return hr.AsUnit(HashRateUnitTeraHash).Value
+func (hr HashRate) TH() (float64, error) {
+	converted, err := hr.AsUnit(HashRateUnitTeraHash)
+	return converted.Value, err
 }
 
 // DeviceInfo is static identity information for a miner.
@@ -215,7 +271,21 @@ func (u PoolURL) schemeString() string {
 }
 
 // String formats the pool URL.
+func poolHost(host string) string {
+	if strings.Contains(host, ":") && !strings.HasPrefix(host, "[") {
+		return "[" + host + "]"
+	}
+	return host
+}
+
+func (u PoolURL) MarshalJSON() ([]byte, error) {
+	type wire PoolURL
+	u.Host = poolHost(u.Host)
+	return json.Marshal(wire(u))
+}
+
 func (u PoolURL) String() string {
+	u.Host = poolHost(u.Host)
 	if u.Pubkey != nil && *u.Pubkey != "" {
 		return fmt.Sprintf("%s://%s:%d/%s", u.schemeString(), u.Host, u.Port, *u.Pubkey)
 	}
@@ -252,7 +322,7 @@ func ParsePoolURL(raw string) (PoolURL, error) {
 	}
 	return PoolURL{
 		Scheme: scheme,
-		Host:   parsed.Hostname(),
+		Host:   poolHost(parsed.Hostname()),
 		Port:   port,
 		Pubkey: pubkey,
 	}, nil
@@ -355,7 +425,16 @@ type TuningTarget struct {
 
 // UnmarshalJSON decodes the externally-tagged TuningTarget enum.
 func (t *TuningTarget) UnmarshalJSON(b []byte) error {
-	t.Raw = append(t.Raw[:0], b...)
+	var next TuningTarget
+	if err := next.decodeJSON(b); err != nil {
+		return err
+	}
+	*t = next
+	return nil
+}
+
+func (t *TuningTarget) decodeJSON(b []byte) error {
+	t.Raw = append([]byte(nil), b...)
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(b, &m); err != nil {
 		var s string
@@ -365,6 +444,9 @@ func (t *TuningTarget) UnmarshalJSON(b []byte) error {
 			return nil
 		}
 		return err
+	}
+	if len(m) != 1 {
+		return fmt.Errorf("TuningTarget must contain exactly one variant")
 	}
 	if raw, ok := m["Manual"]; ok {
 		t.Kind = "Manual"
@@ -376,6 +458,12 @@ func (t *TuningTarget) UnmarshalJSON(b []byte) error {
 		}
 		t.Boards = make(map[string]ManualBoardSetpoint, len(payload.Boards))
 		for id, pair := range payload.Boards {
+			if _, err := strconv.ParseUint(id, 10, 8); err != nil {
+				return fmt.Errorf("invalid board ID %q: %w", id, err)
+			}
+			if len(pair) != 2 {
+				return fmt.Errorf("board %s requires a frequency/voltage pair", id)
+			}
 			sp := ManualBoardSetpoint{}
 			if len(pair) > 0 {
 				sp.FrequencyMHz = pair[0]
@@ -531,9 +619,9 @@ type OperatingState struct {
 }
 
 // HashrateTH returns current hashrate in TH/s, or 0 if unknown.
-func (d MinerData) HashrateTH() float64 {
+func (d MinerData) HashrateTH() (float64, error) {
 	if d.Hashrate == nil {
-		return 0
+		return 0, nil
 	}
 	return d.Hashrate.TH()
 }
@@ -654,4 +742,21 @@ type Supports struct {
 	TemperatureConfig   bool `json:"temperature_config"`
 	TuningConfig        bool `json:"tuning_config"`
 	FanConfig           bool `json:"fan_config"`
+}
+
+// Required Rust collections are sequences, even when a Go slice is nil.
+func (c TimezoneConfig) MarshalJSON() ([]byte, error) {
+	type wire TimezoneConfig
+	if c.Available == nil {
+		c.Available = []string{}
+	}
+	return json.Marshal(wire(c))
+}
+
+func (c PoolGroupConfig) MarshalJSON() ([]byte, error) {
+	type wire PoolGroupConfig
+	if c.Pools == nil {
+		c.Pools = []PoolConfig{}
+	}
+	return json.Marshal(wire(c))
 }

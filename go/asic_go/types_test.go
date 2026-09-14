@@ -2,16 +2,22 @@ package asic_go
 
 import (
 	"encoding/json"
+	"os"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
 
 func TestHashRateAsUnit(t *testing.T) {
 	hr := HashRate{Value: 100, Unit: HashRateUnitTeraHash, Algo: "SHA256"}
-	if got := hr.TH(); got != 100 {
+	if got, err := hr.TH(); err != nil || got != 100 {
 		t.Fatalf("TH() = %v, want 100", got)
 	}
-	gh := hr.AsUnit(HashRateUnitGigaHash)
+	gh, err := hr.AsUnit(HashRateUnitGigaHash)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if gh.Value != 100_000 {
 		t.Fatalf("AsUnit(GigaHash).Value = %v, want 100000", gh.Value)
 	}
@@ -140,8 +146,8 @@ func TestMinerDataUnmarshal(t *testing.T) {
 	if data.DeviceInfo.Make != "Bitmain" {
 		t.Fatalf("make = %q", data.DeviceInfo.Make)
 	}
-	if data.HashrateTH() != 95.5 {
-		t.Fatalf("HashrateTH = %v", data.HashrateTH())
+	if got, err := data.HashrateTH(); err != nil || got != 95.5 {
+		t.Fatalf("HashrateTH = %v, %v", got, err)
 	}
 	if data.Uptime == nil || data.Uptime.Duration() != 24*time.Hour {
 		t.Fatalf("uptime = %+v", data.Uptime)
@@ -238,3 +244,104 @@ func TestTimezoneAndTemperatureJSON(t *testing.T) {
 }
 
 func strPtr(s string) *string { return &s }
+
+func TestHashRateUnitValidation(t *testing.T) {
+	for _, name := range []string{"TeraHash", "TH/s", " th_s "} {
+		var hr HashRate
+		if err := json.Unmarshal([]byte(`{"value":100,"unit":"`+name+`","algo":"SHA256"}`), &hr); err != nil {
+			t.Fatal(err)
+		}
+		if got, err := hr.TH(); err != nil || got != 100 {
+			t.Fatalf("%s: %v, %v", name, got, err)
+		}
+		b, err := json.Marshal(hr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(b), `"unit":"TeraHash"`) {
+			t.Fatalf("noncanonical unit: %s", b)
+		}
+	}
+	var unit HashRateUnit
+	if err := json.Unmarshal([]byte(`"bogus"`), &unit); err == nil {
+		t.Fatal("unknown unit accepted")
+	}
+	if _, err := (HashRate{Value: 100, Unit: "bogus"}).TH(); err == nil {
+		t.Fatal("invalid source converted")
+	}
+	if _, err := (HashRate{Value: 100, Unit: HashRateUnitTeraHash}).AsUnit("bogus"); err == nil {
+		t.Fatal("invalid target converted")
+	}
+}
+
+func TestPoolURLIPv6RoundTrip(t *testing.T) {
+	for _, raw := range []string{"stratum+tcp://[2001:db8::1]:3333", "stratum2+tcp://[2001:db8::1]:3333/pubkey"} {
+		u, err := ParsePoolURL(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if u.String() != raw {
+			t.Fatalf("%s became %s", raw, u.String())
+		}
+		// Rust formats its stored host verbatim; JSON must preserve brackets too.
+		b, err := json.Marshal(u)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var again PoolURL
+		if err := json.Unmarshal(b, &again); err != nil {
+			t.Fatal(err)
+		}
+		if again.Host != "[2001:db8::1]" {
+			t.Fatalf("Rust host: %q", again.Host)
+		}
+	}
+}
+
+func TestTuningTargetReuseClearsInactiveFields(t *testing.T) {
+	var target TuningTarget
+	if err := json.Unmarshal([]byte(`{"MiningMode":"High"}`), &target); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(`{"Power":{"watts":3200}}`), &target); err != nil {
+		t.Fatal(err)
+	}
+	if target.Mode != nil || target.Kind != "Power" || target.Watts == nil || *target.Watts != 3200 {
+		t.Fatalf("stale union: %+v", target)
+	}
+	for _, invalid := range []string{`{"Power":{"watts":1},"Preset":"x"}`, `{"Manual":{"boards":{"256":[1,2]}}}`, `{"Manual":{"boards":{"0":[1]}}}`} {
+		if err := json.Unmarshal([]byte(invalid), &target); err == nil {
+			t.Fatalf("invalid target accepted: %s", invalid)
+		}
+		if target.Kind != "Power" || *target.Watts != 3200 {
+			t.Fatal("failed decode mutated receiver")
+		}
+	}
+}
+
+func TestRequiredCollectionsMatchRustFixtures(t *testing.T) {
+	raw, err := os.ReadFile("testdata/configs.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixtures map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fixtures); err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]any{
+		"timezone":   TimezoneConfig{Timezone: strPtr("Europe/Vienna")},
+		"pool_group": PoolGroupConfig{Name: "default", Quota: 1},
+	}
+	for name, value := range cases {
+		got, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var actual, expected any
+		json.Unmarshal(got, &actual)
+		json.Unmarshal(fixtures[name], &expected)
+		if !reflect.DeepEqual(actual, expected) {
+			t.Fatalf("%s: %s, want %s", name, got, fixtures[name])
+		}
+	}
+}

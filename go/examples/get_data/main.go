@@ -47,11 +47,16 @@ func main() {
 		log.Fatalf("get data: %v", err)
 	}
 
+	hashrate, err := data.HashrateTH()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	fmt.Printf("model=%s firmware=%s mining=%v hashrate=%.2f TH/s\n",
 		data.DeviceInfo.Model,
 		data.DeviceInfo.Firmware,
 		data.IsMining,
-		data.HashrateTH(),
+		hashrate,
 	)
 	if data.Wattage != nil {
 		fmt.Printf("wattage=%.0f W\n", *data.Wattage)

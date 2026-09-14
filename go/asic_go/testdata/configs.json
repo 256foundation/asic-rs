@@ -1,0 +1,12 @@
+{
+  "empty_pools": [],
+  "pool_group": {
+    "name": "default",
+    "pools": [],
+    "quota": 1
+  },
+  "timezone": {
+    "available": [],
+    "timezone": "Europe/Vienna"
+  }
+}

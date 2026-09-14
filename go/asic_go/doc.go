@@ -23,7 +23,11 @@
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-//	fmt.Printf("%s @ %s: %.2f TH/s\n", data.DeviceInfo.Model, data.IP, data.HashrateTH())
+//	hashrate, err := data.HashrateTH()
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("%s @ %s: %.2f TH/s\n", data.DeviceInfo.Model, data.IP, hashrate)
 //
 // # Building
 //

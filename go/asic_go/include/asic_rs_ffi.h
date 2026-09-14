@@ -390,11 +390,11 @@ char *asic_rs_miner_get_light_flashing_json(const struct AsicMiner *miner);
 // `miner` must be a live handle.
 char *asic_rs_miner_get_messages_json(const struct AsicMiner *miner);
 
-// Uptime in seconds as JSON (number or null).
+// Uptime as JSON ({secs, nanos} or null), preserving subsecond precision.
 //
 // # Safety
 // `miner` must be a live handle.
-char *asic_rs_miner_get_uptime_secs_json(const struct AsicMiner *miner);
+char *asic_rs_miner_get_uptime_json(const struct AsicMiner *miner);
 
 // Whether hashing is running, as JSON bool.
 //

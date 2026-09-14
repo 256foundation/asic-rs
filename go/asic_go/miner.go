@@ -396,14 +396,14 @@ func (m *Miner) GetMessages() ([]MinerMessage, error) {
 
 // GetUptime returns system uptime, if available.
 func (m *Miner) GetUptime() (*time.Duration, error) {
-	var secs *uint64
-	if err := m.getJSON(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_get_uptime_secs_json(ptr) }, &secs); err != nil {
+	var uptime *DurationSecs
+	if err := m.getJSON(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_get_uptime_json(ptr) }, &uptime); err != nil {
 		return nil, err
 	}
-	if secs == nil {
+	if uptime == nil {
 		return nil, nil
 	}
-	d := time.Duration(*secs) * time.Second
+	d := uptime.Duration()
 	return &d, nil
 }
 
@@ -489,6 +489,9 @@ func (m *Miner) GetPresets() ([]PresetInfo, error) {
 
 // SetPoolsConfig applies a pools configuration.
 func (m *Miner) SetPoolsConfig(groups []PoolGroupConfig) (bool, error) {
+	if groups == nil {
+		groups = []PoolGroupConfig{}
+	}
 	return m.setJSON(func(ptr *C.AsicMiner, cs *C.char) C.int32_t {
 		return C.asic_rs_miner_set_pools_config_json(ptr, cs)
 	}, groups)

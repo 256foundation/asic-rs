@@ -662,19 +662,14 @@ pub unsafe extern "C" fn asic_rs_miner_get_messages_json(miner: *const AsicMiner
     })
 }
 
-/// Uptime in seconds as JSON (number or null).
+/// Uptime as JSON ({secs, nanos} or null), preserving subsecond precision.
 ///
 /// # Safety
 /// `miner` must be a live handle.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn asic_rs_miner_get_uptime_secs_json(
-    miner: *const AsicMiner,
-) -> *mut c_char {
+pub unsafe extern "C" fn asic_rs_miner_get_uptime_json(miner: *const AsicMiner) -> *mut c_char {
     ffi_guard(ptr::null_mut(), || {
-        miner_json(
-            miner,
-            |m| Ok(block_on(m.get_uptime())?.map(|d| d.as_secs())),
-        )
+        miner_json(miner, |m| block_on(m.get_uptime()))
     })
 }
 
@@ -1187,5 +1182,32 @@ mod tests {
             optional_duration_secs(1.25).unwrap(),
             Some(Duration::new(1, 250_000_000))
         );
+    }
+    #[test]
+    fn uptime_preserves_nanoseconds_at_the_c_boundary() {
+        let miner = Box::into_raw(Box::new(AsicMiner::new(Box::new(TestMiner))));
+        unsafe {
+            let raw = asic_rs_miner_get_uptime_json(miner);
+            assert!(!raw.is_null());
+            let duration: Duration =
+                serde_json::from_slice(CStr::from_ptr(raw).to_bytes()).unwrap();
+            assert_eq!(duration, Duration::new(42, 123_456_789));
+            crate::error::asic_rs_free_string(raw);
+            asic_rs_miner_free(miner);
+        }
+    }
+
+    #[test]
+    fn go_configuration_fixtures_are_valid_rust_inputs() {
+        let fixtures: serde_json::Value =
+            serde_json::from_str(include_str!("../../go/asic_go/testdata/configs.json")).unwrap();
+        let zone: TimezoneConfig = serde_json::from_value(fixtures["timezone"].clone()).unwrap();
+        assert!(zone.available.is_empty());
+        let group: PoolGroupConfig =
+            serde_json::from_value(fixtures["pool_group"].clone()).unwrap();
+        assert!(group.pools.is_empty());
+        let pools: Vec<PoolGroupConfig> =
+            serde_json::from_value(fixtures["empty_pools"].clone()).unwrap();
+        assert!(pools.is_empty());
     }
 }
