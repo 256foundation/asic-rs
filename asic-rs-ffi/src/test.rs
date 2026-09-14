@@ -100,7 +100,6 @@ default_traits!(
     GetHostname,
     GetApiVersion,
     GetFirmwareVersion,
-    GetControlBoardVersion,
     GetHashboards,
     GetHashrate,
     GetExpectedHashrate,
@@ -135,3 +134,14 @@ unsupported_traits!(SetFaultLight => supports_set_fault_light, SetPowerLimit => 
     Pause => supports_pause, Resume => supports_resume, ChangePassword => supports_change_password,
     FactoryReset => supports_factory_reset, ReadLogs => supports_read_logs,
     SupportsPoolsConfig => supports_pools_config, SupportsScalingConfig => supports_scaling_config);
+
+impl GetControlBoardVersion for TestMiner {
+    fn parse_control_board_version(
+        &self,
+        _: &std::collections::HashMap<DataField, Value>,
+    ) -> Option<asic_rs::core::data::board::MinerControlBoard> {
+        Some(asic_rs::core::data::board::MinerControlBoard::unknown(
+            "new-board".into(),
+        ))
+    }
+}

@@ -41,7 +41,7 @@ controls.
 
 | Concept | Rust | Python | Go |
 | --- | --- | --- | --- |
-| Discovery | `MinerFactory` | `MinerFactory` | `asic_go.Factory` |
+| Discovery | `MinerFactory` | `MinerFactory` | `asic_go.MinerFactory` |
 | Miner handle | `Box<dyn Miner>` | `Miner` | `asic_go.Miner` |
 | Full telemetry | `MinerData` | `pyasic_rs.data.MinerData` | `asic_go.MinerData` |
 | Pool config | `PoolGroupConfig`, `PoolConfig` | `PoolGroup`, `Pool` | `PoolGroupConfig`, `PoolConfig` |

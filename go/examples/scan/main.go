@@ -18,7 +18,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ASIC_SUBNET not set; trying %s\n", subnet)
 	}
 
-	factory, err := asic_go.NewFactoryFromSubnet(subnet)
+	factory, err := asic_go.NewMinerFactoryFromSubnet(subnet)
 	if err != nil {
 		log.Fatal(err)
 	}

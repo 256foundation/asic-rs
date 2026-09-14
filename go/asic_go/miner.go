@@ -120,13 +120,13 @@ func (m *Miner) ownedString(fn func(ptr *C.AsicMiner) *C.char) (string, error) {
 	return s, err
 }
 
-// IP returns the miner's IP address.
-func (m *Miner) IP() (string, error) {
+// GetIP returns the miner's IP address.
+func (m *Miner) GetIP() (string, error) {
 	return m.ownedString(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_ip(ptr) })
 }
 
-// DeviceInfo returns static make/model/firmware information.
-func (m *Miner) DeviceInfo() (DeviceInfo, error) {
+// GetDeviceInfo returns static make/model/firmware information.
+func (m *Miner) GetDeviceInfo() (DeviceInfo, error) {
 	var info DeviceInfo
 	err := m.getJSON(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_device_info_json(ptr) }, &info)
 	return info, err
@@ -270,9 +270,11 @@ func (m *Miner) GetFirmwareVersion() (*string, error) {
 	return m.getOptionalString(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_get_firmware_version_json(ptr) })
 }
 
-// GetControlBoardVersion returns the control board type string, if available.
-func (m *Miner) GetControlBoardVersion() (*string, error) {
-	return m.getOptionalString(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_get_control_board_version_json(ptr) })
+// GetControlBoardVersion returns the structured control board identity, if available.
+func (m *Miner) GetControlBoardVersion() (*MinerControlBoard, error) {
+	var v *MinerControlBoard
+	err := m.getJSON(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_get_control_board_version_json(ptr) }, &v)
+	return v, err
 }
 
 // GetHashboards returns per-board telemetry.
@@ -374,8 +376,8 @@ func (m *Miner) GetScaledTuningTarget() (*TuningTarget, error) {
 }
 
 // GetTuningCapabilities returns the firmware tuning envelope, if available.
-func (m *Miner) GetTuningCapabilities() (json.RawMessage, error) {
-	var v json.RawMessage
+func (m *Miner) GetTuningCapabilities() (*TuningCapabilities, error) {
+	var v *TuningCapabilities
 	err := m.getJSON(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_get_tuning_capabilities_json(ptr) }, &v)
 	return v, err
 }

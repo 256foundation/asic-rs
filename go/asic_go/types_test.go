@@ -82,10 +82,10 @@ func TestTuningTargetRoundTrip(t *testing.T) {
 		if err := json.Unmarshal(out, &again); err != nil {
 			t.Fatalf("re-unmarshal %s: %v", out, err)
 		}
-		if again.Kind != tt.Kind {
-			t.Fatalf("kind %q != %q for %s", again.Kind, tt.Kind, raw)
+		if again.Variant != tt.Variant {
+			t.Fatalf("kind %q != %q for %s", again.Variant, tt.Variant, raw)
 		}
-		if tt.Kind == "Manual" && len(again.Boards) != 5 {
+		if tt.Variant == "Manual" && len(again.Boards) != 5 {
 			t.Fatalf("manual boards = %+v", again.Boards)
 		}
 	}
@@ -152,7 +152,7 @@ func TestMinerDataUnmarshal(t *testing.T) {
 	if data.Uptime == nil || data.Uptime.Duration() != 24*time.Hour {
 		t.Fatalf("uptime = %+v", data.Uptime)
 	}
-	if data.TuningTarget == nil || data.TuningTarget.Kind != "Power" || data.TuningTarget.Watts == nil {
+	if data.TuningTarget == nil || data.TuningTarget.Variant != "Power" || data.TuningTarget.Watts == nil {
 		t.Fatalf("tuning_target = %+v", data.TuningTarget)
 	}
 	if n, ok := data.DeviceInfo.Hardware.BoardCount(); !ok || n != 3 {
@@ -205,7 +205,7 @@ func TestParsePoolURL(t *testing.T) {
 		t.Fatalf("String = %q", u.String())
 	}
 
-	pool, err := NewPool("stratum+tcp://pool.example.com:3333", "worker.1", "x")
+	pool, err := NewPoolConfig("stratum+tcp://pool.example.com:3333", "worker.1", "x")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,14 +306,14 @@ func TestTuningTargetReuseClearsInactiveFields(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"Power":{"watts":3200}}`), &target); err != nil {
 		t.Fatal(err)
 	}
-	if target.Mode != nil || target.Kind != "Power" || target.Watts == nil || *target.Watts != 3200 {
+	if target.TargetMode != nil || target.Variant != "Power" || target.Watts == nil || *target.Watts != 3200 {
 		t.Fatalf("stale union: %+v", target)
 	}
 	for _, invalid := range []string{`{"Power":{"watts":1},"Preset":"x"}`, `{"Manual":{"boards":{"256":[1,2]}}}`, `{"Manual":{"boards":{"0":[1]}}}`} {
 		if err := json.Unmarshal([]byte(invalid), &target); err == nil {
 			t.Fatalf("invalid target accepted: %s", invalid)
 		}
-		if target.Kind != "Power" || *target.Watts != 3200 {
+		if target.Variant != "Power" || *target.Watts != 3200 {
 			t.Fatal("failed decode mutated receiver")
 		}
 	}
@@ -343,5 +343,104 @@ func TestRequiredCollectionsMatchRustFixtures(t *testing.T) {
 		if !reflect.DeepEqual(actual, expected) {
 			t.Fatalf("%s: %s, want %s", name, got, fixtures[name])
 		}
+	}
+}
+
+func TestAlgorithmDefaultsAndHardwareHelpers(t *testing.T) {
+	cases := map[HashAlgorithm]HashRateUnit{
+		HashAlgorithmSHA256:   HashRateUnitTeraHash,
+		HashAlgorithmScrypt:   HashRateUnitGigaHash,
+		HashAlgorithmEtHash:   HashRateUnitMegaHash,
+		HashAlgorithmEquihash: HashRateUnitKiloHash,
+		HashAlgorithmUnknown:  HashRateUnitHash,
+	}
+	for algo, want := range cases {
+		hr, err := (HashRate{Value: 1000, Unit: HashRateUnitHash, Algo: algo}).IntoDefaultUnit()
+		if err != nil || hr.Unit != want || hr.Algo != algo {
+			t.Fatalf("%s: %+v, %v", algo, hr, err)
+		}
+	}
+	var algo HashAlgorithm
+	if err := json.Unmarshal([]byte(`"typo"`), &algo); err == nil {
+		t.Fatal("unknown algorithm accepted")
+	}
+	first, third := uint16(78), uint16(80)
+	hardware := MinerHardware{Boards: []*uint16{&first, nil, &third}}
+	if n, ok := hardware.BoardCount(); !ok || n != 3 {
+		t.Fatalf("board count: %d, %v", n, ok)
+	}
+	if n, ok := hardware.TotalChips(); !ok || n != 158 {
+		t.Fatalf("total chips: %d, %v", n, ok)
+	}
+	if n, ok := hardware.ChipsForBoard(2); !ok || n != 80 {
+		t.Fatalf("board chips: %d, %v", n, ok)
+	}
+	for _, position := range []int{-1, 1, 3} {
+		if _, ok := hardware.ChipsForBoard(position); ok {
+			t.Fatalf("unexpected count for board %d", position)
+		}
+	}
+	if _, ok := (MinerHardware{}).TotalChips(); ok {
+		t.Fatal("missing boards became a known count")
+	}
+}
+
+func TestPythonWireAliasesNormalizeToRust(t *testing.T) {
+	var target TuningTarget
+	if err := json.Unmarshal([]byte(`{"type":"mode","value":"High"}`), &target); err != nil {
+		t.Fatal(err)
+	}
+	if target.Variant != TuningTargetMiningMode || target.TargetMode == nil || *target.TargetMode != MiningModeHigh {
+		t.Fatalf("mode: %+v", target)
+	}
+	b, err := json.Marshal(target)
+	if err != nil || string(b) != `{"MiningMode":"High"}` {
+		t.Fatalf("mode wire: %s, %v", b, err)
+	}
+	if err := json.Unmarshal([]byte(`{"type":"manual","value":{"0":[480,12.6]}}`), &target); err != nil {
+		t.Fatal(err)
+	}
+	if len(target.Boards) != 1 || *target.Boards[0].FrequencyMHz != 480 {
+		t.Fatalf("manual: %+v", target)
+	}
+	var fan FanConfig
+	if err := json.Unmarshal([]byte(`{"mode":"manual","fan_speed":80}`), &fan); err != nil {
+		t.Fatal(err)
+	}
+	if fan.Mode != FanModeManual {
+		t.Fatalf("fan mode: %s", fan.Mode)
+	}
+	b, err = json.Marshal(fan)
+	if err != nil || !strings.Contains(string(b), `"mode":"Manual"`) {
+		t.Fatalf("fan wire: %s, %v", b, err)
+	}
+	var pool PoolURL
+	if err := json.Unmarshal([]byte(`"stratum+ssl://pool.example.com:3333"`), &pool); err != nil {
+		t.Fatal(err)
+	}
+	if pool.Scheme != PoolSchemeStratumV1SSL {
+		t.Fatalf("pool scheme: %s", pool.Scheme)
+	}
+	b, err = json.Marshal(pool)
+	if err != nil || !strings.Contains(string(b), `"scheme":"StratumV1SSL"`) {
+		t.Fatalf("pool wire: %s, %v", b, err)
+	}
+}
+
+func TestStructuredTelemetryModels(t *testing.T) {
+	var data MinerData
+	raw := `{"control_board_version":{"known":false,"name":"new-board"},"messages":[{"component":{"type":"HashBoard","idx":2,"chip_idx":0}}],"tuning_capabilities":{"power":{"maximum":{"Power":{"watts":3500}}}}}`
+	if err := json.Unmarshal([]byte(raw), &data); err != nil {
+		t.Fatal(err)
+	}
+	if data.ControlBoardVersion == nil || data.ControlBoardVersion.Known || data.ControlBoardVersion.Name != "new-board" {
+		t.Fatalf("control board: %+v", data.ControlBoardVersion)
+	}
+	component := data.Messages[0].Component
+	if component.Type != MinerComponentHashBoard || *component.Idx != 2 || *component.ChipIdx != 0 {
+		t.Fatalf("component: %+v", component)
+	}
+	if *data.TuningCapabilities.Power.Maximum.Watts != 3500 {
+		t.Fatalf("capabilities: %+v", data.TuningCapabilities)
 	}
 }

@@ -434,7 +434,7 @@ pub unsafe extern "C" fn asic_rs_miner_get_firmware_version_json(
     })
 }
 
-/// Control board version as JSON (string or null).
+/// Control board identity as JSON ({known, name} or null).
 ///
 /// # Safety
 /// `miner` must be a live handle.
@@ -443,9 +443,7 @@ pub unsafe extern "C" fn asic_rs_miner_get_control_board_version_json(
     miner: *const AsicMiner,
 ) -> *mut c_char {
     ffi_guard(ptr::null_mut(), || {
-        miner_json(miner, |m| {
-            Ok(block_on(m.get_control_board_version())?.map(|cb| cb.to_string()))
-        })
+        miner_json(miner, |m| block_on(m.get_control_board_version()))
     })
 }
 
@@ -1209,5 +1207,18 @@ mod tests {
         let pools: Vec<PoolGroupConfig> =
             serde_json::from_value(fixtures["empty_pools"].clone()).unwrap();
         assert!(pools.is_empty());
+    }
+    #[test]
+    fn control_board_getter_preserves_structured_identity() {
+        let miner = Box::into_raw(Box::new(AsicMiner::new(Box::new(TestMiner))));
+        unsafe {
+            let raw = asic_rs_miner_get_control_board_version_json(miner);
+            assert!(!raw.is_null());
+            let board: serde_json::Value =
+                serde_json::from_slice(CStr::from_ptr(raw).to_bytes()).unwrap();
+            assert_eq!(board, serde_json::json!({"known":false,"name":"new-board"}));
+            crate::error::asic_rs_free_string(raw);
+            asic_rs_miner_free(miner);
+        }
     }
 }

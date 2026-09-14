@@ -58,7 +58,7 @@ construct the matching miner implementation.
 === "Go"
 
     ```go
-    factory := asic_go.NewFactory()
+    factory := asic_go.NewMinerFactory()
     defer factory.Close()
 
     miner, err := factory.GetMiner("192.168.1.10")
@@ -70,7 +70,7 @@ construct the matching miner implementation.
     }
     defer miner.Close()
 
-    info, err := miner.DeviceInfo()
+    info, err := miner.GetDeviceInfo()
     if err != nil {
         log.Fatal(err)
     }
@@ -124,7 +124,7 @@ known. Large scans use bounded concurrency.
 === "Go"
 
     ```go
-    factory, err := asic_go.NewFactoryFromSubnet("192.168.1.0/24")
+    factory, err := asic_go.NewMinerFactoryFromSubnet("192.168.1.0/24")
     if err != nil {
         log.Fatal(err)
     }
@@ -158,8 +158,8 @@ Range helpers are available in Rust, Python, and Go.
 === "Go"
 
     ```go
-    byOctets, err := asic_go.NewFactoryFromOctets("192", "168", "1", "1-255")
-    byRange, err := asic_go.NewFactoryFromRange("192.168.1.1-255")
+    byOctets, err := asic_go.NewMinerFactoryFromOctets("192", "168", "1", "1-255")
+    byRange, err := asic_go.NewMinerFactoryFromRange("192.168.1.1-255")
     ```
 
 ## Stream Results

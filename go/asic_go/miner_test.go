@@ -4,7 +4,7 @@ import "testing"
 
 func TestClosedMiner(t *testing.T) {
 	m := &Miner{}
-	if _, err := m.IP(); err == nil {
+	if _, err := m.GetIP(); err == nil {
 		t.Fatal("expected error on nil miner")
 	}
 	if _, err := m.GetData(); err == nil {

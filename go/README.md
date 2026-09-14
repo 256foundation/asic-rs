@@ -47,7 +47,7 @@ the package source (`${SRCDIR}/lib`) and set an rpath on macOS/Linux.
 
 | Concept | Go |
 | --- | --- |
-| Discovery | `asic_go.Factory` |
+| Discovery | `asic_go.MinerFactory` |
 | Miner handle | `asic_go.Miner` |
 | Telemetry | `asic_go.MinerData` |
 | Missing miner | `errors.Is(err, asic_go.ErrNotFound)` |
@@ -58,3 +58,17 @@ control and config calls.
 
 Streaming scans, `MinerListener`, and `prepare_firmware` are not wrapped yet;
 use `Scan()` / `GetMiner`. `GetOperatingState` is wrapped.
+
+## Shared names
+
+Use `NewMinerFactory`, `GetIP`, and `GetDeviceInfo` for discovery and identity.
+Config constructors include `NewPoolConfig`, `NewFanConfigAuto`, and
+`NewFanConfigManual`. Tuning constructors use `NewTuningTarget` followed by
+`Manual`, `Power`, `Hashrate`, `MiningMode`, or `Preset`.
+
+The Go models retain the Rust type names, including `HashAlgorithm`,
+`MiningMode`, `MinerControlBoard`, `MinerComponent`, and `TuningCapabilities`.
+Hashrate conversions return an error for invalid units. For a display value in
+the conventional unit for its algorithm, use `HashRate.IntoDefaultUnit()`.
+See [the API guide](../docs/api.md#binding-names-and-wire-formats) for the naming
+map, Python compatibility aliases, and JSON format differences.

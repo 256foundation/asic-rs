@@ -17,7 +17,7 @@ func TestVersion(t *testing.T) {
 }
 
 func TestFactoryHostsFromSubnet(t *testing.T) {
-	f, err := NewFactoryFromSubnet("10.0.0.0/30")
+	f, err := NewMinerFactoryFromSubnet("10.0.0.0/30")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestFactoryHostsFromSubnet(t *testing.T) {
 }
 
 func TestFactoryFromRangeAndOctets(t *testing.T) {
-	f, err := NewFactoryFromRange("192.168.1.1-3")
+	f, err := NewMinerFactoryFromRange("192.168.1.1-3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestFactoryFromRangeAndOctets(t *testing.T) {
 		t.Fatalf("range Len = %d, want 3", f.Len())
 	}
 
-	f2, err := NewFactoryFromOctets("10", "0", "0", "1-2")
+	f2, err := NewMinerFactoryFromOctets("10", "0", "0", "1-2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestFactoryFromRangeAndOctets(t *testing.T) {
 }
 
 func TestFactoryWithSubnetAppend(t *testing.T) {
-	f := NewFactory()
+	f := NewMinerFactory()
 	defer f.Close()
 	if !f.IsEmpty() {
 		t.Fatal("new factory should be empty")
@@ -78,13 +78,13 @@ func TestFactoryWithSubnetAppend(t *testing.T) {
 }
 
 func TestFactoryInvalidInputs(t *testing.T) {
-	if _, err := NewFactoryFromSubnet("not-a-subnet"); err == nil {
+	if _, err := NewMinerFactoryFromSubnet("not-a-subnet"); err == nil {
 		t.Fatal("expected error for invalid subnet")
 	}
-	if _, err := NewFactoryFromRange("nope"); err == nil {
+	if _, err := NewMinerFactoryFromRange("nope"); err == nil {
 		t.Fatal("expected error for invalid range")
 	}
-	f := NewFactory()
+	f := NewMinerFactory()
 	defer f.Close()
 	if err := f.WithOctets("a", "b", "c", "d"); err == nil {
 		t.Fatal("expected error for invalid octets")
@@ -92,7 +92,7 @@ func TestFactoryInvalidInputs(t *testing.T) {
 }
 
 func TestFactoryTuningOptions(t *testing.T) {
-	f := NewFactory()
+	f := NewMinerFactory()
 	defer f.Close()
 	f.WithPortCheck(false).
 		WithConcurrentLimit(50).
@@ -108,7 +108,7 @@ func TestFactoryTuningOptions(t *testing.T) {
 }
 
 func TestClosedFactory(t *testing.T) {
-	f := NewFactory()
+	f := NewMinerFactory()
 	f.Close()
 	f.Close()
 	if err := f.WithSubnet("10.0.0.0/30"); err == nil {
@@ -123,13 +123,13 @@ func TestClosedFactory(t *testing.T) {
 }
 
 func TestInteriorNULRejected(t *testing.T) {
-	if _, err := NewFactoryFromSubnet("10.0.0.0/30\x00"); err == nil {
+	if _, err := NewMinerFactoryFromSubnet("10.0.0.0/30\x00"); err == nil {
 		t.Fatal("expected error for subnet with interior NUL")
 	}
 }
 
 func TestGetMinerInvalidIP(t *testing.T) {
-	f := NewFactory()
+	f := NewMinerFactory()
 	defer f.Close()
 	_, err := f.GetMiner("not-an-ip")
 	if err == nil {
@@ -141,7 +141,7 @@ func TestGetMinerInvalidIP(t *testing.T) {
 }
 
 func TestGetMinerUnreachable(t *testing.T) {
-	f := NewFactory().
+	f := NewMinerFactory().
 		WithPortCheck(true).
 		WithIdentificationTimeoutSecs(1).
 		WithConnectivityTimeoutSecs(1).
@@ -159,7 +159,7 @@ func TestGetMinerUnreachable(t *testing.T) {
 }
 
 func TestScanEmptyFactory(t *testing.T) {
-	f := NewFactory()
+	f := NewMinerFactory()
 	defer f.Close()
 	_, err := f.Scan()
 	if err == nil {
@@ -168,7 +168,7 @@ func TestScanEmptyFactory(t *testing.T) {
 }
 
 func TestScanNoMiners(t *testing.T) {
-	f, err := NewFactoryFromRange("192.0.2.1-1")
+	f, err := NewMinerFactoryFromRange("192.0.2.1-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestScanNoMiners(t *testing.T) {
 }
 
 func TestWithConcurrentLimitNonPositiveDoesNotPanic(t *testing.T) {
-	f, err := NewFactoryFromRange("192.0.2.1-1")
+	f, err := NewMinerFactoryFromRange("192.0.2.1-1")
 	if err != nil {
 		t.Fatal(err)
 	}

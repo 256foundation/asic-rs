@@ -20,7 +20,7 @@ import (
 	"unsafe"
 )
 
-// ErrNotFound is returned by Factory.GetMiner and Factory.ScanMiner when the
+// ErrNotFound is returned by MinerFactory.GetMiner and MinerFactory.ScanMiner when the
 // address did not identify as a supported ASIC miner.
 var ErrNotFound = errors.New("no supported miner found")
 

@@ -12,11 +12,11 @@ Pydantic-compatible data models. The Go bindings live in-tree as
 
 | Concept | Rust | Python | Go |
 | --- | --- | --- | --- |
-| Discovery and miner construction | [`MinerFactory`][minerfactory] | `pyasic_rs.MinerFactory` | `asic_go.Factory` |
+| Discovery and miner construction | [`MinerFactory`][minerfactory] | `pyasic_rs.MinerFactory` | `asic_go.MinerFactory` |
 | Miner handle | `Box<dyn Miner>` | `pyasic_rs.Miner` | `asic_go.Miner` |
 | Full telemetry snapshot | `MinerData` | `pyasic_rs.data.MinerData` | `asic_go.MinerData` |
 | Hashrate values | `HashRate`, `HashRateUnit` | `HashRate`, `HashRateUnit` | `HashRate`, `HashRateUnit` |
-| Pool configuration | `PoolGroupConfig`, `PoolConfig` | `PoolGroup`, `Pool` | `PoolGroupConfig`, `PoolConfig` |
+| Pool configuration | `PoolGroupConfig`, `PoolConfig` | `PoolGroupConfig`, `PoolConfig` (aliases: `PoolGroup`, `Pool`) | `PoolGroupConfig`, `PoolConfig` |
 | Fan configuration | `FanConfig` | `FanConfig` | `FanConfig` |
 | Tuning configuration | `TuningConfig` | `TuningConfig` | `TuningConfig` |
 | Optional controls/configs | `supports_*` methods | `supports_*` properties | `Supports()` |
@@ -91,7 +91,7 @@ import (
 )
 
 func main() {
-    factory := asic_go.NewFactory()
+    factory := asic_go.NewMinerFactory()
     defer factory.Close()
 
     miner, err := factory.GetMiner("192.168.1.10")
@@ -103,7 +103,7 @@ func main() {
     }
     defer miner.Close()
 
-    info, err := miner.DeviceInfo()
+    info, err := miner.GetDeviceInfo()
     if err != nil {
         log.Fatal(err)
     }
@@ -158,7 +158,7 @@ if __name__ == "__main__":
 <!-- asic-rs-example:scan go -->
 
 ```go
-factory, err := asic_go.NewFactoryFromSubnet("192.168.1.0/24")
+factory, err := asic_go.NewMinerFactoryFromSubnet("192.168.1.0/24")
 if err != nil {
     log.Fatal(err)
 }
@@ -200,8 +200,8 @@ by_range = MinerFactory.from_range("192.168.1.1-255")
 <!-- asic-rs-example:ranges go -->
 
 ```go
-byOctets, err := asic_go.NewFactoryFromOctets("192", "168", "1", "1-255")
-byRange, err := asic_go.NewFactoryFromRange("192.168.1.1-255")
+byOctets, err := asic_go.NewMinerFactoryFromOctets("192", "168", "1", "1-255")
+byRange, err := asic_go.NewMinerFactoryFromRange("192.168.1.1-255")
 ```
 
 ### Stream Scan Results
@@ -301,7 +301,7 @@ if __name__ == "__main__":
 <!-- asic-rs-example:data go -->
 
 ```go
-factory := asic_go.NewFactory()
+factory := asic_go.NewMinerFactory()
 defer factory.Close()
 miner, err := factory.GetMiner("192.168.1.10")
 if err != nil {
@@ -567,7 +567,7 @@ if err != nil {
     log.Fatal(err)
 }
 if caps.PoolsConfig {
-    pool, err := asic_go.NewPool("stratum+tcp://pool.example.com:3333", "worker.1", "x")
+    pool, err := asic_go.NewPoolConfig("stratum+tcp://pool.example.com:3333", "worker.1", "x")
     if err != nil {
         log.Fatal(err)
     }
@@ -584,7 +584,7 @@ if caps.FanConfig {
     }
 }
 if caps.TuningConfig {
-    if _, err := miner.SetTuningConfig(asic_go.TuningConfig{Target: asic_go.PowerTarget(3200)}, nil); err != nil {
+    if _, err := miner.SetTuningConfig(asic_go.TuningConfig{Target: asic_go.NewTuningTargetPower(3200)}, nil); err != nil {
         log.Fatal(err)
     }
 }

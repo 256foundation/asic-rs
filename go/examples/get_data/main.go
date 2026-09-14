@@ -21,7 +21,7 @@ func main() {
 
 	fmt.Println("asic-rs-ffi version:", asic_go.Version())
 
-	factory := asic_go.NewFactory().
+	factory := asic_go.NewMinerFactory().
 		WithIdentificationTimeoutSecs(8).
 		WithPortCheck(true)
 	defer factory.Close()

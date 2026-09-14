@@ -7,7 +7,7 @@
 //
 // # Quick start
 //
-//	factory := asic_go.NewFactory()
+//	factory := asic_go.NewMinerFactory()
 //	defer factory.Close()
 //
 //	miner, err := factory.GetMiner("192.168.1.42")

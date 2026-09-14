@@ -15,12 +15,12 @@ type DataField string
 const (
 	DataFieldSchemaVersion          DataField = "SchemaVersion"
 	DataFieldTimestamp              DataField = "Timestamp"
-	DataFieldIp                     DataField = "Ip"
-	DataFieldMac                    DataField = "Mac"
+	DataFieldIP                     DataField = "Ip"
+	DataFieldMAC                    DataField = "Mac"
 	DataFieldDeviceInfo             DataField = "DeviceInfo"
 	DataFieldSerialNumber           DataField = "SerialNumber"
 	DataFieldHostname               DataField = "Hostname"
-	DataFieldApiVersion             DataField = "ApiVersion"
+	DataFieldAPIVersion             DataField = "ApiVersion"
 	DataFieldFirmwareVersion        DataField = "FirmwareVersion"
 	DataFieldControlBoardVersion    DataField = "ControlBoardVersion"
 	DataFieldHashboards             DataField = "Hashboards"
@@ -28,7 +28,7 @@ const (
 	DataFieldHashrate               DataField = "Hashrate"
 	DataFieldExpectedHashrate       DataField = "ExpectedHashrate"
 	DataFieldFans                   DataField = "Fans"
-	DataFieldPsuFans                DataField = "PsuFans"
+	DataFieldPSUFans                DataField = "PsuFans"
 	DataFieldAverageTemperature     DataField = "AverageTemperature"
 	DataFieldFluidTemperature       DataField = "FluidTemperature"
 	DataFieldOutletFluidTemperature DataField = "OutletFluidTemperature"
@@ -49,9 +49,9 @@ const (
 
 // HashRate is a hashrate value with unit and algorithm.
 type HashRate struct {
-	Value float64      `json:"value"`
-	Unit  HashRateUnit `json:"unit"`
-	Algo  string       `json:"algo"`
+	Value float64       `json:"value"`
+	Unit  HashRateUnit  `json:"unit"`
+	Algo  HashAlgorithm `json:"algo"`
 }
 
 // HashRateUnit is the scale of a HashRate.Value.
@@ -172,7 +172,7 @@ type DeviceInfo struct {
 	Model    string        `json:"model"`
 	Hardware MinerHardware `json:"hardware"`
 	Firmware string        `json:"firmware"`
-	Algo     string        `json:"algo"`
+	Algo     HashAlgorithm `json:"algo"`
 }
 
 // MinerHardware describes expected fans and per-board chip counts.
@@ -182,11 +182,11 @@ type MinerHardware struct {
 }
 
 // BoardCount returns the expected number of hashboards when available.
-func (h MinerHardware) BoardCount() (int, bool) {
-	if h.Boards == nil {
+func (h MinerHardware) BoardCount() (uint8, bool) {
+	if h.Boards == nil || len(h.Boards) > 255 {
 		return 0, false
 	}
-	return len(h.Boards), true
+	return uint8(len(h.Boards)), true
 }
 
 // ChipData is optional per-chip telemetry.
@@ -239,7 +239,7 @@ type MinerMessage struct {
 	Code      uint64          `json:"code"`
 	Message   string          `json:"message"`
 	Severity  MessageSeverity `json:"severity"`
-	Component json.RawMessage `json:"component,omitempty"`
+	Component *MinerComponent `json:"component,omitempty"`
 }
 
 // PoolScheme is the stratum protocol scheme as serialized by asic-rs.
@@ -259,16 +259,7 @@ type PoolURL struct {
 	Pubkey *string    `json:"pubkey"`
 }
 
-func (u PoolURL) schemeString() string {
-	switch u.Scheme {
-	case PoolSchemeStratumV1SSL:
-		return "stratum+ssl"
-	case PoolSchemeStratumV2:
-		return "stratum2+tcp"
-	default:
-		return "stratum+tcp"
-	}
-}
+func (u PoolURL) schemeString() string { return u.Scheme.String() }
 
 // String formats the pool URL.
 func poolHost(host string) string {
@@ -301,12 +292,9 @@ func ParsePoolURL(raw string) (PoolURL, error) {
 	if err != nil {
 		return PoolURL{}, err
 	}
-	scheme := PoolSchemeStratumV1
-	switch parsed.Scheme {
-	case "stratum+ssl", "stratum+tls":
-		scheme = PoolSchemeStratumV1SSL
-	case "stratum2+tcp":
-		scheme = PoolSchemeStratumV2
+	scheme, err := ParsePoolScheme(parsed.Scheme)
+	if err != nil {
+		return PoolURL{}, err
 	}
 	port := uint16(80)
 	if parsed.Port() != "" {
@@ -414,13 +402,13 @@ type ManualBoardSetpoint struct {
 //
 //	{"Manual":{"boards":{"0":[480,12.6]}}} | {"Power":{"watts":3500}} | {"HashRate":{...}} | {"MiningMode":"Normal"} | {"Preset":"5560"}
 type TuningTarget struct {
-	Kind     string
-	Watts    *float64
-	HashRate *HashRate
-	Mode     *string
-	Preset   *string
-	Boards   map[string]ManualBoardSetpoint
-	Raw      json.RawMessage
+	Variant        TuningTargetVariant
+	Watts          *float64
+	TargetHashrate *HashRate
+	TargetMode     *MiningMode
+	PresetName     *string
+	Boards         ManualTuningValues
+	Raw            json.RawMessage
 }
 
 // UnmarshalJSON decodes the externally-tagged TuningTarget enum.
@@ -437,32 +425,52 @@ func (t *TuningTarget) decodeJSON(b []byte) error {
 	t.Raw = append([]byte(nil), b...)
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(b, &m); err != nil {
-		var s string
+		var s MiningMode
 		if err2 := json.Unmarshal(b, &s); err2 == nil {
-			t.Kind = "MiningMode"
-			t.Mode = &s
+			t.Variant = "MiningMode"
+			t.TargetMode = &s
 			return nil
 		}
 		return err
+	}
+	if tag, ok := m["type"]; ok {
+		if len(m) != 2 || m["value"] == nil {
+			return fmt.Errorf("Python tuning target requires type and value")
+		}
+		var name string
+		if err := json.Unmarshal(tag, &name); err != nil {
+			return err
+		}
+		variants := map[string]string{"manual": "Manual", "power": "Power", "hashrate": "HashRate", "mode": "MiningMode", "preset": "Preset"}
+		variant, ok := variants[name]
+		if !ok {
+			return fmt.Errorf("unknown tuning target type: %q", name)
+		}
+		value := m["value"]
+		if name == "manual" {
+			wrapped, err := json.Marshal(map[string]json.RawMessage{"boards": value})
+			if err != nil {
+				return err
+			}
+			value = wrapped
+		}
+		m = map[string]json.RawMessage{variant: value}
 	}
 	if len(m) != 1 {
 		return fmt.Errorf("TuningTarget must contain exactly one variant")
 	}
 	if raw, ok := m["Manual"]; ok {
-		t.Kind = "Manual"
+		t.Variant = "Manual"
 		var payload struct {
-			Boards map[string][]*float64 `json:"boards"`
+			Boards map[uint8][]*float64 `json:"boards"`
 		}
 		if err := json.Unmarshal(raw, &payload); err != nil {
 			return err
 		}
-		t.Boards = make(map[string]ManualBoardSetpoint, len(payload.Boards))
+		t.Boards = make(ManualTuningValues, len(payload.Boards))
 		for id, pair := range payload.Boards {
-			if _, err := strconv.ParseUint(id, 10, 8); err != nil {
-				return fmt.Errorf("invalid board ID %q: %w", id, err)
-			}
 			if len(pair) != 2 {
-				return fmt.Errorf("board %s requires a frequency/voltage pair", id)
+				return fmt.Errorf("board %d requires a frequency/voltage pair", id)
 			}
 			sp := ManualBoardSetpoint{}
 			if len(pair) > 0 {
@@ -476,7 +484,7 @@ func (t *TuningTarget) decodeJSON(b []byte) error {
 		return nil
 	}
 	if raw, ok := m["Power"]; ok {
-		t.Kind = "Power"
+		t.Variant = "Power"
 		var pw PowerWatts
 		if err := json.Unmarshal(raw, &pw); err != nil {
 			return err
@@ -486,30 +494,30 @@ func (t *TuningTarget) decodeJSON(b []byte) error {
 		return nil
 	}
 	if raw, ok := m["HashRate"]; ok {
-		t.Kind = "HashRate"
+		t.Variant = "HashRate"
 		var hr HashRate
 		if err := json.Unmarshal(raw, &hr); err != nil {
 			return err
 		}
-		t.HashRate = &hr
+		t.TargetHashrate = &hr
 		return nil
 	}
 	if raw, ok := m["MiningMode"]; ok {
-		t.Kind = "MiningMode"
-		var s string
+		t.Variant = "MiningMode"
+		var s MiningMode
 		if err := json.Unmarshal(raw, &s); err != nil {
 			return err
 		}
-		t.Mode = &s
+		t.TargetMode = &s
 		return nil
 	}
 	if raw, ok := m["Preset"]; ok {
-		t.Kind = "Preset"
+		t.Variant = "Preset"
 		var s string
 		if err := json.Unmarshal(raw, &s); err != nil {
 			return err
 		}
-		t.Preset = &s
+		t.PresetName = &s
 		return nil
 	}
 	return fmt.Errorf("unknown TuningTarget variant: %s", string(b))
@@ -517,9 +525,9 @@ func (t *TuningTarget) decodeJSON(b []byte) error {
 
 // MarshalJSON encodes TuningTarget in the Rust externally-tagged form.
 func (t TuningTarget) MarshalJSON() ([]byte, error) {
-	switch t.Kind {
+	switch t.Variant {
 	case "Manual":
-		boards := make(map[string][2]*float64, len(t.Boards))
+		boards := make(map[uint8][2]*float64, len(t.Boards))
 		for id, sp := range t.Boards {
 			boards[id] = [2]*float64{sp.FrequencyMHz, sp.Volts}
 		}
@@ -531,17 +539,17 @@ func (t TuningTarget) MarshalJSON() ([]byte, error) {
 		}
 		return json.Marshal(map[string]any{"Power": map[string]float64{"watts": w}})
 	case "HashRate":
-		return json.Marshal(map[string]any{"HashRate": t.HashRate})
+		return json.Marshal(map[string]any{"HashRate": t.TargetHashrate})
 	case "MiningMode":
-		mode := ""
-		if t.Mode != nil {
-			mode = *t.Mode
+		var mode MiningMode
+		if t.TargetMode != nil {
+			mode = *t.TargetMode
 		}
 		return json.Marshal(map[string]any{"MiningMode": mode})
 	case "Preset":
 		name := ""
-		if t.Preset != nil {
-			name = *t.Preset
+		if t.PresetName != nil {
+			name = *t.PresetName
 		}
 		return json.Marshal(map[string]any{"Preset": name})
 	default:
@@ -552,70 +560,70 @@ func (t TuningTarget) MarshalJSON() ([]byte, error) {
 	}
 }
 
-// ManualTarget builds a manual TuningTarget (perpetual/autotune disabled).
-func ManualTarget(boards map[string]ManualBoardSetpoint) TuningTarget {
+// NewTuningTargetManual builds a manual TuningTarget (perpetual/autotune disabled).
+func NewTuningTargetManual(boards ManualTuningValues) TuningTarget {
 	if boards == nil {
-		boards = map[string]ManualBoardSetpoint{}
+		boards = ManualTuningValues{}
 	}
-	return TuningTarget{Kind: "Manual", Boards: boards}
+	return TuningTarget{Variant: "Manual", Boards: boards}
 }
 
-// PowerTarget builds a power TuningTarget.
-func PowerTarget(watts float64) TuningTarget {
+// NewTuningTargetPower builds a power TuningTarget.
+func NewTuningTargetPower(watts float64) TuningTarget {
 	w := watts
-	return TuningTarget{Kind: "Power", Watts: &w}
+	return TuningTarget{Variant: "Power", Watts: &w}
 }
 
-// PresetTarget builds a named-preset TuningTarget.
-func PresetTarget(name string) TuningTarget {
+// NewTuningTargetPreset builds a named-preset TuningTarget.
+func NewTuningTargetPreset(name string) TuningTarget {
 	n := name
-	return TuningTarget{Kind: "Preset", Preset: &n}
+	return TuningTarget{Variant: "Preset", PresetName: &n}
 }
 
 // MinerData is a full telemetry snapshot from a miner.
 type MinerData struct {
-	SchemaVersion          string          `json:"schema_version"`
-	Timestamp              uint64          `json:"timestamp"`
-	IP                     string          `json:"ip"`
-	MAC                    *string         `json:"mac"`
-	DeviceInfo             DeviceInfo      `json:"device_info"`
-	SerialNumber           *string         `json:"serial_number"`
-	Hostname               *string         `json:"hostname"`
-	APIVersion             *string         `json:"api_version"`
-	FirmwareVersion        *string         `json:"firmware_version"`
-	ControlBoardVersion    json.RawMessage `json:"control_board_version"`
-	ExpectedHashboards     *uint8          `json:"expected_hashboards"`
-	Hashboards             []BoardData     `json:"hashboards"`
-	Hashrate               *HashRate       `json:"hashrate"`
-	ExpectedHashrate       *HashRate       `json:"expected_hashrate"`
-	ExpectedChips          *uint16         `json:"expected_chips"`
-	TotalChips             *uint16         `json:"total_chips"`
-	ExpectedFans           *uint8          `json:"expected_fans"`
-	Fans                   []FanData       `json:"fans"`
-	PSUFans                []FanData       `json:"psu_fans"`
-	AverageTemperature     *float64        `json:"average_temperature"`
-	FluidTemperature       *float64        `json:"fluid_temperature"`
-	OutletFluidTemperature *float64        `json:"outlet_fluid_temperature"`
-	Wattage                *float64        `json:"wattage"`
-	TuningPercent          *uint8          `json:"tuning_percent"`
-	TuningTarget           *TuningTarget   `json:"tuning_target"`
-	ScaledTuningTarget     *TuningTarget   `json:"scaled_tuning_target"`
-	TuningCapabilities     json.RawMessage `json:"tuning_capabilities"`
-	Efficiency             *float64        `json:"efficiency"`
-	LightFlashing          *bool           `json:"light_flashing"`
-	Messages               []MinerMessage  `json:"messages"`
-	Uptime                 *DurationSecs   `json:"uptime"`
-	IsMining               bool            `json:"is_mining"`
-	Pools                  []PoolGroupData `json:"pools"`
-	OperatingState         *OperatingState `json:"operating_state"`
-	BestShare              *float64        `json:"best_share"`
-	SessionBestShare       *float64        `json:"session_best_share"`
+	SchemaVersion          string              `json:"schema_version"`
+	Timestamp              uint64              `json:"timestamp"`
+	IP                     string              `json:"ip"`
+	MAC                    *string             `json:"mac"`
+	DeviceInfo             DeviceInfo          `json:"device_info"`
+	SerialNumber           *string             `json:"serial_number"`
+	Hostname               *string             `json:"hostname"`
+	APIVersion             *string             `json:"api_version"`
+	FirmwareVersion        *string             `json:"firmware_version"`
+	ControlBoardVersion    *MinerControlBoard  `json:"control_board_version"`
+	ExpectedHashboards     *uint8              `json:"expected_hashboards"`
+	Hashboards             []BoardData         `json:"hashboards"`
+	Hashrate               *HashRate           `json:"hashrate"`
+	ExpectedHashrate       *HashRate           `json:"expected_hashrate"`
+	ExpectedChips          *uint16             `json:"expected_chips"`
+	TotalChips             *uint16             `json:"total_chips"`
+	ExpectedFans           *uint8              `json:"expected_fans"`
+	Fans                   []FanData           `json:"fans"`
+	PSUFans                []FanData           `json:"psu_fans"`
+	AverageTemperature     *float64            `json:"average_temperature"`
+	FluidTemperature       *float64            `json:"fluid_temperature"`
+	OutletFluidTemperature *float64            `json:"outlet_fluid_temperature"`
+	Wattage                *float64            `json:"wattage"`
+	TuningPercent          *uint8              `json:"tuning_percent"`
+	TuningTarget           *TuningTarget       `json:"tuning_target"`
+	ScaledTuningTarget     *TuningTarget       `json:"scaled_tuning_target"`
+	TuningCapabilities     *TuningCapabilities `json:"tuning_capabilities"`
+	Efficiency             *float64            `json:"efficiency"`
+	LightFlashing          *bool               `json:"light_flashing"`
+	Messages               []MinerMessage      `json:"messages"`
+	Uptime                 *DurationSecs       `json:"uptime"`
+	IsMining               bool                `json:"is_mining"`
+	Pools                  []PoolGroupData     `json:"pools"`
+	OperatingState         *OperatingState     `json:"operating_state"`
+	BestShare              *float64            `json:"best_share"`
+	SessionBestShare       *float64            `json:"session_best_share"`
 }
 
 // OperatingState is the firmware-reported runtime state (`{"type":"Mining"}`).
 type OperatingState struct {
-	Type string  `json:"type"`
-	Raw  *string `json:"raw,omitempty"`
+	Type OperatingStateType `json:"type"`
+	Raw  *string            `json:"raw,omitempty"`
 }
 
 // HashrateTH returns current hashrate in TH/s, or 0 if unknown.
@@ -638,8 +646,8 @@ type PoolConfig struct {
 	Password string  `json:"password"`
 }
 
-// NewPool builds a PoolConfig from a stratum URL string.
-func NewPool(rawURL, username, password string) (PoolConfig, error) {
+// NewPoolConfig builds a PoolConfig from a stratum URL string.
+func NewPoolConfig(rawURL, username, password string) (PoolConfig, error) {
 	u, err := ParsePoolURL(rawURL)
 	if err != nil {
 		return PoolConfig{}, err
@@ -670,7 +678,7 @@ type TuningConfig struct {
 
 // FanConfig is a tagged enum: Auto or Manual.
 type FanConfig struct {
-	Mode       string   `json:"mode"`
+	Mode       FanMode  `json:"mode"`
 	TargetTemp *float64 `json:"target_temp,omitempty"`
 	IdleSpeed  *uint64  `json:"idle_speed,omitempty"`
 	FanSpeed   *uint64  `json:"fan_speed,omitempty"`

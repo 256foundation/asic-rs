@@ -1056,3 +1056,27 @@ def test_miner_data_accepts_hash_algorithm_name() -> None:
 def test_miner_data_rejects_invalid_uptime_seconds(uptime: float) -> None:
     with pytest.raises(ValidationError):
         MinerDataModel.model_validate({"miner": minimal_miner_data(uptime=uptime)})
+
+
+def test_shared_config_names_preserve_python_aliases() -> None:
+    from pyasic_rs import PoolConfig, PoolGroupConfig
+
+    assert PoolConfig is Pool
+    assert PoolGroupConfig is PoolGroup
+
+
+def test_hardware_helpers_use_shared_names() -> None:
+    hardware = MinerHardware.model_validate({"fans": 4, "boards": [78, None, 80]})
+    assert hardware.total_chips == hardware.chips == 158
+    assert hardware.board_count == 3
+    assert hardware.chips_for_board(0) == 78
+    assert hardware.chips_for_board(1) is None
+    assert hardware.chips_for_board(3) is None
+
+
+def test_schema_version_data_field_matches_its_schema() -> None:
+    from pyasic_rs.data import DataField
+
+    assert DataField.model_validate("SchemaVersion") == DataField.SchemaVersion
+    assert "SchemaVersion" in DataField.model_json_schema()["enum"]
+    assert "Schema" not in DataField.model_json_schema()["enum"]

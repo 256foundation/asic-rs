@@ -282,7 +282,7 @@ char *asic_rs_miner_get_api_version_json(const struct AsicMiner *miner);
 // `miner` must be a live handle.
 char *asic_rs_miner_get_firmware_version_json(const struct AsicMiner *miner);
 
-// Control board version as JSON (string or null).
+// Control board identity as JSON ({known, name} or null).
 //
 // # Safety
 // `miner` must be a live handle.

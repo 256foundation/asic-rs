@@ -13,36 +13,36 @@ import (
 	"unsafe"
 )
 
-// Factory discovers and constructs miners on a network.
+// MinerFactory discovers and constructs miners on a network.
 //
 // Always call Close when finished (or use defer). Close must not run
-// concurrently with other methods on the same Factory.
-type Factory struct {
+// concurrently with other methods on the same MinerFactory.
+type MinerFactory struct {
 	mu  sync.Mutex
 	ptr *C.AsicFactory
 }
 
-func newFactory(ptr *C.AsicFactory) *Factory {
-	f := &Factory{ptr: ptr}
-	runtime.SetFinalizer(f, (*Factory).Close)
+func newFactory(ptr *C.AsicFactory) *MinerFactory {
+	f := &MinerFactory{ptr: ptr}
+	runtime.SetFinalizer(f, (*MinerFactory).Close)
 	return f
 }
 
-// NewFactory creates an empty factory with no hosts configured.
-func NewFactory() *Factory {
+// NewMinerFactory creates an empty factory with no hosts configured.
+func NewMinerFactory() *MinerFactory {
 	return newFactory(C.asic_rs_factory_new())
 }
 
-func newFactoryFromC(ptr *C.AsicFactory) (*Factory, error) {
+func newFactoryFromC(ptr *C.AsicFactory) (*MinerFactory, error) {
 	if ptr == nil {
 		return nil, lastError()
 	}
 	return newFactory(ptr), nil
 }
 
-// NewFactoryFromSubnet creates a factory pre-loaded with hosts from a CIDR
+// NewMinerFactoryFromSubnet creates a factory pre-loaded with hosts from a CIDR
 // subnet (for example "192.168.1.0/24").
-func NewFactoryFromSubnet(subnet string) (*Factory, error) {
+func NewMinerFactoryFromSubnet(subnet string) (*MinerFactory, error) {
 	cs, err := cString(subnet)
 	if err != nil {
 		return nil, err
@@ -53,9 +53,9 @@ func NewFactoryFromSubnet(subnet string) (*Factory, error) {
 	return newFactoryFromC(C.asic_rs_factory_from_subnet(cs))
 }
 
-// NewFactoryFromRange creates a factory from a compact range string
+// NewMinerFactoryFromRange creates a factory from a compact range string
 // (for example "192.168.1.1-255").
-func NewFactoryFromRange(rangeStr string) (*Factory, error) {
+func NewMinerFactoryFromRange(rangeStr string) (*MinerFactory, error) {
 	cs, err := cString(rangeStr)
 	if err != nil {
 		return nil, err
@@ -66,9 +66,9 @@ func NewFactoryFromRange(rangeStr string) (*Factory, error) {
 	return newFactoryFromC(C.asic_rs_factory_from_range(cs))
 }
 
-// NewFactoryFromOctets creates a factory from four octet descriptors
+// NewMinerFactoryFromOctets creates a factory from four octet descriptors
 // (for example "192", "168", "1", "1-255").
-func NewFactoryFromOctets(o1, o2, o3, o4 string) (*Factory, error) {
+func NewMinerFactoryFromOctets(o1, o2, o3, o4 string) (*MinerFactory, error) {
 	c1, err := cString(o1)
 	if err != nil {
 		return nil, err
@@ -101,8 +101,8 @@ func NewFactoryFromOctets(o1, o2, o3, o4 string) (*Factory, error) {
 }
 
 // Close frees the factory. Safe to call multiple times. Do not call Close
-// concurrently with other methods on the same Factory.
-func (f *Factory) Close() {
+// concurrently with other methods on the same MinerFactory.
+func (f *MinerFactory) Close() {
 	if f == nil {
 		return
 	}
@@ -118,7 +118,7 @@ func (f *Factory) Close() {
 	runtime.SetFinalizer(f, nil)
 }
 
-func (f *Factory) withLive(fn func(ptr *C.AsicFactory) error) error {
+func (f *MinerFactory) withLive(fn func(ptr *C.AsicFactory) error) error {
 	if f == nil {
 		return fmt.Errorf("factory is closed or nil")
 	}
@@ -133,7 +133,7 @@ func (f *Factory) withLive(fn func(ptr *C.AsicFactory) error) error {
 }
 
 // WithSubnet appends hosts from a CIDR subnet.
-func (f *Factory) WithSubnet(subnet string) error {
+func (f *MinerFactory) WithSubnet(subnet string) error {
 	cs, err := cString(subnet)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (f *Factory) WithSubnet(subnet string) error {
 }
 
 // WithRange appends hosts from a range string.
-func (f *Factory) WithRange(rangeStr string) error {
+func (f *MinerFactory) WithRange(rangeStr string) error {
 	cs, err := cString(rangeStr)
 	if err != nil {
 		return err
@@ -163,7 +163,7 @@ func (f *Factory) WithRange(rangeStr string) error {
 }
 
 // WithOctets appends hosts from four octet descriptors.
-func (f *Factory) WithOctets(o1, o2, o3, o4 string) error {
+func (f *MinerFactory) WithOctets(o1, o2, o3, o4 string) error {
 	c1, err := cString(o1)
 	if err != nil {
 		return err
@@ -198,7 +198,7 @@ func (f *Factory) WithOctets(o1, o2, o3, o4 string) error {
 	})
 }
 
-func (f *Factory) apply(fn func(ptr *C.AsicFactory)) *Factory {
+func (f *MinerFactory) apply(fn func(ptr *C.AsicFactory)) *MinerFactory {
 	_ = f.withLive(func(ptr *C.AsicFactory) error {
 		fn(ptr)
 		return nil
@@ -207,7 +207,7 @@ func (f *Factory) apply(fn func(ptr *C.AsicFactory)) *Factory {
 }
 
 // WithPortCheck enables or disables the initial port connectivity check.
-func (f *Factory) WithPortCheck(enabled bool) *Factory {
+func (f *MinerFactory) WithPortCheck(enabled bool) *MinerFactory {
 	return f.apply(func(ptr *C.AsicFactory) {
 		C.asic_rs_factory_set_port_check(ptr, C.bool(enabled))
 	})
@@ -217,7 +217,7 @@ func (f *Factory) WithPortCheck(enabled bool) *Factory {
 // Values less than 1 are clamped to 1 so a zero or negative limit cannot
 // panic inside the scan runtime. Rust also clamps values above Tokio's
 // maximum semaphore capacity.
-func (f *Factory) WithConcurrentLimit(limit int) *Factory {
+func (f *MinerFactory) WithConcurrentLimit(limit int) *MinerFactory {
 	if limit < 1 {
 		limit = 1
 	}
@@ -227,14 +227,14 @@ func (f *Factory) WithConcurrentLimit(limit int) *Factory {
 }
 
 // WithIdentificationTimeoutSecs sets how long identification may take.
-func (f *Factory) WithIdentificationTimeoutSecs(secs uint64) *Factory {
+func (f *MinerFactory) WithIdentificationTimeoutSecs(secs uint64) *MinerFactory {
 	return f.apply(func(ptr *C.AsicFactory) {
 		C.asic_rs_factory_set_identification_timeout_secs(ptr, C.uint64_t(secs))
 	})
 }
 
 // WithConnectivityTimeoutSecs sets the TCP connect timeout for port checks.
-func (f *Factory) WithConnectivityTimeoutSecs(secs uint64) *Factory {
+func (f *MinerFactory) WithConnectivityTimeoutSecs(secs uint64) *MinerFactory {
 	return f.apply(func(ptr *C.AsicFactory) {
 		C.asic_rs_factory_set_connectivity_timeout_secs(ptr, C.uint64_t(secs))
 	})
@@ -242,35 +242,35 @@ func (f *Factory) WithConnectivityTimeoutSecs(secs uint64) *Factory {
 
 // WithConnectivityRetries sets how many extra connectivity attempts to make
 // after the initial probe.
-func (f *Factory) WithConnectivityRetries(retries uint32) *Factory {
+func (f *MinerFactory) WithConnectivityRetries(retries uint32) *MinerFactory {
 	return f.apply(func(ptr *C.AsicFactory) {
 		C.asic_rs_factory_set_connectivity_retries(ptr, C.uint32_t(retries))
 	})
 }
 
 // WithNofileLimit sets a desired RLIMIT_NOFILE / maxstdio target for large scans.
-func (f *Factory) WithNofileLimit(limit uint64) *Factory {
+func (f *MinerFactory) WithNofileLimit(limit uint64) *MinerFactory {
 	return f.apply(func(ptr *C.AsicFactory) {
 		C.asic_rs_factory_set_nofile_limit(ptr, C.uint64_t(limit))
 	})
 }
 
 // WithNofileAdjustment enables or disables automatic nofile raising.
-func (f *Factory) WithNofileAdjustment(enabled bool) *Factory {
+func (f *MinerFactory) WithNofileAdjustment(enabled bool) *MinerFactory {
 	return f.apply(func(ptr *C.AsicFactory) {
 		C.asic_rs_factory_set_nofile_adjustment(ptr, C.bool(enabled))
 	})
 }
 
 // WithAdaptiveConcurrency picks a concurrency limit based on the host list size.
-func (f *Factory) WithAdaptiveConcurrency() *Factory {
+func (f *MinerFactory) WithAdaptiveConcurrency() *MinerFactory {
 	return f.apply(func(ptr *C.AsicFactory) {
 		C.asic_rs_factory_set_adaptive_concurrency(ptr)
 	})
 }
 
 // Len returns the number of hosts currently configured for scanning.
-func (f *Factory) Len() int {
+func (f *MinerFactory) Len() int {
 	var n int
 	_ = f.withLive(func(ptr *C.AsicFactory) error {
 		got := C.asic_rs_factory_len(ptr)
@@ -285,7 +285,7 @@ func (f *Factory) Len() int {
 }
 
 // IsEmpty reports whether no hosts are configured.
-func (f *Factory) IsEmpty() bool {
+func (f *MinerFactory) IsEmpty() bool {
 	empty := true
 	_ = f.withLive(func(ptr *C.AsicFactory) error {
 		empty = bool(C.asic_rs_factory_is_empty(ptr))
@@ -295,7 +295,7 @@ func (f *Factory) IsEmpty() bool {
 }
 
 // Hosts returns the configured host IP strings.
-func (f *Factory) Hosts() ([]string, error) {
+func (f *MinerFactory) Hosts() ([]string, error) {
 	var hosts []string
 	err := f.withLive(func(ptr *C.AsicFactory) error {
 		return takeJSON(C.asic_rs_factory_hosts_json(ptr), &hosts)
@@ -305,7 +305,7 @@ func (f *Factory) Hosts() ([]string, error) {
 
 // GetMiner identifies and constructs a miner at ip.
 // Returns ErrNotFound when the address does not respond as a supported miner.
-func (f *Factory) GetMiner(ip string) (*Miner, error) {
+func (f *MinerFactory) GetMiner(ip string) (*Miner, error) {
 	cs, err := cString(ip)
 	if err != nil {
 		return nil, err
@@ -324,7 +324,7 @@ func (f *Factory) GetMiner(ip string) (*Miner, error) {
 
 // ScanMiner scans a single IP with the factory's port pre-check logic.
 // Returns ErrNotFound when no miner responds.
-func (f *Factory) ScanMiner(ip string) (*Miner, error) {
+func (f *MinerFactory) ScanMiner(ip string) (*Miner, error) {
 	cs, err := cString(ip)
 	if err != nil {
 		return nil, err
@@ -343,7 +343,7 @@ func (f *Factory) ScanMiner(ip string) (*Miner, error) {
 
 // Scan discovers miners on all configured hosts.
 // The caller must Close each returned Miner.
-func (f *Factory) Scan() ([]*Miner, error) {
+func (f *MinerFactory) Scan() ([]*Miner, error) {
 	var miners []*Miner
 	err := f.withLive(func(ptr *C.AsicFactory) error {
 		var out **C.AsicMiner
