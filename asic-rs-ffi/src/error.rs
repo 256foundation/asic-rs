@@ -1,7 +1,26 @@
 use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::ptr;
+
+/// Keep unwinding Rust panics inside the C ABI. Invalid pointers remain caller
+/// errors; this guard cannot make undefined behavior safe.
+pub(crate) fn ffi_guard<T>(fallback: T, f: impl FnOnce() -> T) -> T {
+    clear_error();
+    match catch_unwind(AssertUnwindSafe(f)) {
+        Ok(value) => value,
+        Err(payload) => {
+            let message = payload
+                .downcast_ref::<String>()
+                .map(String::as_str)
+                .or_else(|| payload.downcast_ref::<&str>().copied())
+                .unwrap_or("unknown Rust panic");
+            set_error(format!("asic-rs panicked: {message}"));
+            fallback
+        }
+    }
+}
 
 thread_local! {
     static LAST_ERROR: RefCell<Option<CString>> = const { RefCell::new(None) };
@@ -22,7 +41,8 @@ pub(crate) fn set_error_from(err: impl std::fmt::Display) {
 }
 
 /// Returns the last error message for this thread (borrowed; do not free).
-/// Valid until the next call into the library on this thread that sets an error.
+/// Copy the message before the next call into the library on this thread:
+/// successful operations may clear the error and invalidate this pointer too.
 #[unsafe(no_mangle)]
 pub extern "C" fn asic_rs_last_error() -> *const c_char {
     LAST_ERROR.with(|slot| match &*slot.borrow() {

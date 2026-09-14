@@ -20,7 +20,8 @@ typedef struct AsicMiner AsicMiner;
 const char *asic_rs_version(void);
 
 // Returns the last error message for this thread (borrowed; do not free).
-// Valid until the next call into the library on this thread that sets an error.
+// Copy the message before the next call into the library on this thread:
+// successful operations may clear the error and invalidate this pointer too.
 const char *asic_rs_last_error(void);
 
 // Free a string previously returned by this library.
@@ -88,7 +89,7 @@ int32_t asic_rs_factory_with_octets(struct AsicFactory *factory,
 // `factory` must be a live handle.
 void asic_rs_factory_set_port_check(struct AsicFactory *factory, bool enabled);
 
-// Set concurrent discovery limit.
+// Set concurrent discovery limit, clamped to 1..=Tokio semaphore MAX_PERMITS.
 //
 // # Safety
 // `factory` must be a live handle.
@@ -245,7 +246,7 @@ int32_t asic_rs_miner_set_token(struct AsicMiner *miner, const char *token);
 // `miner` must be a live handle; `exclude_json` may be null.
 char *asic_rs_miner_get_data_json(const struct AsicMiner *miner, const char *exclude_json);
 
-// Check for an available firmware update. JSON object or JSON null.
+// Check for an available firmware update. JSON object, or a null pointer on error.
 //
 // # Safety
 // `miner` must be a live handle.
@@ -529,7 +530,7 @@ int32_t asic_rs_miner_pause(const struct AsicMiner *miner, double at_time_secs);
 // `miner` must be a live handle.
 int32_t asic_rs_miner_resume(const struct AsicMiner *miner, double at_time_secs);
 
-// Re-run discovery checks. JSON bool or null on error.
+// Re-run discovery checks. JSON bool, or a null pointer on error.
 //
 // # Safety
 // `miner` must be a live handle.

@@ -6,7 +6,9 @@ use std::sync::Mutex;
 use asic_rs::MinerFactory;
 use asic_rs::core::traits::miner::Miner as MinerTrait;
 
-use crate::error::{clear_error, cstr_to_str, json_to_c_string, set_error, set_error_from};
+use crate::error::{
+    clear_error, cstr_to_str, ffi_guard, json_to_c_string, set_error, set_error_from,
+};
 use crate::miner::AsicMiner;
 use crate::runtime::block_on;
 
@@ -85,8 +87,10 @@ fn wrap_miner(miner: Box<dyn MinerTrait>) -> *mut AsicMiner {
 /// Create a new empty miner factory.
 #[unsafe(no_mangle)]
 pub extern "C" fn asic_rs_factory_new() -> *mut AsicFactory {
-    clear_error();
-    wrap_factory(MinerFactory::new())
+    ffi_guard(ptr::null_mut(), || {
+        clear_error();
+        wrap_factory(MinerFactory::new())
+    })
 }
 
 /// Create a factory pre-loaded with hosts from a CIDR subnet (e.g. "192.168.1.0/24").
@@ -96,21 +100,23 @@ pub extern "C" fn asic_rs_factory_new() -> *mut AsicFactory {
 /// `subnet` must be a valid C string.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn asic_rs_factory_from_subnet(subnet: *const c_char) -> *mut AsicFactory {
-    clear_error();
-    let subnet = match cstr_to_str(subnet) {
-        Ok(s) => s,
-        Err(e) => {
-            set_error(e);
-            return ptr::null_mut();
+    ffi_guard(ptr::null_mut(), || {
+        clear_error();
+        let subnet = match cstr_to_str(subnet) {
+            Ok(s) => s,
+            Err(e) => {
+                set_error(e);
+                return ptr::null_mut();
+            }
+        };
+        match MinerFactory::from_subnet(subnet) {
+            Ok(inner) => wrap_factory(inner),
+            Err(e) => {
+                set_error_from(e);
+                ptr::null_mut()
+            }
         }
-    };
-    match MinerFactory::from_subnet(subnet) {
-        Ok(inner) => wrap_factory(inner),
-        Err(e) => {
-            set_error_from(e);
-            ptr::null_mut()
-        }
-    }
+    })
 }
 
 /// Create a factory from an octet-range description (e.g. "192","168","1","1-255").
@@ -124,21 +130,23 @@ pub unsafe extern "C" fn asic_rs_factory_from_octets(
     o3: *const c_char,
     o4: *const c_char,
 ) -> *mut AsicFactory {
-    clear_error();
-    let (a, b, c, d) = match parse_four_octets(o1, o2, o3, o4) {
-        Ok(v) => v,
-        Err(e) => {
-            set_error(e);
-            return ptr::null_mut();
+    ffi_guard(ptr::null_mut(), || {
+        clear_error();
+        let (a, b, c, d) = match parse_four_octets(o1, o2, o3, o4) {
+            Ok(v) => v,
+            Err(e) => {
+                set_error(e);
+                return ptr::null_mut();
+            }
+        };
+        match MinerFactory::from_octets(a, b, c, d) {
+            Ok(inner) => wrap_factory(inner),
+            Err(e) => {
+                set_error_from(e);
+                ptr::null_mut()
+            }
         }
-    };
-    match MinerFactory::from_octets(a, b, c, d) {
-        Ok(inner) => wrap_factory(inner),
-        Err(e) => {
-            set_error_from(e);
-            ptr::null_mut()
-        }
-    }
+    })
 }
 
 /// Create a factory from a compact range string (e.g. "192.168.1.1-255").
@@ -147,21 +155,23 @@ pub unsafe extern "C" fn asic_rs_factory_from_octets(
 /// `range` must be a valid C string.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn asic_rs_factory_from_range(range: *const c_char) -> *mut AsicFactory {
-    clear_error();
-    let range = match cstr_to_str(range) {
-        Ok(s) => s,
-        Err(e) => {
-            set_error(e);
-            return ptr::null_mut();
+    ffi_guard(ptr::null_mut(), || {
+        clear_error();
+        let range = match cstr_to_str(range) {
+            Ok(s) => s,
+            Err(e) => {
+                set_error(e);
+                return ptr::null_mut();
+            }
+        };
+        match MinerFactory::from_range(range) {
+            Ok(inner) => wrap_factory(inner),
+            Err(e) => {
+                set_error_from(e);
+                ptr::null_mut()
+            }
         }
-    };
-    match MinerFactory::from_range(range) {
-        Ok(inner) => wrap_factory(inner),
-        Err(e) => {
-            set_error_from(e);
-            ptr::null_mut()
-        }
-    }
+    })
 }
 
 /// Free a factory handle.
@@ -170,9 +180,11 @@ pub unsafe extern "C" fn asic_rs_factory_from_range(range: *const c_char) -> *mu
 /// `factory` must be null or a pointer previously returned by this library.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn asic_rs_factory_free(factory: *mut AsicFactory) {
-    if !factory.is_null() {
-        drop(Box::from_raw(factory));
-    }
+    ffi_guard((), || {
+        if !factory.is_null() {
+            drop(Box::from_raw(factory));
+        }
+    })
 }
 
 /// Append hosts from a CIDR subnet. Returns 0 on success, -1 on error.
@@ -184,23 +196,25 @@ pub unsafe extern "C" fn asic_rs_factory_with_subnet(
     factory: *mut AsicFactory,
     subnet: *const c_char,
 ) -> i32 {
-    clear_error();
-    let subnet = match cstr_to_str(subnet) {
-        Ok(s) => s,
-        Err(e) => {
-            set_error(e);
-            return -1;
+    ffi_guard(-1, || {
+        clear_error();
+        let subnet = match cstr_to_str(subnet) {
+            Ok(s) => s,
+            Err(e) => {
+                set_error(e);
+                return -1;
+            }
+        };
+        match factory_update(factory, |inner| {
+            inner.with_subnet(subnet).map_err(|e| e.to_string())
+        }) {
+            Ok(()) => 0,
+            Err(e) => {
+                set_error(e);
+                -1
+            }
         }
-    };
-    match factory_update(factory, |inner| {
-        inner.with_subnet(subnet).map_err(|e| e.to_string())
-    }) {
-        Ok(()) => 0,
-        Err(e) => {
-            set_error(e);
-            -1
-        }
-    }
+    })
 }
 
 /// Append hosts from a range string. Returns 0 on success, -1 on error.
@@ -212,23 +226,25 @@ pub unsafe extern "C" fn asic_rs_factory_with_range(
     factory: *mut AsicFactory,
     range: *const c_char,
 ) -> i32 {
-    clear_error();
-    let range = match cstr_to_str(range) {
-        Ok(s) => s,
-        Err(e) => {
-            set_error(e);
-            return -1;
+    ffi_guard(-1, || {
+        clear_error();
+        let range = match cstr_to_str(range) {
+            Ok(s) => s,
+            Err(e) => {
+                set_error(e);
+                return -1;
+            }
+        };
+        match factory_update(factory, |inner| {
+            inner.with_range(range).map_err(|e| e.to_string())
+        }) {
+            Ok(()) => 0,
+            Err(e) => {
+                set_error(e);
+                -1
+            }
         }
-    };
-    match factory_update(factory, |inner| {
-        inner.with_range(range).map_err(|e| e.to_string())
-    }) {
-        Ok(()) => 0,
-        Err(e) => {
-            set_error(e);
-            -1
-        }
-    }
+    })
 }
 
 /// Append hosts from octet ranges. Returns 0 on success, -1 on error.
@@ -243,23 +259,25 @@ pub unsafe extern "C" fn asic_rs_factory_with_octets(
     o3: *const c_char,
     o4: *const c_char,
 ) -> i32 {
-    clear_error();
-    let (a, b, c, d) = match parse_four_octets(o1, o2, o3, o4) {
-        Ok(v) => v,
-        Err(e) => {
-            set_error(e);
-            return -1;
+    ffi_guard(-1, || {
+        clear_error();
+        let (a, b, c, d) = match parse_four_octets(o1, o2, o3, o4) {
+            Ok(v) => v,
+            Err(e) => {
+                set_error(e);
+                return -1;
+            }
+        };
+        match factory_update(factory, |inner| {
+            inner.with_octets(a, b, c, d).map_err(|e| e.to_string())
+        }) {
+            Ok(()) => 0,
+            Err(e) => {
+                set_error(e);
+                -1
+            }
         }
-    };
-    match factory_update(factory, |inner| {
-        inner.with_octets(a, b, c, d).map_err(|e| e.to_string())
-    }) {
-        Ok(()) => 0,
-        Err(e) => {
-            set_error(e);
-            -1
-        }
-    }
+    })
 }
 
 fn apply_factory(factory: *mut AsicFactory, update: impl FnOnce(MinerFactory) -> MinerFactory) {
@@ -275,10 +293,12 @@ fn apply_factory(factory: *mut AsicFactory, update: impl FnOnce(MinerFactory) ->
 /// `factory` must be a live handle.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn asic_rs_factory_set_port_check(factory: *mut AsicFactory, enabled: bool) {
-    apply_factory(factory, |inner| inner.with_port_check(enabled));
+    ffi_guard((), || {
+        apply_factory(factory, |inner| inner.with_port_check(enabled));
+    })
 }
 
-/// Set concurrent discovery limit.
+/// Set concurrent discovery limit, clamped to 1..=Tokio semaphore MAX_PERMITS.
 ///
 /// # Safety
 /// `factory` must be a live handle.
@@ -287,7 +307,11 @@ pub unsafe extern "C" fn asic_rs_factory_set_concurrent_limit(
     factory: *mut AsicFactory,
     limit: usize,
 ) {
-    apply_factory(factory, |inner| inner.with_concurrent_limit(limit.max(1)));
+    ffi_guard((), || {
+        apply_factory(factory, |inner| {
+            inner.with_concurrent_limit(limit.clamp(1, tokio::sync::Semaphore::MAX_PERMITS))
+        });
+    })
 }
 
 /// Set identification timeout in seconds.
@@ -299,9 +323,11 @@ pub unsafe extern "C" fn asic_rs_factory_set_identification_timeout_secs(
     factory: *mut AsicFactory,
     secs: u64,
 ) {
-    apply_factory(factory, |inner| {
-        inner.with_identification_timeout_secs(secs)
-    });
+    ffi_guard((), || {
+        apply_factory(factory, |inner| {
+            inner.with_identification_timeout_secs(secs)
+        });
+    })
 }
 
 /// Set connectivity timeout in seconds.
@@ -313,7 +339,9 @@ pub unsafe extern "C" fn asic_rs_factory_set_connectivity_timeout_secs(
     factory: *mut AsicFactory,
     secs: u64,
 ) {
-    apply_factory(factory, |inner| inner.with_connectivity_timeout_secs(secs));
+    ffi_guard((), || {
+        apply_factory(factory, |inner| inner.with_connectivity_timeout_secs(secs));
+    })
 }
 
 /// Set connectivity retries.
@@ -325,7 +353,9 @@ pub unsafe extern "C" fn asic_rs_factory_set_connectivity_retries(
     factory: *mut AsicFactory,
     retries: u32,
 ) {
-    apply_factory(factory, |inner| inner.with_connectivity_retries(retries));
+    ffi_guard((), || {
+        apply_factory(factory, |inner| inner.with_connectivity_retries(retries));
+    })
 }
 
 /// Set nofile (RLIMIT_NOFILE) target for large scans.
@@ -334,7 +364,9 @@ pub unsafe extern "C" fn asic_rs_factory_set_connectivity_retries(
 /// `factory` must be a live handle.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn asic_rs_factory_set_nofile_limit(factory: *mut AsicFactory, limit: u64) {
-    apply_factory(factory, |inner| inner.with_nofile_limit(limit));
+    ffi_guard((), || {
+        apply_factory(factory, |inner| inner.with_nofile_limit(limit));
+    })
 }
 
 /// Enable or disable automatic nofile adjustment.
@@ -346,7 +378,9 @@ pub unsafe extern "C" fn asic_rs_factory_set_nofile_adjustment(
     factory: *mut AsicFactory,
     enabled: bool,
 ) {
-    apply_factory(factory, |inner| inner.with_nofile_adjustment(enabled));
+    ffi_guard((), || {
+        apply_factory(factory, |inner| inner.with_nofile_adjustment(enabled));
+    })
 }
 
 /// Apply adaptive concurrency based on the current host list size.
@@ -355,7 +389,9 @@ pub unsafe extern "C" fn asic_rs_factory_set_nofile_adjustment(
 /// `factory` must be a live handle.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn asic_rs_factory_set_adaptive_concurrency(factory: *mut AsicFactory) {
-    apply_factory(factory, |inner| inner.with_adaptive_concurrency());
+    ffi_guard((), || {
+        apply_factory(factory, |inner| inner.with_adaptive_concurrency());
+    })
 }
 
 /// Number of hosts currently configured for scanning. Returns -1 on error.
@@ -364,14 +400,16 @@ pub unsafe extern "C" fn asic_rs_factory_set_adaptive_concurrency(factory: *mut 
 /// `factory` must be a live handle.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn asic_rs_factory_len(factory: *const AsicFactory) -> i32 {
-    clear_error();
-    match with_factory(factory, |inner| Ok(inner.len() as i32)) {
-        Ok(len) => len,
-        Err(e) => {
-            set_error(e);
-            -1
+    ffi_guard(-1, || {
+        clear_error();
+        match with_factory(factory, |inner| Ok(inner.len() as i32)) {
+            Ok(len) => len,
+            Err(e) => {
+                set_error(e);
+                -1
+            }
         }
-    }
+    })
 }
 
 /// Whether the factory has no hosts configured.
@@ -380,14 +418,16 @@ pub unsafe extern "C" fn asic_rs_factory_len(factory: *const AsicFactory) -> i32
 /// `factory` must be a live handle.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn asic_rs_factory_is_empty(factory: *const AsicFactory) -> bool {
-    clear_error();
-    match with_factory(factory, |inner| Ok(inner.is_empty())) {
-        Ok(empty) => empty,
-        Err(e) => {
-            set_error(e);
-            true
+    ffi_guard(true, || {
+        clear_error();
+        match with_factory(factory, |inner| Ok(inner.is_empty())) {
+            Ok(empty) => empty,
+            Err(e) => {
+                set_error(e);
+                true
+            }
         }
-    }
+    })
 }
 
 /// JSON array of configured host IP strings. Free with [`asic_rs_free_string`].
@@ -396,20 +436,22 @@ pub unsafe extern "C" fn asic_rs_factory_is_empty(factory: *const AsicFactory) -
 /// `factory` must be a live handle.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn asic_rs_factory_hosts_json(factory: *const AsicFactory) -> *mut c_char {
-    clear_error();
-    match with_factory(factory, |inner| {
-        Ok(inner
-            .hosts()
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>())
-    }) {
-        Ok(hosts) => json_to_c_string(&hosts),
-        Err(e) => {
-            set_error(e);
-            ptr::null_mut()
+    ffi_guard(ptr::null_mut(), || {
+        clear_error();
+        match with_factory(factory, |inner| {
+            Ok(inner
+                .hosts()
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>())
+        }) {
+            Ok(hosts) => json_to_c_string(&hosts),
+            Err(e) => {
+                set_error(e);
+                ptr::null_mut()
+            }
         }
-    }
+    })
 }
 
 fn parse_ip(ip: *const c_char) -> Result<IpAddr, String> {
@@ -430,7 +472,7 @@ pub unsafe extern "C" fn asic_rs_factory_get_miner(
     ip: *const c_char,
     out_miner: *mut *mut AsicMiner,
 ) -> i32 {
-    lookup_miner(factory, ip, out_miner, false)
+    ffi_guard(-1, || lookup_miner(factory, ip, out_miner, false))
 }
 
 /// Scan a single IP with the factory's port pre-check.
@@ -445,7 +487,7 @@ pub unsafe extern "C" fn asic_rs_factory_scan_miner(
     ip: *const c_char,
     out_miner: *mut *mut AsicMiner,
 ) -> i32 {
-    lookup_miner(factory, ip, out_miner, true)
+    ffi_guard(-1, || lookup_miner(factory, ip, out_miner, true))
 }
 
 fn lookup_miner(
@@ -516,38 +558,40 @@ pub unsafe extern "C" fn asic_rs_factory_scan(
     out_miners: *mut *mut *mut AsicMiner,
     out_len: *mut usize,
 ) -> i32 {
-    clear_error();
-    if out_miners.is_null() || out_len.is_null() {
-        set_error("null out_miners or out_len");
-        return -1;
-    }
-    let cloned = match with_factory(factory, |inner| Ok(inner.clone())) {
-        Ok(inner) => inner,
-        Err(e) => {
-            set_error(e);
+    ffi_guard(-1, || {
+        clear_error();
+        if out_miners.is_null() || out_len.is_null() {
+            set_error("null out_miners or out_len");
             return -1;
         }
-    };
-    match block_on(cloned.scan()) {
-        Ok(Ok(miners)) => {
-            let handles: Box<[*mut AsicMiner]> = miners.into_iter().map(wrap_miner).collect();
-            let len = handles.len();
-            let ptr = Box::into_raw(handles) as *mut *mut AsicMiner;
-            unsafe {
-                *out_miners = ptr;
-                *out_len = len;
+        let cloned = match with_factory(factory, |inner| Ok(inner.clone())) {
+            Ok(inner) => inner,
+            Err(e) => {
+                set_error(e);
+                return -1;
             }
-            0
+        };
+        match block_on(cloned.scan()) {
+            Ok(Ok(miners)) => {
+                let handles: Box<[*mut AsicMiner]> = miners.into_iter().map(wrap_miner).collect();
+                let len = handles.len();
+                let ptr = Box::into_raw(handles) as *mut *mut AsicMiner;
+                unsafe {
+                    *out_miners = ptr;
+                    *out_len = len;
+                }
+                0
+            }
+            Ok(Err(e)) => {
+                set_error_from(e);
+                -1
+            }
+            Err(e) => {
+                set_error(e);
+                -1
+            }
         }
-        Ok(Err(e)) => {
-            set_error_from(e);
-            -1
-        }
-        Err(e) => {
-            set_error(e);
-            -1
-        }
-    }
+    })
 }
 
 /// Free an array of miner pointers returned by [`asic_rs_factory_scan`].
@@ -557,10 +601,12 @@ pub unsafe extern "C" fn asic_rs_factory_scan(
 /// `list` must be null or the pointer previously returned via `out_miners`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn asic_rs_free_miner_list(list: *mut *mut AsicMiner, len: usize) {
-    if list.is_null() {
-        return;
-    }
-    drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(list, len)));
+    ffi_guard((), || {
+        if list.is_null() {
+            return;
+        }
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(list, len)));
+    })
 }
 
 #[cfg(test)]
@@ -588,5 +634,28 @@ mod tests {
         assert!(factory.is_null());
         let err = asic_rs_last_error();
         assert!(!err.is_null());
+    }
+    #[test]
+    fn excessive_concurrency_is_clamped_before_scan() {
+        let factory = unsafe { asic_rs_factory_from_range(c"192.0.2.1-1".as_ptr()) };
+        unsafe {
+            asic_rs_factory_set_nofile_adjustment(factory, false);
+            asic_rs_factory_set_port_check(factory, true);
+            asic_rs_factory_set_connectivity_timeout_secs(factory, 0);
+            asic_rs_factory_set_connectivity_retries(factory, 0);
+            asic_rs_factory_set_identification_timeout_secs(factory, 0);
+            asic_rs_factory_set_concurrent_limit(factory, usize::MAX);
+        }
+        let mut miners = ptr::null_mut();
+        let mut len = 0;
+        assert_eq!(
+            unsafe { asic_rs_factory_scan(factory, &mut miners, &mut len) },
+            0
+        );
+        assert_eq!(len, 0);
+        unsafe {
+            asic_rs_free_miner_list(miners, len);
+            asic_rs_factory_free(factory);
+        }
     }
 }

@@ -215,7 +215,8 @@ func (f *Factory) WithPortCheck(enabled bool) *Factory {
 
 // WithConcurrentLimit sets the maximum concurrent discovery tasks.
 // Values less than 1 are clamped to 1 so a zero or negative limit cannot
-// panic inside the scan runtime.
+// panic inside the scan runtime. Rust also clamps values above Tokio's
+// maximum semaphore capacity.
 func (f *Factory) WithConcurrentLimit(limit int) *Factory {
 	if limit < 1 {
 		limit = 1

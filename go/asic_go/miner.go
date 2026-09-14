@@ -593,8 +593,8 @@ func (m *Miner) Resume(atTime *time.Duration) (bool, error) {
 }
 
 // Revalidate re-runs this backend's discovery checks against the same IP.
-func (m *Miner) Revalidate() (*bool, error) {
-	var v *bool
+func (m *Miner) Revalidate() (bool, error) {
+	var v bool
 	err := m.getJSON(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_revalidate_json(ptr) }, &v)
 	return v, err
 }

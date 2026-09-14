@@ -31,3 +31,6 @@ pub extern "C" fn asic_rs_version() -> *const c_char {
 
 pub use error::{asic_rs_free_string, asic_rs_last_error};
 pub use factory::asic_rs_free_miner_list;
+
+#[cfg(test)]
+mod test;
