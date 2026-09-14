@@ -2,38 +2,10 @@
 
 PROFILE ?= debug
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
-FFI := $(ROOT)/asic-rs-ffi
-OUT_INC := $(abspath asic_go/include)
-OUT_LIB := $(abspath asic_go/lib)
-
-ifeq ($(PROFILE),release)
-CARGO_FLAGS := --release
-TARGET_DIR := $(ROOT)/target/release
-else
-CARGO_FLAGS :=
-TARGET_DIR := $(ROOT)/target/debug
-endif
-
 all: ffi test
 
 ffi:
-	cargo build -p asic-rs-ffi $(CARGO_FLAGS)
-	mkdir -p "$(OUT_INC)" "$(OUT_LIB)"
-	cp "$(FFI)/include/asic_rs_ffi.h" "$(OUT_INC)/asic_rs_ffi.h"
-	@copied=0; \
-	for ext in a dylib so dll lib; do \
-	  for f in "$(TARGET_DIR)"/libasic_rs_ffi.$$ext "$(TARGET_DIR)"/asic_rs_ffi.$$ext; do \
-	    if [ -f "$$f" ]; then \
-	      cp "$$f" "$(OUT_LIB)/"; \
-	      echo "installed $$(basename "$$f")"; \
-	      copied=1; \
-	    fi; \
-	  done; \
-	done; \
-	if [ "$$copied" -eq 0 ]; then \
-	  echo "error: no libasic_rs_ffi found in $(TARGET_DIR)" >&2; \
-	  exit 1; \
-	fi
+	go run ./internal/buildffi -root "$(ROOT)" -profile "$(PROFILE)"
 
 test: ffi
 	CGO_ENABLED=1 go test ./asic_go/ -count=1
