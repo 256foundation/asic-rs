@@ -6,6 +6,27 @@ use pyo3::prelude::*;
 use semver::Version;
 use tokio::io::AsyncReadExt;
 
+/// Result of requesting that an aftermarket miner OS restore the manufacturer OS.
+///
+/// The request generally starts a disruptive background operation. Acceptance
+/// does not mean that the miner has finished restoring or rebooting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RestoreStockOsResult {
+    /// Whether the miner accepted and started the restore request.
+    pub accepted: bool,
+    /// Delay before the miner reboots, when reported by the firmware.
+    pub reboot_after_seconds: Option<u64>,
+}
+
+impl RestoreStockOsResult {
+    pub const fn accepted(reboot_after_seconds: Option<u64>) -> Self {
+        Self {
+            accepted: true,
+            reboot_after_seconds,
+        }
+    }
+}
+
 /// Result of checking a miner for an available firmware update.
 ///
 /// Read-only and obtained on demand (a firmware-update check usually hits the

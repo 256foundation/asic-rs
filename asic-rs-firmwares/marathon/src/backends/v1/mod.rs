@@ -1146,6 +1146,8 @@ impl FactoryReset for MaraV1 {
     }
 }
 
+impl RestoreStockOs for MaraV1 {}
+
 #[async_trait]
 impl SupportsScalingConfig for MaraV1 {
     fn supports_scaling_config(&self) -> bool {

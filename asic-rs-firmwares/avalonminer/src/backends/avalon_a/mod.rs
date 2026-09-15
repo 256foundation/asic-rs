@@ -185,6 +185,8 @@ impl FactoryReset for AvalonAMiner {
     }
 }
 
+impl RestoreStockOs for AvalonAMiner {}
+
 #[async_trait]
 impl SetFaultLight for AvalonAMiner {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {

@@ -1198,6 +1198,8 @@ impl FactoryReset for LuxMinerV1 {
     }
 }
 
+impl RestoreStockOs for LuxMinerV1 {}
+
 #[async_trait]
 impl SupportsScalingConfig for LuxMinerV1 {
     fn supports_scaling_config(&self) -> bool {

@@ -610,6 +610,8 @@ impl FactoryReset for Bitaxe290 {
     }
 }
 
+impl RestoreStockOs for Bitaxe290 {}
+
 #[async_trait]
 impl SupportsScalingConfig for Bitaxe290 {
     fn supports_scaling_config(&self) -> bool {

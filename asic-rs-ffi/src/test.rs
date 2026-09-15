@@ -120,6 +120,7 @@ default_traits!(
     GetBestShare,
     GetSessionBestShare,
     SetTuningPercent,
+    RestoreStockOs,
     SupportsPresets,
     SupportsTemperatureConfig,
     SupportsTimezoneConfig,

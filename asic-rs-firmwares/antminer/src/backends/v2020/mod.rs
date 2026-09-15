@@ -1222,6 +1222,8 @@ impl FactoryReset for AntMinerV2020 {
     }
 }
 
+impl RestoreStockOs for AntMinerV2020 {}
+
 #[async_trait]
 impl SupportsScalingConfig for AntMinerV2020 {
     fn supports_scaling_config(&self) -> bool {

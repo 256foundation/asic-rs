@@ -938,6 +938,8 @@ impl FactoryReset for BraiinsV2507 {
     }
 }
 
+impl RestoreStockOs for BraiinsV2507 {}
+
 #[async_trait]
 impl SupportsScalingConfig for BraiinsV2507 {
     fn supports_scaling_config(&self) -> bool {

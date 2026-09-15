@@ -748,6 +748,8 @@ impl FactoryReset for SealMinerV2025 {
     }
 }
 
+impl RestoreStockOs for SealMinerV2025 {}
+
 #[async_trait]
 impl SupportsPoolsConfig for SealMinerV2025 {
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {

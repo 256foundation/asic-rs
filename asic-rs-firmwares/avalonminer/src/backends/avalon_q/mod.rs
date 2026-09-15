@@ -180,6 +180,8 @@ impl FactoryReset for AvalonQMiner {
     }
 }
 
+impl RestoreStockOs for AvalonQMiner {}
+
 #[async_trait]
 impl SetFaultLight for AvalonQMiner {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {

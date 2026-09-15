@@ -1395,6 +1395,8 @@ impl FactoryReset for AuradineV1 {
     }
 }
 
+impl RestoreStockOs for AuradineV1 {}
+
 #[async_trait]
 impl SupportsScalingConfig for AuradineV1 {
     fn supports_scaling_config(&self) -> bool {

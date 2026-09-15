@@ -27,7 +27,7 @@ use crate::{
         command::MinerCommand,
         device::DeviceInfo,
         fan::FanData,
-        firmware::{FirmwareImage, FirmwareStats},
+        firmware::{FirmwareImage, FirmwareStats, RestoreStockOsResult},
         hashrate::{HashRate, HashRateUnit},
         message::MinerMessage,
         miner::{MinerData, TuningTarget},
@@ -53,6 +53,7 @@ pub trait Miner:
     + SupportsConfigs
     + SupportsPresets
     + UpgradeFirmware
+    + RestoreStockOs
     + HasAuth
     + HasDefaultAuth
 {
@@ -66,6 +67,7 @@ impl<
         + SupportsConfigs
         + SupportsPresets
         + UpgradeFirmware
+        + RestoreStockOs
         + Validate
         + HasAuth
         + HasDefaultAuth,
@@ -1012,11 +1014,32 @@ pub trait ChangePassword {
 
 #[async_trait]
 pub trait FactoryReset {
+    /// Restore the miner's settings to their factory defaults.
+    ///
+    /// This does not replace or uninstall the currently running operating
+    /// system. Use [`RestoreStockOs::restore_stock_os`] to remove an
+    /// aftermarket OS and restore the manufacturer OS.
     #[allow(unused_variables)]
     async fn factory_reset(&self) -> anyhow::Result<bool> {
         anyhow::bail!("Factory resetting is not supported on this platform");
     }
     fn supports_factory_reset(&self) -> bool;
+}
+
+/// Uninstall an aftermarket miner OS and restore the manufacturer stock OS.
+///
+/// This is distinct from [`FactoryReset`], which only restores settings. A
+/// successful request generally starts a background restore; it does not mean
+/// that the device has completed restoring or rebooting.
+#[async_trait]
+pub trait RestoreStockOs {
+    async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
+        anyhow::bail!("Restoring the stock OS is not supported on this platform");
+    }
+
+    fn supports_restore_stock_os(&self) -> bool {
+        false
+    }
 }
 
 #[async_trait]

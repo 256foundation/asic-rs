@@ -907,6 +907,8 @@ impl FactoryReset for ElphapexV1 {
     }
 }
 
+impl RestoreStockOs for ElphapexV1 {}
+
 #[async_trait]
 impl SupportsPoolsConfig for ElphapexV1 {
     fn parse_pools_config(

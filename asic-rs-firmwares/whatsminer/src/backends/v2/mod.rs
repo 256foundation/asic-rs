@@ -761,6 +761,8 @@ impl FactoryReset for WhatsMinerV2 {
     }
 }
 
+impl RestoreStockOs for WhatsMinerV2 {}
+
 #[async_trait]
 impl SupportsScalingConfig for WhatsMinerV2 {
     fn supports_scaling_config(&self) -> bool {
