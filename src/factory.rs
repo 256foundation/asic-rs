@@ -1161,6 +1161,7 @@ mod tests {
         assert!(started.elapsed() < Duration::from_secs(1));
         assert!(construction_started_rx.try_recv().is_ok());
         server.abort();
+        let _ = server.await;
         Ok(())
     }
 
@@ -1360,6 +1361,7 @@ mod tests {
         // Identification was attempted; build_miner stalls and the timeout fires.
         assert!(result.is_ok());
         server.abort();
+        let _ = server.await;
         Ok(())
     }
 
