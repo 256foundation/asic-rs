@@ -43,6 +43,7 @@ const (
 	DataFieldIsMining               DataField = "IsMining"
 	DataFieldPools                  DataField = "Pools"
 	DataFieldOperatingState         DataField = "OperatingState"
+	DataFieldDevFeeConnected        DataField = "DevFeeConnected"
 	DataFieldBestShare              DataField = "BestShare"
 	DataFieldSessionBestShare       DataField = "SessionBestShare"
 )
@@ -616,6 +617,7 @@ type MinerData struct {
 	IsMining               bool                `json:"is_mining"`
 	Pools                  []PoolGroupData     `json:"pools"`
 	OperatingState         *OperatingState     `json:"operating_state"`
+	DevFeeConnected        *bool               `json:"devfee_connected"`
 	BestShare              *float64            `json:"best_share"`
 	SessionBestShare       *float64            `json:"session_best_share"`
 }

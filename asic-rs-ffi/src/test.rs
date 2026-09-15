@@ -115,6 +115,7 @@ default_traits!(
     GetMessages,
     GetIsMining,
     GetOperatingState,
+    GetDevFeeConnected,
     GetPools,
     GetBestShare,
     GetSessionBestShare,

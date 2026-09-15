@@ -408,6 +408,12 @@ char *asic_rs_miner_get_is_mining_json(const struct AsicMiner *miner);
 // `miner` must be a live handle.
 char *asic_rs_miner_get_operating_state_json(const struct AsicMiner *miner);
 
+// Developer-fee connection status as JSON (bool or null).
+//
+// # Safety
+// `miner` must be a live handle.
+char *asic_rs_miner_get_devfee_connected_json(const struct AsicMiner *miner);
+
 // Runtime pool groups as JSON.
 //
 // # Safety
