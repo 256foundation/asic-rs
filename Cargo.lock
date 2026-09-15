@@ -138,15 +138,10 @@ dependencies = [
  "asic-rs-makes-sealminer",
  "asic-rs-makes-volcminer",
  "asic-rs-makes-whatsminer",
- "asic-rs-pydantic",
  "async-stream",
  "futures",
  "ipnet",
  "measurements",
- "pyo3",
- "pyo3-async-runtimes",
- "pyo3-build-config",
- "pyo3-log",
  "rand 0.10.0",
  "rlimit",
  "serde",
@@ -2044,6 +2039,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "pyasic-rs"
+version = "0.8.1"
+dependencies = [
+ "anyhow",
+ "asic-rs",
+ "asic-rs-core",
+ "asic-rs-pydantic",
+ "async-stream",
+ "futures",
+ "measurements",
+ "pyo3",
+ "pyo3-async-runtimes",
+ "pyo3-build-config",
+ "pyo3-log",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]

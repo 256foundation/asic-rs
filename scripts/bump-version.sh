@@ -24,8 +24,8 @@ sed -i '/^\[workspace\.package\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"
 # Update intra-workspace dep versions in [workspace.dependencies]
 sed -i '/^\[workspace\.dependencies\]/,/^\[/{s/version = "'"$CURRENT_VERSION"'"/version = "'"$VERSION"'"/g}' Cargo.toml
 
-# Update pyproject.toml (only the [project] section)
-sed -i '/^\[project\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' pyproject.toml
+# Update python/pyasic-rs/pyproject.toml (only the [project] section)
+sed -i '/^\[project\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' python/pyasic-rs/pyproject.toml
 
 # Update Cargo.lock to reflect new version
 cargo update --workspace
@@ -34,7 +34,7 @@ cargo update --workspace
 cargo doc2readme
 
 git checkout -b "$BRANCH"
-git add Cargo.toml pyproject.toml README.md Cargo.lock
+git add Cargo.toml python/pyasic-rs/pyproject.toml README.md Cargo.lock
 git commit -m "chore(release): prepare for v${VERSION}"
 
 echo "Done. Branch '$BRANCH' created with version bumped to $VERSION."

@@ -16,7 +16,7 @@ fn main() {
 
     let out_dir = std::path::PathBuf::from(&crate_dir).join("include");
     if std::fs::create_dir_all(&out_dir).is_err() {
-        println!("cargo:warning=failed to create asic-rs-ffi/include");
+        println!("cargo:warning=failed to create c/asic-rs-ffi/include");
         return;
     }
     let header = out_dir.join("asic_rs_ffi.h");

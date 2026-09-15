@@ -5,12 +5,10 @@ use std::{
 };
 
 use crate::{
-    listener::MinerListener as MinerListenerBase,
-    python::{
-        miner::Miner,
-        typing::{CancelAction, PyAsyncIterator, abortable_future_into_py_with_cancel},
-    },
+    miner::Miner,
+    typing::{CancelAction, PyAsyncIterator, abortable_future_into_py_with_cancel},
 };
+use asic_rs::listener::MinerListener as MinerListenerBase;
 use asic_rs_core::traits::miner::Miner as MinerTrait;
 use async_stream::stream;
 use futures::Stream;

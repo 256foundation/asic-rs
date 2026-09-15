@@ -205,6 +205,27 @@ async fn get_miner_type_from_command_catch_unwind(
 /// when multiple responses are received for the same device.
 #[allow(clippy::vec_init_then_push)]
 pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
+    #[cfg_attr(
+        not(any(
+            feature = "antminer",
+            feature = "auradine",
+            feature = "avalonminer",
+            feature = "bitaxe",
+            feature = "braiins",
+            feature = "elphapex",
+            feature = "epic",
+            feature = "futurebit",
+            feature = "luxminer",
+            feature = "marathon",
+            feature = "nerdaxe",
+            feature = "proto",
+            feature = "sealminer",
+            feature = "vnish",
+            feature = "volcminer",
+            feature = "whatsminer",
+        )),
+        allow(unused_mut)
+    )]
     let mut registry: Vec<Arc<dyn FirmwareEntry>> = vec![];
 
     #[cfg(feature = "braiins")]

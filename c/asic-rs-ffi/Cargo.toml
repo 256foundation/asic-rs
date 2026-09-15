@@ -12,7 +12,7 @@ name = "asic_rs_ffi"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-asic-rs = { path = ".." }
+asic-rs = { path = "../.." }
 anyhow.workspace = true
 measurements.workspace = true
 serde.workspace = true
