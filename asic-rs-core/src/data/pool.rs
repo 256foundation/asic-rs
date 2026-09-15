@@ -148,6 +148,7 @@ pub struct PoolData {
     /// Rejected share count.
     pub rejected_shares: Option<u64>,
     /// Unix timestamp, in seconds, of the last accepted share.
+    #[cfg_attr(feature = "python", pydantic(default = None))]
     pub last_share_time: Option<u64>,
     /// Whether this pool is currently active.
     pub active: Option<bool>,
