@@ -1012,6 +1012,9 @@ mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
+    // Both tests that bind localhost:4028 must run serially.
+    static PORT_4028: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
     #[tokio::test]
     async fn port_race_checks_every_port_when_none_succeed() {
         let checked = Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -1129,6 +1132,7 @@ mod tests {
             sync::oneshot,
         };
 
+        let _guard = PORT_4028.lock().await;
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 4028)).await?;
         let (construction_started, mut construction_started_rx) = oneshot::channel();
         let server = tokio::spawn(async move {
@@ -1328,6 +1332,7 @@ mod tests {
             net::TcpListener,
         };
 
+        let _guard = PORT_4028.lock().await;
         // Only port 4028 is open — no port 80 — so the default port probe would
         // return Ok(None) without attempting identification.
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 4028)).await?;
