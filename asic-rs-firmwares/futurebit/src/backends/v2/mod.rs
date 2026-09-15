@@ -810,6 +810,8 @@ impl FactoryReset for ApolloV2 {
     }
 }
 
+impl RestoreStockOs for ApolloV2 {}
+
 #[async_trait]
 impl SupportsScalingConfig for ApolloV2 {
     fn supports_scaling_config(&self) -> bool {

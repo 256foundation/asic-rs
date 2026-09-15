@@ -833,6 +833,8 @@ impl FactoryReset for VolcMinerV1 {
     }
 }
 
+impl RestoreStockOs for VolcMinerV1 {}
+
 #[async_trait]
 impl SupportsScalingConfig for VolcMinerV1 {
     fn supports_scaling_config(&self) -> bool {

@@ -867,6 +867,8 @@ impl FactoryReset for ProtoV1 {
     }
 }
 
+impl RestoreStockOs for ProtoV1 {}
+
 #[async_trait]
 impl ReadLogs for ProtoV1 {
     async fn read_logs(&self) -> anyhow::Result<String> {

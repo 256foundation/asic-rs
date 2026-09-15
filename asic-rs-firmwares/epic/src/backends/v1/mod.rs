@@ -1899,6 +1899,8 @@ impl FactoryReset for PowerPlayV1 {
     }
 }
 
+impl RestoreStockOs for PowerPlayV1 {}
+
 #[async_trait]
 impl UpgradeFirmware for PowerPlayV1 {
     async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {

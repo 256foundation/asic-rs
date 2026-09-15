@@ -959,6 +959,8 @@ impl FactoryReset for BraiinsV2505 {
     }
 }
 
+impl RestoreStockOs for BraiinsV2505 {}
+
 #[async_trait]
 impl SupportsPoolsConfig for BraiinsV2505 {
     async fn get_pools_config(&self) -> anyhow::Result<Vec<PoolGroupConfig>> {

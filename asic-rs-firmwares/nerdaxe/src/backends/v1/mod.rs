@@ -581,6 +581,8 @@ impl FactoryReset for NerdAxeV1 {
     }
 }
 
+impl RestoreStockOs for NerdAxeV1 {}
+
 #[async_trait]
 impl SupportsScalingConfig for NerdAxeV1 {
     fn supports_scaling_config(&self) -> bool {

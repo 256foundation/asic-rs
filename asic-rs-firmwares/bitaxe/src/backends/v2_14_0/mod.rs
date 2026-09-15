@@ -620,6 +620,8 @@ impl FactoryReset for Bitaxe2140 {
     }
 }
 
+impl RestoreStockOs for Bitaxe2140 {}
+
 #[async_trait]
 impl SupportsScalingConfig for Bitaxe2140 {
     fn supports_scaling_config(&self) -> bool {

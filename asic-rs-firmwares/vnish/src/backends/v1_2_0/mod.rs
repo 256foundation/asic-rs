@@ -1195,6 +1195,8 @@ impl FactoryReset for VnishV120 {
     }
 }
 
+impl RestoreStockOs for VnishV120 {}
+
 #[async_trait]
 impl SupportsScalingConfig for VnishV120 {
     fn supports_scaling_config(&self) -> bool {
