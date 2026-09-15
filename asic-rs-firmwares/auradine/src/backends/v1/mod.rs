@@ -1218,6 +1218,9 @@ impl GetPools for AuradineV1 {
                 url,
                 accepted_shares,
                 rejected_shares,
+                last_share_time: pool_info
+                    .get("Last Share Time")
+                    .and_then(asic_rs_core::util::parse_last_share_time),
                 active,
                 alive,
                 user,

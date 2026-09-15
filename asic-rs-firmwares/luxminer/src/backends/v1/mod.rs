@@ -905,6 +905,12 @@ impl GetPools for LuxMinerV1 {
                     .get("GROUP")
                     .and_then(Value::as_u64)
                     .unwrap_or_default();
+                let accepted_shares = pool.get("Accepted").and_then(Value::as_u64);
+                let rejected_shares = pool.get("Rejected").and_then(Value::as_u64);
+                let last_share_time = accepted_shares
+                    .filter(|shares| *shares > 0)
+                    .and_then(|_| pool.get("Last Share Time"))
+                    .and_then(asic_rs_core::util::parse_last_share_time);
                 let pool_data = PoolData {
                     position: pool.get("POOL").and_then(Value::as_u64).map(|id| id as u16),
                     url: pool
@@ -917,8 +923,9 @@ impl GetPools for LuxMinerV1 {
                         .and_then(|v| v.as_str())
                         .map(|s| s == "Alive"),
                     active: pool.get("Stratum Active").and_then(|v| v.as_bool()),
-                    accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
-                    rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
+                    accepted_shares,
+                    rejected_shares,
+                    last_share_time,
                 };
 
                 if let Some((_, group)) = groups.iter_mut().find(|(id, _)| *id == group_id) {
@@ -1410,6 +1417,10 @@ mod tests {
         assert_eq!(miner_data.pools.len(), 2);
         assert_eq!(miner_data.pools[0].len(), 2);
         assert_eq!(miner_data.pools[1].len(), 2);
+        assert!(miner_data.pools[0].pools[0].last_share_time.is_some());
+        assert_eq!(miner_data.pools[0].pools[1].last_share_time, None);
+        assert!(miner_data.pools[1].pools[0].last_share_time.is_some());
+        assert_eq!(miner_data.pools[1].pools[1].last_share_time, None);
 
         assert_eq!(miner_data.messages.len(), 2);
         assert_eq!(miner_data.messages[0].severity, MessageSeverity::Warning);

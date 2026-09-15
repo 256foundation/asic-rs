@@ -915,6 +915,9 @@ impl GetPools for VnishV120 {
                     url,
                     accepted_shares,
                     rejected_shares,
+                    last_share_time: pool
+                        .pointer("/ls_time")
+                        .and_then(asic_rs_core::util::parse_last_share_time),
                     active,
                     alive,
                     user,

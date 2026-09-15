@@ -29,6 +29,7 @@ from pyasic_rs.data import (
     MinerMessage,
     MiningMode,
     OperatingState,
+    PoolData,
     TuningTarget,
 )
 
@@ -189,6 +190,23 @@ def test_operating_state_is_optional_for_older_snapshots() -> None:
         model = MinerDataModel.model_validate({"miner": payload})
         assert model.miner.operating_state is None
         assert model.model_dump()["miner"]["operating_state"] is None
+
+
+def test_pool_data_last_share_time_is_optional_for_older_payloads() -> None:
+    pool = PoolData.model_validate(
+        {
+            "position": 0,
+            "url": None,
+            "accepted_shares": 10,
+            "rejected_shares": 1,
+            "active": True,
+            "alive": True,
+            "user": "worker",
+        }
+    )
+
+    assert pool.last_share_time is None
+    assert pool.model_dump()["last_share_time"] is None
 
 
 def test_operating_state_schema_includes_known_states_and_raw_unknown_labels() -> None:

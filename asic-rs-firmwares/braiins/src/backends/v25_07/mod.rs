@@ -601,6 +601,9 @@ impl GetPools for BraiinsV2507 {
                 let rejected_shares = pool
                     .pointer("/stats/rejected_shares")
                     .and_then(|v| v.as_u64());
+                let last_share_time = pool
+                    .pointer("/stats/last_share_time/seconds")
+                    .and_then(|v| v.as_u64());
                 let active = pool.pointer("/active").and_then(|v| v.as_bool());
                 let alive = pool.pointer("/alive").and_then(|v| v.as_bool());
 
@@ -609,6 +612,7 @@ impl GetPools for BraiinsV2507 {
                     url,
                     accepted_shares,
                     rejected_shares,
+                    last_share_time,
                     active,
                     alive,
                     user,
@@ -1125,6 +1129,14 @@ mod tests {
         );
         assert_eq!(miner_data.pools.len(), 1);
         assert_eq!(miner_data.pools[0].len(), 2);
+        assert_eq!(
+            miner_data.pools[0].pools[0].last_share_time,
+            Some(1_776_446_524)
+        );
+        assert_eq!(
+            miner_data.pools[0].pools[1].last_share_time,
+            Some(1_776_395_827)
+        );
         assert!(miner_data.hashrate.is_some());
         assert!(miner_data.expected_hashrate.is_some());
     }

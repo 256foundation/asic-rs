@@ -640,6 +640,10 @@ impl GetPools for VolcMinerV1 {
                 url,
                 accepted_shares,
                 rejected_shares,
+                last_share_time: pool_info
+                    .get("Last Share Time")
+                    .or_else(|| pool_info.get("last_share_time"))
+                    .and_then(asic_rs_core::util::parse_last_share_time),
                 active: status,
                 alive: status,
                 user,

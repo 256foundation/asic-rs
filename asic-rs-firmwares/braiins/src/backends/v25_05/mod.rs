@@ -755,6 +755,7 @@ impl GetPools for BraiinsV2505 {
                             url,
                             accepted_shares,
                             rejected_shares,
+                            last_share_time: None,
                             active,
                             alive,
                             user,

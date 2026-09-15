@@ -147,6 +147,10 @@ pub struct PoolData {
     pub accepted_shares: Option<u64>,
     /// Rejected share count.
     pub rejected_shares: Option<u64>,
+    /// Unix timestamp, in seconds, of the last accepted share.
+    #[serde(default)]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub last_share_time: Option<u64>,
     /// Whether this pool is currently active.
     pub active: Option<bool>,
     /// Whether the firmware reports this pool as alive.
@@ -180,6 +184,29 @@ impl PoolGroupData {
     /// Return whether this pool group has no pools.
     pub fn is_empty(&self) -> bool {
         self.pools.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::PoolData;
+
+    #[test]
+    fn missing_last_share_time_defaults_to_none() -> serde_json::Result<()> {
+        let pool: PoolData = serde_json::from_value(json!({
+            "position": 0,
+            "url": null,
+            "accepted_shares": 10,
+            "rejected_shares": 1,
+            "active": true,
+            "alive": true,
+            "user": "worker"
+        }))?;
+
+        assert_eq!(pool.last_share_time, None);
+        Ok(())
     }
 }
 

@@ -481,14 +481,24 @@ impl GetDataLocations for AvalonAMiner {
                     tag: None,
                 },
             )],
-            DataField::Pools => vec![(
-                RPC_POOLS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/POOLS"),
-                    tag: None,
-                },
-            )],
+            DataField::Pools => vec![
+                (
+                    RPC_POOLS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/POOLS"),
+                        tag: Some("pools"),
+                    },
+                ),
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/Elapsed"),
+                        tag: Some("elapsed"),
+                    },
+                ),
+            ],
             _ => vec![],
         }
     }
@@ -938,9 +948,12 @@ impl GetIsMining for AvalonAMiner {}
 
 impl GetPools for AvalonAMiner {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
-        let pools = data
-            .get(&DataField::Pools)
-            .and_then(|v| v.as_array())
+        let pools_data = data.get(&DataField::Pools);
+        let elapsed = pools_data
+            .and_then(|value| value.get("elapsed"))
+            .and_then(Value::as_u64);
+        let pools = pools_data
+            .and_then(|value| value.get("pools").unwrap_or(value).as_array())
             .map(|slice| slice.to_vec())
             .unwrap_or_default()
             .into_iter()
@@ -959,6 +972,7 @@ impl GetPools for AvalonAMiner {
                 active: pool.get("Stratum Active").and_then(|v| v.as_bool()),
                 accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
                 rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
+                last_share_time: super::parse_last_share_time(&pool, elapsed),
             })
             .collect();
 
@@ -1019,7 +1033,40 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::test::json::{AVALON_A_STATS_PARSED, PARSED_STATS_COMMAND};
+    use crate::test::json::{AVALON_A_STATS_PARSED, PARSED_STATS_COMMAND, POOLS_COMMAND};
+
+    #[tokio::test]
+    async fn pools_include_session_relative_last_share_time() -> anyhow::Result<()> {
+        let miner = AvalonAMiner::new(IpAddr::from([127, 0, 0, 1]), AvalonMinerModel::Avalon1566Ha);
+        let results = HashMap::from([
+            (
+                MinerCommand::RPC {
+                    command: "stats",
+                    parameters: None,
+                },
+                Value::from_str(PARSED_STATS_COMMAND)?,
+            ),
+            (
+                MinerCommand::RPC {
+                    command: "pools",
+                    parameters: None,
+                },
+                Value::from_str(POOLS_COMMAND)?,
+            ),
+        ]);
+        let mock_api = MockAPIClient::new(results);
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let data = collector.collect(&[DataField::Pools]).await;
+        let collected_at = asic_rs_core::util::unix_timestamp_secs();
+
+        let pools = miner.parse_pools(&data);
+        let last_share_time = pools[0].pools[0]
+            .last_share_time
+            .ok_or_else(|| anyhow::anyhow!("missing last share time"))?;
+
+        assert!(last_share_time.abs_diff(collected_at - (37_819 - 31_279)) <= 1);
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_avalon_a_summary_format_hashboards() -> anyhow::Result<()> {

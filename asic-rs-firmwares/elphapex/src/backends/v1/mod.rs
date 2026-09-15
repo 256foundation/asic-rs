@@ -806,6 +806,9 @@ impl GetPools for ElphapexV1 {
                         .map(|url| PoolURL::from(url.to_string())),
                     accepted_shares: pool.get("accepted").and_then(Self::parse_u64),
                     rejected_shares: pool.get("rejected").and_then(Self::parse_u64),
+                    last_share_time: pool
+                        .get("lstime")
+                        .and_then(asic_rs_core::util::parse_last_share_time),
                     active: raw_index.map(|index| Some(index) == active_index).or(alive),
                     alive,
                     user: pool

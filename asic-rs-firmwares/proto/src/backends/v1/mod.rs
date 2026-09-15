@@ -743,6 +743,7 @@ impl GetPools for ProtoV1 {
                     .map(|raw| PoolURL::from(raw.to_string())),
                 accepted_shares: pool.get("accepted").and_then(Value::as_u64),
                 rejected_shares: pool.get("rejected").and_then(Value::as_u64),
+                last_share_time: None,
                 active: pool
                     .get("status")
                     .and_then(Value::as_str)

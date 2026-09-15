@@ -523,11 +523,16 @@ impl GetPools for WhatsMinerV1 {
                     .and_then(|val| val.pointer(&format!("/{}/Rejected", idx)))
                     .and_then(|val| val.as_u64());
 
+                let last_share_time = pools_raw
+                    .and_then(|val| val.pointer(&format!("/{}/Last Share Time", idx)))
+                    .and_then(asic_rs_core::util::parse_last_share_time);
+
                 pools.push(PoolData {
                     position: Some(idx as u16),
                     url,
                     accepted_shares,
                     rejected_shares,
+                    last_share_time,
                     active,
                     alive,
                     user,
@@ -764,6 +769,11 @@ mod integration_tests {
         assert!(miner_data.is_mining);
         assert_eq!(miner_data.fans.len(), 2);
         assert_eq!(miner_data.pools[0].len(), 3);
+        assert_eq!(
+            miner_data.pools[0].pools[0].last_share_time,
+            Some(1_761_061_364)
+        );
+        assert_eq!(miner_data.pools[0].pools[1].last_share_time, None);
 
         Ok(())
     }
