@@ -309,6 +309,14 @@ impl GetDataLocations for VnishV120 {
                     tag: None,
                 },
             )],
+            DataField::DevFeeConnected => vec![(
+                WEB_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner/pools"),
+                    tag: None,
+                },
+            )],
             DataField::IsMining => vec![(
                 WEB_STATUS,
                 DataExtractor {
@@ -875,6 +883,12 @@ impl GetOperatingState for VnishV120 {
             "idle" => Some(OperatingState::Idling {}),
             _ => OperatingState::from_label(label),
         }
+    }
+}
+
+impl GetDevFeeConnected for VnishV120 {
+    fn parse_devfee_connected(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
+        super::parse_devfee_connected(data.get(&DataField::DevFeeConnected)?)
     }
 }
 

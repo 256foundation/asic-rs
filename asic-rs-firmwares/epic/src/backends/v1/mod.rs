@@ -558,6 +558,14 @@ impl GetDataLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
+            DataField::DevFeeConnected => vec![(
+                WEB_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/Last Devfee Error"),
+                    tag: None,
+                },
+            )],
             DataField::LightFlashing => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
@@ -1319,6 +1327,12 @@ impl GetOperatingState for PowerPlayV1 {
     }
 }
 
+impl GetDevFeeConnected for PowerPlayV1 {
+    fn parse_devfee_connected(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
+        data.get(&DataField::DevFeeConnected).map(Value::is_null)
+    }
+}
+
 impl GetIsMining for PowerPlayV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
@@ -1993,6 +2007,44 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn devfee_connection_uses_summary_field_presence_and_error() -> anyhow::Result<()> {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let cases = [
+            (None, None),
+            (Some(Value::Null), Some(true)),
+            (
+                Some(json!({
+                    "DevfeeError": "devfee not connected, withholding submission shares"
+                })),
+                Some(false),
+            ),
+        ];
+
+        for (field, expected_connected) in cases {
+            let mut summary = Value::from_str(SUMMARY)?;
+            let summary_object = summary
+                .as_object_mut()
+                .context("summary fixture is an object")?;
+            summary_object.remove("Last Devfee Error");
+            if let Some(field) = field {
+                summary_object.insert("Last Devfee Error".into(), field);
+            }
+
+            let client = SummaryClient {
+                summary,
+                calls: AtomicUsize::new(0),
+            };
+            let mut collector = DataCollector::new_with_client(&miner, &client);
+            let data = collector.collect(&[DataField::DevFeeConnected]).await;
+            let snapshot = miner.parse_data(data);
+
+            assert_eq!(snapshot.devfee_connected, expected_connected);
+            assert_eq!(client.calls.load(Ordering::SeqCst), 1);
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn unavailable_or_excluded_operating_state_is_not_invented() -> anyhow::Result<()> {
         let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
         for status in [
@@ -2032,8 +2084,13 @@ mod tests {
             .as_object_mut()
             .context("snapshot serializes to an object")?
             .remove("operating_state");
+        legacy
+            .as_object_mut()
+            .context("snapshot serializes to an object")?
+            .remove("devfee_connected");
         let restored: asic_rs_core::data::miner::MinerData = serde_json::from_value(legacy)?;
         assert_eq!(restored.operating_state, None);
+        assert_eq!(restored.devfee_connected, None);
         Ok(())
     }
 

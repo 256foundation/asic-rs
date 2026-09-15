@@ -567,6 +567,8 @@ impl GetOperatingState for BraiinsV2604 {
     }
 }
 
+impl GetDevFeeConnected for BraiinsV2604 {}
+
 impl GetIsMining for BraiinsV2604 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<u64>(DataField::IsMining) == Some(2)

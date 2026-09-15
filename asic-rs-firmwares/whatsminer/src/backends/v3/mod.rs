@@ -588,6 +588,8 @@ impl GetBestShare for WhatsMinerV3 {}
 impl GetSessionBestShare for WhatsMinerV3 {}
 impl GetOperatingState for WhatsMinerV3 {}
 
+impl GetDevFeeConnected for WhatsMinerV3 {}
+
 impl GetIsMining for WhatsMinerV3 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         // working: "true" means mining is ON

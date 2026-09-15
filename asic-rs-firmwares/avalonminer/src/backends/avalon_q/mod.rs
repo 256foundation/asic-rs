@@ -828,6 +828,8 @@ impl GetFluidTemperature for AvalonQMiner {
 }
 impl GetOperatingState for AvalonQMiner {}
 
+impl GetDevFeeConnected for AvalonQMiner {}
+
 impl GetIsMining for AvalonQMiner {}
 
 impl GetPools for AvalonQMiner {

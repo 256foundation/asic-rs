@@ -643,6 +643,8 @@ impl GetSessionBestShare for ApolloV2 {}
 
 impl GetOperatingState for ApolloV2 {}
 
+impl GetDevFeeConnected for ApolloV2 {}
+
 impl GetIsMining for ApolloV2 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         let Some(status) = data.get(&DataField::IsMining) else {

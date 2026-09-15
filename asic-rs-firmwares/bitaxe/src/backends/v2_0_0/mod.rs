@@ -479,6 +479,8 @@ impl GetOperatingState for Bitaxe200 {
     }
 }
 
+impl GetDevFeeConnected for Bitaxe200 {}
+
 impl GetIsMining for Bitaxe200 {}
 impl GetPools for Bitaxe200 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {

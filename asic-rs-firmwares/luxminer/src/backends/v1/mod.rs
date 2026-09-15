@@ -461,6 +461,14 @@ impl GetDataLocations for LuxMinerV1 {
                     tag: None,
                 },
             )],
+            DataField::DevFeeConnected => vec![(
+                RPC_CONFIG,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/CONFIG/0/FeeStatus"),
+                    tag: None,
+                },
+            )],
             DataField::Wattage => vec![(
                 RPC_POWER,
                 DataExtractor {
@@ -892,6 +900,14 @@ impl GetBestShare for LuxMinerV1 {}
 impl GetSessionBestShare for LuxMinerV1 {}
 
 impl GetOperatingState for LuxMinerV1 {}
+
+impl GetDevFeeConnected for LuxMinerV1 {
+    fn parse_devfee_connected(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
+        let status = data.extract::<String>(DataField::DevFeeConnected)?;
+        let status = status.trim();
+        (!status.is_empty()).then(|| status.eq_ignore_ascii_case("ok"))
+    }
+}
 
 impl GetIsMining for LuxMinerV1 {}
 
@@ -1399,6 +1415,7 @@ mod tests {
         );
         assert_eq!(miner_data.hostname, Some("UrlacherS19k".to_string()));
         assert_eq!(miner_data.api_version, Some("3.7".to_string()));
+        assert_eq!(miner_data.devfee_connected, Some(true));
         assert_eq!(
             miner_data.firmware_version,
             Some("2025.4.8.220305".to_string())
@@ -1435,6 +1452,24 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn devfee_connection_uses_fee_status() {
+        let miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19KPro);
+
+        for (status, expected) in [
+            (Some(json!("Ok")), Some(true)),
+            (Some(json!("Connection failed")), Some(false)),
+            (Some(json!("  ")), None),
+            (None, None),
+        ] {
+            let mut data = HashMap::new();
+            if let Some(status) = status {
+                data.insert(DataField::DevFeeConnected, status);
+            }
+            assert_eq!(miner.parse_devfee_connected(&data), expected);
+        }
     }
 
     #[test]

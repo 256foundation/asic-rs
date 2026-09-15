@@ -140,6 +140,7 @@ def minimal_miner_data(**overrides: object) -> dict[str, object]:
         "messages": [],
         "uptime": None,
         "is_mining": False,
+        "devfee_connected": None,
         "pools": [],
         "best_share": None,
         "session_best_share": None,
@@ -190,6 +191,24 @@ def test_operating_state_is_optional_for_older_snapshots() -> None:
         model = MinerDataModel.model_validate({"miner": payload})
         assert model.miner.operating_state is None
         assert model.model_dump()["miner"]["operating_state"] is None
+
+
+@pytest.mark.parametrize("connected", [True, False, None])
+def test_devfee_connected_survives_snapshot_round_trip(
+    connected: bool | None,
+) -> None:
+    model = MinerDataModel.model_validate(
+        {"miner": minimal_miner_data(devfee_connected=connected)}
+    )
+    assert model.miner.devfee_connected is connected
+    assert model.model_dump()["miner"]["devfee_connected"] is connected
+
+
+def test_devfee_connected_is_optional_for_older_snapshots() -> None:
+    payload = minimal_miner_data()
+    payload.pop("devfee_connected")
+    model = MinerDataModel.model_validate({"miner": payload})
+    assert model.miner.devfee_connected is None
 
 
 def test_pool_data_last_share_time_is_optional_for_older_payloads() -> None:
