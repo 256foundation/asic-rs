@@ -400,6 +400,34 @@ impl MinerFactory {
         }
     }
 
+    /// Identify and construct a miner at a known-live IP, skipping the TCP port pre-check.
+    ///
+    /// Prefer this over [`Self::get_miner`] when the caller already holds an active
+    /// connection to the IP and port probing is unreliable (e.g. management ports are
+    /// firewalled while an outbound Stratum session is open). The identification timeout,
+    /// firmware registry, and credentials from the factory are still applied.
+    #[tracing::instrument(level = "debug", skip(self))]
+    pub async fn get_miner_direct(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
+        let discovery = AssertUnwindSafe(self.get_miner_inner(ip)).catch_unwind();
+        match timeout(self.identification_timeout, discovery).await {
+            Ok(Ok(result)) => result,
+            Ok(Err(panic_info)) => {
+                let msg = panic_message(&*panic_info);
+                tracing::error!("panic during miner discovery for {ip}: {msg}");
+                Err(anyhow::anyhow!(
+                    "internal panic during miner discovery: {msg}"
+                ))
+            }
+            Err(_) => {
+                tracing::debug!(
+                    timeout_ms = self.identification_timeout.as_millis(),
+                    "miner discovery timed out for {ip}"
+                );
+                Ok(None)
+            }
+        }
+    }
+
     async fn get_miner_inner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         let registry: Arc<[Arc<dyn FirmwareEntry>]> = Arc::from(
             self.search_firmwares
@@ -1289,6 +1317,45 @@ mod tests {
         case("<html><title>NerdAxe</title></html>");
         case("<html><title>NerdQAxe</title></html>");
         case("<html><title>NerdMiner</title></html>");
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "whatsminer")]
+    async fn get_miner_direct_skips_port_check() -> anyhow::Result<()> {
+        use asic_rs_firmwares_whatsminer::firmware::WhatsMinerFirmware;
+        use tokio::{
+            io::{AsyncReadExt, AsyncWriteExt},
+            net::TcpListener,
+        };
+
+        // Only port 4028 is open — no port 80 — so the default port probe would
+        // return Ok(None) without attempting identification.
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 4028)).await?;
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await?;
+            let mut buf = [0u8; 256];
+            let _ = socket.read(&mut buf).await?;
+            socket
+                .write_all(
+                    b"{\"STATUS\":[{\"STATUS\":\"S\"}],\"DEVDETAILS\":[{\"Driver\":\"bitmicro\"}]}\0",
+                )
+                .await?;
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            std::io::Result::Ok(())
+        });
+
+        let factory = MinerFactory::new()
+            .with_firmwares(vec![Arc::new(WhatsMinerFirmware::default())])
+            .with_identification_timeout(Duration::from_millis(500));
+
+        let result = factory
+            .get_miner_direct(IpAddr::V4(Ipv4Addr::LOCALHOST))
+            .await;
+
+        // Identification was attempted; build_miner stalls and the timeout fires.
+        assert!(result.is_ok());
+        server.abort();
+        Ok(())
     }
 
     #[test]
