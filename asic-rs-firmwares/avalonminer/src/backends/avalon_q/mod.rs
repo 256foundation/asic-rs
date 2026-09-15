@@ -517,14 +517,24 @@ impl GetDataLocations for AvalonQMiner {
                     tag: None,
                 },
             )],
-            DataField::Pools => vec![(
-                RPC_POOLS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/POOLS"),
-                    tag: None,
-                },
-            )],
+            DataField::Pools => vec![
+                (
+                    RPC_POOLS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/POOLS"),
+                        tag: Some("pools"),
+                    },
+                ),
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/Elapsed"),
+                        tag: Some("elapsed"),
+                    },
+                ),
+            ],
             _ => vec![],
         }
     }
@@ -822,9 +832,12 @@ impl GetIsMining for AvalonQMiner {}
 
 impl GetPools for AvalonQMiner {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
-        let pools = data
-            .get(&DataField::Pools)
-            .and_then(|v| v.as_array())
+        let pools_data = data.get(&DataField::Pools);
+        let elapsed = pools_data
+            .and_then(|value| value.get("elapsed"))
+            .and_then(Value::as_u64);
+        let pools = pools_data
+            .and_then(|value| value.get("pools").unwrap_or(value).as_array())
             .map(|slice| slice.to_vec())
             .unwrap_or_default()
             .into_iter()
@@ -843,9 +856,7 @@ impl GetPools for AvalonQMiner {
                 active: pool.get("Stratum Active").and_then(|v| v.as_bool()),
                 accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
                 rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
-                last_share_time: pool
-                    .get("Last Share Time")
-                    .and_then(asic_rs_core::util::parse_last_share_time),
+                last_share_time: super::parse_last_share_time(&pool, elapsed),
             })
             .collect();
 
@@ -1006,6 +1017,10 @@ mod tests {
         );
         assert_eq!(miner_data.fans.len(), 4);
         assert_eq!(miner_data.hashboards[0].chips.len(), 160);
+        let last_share_time = miner_data.pools[0].pools[0]
+            .last_share_time
+            .ok_or_else(|| anyhow::anyhow!("missing last share time"))?;
+        assert!(last_share_time.abs_diff(miner_data.timestamp - (37_819 - 31_279)) <= 1);
 
         Ok(())
     }
