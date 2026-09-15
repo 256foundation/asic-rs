@@ -959,6 +959,9 @@ impl GetPools for AvalonAMiner {
                 active: pool.get("Stratum Active").and_then(|v| v.as_bool()),
                 accepted_shares: pool.get("Accepted").and_then(|v| v.as_u64()),
                 rejected_shares: pool.get("Rejected").and_then(|v| v.as_u64()),
+                last_share_time: pool
+                    .get("Last Share Time")
+                    .and_then(asic_rs_core::util::parse_last_share_time),
             })
             .collect();
 

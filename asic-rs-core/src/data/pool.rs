@@ -147,6 +147,8 @@ pub struct PoolData {
     pub accepted_shares: Option<u64>,
     /// Rejected share count.
     pub rejected_shares: Option<u64>,
+    /// Unix timestamp, in seconds, of the last accepted share.
+    pub last_share_time: Option<u64>,
     /// Whether this pool is currently active.
     pub active: Option<bool>,
     /// Whether the firmware reports this pool as alive.

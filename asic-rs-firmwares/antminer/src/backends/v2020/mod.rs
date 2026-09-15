@@ -837,6 +837,10 @@ impl GetPools for AntMinerV2020 {
 
             let rejected_shares = pool_info.get("Rejected").and_then(|v| v.as_u64());
 
+            let last_share_time = pool_info
+                .get("Last Share Time")
+                .and_then(asic_rs_core::util::parse_last_share_time);
+
             let active = pool_info.get("Stratum Active").and_then(|v| v.as_bool());
 
             let alive = pool_info
@@ -854,6 +858,7 @@ impl GetPools for AntMinerV2020 {
                 url,
                 accepted_shares,
                 rejected_shares,
+                last_share_time,
                 active,
                 alive,
                 user,
@@ -1524,6 +1529,14 @@ mod tests {
         assert_eq!(miner_data.hashboards.len(), 3);
         assert_eq!(miner_data.light_flashing, None);
         assert_eq!(miner_data.fans.len(), 4);
+        let last_share_time = miner_data.pools[0].pools[0]
+            .last_share_time
+            .expect("active pool last share time");
+        assert!(
+            last_share_time.abs_diff(miner_data.timestamp.saturating_sub(3)) <= 1,
+            "expected the reported three-second age to be normalized"
+        );
+        assert_eq!(miner_data.pools[0].pools[1].last_share_time, None);
         assert_eq!(
             miner_data.expected_hashrate.unwrap(),
             HashRate {

@@ -637,6 +637,9 @@ impl GetPools for SealMinerV2025 {
                 url: pool["URL"].as_str().map(|s| PoolURL::from(s.to_string())),
                 accepted_shares: pool["Accepted"].as_u64(),
                 rejected_shares: pool["Rejected"].as_u64(),
+                last_share_time: pool
+                    .get("Last Share Time")
+                    .and_then(asic_rs_core::util::parse_last_share_time),
                 active: pool["Stratum Active"].as_bool(),
                 alive: pool["Status"].as_str().map(|s| s == "Alive"),
                 user: pool["User"].as_str().map(str::to_string),
@@ -983,5 +986,9 @@ mod tests {
         assert_eq!(miner_data.light_flashing, Some(true));
         assert_eq!(miner_data.pools.len(), 1);
         assert_eq!(miner_data.pools[0].len(), 1);
+        assert_eq!(
+            miner_data.pools[0].pools[0].last_share_time,
+            Some(1_773_869_544)
+        );
     }
 }

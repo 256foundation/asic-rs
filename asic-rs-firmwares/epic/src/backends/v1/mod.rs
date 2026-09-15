@@ -120,6 +120,7 @@ impl PowerPlayV1 {
             url: config.get("pool").and_then(Self::parse_pool_url),
             accepted_shares: None,
             rejected_shares: None,
+            last_share_time: None,
             active: Some(false),
             alive: None,
             user: config.get("login").and_then(Self::parse_pool_user),
@@ -245,6 +246,9 @@ impl PowerPlayV1 {
                     if let Some(session) = pools_object.get("Session").and_then(|v| v.as_object()) {
                         pool.accepted_shares = session.get("Accepted").and_then(|v| v.as_u64());
                         pool.rejected_shares = session.get("Rejected").and_then(|v| v.as_u64());
+                        pool.last_share_time = session
+                            .get("Last Accepted Share Timestamp")
+                            .and_then(asic_rs_core::util::parse_last_share_time);
                     }
                 }
             }
@@ -2128,6 +2132,10 @@ mod tests {
         assert_eq!(miner_data.hashboards.len(), 3);
         assert_eq!(miner_data.hashboards[0].active, Some(false));
         assert_eq!(miner_data.hashboards[1].chips.len(), 110);
+        assert_eq!(
+            miner_data.pools[0].pools[0].last_share_time,
+            Some(1_755_134_734)
+        );
         assert_eq!(
             miner_data.hashboards[1].chips[69].hashrate,
             Some(HashRate {

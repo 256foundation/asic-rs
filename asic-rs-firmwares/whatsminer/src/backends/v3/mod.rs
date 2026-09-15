@@ -632,6 +632,7 @@ impl GetPools for WhatsMinerV3 {
                     url,
                     accepted_shares: None,
                     rejected_shares: None,
+                    last_share_time: None,
                     active,
                     alive,
                     user,

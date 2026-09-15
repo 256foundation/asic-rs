@@ -814,6 +814,10 @@ impl GetPools for AntMinerV202307 {
 
             let rejected_shares = pool_info.get("Rejected").and_then(|v| v.as_u64());
 
+            let last_share_time = pool_info
+                .get("Last Share Time")
+                .and_then(asic_rs_core::util::parse_last_share_time);
+
             let active = pool_info.get("Stratum Active").and_then(|v| v.as_bool());
 
             let alive = pool_info
@@ -831,6 +835,7 @@ impl GetPools for AntMinerV202307 {
                 url,
                 accepted_shares,
                 rejected_shares,
+                last_share_time,
                 active,
                 alive,
                 user,

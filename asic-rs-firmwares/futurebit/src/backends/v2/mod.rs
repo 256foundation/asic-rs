@@ -682,6 +682,7 @@ impl GetPools for ApolloV2 {
                 url: Some(PoolURL::from(format!("{host}:{port}"))),
                 accepted_shares: accepted,
                 rejected_shares: rejected,
+                last_share_time: None,
                 active,
                 alive: active,
                 user: pool

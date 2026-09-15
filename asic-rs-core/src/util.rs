@@ -5,7 +5,7 @@ use std::{
 };
 
 use reqwest::{StatusCode, header::HeaderMap};
-use serde_json::json;
+use serde_json::{Value, json};
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     net::{TcpStream, ToSocketAddrs},
@@ -24,6 +24,52 @@ pub fn unix_timestamp_secs() -> u64 {
         },
         |duration| duration.as_secs(),
     )
+}
+
+/// Normalize a firmware-provided last-share value to a Unix timestamp in seconds.
+///
+/// Firmwares commonly expose either an epoch timestamp or a `HH:MM:SS` age. Values
+/// that cannot be identified unambiguously are ignored.
+pub fn parse_last_share_time(value: &Value) -> Option<u64> {
+    parse_last_share_time_at(value, unix_timestamp_secs())
+}
+
+fn parse_last_share_time_at(value: &Value, now: u64) -> Option<u64> {
+    const MIN_PLAUSIBLE_UNIX_TIMESTAMP: u64 = 946_684_800; // 2000-01-01
+
+    let absolute = value.as_u64().or_else(|| {
+        value
+            .as_str()
+            .map(str::trim)
+            .and_then(|value| value.parse::<u64>().ok())
+    });
+    if let Some(timestamp) = absolute {
+        return (timestamp >= MIN_PLAUSIBLE_UNIX_TIMESTAMP).then_some(timestamp);
+    }
+
+    let value = value.as_str()?.trim();
+    let parts = value
+        .split(':')
+        .map(str::parse::<u64>)
+        .collect::<Result<Vec<_>, _>>()
+        .ok()?;
+    let seconds_ago = match parts.as_slice() {
+        [hours, minutes, seconds] if *minutes < 60 && *seconds < 60 => hours
+            .checked_mul(60)?
+            .checked_add(*minutes)?
+            .checked_mul(60)?
+            .checked_add(*seconds)?,
+        [days, hours, minutes, seconds] if *hours < 24 && *minutes < 60 && *seconds < 60 => days
+            .checked_mul(24)?
+            .checked_add(*hours)?
+            .checked_mul(60)?
+            .checked_add(*minutes)?
+            .checked_mul(60)?
+            .checked_add(*seconds)?,
+        _ => return None,
+    };
+
+    now.checked_sub(seconds_ago)
 }
 
 /// Build an HTTP client with bounded connection and total-request deadlines
@@ -401,5 +447,42 @@ mod tests {
 
         assert!(is_expected_write_error(&read_timeout));
         assert!(!is_expected_write_error(&write_timeout));
+    }
+
+    #[test]
+    fn last_share_time_accepts_unix_timestamps() {
+        assert_eq!(
+            parse_last_share_time_at(&json!(1_761_061_364), 2_000_000_000),
+            Some(1_761_061_364)
+        );
+        assert_eq!(
+            parse_last_share_time_at(&json!("1761061364"), 2_000_000_000),
+            Some(1_761_061_364)
+        );
+    }
+
+    #[test]
+    fn last_share_time_converts_relative_duration() {
+        assert_eq!(
+            parse_last_share_time_at(&json!("0:00:03"), 2_000_000_000),
+            Some(1_999_999_997)
+        );
+        assert_eq!(
+            parse_last_share_time_at(&json!("1:02:03:04"), 2_000_000_000),
+            Some(1_999_906_216)
+        );
+    }
+
+    #[test]
+    fn last_share_time_rejects_missing_or_ambiguous_values() {
+        assert_eq!(parse_last_share_time_at(&json!(0), 2_000_000_000), None);
+        assert_eq!(
+            parse_last_share_time_at(&json!(31_279), 2_000_000_000),
+            None
+        );
+        assert_eq!(
+            parse_last_share_time_at(&json!("not available"), 2_000_000_000),
+            None
+        );
     }
 }

@@ -598,11 +598,16 @@ impl GetPools for WhatsMinerV2 {
                     .and_then(|val| val.pointer(&format!("/{idx}/Rejected")))
                     .and_then(|val| val.as_u64());
 
+                let last_share_time = pools_raw
+                    .and_then(|val| val.pointer(&format!("/{idx}/Last Share Time")))
+                    .and_then(asic_rs_core::util::parse_last_share_time);
+
                 pools.push(PoolData {
                     position: Some(idx as u16),
                     url,
                     accepted_shares,
                     rejected_shares,
+                    last_share_time,
                     active,
                     alive,
                     user,

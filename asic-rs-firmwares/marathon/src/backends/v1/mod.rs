@@ -1019,6 +1019,7 @@ impl GetPools for MaraV1 {
                     url,
                     accepted_shares: accepted,
                     rejected_shares: rejected,
+                    last_share_time: None,
                     active: Some(active),
                     alive,
                     user,
