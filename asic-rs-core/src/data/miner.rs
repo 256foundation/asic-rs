@@ -220,6 +220,12 @@ pub struct MinerData {
     #[serde(default)]
     #[cfg_attr(feature = "python", pydantic(default = None))]
     pub operating_state: Option<OperatingState>,
+    /// Whether the firmware's developer-fee connection is online.
+    ///
+    /// `None` means the firmware does not expose a developer-fee status.
+    #[serde(default)]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub devfee_connected: Option<bool>,
     /// The current pools configured on the miner
     pub pools: Vec<PoolGroupData>,
     /// Difficulty of the best share found over the miner's lifetime, when reported.

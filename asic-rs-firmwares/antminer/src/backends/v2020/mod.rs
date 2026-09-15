@@ -801,6 +801,8 @@ impl GetSessionBestShare for AntMinerV2020 {}
 
 impl GetOperatingState for AntMinerV2020 {}
 
+impl GetDevFeeConnected for AntMinerV2020 {}
+
 impl GetIsMining for AntMinerV2020 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)

@@ -702,6 +702,8 @@ impl GetSessionBestShare for BraiinsV2503 {}
 
 impl GetOperatingState for BraiinsV2503 {}
 
+impl GetDevFeeConnected for BraiinsV2503 {}
+
 impl GetIsMining for BraiinsV2503 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.get(&DataField::IsMining).is_some_and(|v| !v.is_null())

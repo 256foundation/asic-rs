@@ -350,6 +350,13 @@ default when a response is missing. It is not derived from `operating_state`.
 Use `miner.get_operating_state()` to fetch just this field, or exclude
 `DataField.OperatingState` (`DataField::OperatingState` in Rust) from a snapshot.
 
+`data.devfee_connected` reports developer-fee connection health when firmware
+exposes it: `True`/`Some(true)` is connected, `False`/`Some(false)` is
+disconnected, and `None` means no usable status is exposed. ePIC/UMC derives it
+from `Last Devfee Error` in `/summary` (without using the hidden devfee API),
+VNish derives it from typed `DevFee` pool status, and LuxOS derives it from
+`FeeStatus`. Use `miner.get_devfee_connected()` for this field alone.
+
 To reduce collection work, exclude fields from a full data snapshot.
 
 <!-- asic-rs-example:data-exclude rust -->

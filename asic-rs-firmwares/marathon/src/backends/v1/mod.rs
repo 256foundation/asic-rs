@@ -963,6 +963,8 @@ impl GetOperatingState for MaraV1 {
     }
 }
 
+impl GetDevFeeConnected for MaraV1 {}
+
 impl GetIsMining for MaraV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)

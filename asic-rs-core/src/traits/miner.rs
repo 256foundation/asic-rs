@@ -177,6 +177,7 @@ pub trait GetMinerData:
     + GetUptime
     + GetIsMining
     + GetOperatingState
+    + GetDevFeeConnected
     + GetPools
     + GetBestShare
     + GetSessionBestShare
@@ -240,6 +241,7 @@ impl<
         + GetUptime
         + GetIsMining
         + GetOperatingState
+        + GetDevFeeConnected
         + GetPools
         + GetBestShare
         + GetSessionBestShare
@@ -284,6 +286,7 @@ impl<
         let light_flashing = self.parse_light_flashing(&data);
         let is_mining = self.parse_is_mining(&data);
         let operating_state = self.parse_operating_state(&data);
+        let devfee_connected = self.parse_devfee_connected(&data);
         let messages = self.parse_messages(&data);
         let pools = self.parse_pools(&data);
         let best_share = self.parse_best_share(&data);
@@ -379,6 +382,7 @@ impl<
             uptime,
             is_mining,
             operating_state,
+            devfee_connected,
 
             pools,
             best_share,
@@ -858,6 +862,22 @@ pub trait GetOperatingState: CollectData {
 
     #[allow(unused_variables)]
     fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
+        None
+    }
+}
+
+/// Developer-fee connection status explicitly reported by firmware.
+#[async_trait]
+pub trait GetDevFeeConnected: CollectData {
+    #[tracing::instrument(level = "debug")]
+    async fn get_devfee_connected(&self) -> Option<bool> {
+        let mut collector = self.get_collector();
+        let data = collector.collect(&[DataField::DevFeeConnected]).await;
+        self.parse_devfee_connected(&data)
+    }
+
+    #[allow(unused_variables)]
+    fn parse_devfee_connected(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         None
     }
 }

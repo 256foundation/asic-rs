@@ -111,6 +111,9 @@ pub enum DataField {
     /// Detailed operating state explicitly reported by firmware.
     #[cfg_attr(feature = "python", pydantic(value = "OperatingState"))]
     OperatingState,
+    /// Whether the firmware's developer-fee connection is online.
+    #[cfg_attr(feature = "python", pydantic(value = "DevFeeConnected"))]
+    DevFeeConnected,
 }
 
 /// A function pointer type that takes a JSON `Value` and an optional key,

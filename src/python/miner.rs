@@ -546,6 +546,14 @@ impl Miner {
             Ok(inner.get_operating_state().await)
         })
     }
+    /// Await whether the firmware's developer-fee connection is online.
+    pub fn get_devfee_connected<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Option<bool>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.get_devfee_connected().await)
+        })
+    }
     /// Await the current mining pool status.
     pub fn get_pools<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<Vec<PoolGroupData>>> {
         let inner = Arc::clone(&self.inner);

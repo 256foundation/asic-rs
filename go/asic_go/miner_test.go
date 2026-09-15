@@ -20,6 +20,7 @@ func TestDataFieldNamesMatchRust(t *testing.T) {
 	want := []DataField{
 		DataFieldHashboards,
 		DataFieldChips,
+		DataFieldDevFeeConnected,
 		DataFieldBestShare,
 		DataFieldSessionBestShare,
 	}

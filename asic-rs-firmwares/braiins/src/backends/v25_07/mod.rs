@@ -568,6 +568,8 @@ impl GetOperatingState for BraiinsV2507 {
     }
 }
 
+impl GetDevFeeConnected for BraiinsV2507 {}
+
 impl GetIsMining for BraiinsV2507 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         // 1 -> Not Started

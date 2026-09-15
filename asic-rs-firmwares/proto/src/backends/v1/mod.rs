@@ -718,6 +718,8 @@ impl GetOperatingState for ProtoV1 {
     }
 }
 
+impl GetDevFeeConnected for ProtoV1 {}
+
 impl GetIsMining for ProtoV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         matches!(

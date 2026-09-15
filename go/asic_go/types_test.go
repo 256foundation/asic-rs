@@ -133,6 +133,7 @@ func TestMinerDataUnmarshal(t *testing.T) {
 		"is_mining": true,
 		"pools": [],
 		"operating_state": {"type": "Mining"},
+		"devfee_connected": false,
 		"best_share": 483000.0,
 		"session_best_share": 0.0
 	}`
@@ -163,6 +164,9 @@ func TestMinerDataUnmarshal(t *testing.T) {
 	}
 	if data.SessionBestShare == nil || *data.SessionBestShare != 0 {
 		t.Fatalf("session_best_share = %v", data.SessionBestShare)
+	}
+	if data.DevFeeConnected == nil || *data.DevFeeConnected {
+		t.Fatalf("devfee_connected = %v", data.DevFeeConnected)
 	}
 }
 

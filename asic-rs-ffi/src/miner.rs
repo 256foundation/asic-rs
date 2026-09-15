@@ -695,6 +695,19 @@ pub unsafe extern "C" fn asic_rs_miner_get_operating_state_json(
     })
 }
 
+/// Developer-fee connection status as JSON (bool or null).
+///
+/// # Safety
+/// `miner` must be a live handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn asic_rs_miner_get_devfee_connected_json(
+    miner: *const AsicMiner,
+) -> *mut c_char {
+    ffi_guard(ptr::null_mut(), || {
+        miner_json(miner, |m| block_on(m.get_devfee_connected()))
+    })
+}
+
 /// Runtime pool groups as JSON.
 ///
 /// # Safety

@@ -423,6 +423,13 @@ func (m *Miner) GetOperatingState() (*OperatingState, error) {
 	return v, err
 }
 
+// GetDevFeeConnected returns developer-fee connection status, if available.
+func (m *Miner) GetDevFeeConnected() (*bool, error) {
+	var v *bool
+	err := m.getJSON(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_get_devfee_connected_json(ptr) }, &v)
+	return v, err
+}
+
 // GetPools returns configured pool groups with runtime stats.
 func (m *Miner) GetPools() ([]PoolGroupData, error) {
 	var v []PoolGroupData

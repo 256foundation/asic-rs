@@ -448,6 +448,8 @@ impl GetSessionBestShare for NerdAxeV1 {
 }
 impl GetOperatingState for NerdAxeV1 {}
 
+impl GetDevFeeConnected for NerdAxeV1 {}
+
 impl GetIsMining for NerdAxeV1 {}
 impl GetPools for NerdAxeV1 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
