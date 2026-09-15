@@ -1,3 +1,5 @@
+use crate::firmware::MarathonFirmware;
+
 use std::{net::IpAddr, time::Duration};
 
 use once_cell::sync::OnceCell;
@@ -111,7 +113,8 @@ impl APIClient for MaraWebAPI {
                     .await
             }
             _ => Err(anyhow::anyhow!(
-                "Unsupported command type for Marathon WebAPI"
+                "Unsupported command type for {} WebAPI",
+                MarathonFirmware::default()
             )),
         }
     }

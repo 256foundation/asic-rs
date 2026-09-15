@@ -315,7 +315,10 @@ impl APIClient for AntMinerV2020 {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for Antminer API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for {} API",
+                AntMinerStockFirmware::default()
+            )),
         }
     }
 }
@@ -1275,25 +1278,40 @@ impl SupportsTuningConfig for AntMinerV2020 {
     ) -> anyhow::Result<bool> {
         let mode = match config.target {
             TuningTarget::Manual { .. } => {
-                anyhow::bail!("Manual tuning target is not supported on Antminer stock firmware")
+                anyhow::bail!(
+                    "Manual tuning target is not supported on {} firmware",
+                    AntMinerStockFirmware::default()
+                )
             }
             TuningTarget::MiningMode(MiningMode::Low) => MinerMode::Low,
             TuningTarget::MiningMode(MiningMode::Normal) => MinerMode::Normal,
             TuningTarget::MiningMode(MiningMode::High) => MinerMode::High,
             TuningTarget::Power(_) => {
-                anyhow::bail!("Power tuning target is not supported on Antminer stock firmware")
+                anyhow::bail!(
+                    "Power tuning target is not supported on {} firmware",
+                    AntMinerStockFirmware::default()
+                )
             }
             TuningTarget::HashRate(_) => {
-                anyhow::bail!("Hashrate tuning target is not supported on Antminer stock firmware")
+                anyhow::bail!(
+                    "Hashrate tuning target is not supported on {} firmware",
+                    AntMinerStockFirmware::default()
+                )
             }
             TuningTarget::Preset(_) => {
-                anyhow::bail!("Preset tuning target is not supported on Antminer stock firmware")
+                anyhow::bail!(
+                    "Preset tuning target is not supported on {} firmware",
+                    AntMinerStockFirmware::default()
+                )
             }
         };
 
         let pre = self.web.get_miner_conf().await?;
         let Some(miner_conf) = miner_conf_with_miner_mode(&pre, mode) else {
-            anyhow::bail!("No Antminer mining mode field found in miner config")
+            anyhow::bail!(
+                "No {} mining mode field found in miner config",
+                AntMinerStockFirmware::default()
+            )
         };
 
         self.web.set_miner_conf(miner_conf).await?;
@@ -1307,7 +1325,12 @@ impl SupportsTuningConfig for AntMinerV2020 {
         data.get(&ConfigField::Tuning)
             .and_then(miner_conf_mining_mode)
             .map(|mode| TuningConfig::new(TuningTarget::MiningMode(mode)))
-            .ok_or_else(|| anyhow::anyhow!("No Antminer mining mode found in tuning config"))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No {} mining mode found in tuning config",
+                    AntMinerStockFirmware::default()
+                )
+            })
     }
 
     fn supports_tuning_config(&self) -> bool {

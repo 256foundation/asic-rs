@@ -130,7 +130,10 @@ impl APIClient for ProtoV1 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow!("Unsupported command type for Proto API")),
+            _ => Err(anyhow!(
+                "Unsupported command type for {} API",
+                ProtoFirmware::default()
+            )),
         }
     }
 }
@@ -948,7 +951,8 @@ impl SupportsTuningConfig for ProtoV1 {
             return self.set_power_limit(power).await;
         }
         Err(anyhow!(
-            "Proto tuning currently supports power targets only"
+            "{} tuning currently supports power targets only",
+            ProtoFirmware::default()
         ))
     }
 

@@ -372,7 +372,10 @@ impl APIClient for MaraV1 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for Marathon API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for {} API",
+                MarathonFirmware::default()
+            )),
         }
     }
 }

@@ -73,7 +73,8 @@ impl APIClient for AvalonQMiner {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
             _ => Err(anyhow::anyhow!(
-                "Unsupported command type for AvalonMiner API"
+                "Unsupported command type for {} API",
+                AvalonStockFirmware::default()
             )),
         }
     }

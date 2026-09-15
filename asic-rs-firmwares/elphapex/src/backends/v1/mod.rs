@@ -169,7 +169,10 @@ impl APIClient for ElphapexV1 {
     async fn get_api_result(&self, command: &MinerCommand) -> Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for Elphapex")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for {}",
+                ElphapexStockFirmware::default()
+            )),
         }
     }
 }
@@ -706,8 +709,10 @@ impl GetMessages for ElphapexV1 {
                 let message = status
                     .get("msg")
                     .and_then(Value::as_str)
-                    .unwrap_or("Elphapex status warning")
-                    .to_string();
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| {
+                        format!("{} status warning", ElphapexStockFirmware::default())
+                    });
                 Some(MinerMessage {
                     timestamp,
                     code: 0,

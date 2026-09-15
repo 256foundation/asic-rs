@@ -75,7 +75,10 @@ impl APIClient for BraiinsV2604 {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             MinerCommand::GraphQL { .. } => self.graphql.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for Braiins API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for {} API",
+                BraiinsFirmware::default()
+            )),
         }
     }
 }

@@ -171,7 +171,10 @@ impl APIClient for LuxMinerV1 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for LuxMiner API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for {} API",
+                LuxMinerFirmware::default()
+            )),
         }
     }
 }

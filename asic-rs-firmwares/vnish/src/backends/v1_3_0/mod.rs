@@ -66,7 +66,10 @@ impl APIClient for VnishV130 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for Vnish API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for {} API",
+                VnishFirmware::default()
+            )),
         }
     }
 }
@@ -1227,7 +1230,10 @@ impl SupportsTimezoneConfig for VnishV130 {
             Some(tz) => {
                 tz["current"] = json!(timezone);
             }
-            None => anyhow::bail!("VNish settings has no /regional/timezone"),
+            None => anyhow::bail!(
+                "{} settings has no /regional/timezone",
+                VnishFirmware::default()
+            ),
         }
         self.web.set_settings(settings).await.map(|_| true)
     }
@@ -1276,7 +1282,10 @@ impl SupportsTuningConfig for VnishV130 {
     ) -> anyhow::Result<bool> {
         match config.target {
             TuningTarget::Manual { .. } => {
-                anyhow::bail!("Manual tuning target is not supported on VNish")
+                anyhow::bail!(
+                    "Manual tuning target is not supported on {}",
+                    VnishFirmware::default()
+                )
             }
             TuningTarget::Preset(name) => {
                 let mut settings = self.web.settings().await?;
@@ -1303,10 +1312,16 @@ impl SupportsTuningConfig for VnishV130 {
             }
             TuningTarget::Power(limit) => self.set_power_limit(limit).await,
             TuningTarget::HashRate(_) => {
-                anyhow::bail!("HashRate tuning target is not supported on VNish")
+                anyhow::bail!(
+                    "HashRate tuning target is not supported on {}",
+                    VnishFirmware::default()
+                )
             }
             TuningTarget::MiningMode(_) => {
-                anyhow::bail!("MiningMode tuning target is not supported on VNish")
+                anyhow::bail!(
+                    "MiningMode tuning target is not supported on {}",
+                    VnishFirmware::default()
+                )
             }
         }
     }

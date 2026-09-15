@@ -1,3 +1,5 @@
+use crate::firmware::AuradineFirmware;
+
 use std::{net::IpAddr, time::Duration};
 
 use anyhow::{Context, Result, anyhow, bail};
@@ -173,7 +175,10 @@ impl APIClient for AuradineWebAPI {
                 self.send_command(command, false, parameters.clone(), Method::GET)
                     .await
             }
-            _ => Err(anyhow!("Unsupported command type for Auradine WebAPI")),
+            _ => Err(anyhow!(
+                "Unsupported command type for {} WebAPI",
+                AuradineFirmware::default()
+            )),
         }
     }
 }

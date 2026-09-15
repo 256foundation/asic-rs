@@ -1,3 +1,5 @@
+use crate::firmware::ElphapexStockFirmware;
+
 use std::{net::IpAddr, time::Duration};
 
 use anyhow::{Context, Result, anyhow, bail};
@@ -69,7 +71,10 @@ impl ElphapexWebAPI {
         let response = match *method {
             Method::GET => {
                 if parameters.is_some() {
-                    bail!("Elphapex GET commands do not support parameters");
+                    bail!(
+                        "{} GET commands do not support parameters",
+                        ElphapexStockFirmware::default()
+                    );
                 }
                 client
                     .get(url)
@@ -112,7 +117,12 @@ impl ElphapexWebAPI {
             }
         }
 
-        Err(last_error.unwrap_or_else(|| anyhow!("Elphapex web API retries exceeded")))
+        Err(last_error.unwrap_or_else(|| {
+            anyhow!(
+                "{} web API retries exceeded",
+                ElphapexStockFirmware::default()
+            )
+        }))
     }
 
     async fn request_json(
@@ -170,7 +180,10 @@ impl ElphapexWebAPI {
     pub async fn set_pools_config(&self, pools: &[PoolConfig]) -> Result<bool> {
         let mut current = self.get_miner_conf().await?;
         let Some(object) = current.as_object_mut() else {
-            bail!("Elphapex miner config response is not an object");
+            bail!(
+                "{} miner config response is not an object",
+                ElphapexStockFirmware::default()
+            );
         };
 
         for (idx, pool) in pools.iter().take(3).enumerate() {
@@ -194,7 +207,10 @@ impl APIClient for ElphapexWebAPI {
                 self.send_web_command(command, parameters.clone(), Method::GET)
                     .await
             }
-            _ => Err(anyhow!("Unsupported command type for Elphapex API")),
+            _ => Err(anyhow!(
+                "Unsupported command type for {} API",
+                ElphapexStockFirmware::default()
+            )),
         }
     }
 }

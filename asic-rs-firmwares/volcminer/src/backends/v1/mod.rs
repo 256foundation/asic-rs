@@ -136,7 +136,8 @@ impl APIClient for VolcMinerV1 {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             _ => Err(anyhow::anyhow!(
-                "Unsupported command type for VolcMiner API"
+                "Unsupported command type for {} API",
+                VolcMinerStockFirmware::default()
             )),
         }
     }

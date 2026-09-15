@@ -91,7 +91,8 @@ impl APIClient for WhatsMinerV2 {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
             _ => Err(anyhow::anyhow!(
-                "Unsupported command type for WhatsMiner API"
+                "Unsupported command type for {} API",
+                WhatsMinerFirmware::default()
             )),
         }
     }
@@ -797,7 +798,10 @@ impl Validate for WhatsMinerV2 {
 fn tuning_config_to_rpc(config: &TuningConfig) -> anyhow::Result<(&'static str, Option<Value>)> {
     match &config.target {
         TuningTarget::Manual { .. } => {
-            anyhow::bail!("Manual tuning target is not supported on WhatsMiner")
+            anyhow::bail!(
+                "Manual tuning target is not supported on {}",
+                WhatsMinerFirmware::default()
+            )
         }
         TuningTarget::MiningMode(mode) => {
             let cmd = match mode {
@@ -812,10 +816,16 @@ fn tuning_config_to_rpc(config: &TuningConfig) -> anyhow::Result<(&'static str, 
             Some(json!({"power_limit": limit.as_watts().to_string()})),
         )),
         TuningTarget::HashRate(_) => {
-            anyhow::bail!("HashRate tuning target is not supported on WhatsMiner")
+            anyhow::bail!(
+                "HashRate tuning target is not supported on {}",
+                WhatsMinerFirmware::default()
+            )
         }
         TuningTarget::Preset(_) => {
-            anyhow::bail!("Preset tuning target is not supported on WhatsMiner")
+            anyhow::bail!(
+                "Preset tuning target is not supported on {}",
+                WhatsMinerFirmware::default()
+            )
         }
     }
 }

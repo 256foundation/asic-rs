@@ -1,3 +1,5 @@
+use crate::firmware::BraiinsFirmware;
+
 use std::net::IpAddr;
 
 use anyhow;
@@ -105,9 +107,10 @@ impl StatusFromBraiins for RPCCommandStatus {
             .pointer("/STATUS/0/STATUS")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                RPCError::StatusCheckFailed(
-                    "Failed to parse status from Braiins response".to_string(),
-                )
+                RPCError::StatusCheckFailed(format!(
+                    "Failed to parse status from {} response",
+                    BraiinsFirmware::default()
+                ))
             })?;
 
         let message = json.pointer("/STATUS/0/Msg").and_then(|v| v.as_str());

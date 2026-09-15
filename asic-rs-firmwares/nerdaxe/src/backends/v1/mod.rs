@@ -55,7 +55,10 @@ impl APIClient for NerdAxeV1 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for NerdAxe API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for {} API",
+                NerdAxeFirmware::default()
+            )),
         }
     }
 }
