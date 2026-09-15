@@ -79,6 +79,18 @@ impl MinerHardware {
         self.total_chips()
     }
 
+    /// Canonical total chip count; `chips` remains a compatibility alias.
+    #[getter]
+    #[pyo3(name = "total_chips")]
+    pub fn py_total_chips(&self) -> Option<u16> {
+        self.total_chips()
+    }
+
+    #[pyo3(name = "chips_for_board")]
+    pub fn py_chips_for_board(&self, position: usize) -> Option<u16> {
+        self.chips_for_board(position)
+    }
+
     #[getter]
     #[pyo3(name = "board_count")]
     pub fn py_board_count(&self) -> Option<u8> {

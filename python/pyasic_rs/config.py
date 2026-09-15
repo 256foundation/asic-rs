@@ -11,7 +11,12 @@ from pyasic_rs.asic_rs import TimezoneConfig
 from pyasic_rs.asic_rs import TuningConfig
 from pyasic_rs.asic_rs import TemperatureConfig
 
+PoolConfig = Pool
+PoolGroupConfig = PoolGroup
+
 __all__ = [
+    "PoolConfig",
+    "PoolGroupConfig",
     "FanConfig",
     "FanMode",
     "Pool",

@@ -45,10 +45,13 @@ jobs:
           fi
 
           TAG="v${VERSION}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists" >&2
-            exit 1
-          fi
+          GO_TAG="go/v${VERSION}"
+          for release_tag in "$TAG" "$GO_TAG"; do
+            if git rev-parse --verify "refs/tags/${release_tag}" >/dev/null 2>&1; then
+              echo "Tag $release_tag already exists" >&2
+              exit 1
+            fi
+          done
 
           CURRENT_VERSION=$(sed -n '/^\[workspace\.package\]/,/^\[/{s/^version = "\(.*\)"/\1/p}' Cargo.toml)
 
@@ -104,8 +107,9 @@ jobs:
 
           git commit -m "chore(release): prepare for ${TAG}"
           git tag "$TAG"
-          git push origin "HEAD:${GITHUB_REF}"
-          git push origin "$TAG"
+          # Go versions for a module in the go/ subdirectory need a go/ tag prefix.
+          git tag "$GO_TAG"
+          git push --atomic origin "HEAD:${GITHUB_REF}" "$TAG" "$GO_TAG"
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"

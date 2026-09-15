@@ -1,8 +1,9 @@
 # API Guide
 
-The Rust and Python APIs intentionally share names and behavior. This page
+The Rust, Python, and Go APIs intentionally share names and behavior. This page
 summarizes the user-facing surface and points out the few language-specific
-differences.
+differences. Go methods are synchronous and return `error`; a missing miner is
+`asic_go.ErrNotFound`. See `go/README.md` for cgo build notes.
 
 ## Discovery
 
@@ -42,26 +43,48 @@ apply explicit connection and total-request deadlines.
     )
     ```
 
-| Operation | Rust | Python |
-| --- | --- | --- |
-| Known IP | `get_miner(ip).await?` | `await get_miner(ip)` |
-| Full scan | `scan().await?` | `await scan()` |
-| Stream found miners | `scan_stream()` | `scan_stream()` |
-| Stream every IP | `scan_stream_with_ip()` | `scan_stream_with_ip()` |
+=== "Go"
+
+    ```go
+    factory, err := asic_go.NewMinerFactoryFromSubnet("192.168.1.0/24")
+    if err != nil {
+        log.Fatal(err)
+    }
+    factory.WithConcurrentLimit(2500).
+        WithConnectivityTimeoutSecs(1).
+        WithConnectivityRetries(0).
+        WithIdentificationTimeoutSecs(10)
+    ```
+
+| Operation | Rust | Python | Go |
+| --- | --- | --- | --- |
+| Known IP | `get_miner(ip).await?` | `await get_miner(ip)` | `GetMiner(ip)` |
+| Full scan | `scan().await?` | `await scan()` | `Scan()` |
+| Stream found miners | `scan_stream()` | `scan_stream()` | not wrapped yet |
+| Stream every IP | `scan_stream_with_ip()` | `scan_stream_with_ip()` | not wrapped yet |
 
 ## Miner Identity
 
 Miner identity is available without awaiting because it is known when the miner
 handle is constructed.
 
-| Value | Rust | Python |
-| --- | --- | --- |
-| IP address | `miner.get_ip()` | `miner.ip` |
-| Make | `miner.get_device_info().make` | `miner.make` |
-| Model | `miner.get_device_info().model` | `miner.model` |
-| Firmware | `miner.get_device_info().firmware` | `miner.firmware` |
-| Algorithm | `miner.get_device_info().algo` | `miner.algo` |
-| Hardware shape | `miner.get_device_info().hardware` | `miner.hardware` |
+In Go, retrieve the identity and handle its error before reading fields:
+
+```go
+info, err := miner.GetDeviceInfo()
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+| Value | Rust | Python | Go |
+| --- | --- | --- | --- |
+| IP address | `miner.get_ip()` | `miner.ip` | `miner.GetIP()` |
+| Make | `miner.get_device_info().make` | `miner.make` | `info.Make` |
+| Model | `miner.get_device_info().model` | `miner.model` | `info.Model` |
+| Firmware | `miner.get_device_info().firmware` | `miner.firmware` | `info.Firmware` |
+| Algorithm | `miner.get_device_info().algo` | `miner.algo` | `info.Algo` |
+| Hardware shape | `miner.get_device_info().hardware` | `miner.hardware` | `info.Hardware` |
 
 ## Data Collection
 
@@ -82,6 +105,17 @@ fields when a caller does not need the whole snapshot.
     data = await miner.get_data()
     hashrate = await miner.get_hashrate()
     fans = await miner.get_fans()
+    ```
+
+=== "Go"
+
+    ```go
+    data, err := miner.GetData()
+    if err != nil {
+        log.Fatal(err)
+    }
+    hashrate, err := miner.GetHashrate()
+    fans, err := miner.GetFans()
     ```
 
 Common telemetry methods:
@@ -105,7 +139,8 @@ Common telemetry methods:
 ## Controls And Capability Checks
 
 Not every miner supports every control. Rust exposes `supports_*()` methods;
-Python exposes matching `supports_*` properties.
+Python exposes matching `supports_*` properties; Go returns them from
+`Supports()`.
 
 | Capability | Control |
 | --- | --- |
@@ -142,6 +177,21 @@ upgrade would use.
     ```python
     if miner.supports_set_power_limit:
         await miner.set_power_limit(3200.0)
+    ```
+
+=== "Go"
+
+    ```go
+    caps, err := miner.Supports()
+    if err != nil {
+        log.Fatal(err)
+    }
+    if caps.SetPowerLimit {
+        _, err := miner.SetPowerLimit(3200.0)
+        if err != nil {
+            log.Fatal(err)
+        }
+    }
     ```
 
 ## Configuration Models
@@ -223,3 +273,51 @@ Python data/config classes can be used inside Pydantic models and support
 
     print(snapshot.model_dump())
     ```
+
+## Binding Names And Wire Formats
+
+Shared type names are retained in Go: `MinerFactory`, `DeviceInfo`,
+`MinerHardware`, `HashAlgorithm`, `MiningMode`, `MinerControlBoard`,
+`MinerComponent`, and the tuning-capability models. Go exports names in
+PascalCase, retaining initialisms (`IP`, `MAC`, `API`, `PSU`). Identity and
+telemetry getters consistently use `Get…`; constructors use `New…` followed
+by the type and, where needed, the variant.
+
+Python additionally exports `PoolConfig` and `PoolGroupConfig` as aliases for
+its existing `Pool` and `PoolGroup` classes. `MinerHardware.total_chips` is the
+shared count name; Python's `chips` property remains an alias. Go exposes
+`TotalChips`, `BoardCount`, and `ChipsForBoard`, returning a value and a boolean
+that distinguishes missing counts from zero.
+
+Go tuning targets expose `Variant`, `Watts`, `TargetHashrate`, `TargetMode`,
+`PresetName`, and `Boards`. These correspond to Python's `variant`, `watts`,
+`target_hashrate`, `target_mode`, `preset_name`, and `boards`. `ManualTuningValues`
+uses numeric board IDs in Go, Rust, and Python. The complete Go constructor set
+is `NewTuningTargetManual`, `NewTuningTargetPower`, `NewTuningTargetHashrate`,
+`NewTuningTargetMiningMode`, and `NewTuningTargetPreset`.
+
+Some established Python representations differ from Rust's Serde schema.
+The C bridge and Go JSON output retain the Rust schema, also described by the
+Rust TypeScript derives; they do not rename existing wire fields.
+
+| Value | Rust / C / Go JSON output | Existing Python representation |
+| --- | --- | --- |
+| Hashrate unit | `"TeraHash"` | `"TH/s"` |
+| Pool scheme | `"StratumV1"` | `"stratum+tcp"` |
+| Pool URL | Object containing scheme/host/port/pubkey | URL string |
+| Fan mode | `"Auto"` / `"Manual"` | `"auto"` / `"manual"` |
+| Power target | `{"Power":{"watts":3200}}` | `{"type":"power","value":3200}` |
+| Mining-mode target | `{"MiningMode":"High"}` | `{"type":"mode","value":"High"}` |
+
+Go accepts these Python input forms for hash units, pool schemes/URLs, fan modes,
+and tuning targets, then emits canonical Rust JSON. Invalid hash units and
+algorithms return errors instead of silently becoming hashes per second or
+SHA-256. `HashRate.DefaultUnit` and `IntoDefaultUnit` use the algorithm-specific
+unit, matching Rust/Python.
+
+`Supports()` and `Expected()` remain Go conveniences for grouped results;
+individual `GetExpectedHashboards`, `GetExpectedChips`, and `GetExpectedFans`
+methods also match the shared API. Go's `GetControlBoardVersion` and the snapshot
+both preserve `{known, name}`; Python's established individual getter continues
+to return a display string. Go firmware checks and revalidation propagate backend
+errors, whereas the existing Python methods return `None` for those failures.

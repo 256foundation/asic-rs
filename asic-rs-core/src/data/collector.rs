@@ -15,7 +15,7 @@ use crate::{
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Copy, EnumIter, Display, EnumString)]
 pub enum DataField {
     /// Schema version of the miner data.
-    #[cfg_attr(feature = "python", pydantic(value = "Schema"))]
+    #[cfg_attr(feature = "python", pydantic(value = "SchemaVersion"))]
     SchemaVersion,
     /// Timestamp of when the data was collected.
     #[cfg_attr(feature = "python", pydantic(value = "Timestamp"))]
