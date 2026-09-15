@@ -1,3 +1,5 @@
+use crate::firmware::ProtoFirmware;
+
 use std::{net::IpAddr, time::Duration};
 
 use anyhow::{Context, Result, anyhow, bail};
@@ -288,7 +290,10 @@ impl APIClient for ProtoWebAPI {
                 self.send_command(command, false, parameters.clone(), Method::GET)
                     .await
             }
-            _ => Err(anyhow!("Unsupported command type for Proto WebAPI")),
+            _ => Err(anyhow!(
+                "Unsupported command type for {} WebAPI",
+                ProtoFirmware::default()
+            )),
         }
     }
 }

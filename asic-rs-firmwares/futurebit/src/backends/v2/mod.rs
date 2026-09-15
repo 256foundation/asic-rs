@@ -75,7 +75,10 @@ impl APIClient for ApolloV2 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::GraphQL { .. } => self.graphql.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for Apollo API")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for {} API",
+                ApolloFirmware::default()
+            )),
         }
     }
 }
@@ -735,7 +738,7 @@ impl Restart for ApolloV2 {
             .pointer("/Miner/restart/error/message")
             .and_then(|v| v.as_str())
         {
-            anyhow::bail!("Apollo restart failed: {message}");
+            anyhow::bail!("{} restart failed: {message}", ApolloFirmware::default());
         }
         Ok(true)
     }
@@ -756,7 +759,7 @@ impl Pause for ApolloV2 {
             .pointer("/Miner/stop/error/message")
             .and_then(|v| v.as_str())
         {
-            anyhow::bail!("Apollo stop failed: {message}");
+            anyhow::bail!("{} stop failed: {message}", ApolloFirmware::default());
         }
         Ok(true)
     }
@@ -777,7 +780,7 @@ impl Resume for ApolloV2 {
             .pointer("/Miner/start/error/message")
             .and_then(|v| v.as_str())
         {
-            anyhow::bail!("Apollo start failed: {message}");
+            anyhow::bail!("{} start failed: {message}", ApolloFirmware::default());
         }
         Ok(true)
     }

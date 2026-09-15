@@ -282,7 +282,8 @@ impl APIClient for PowerPlayV1 {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
             _ => Err(anyhow::anyhow!(
-                "Unsupported command type for ePIC PowerPlay API"
+                "Unsupported command type for {} API",
+                EPicFirmware::default()
             )),
         }
     }
@@ -1451,7 +1452,11 @@ impl SupportsPoolsConfig for PowerPlayV1 {
             .collect();
 
         anyhow::ensure!(!groups.is_empty(), "No non-empty pool groups provided");
-        anyhow::ensure!(groups.len() <= 3, "ePIC supports up to 3 pool groups");
+        anyhow::ensure!(
+            groups.len() <= 3,
+            "{} supports up to 3 pool groups",
+            EPicFirmware::default()
+        );
 
         let coin = Self::coin_type_for_hash_algorithm(self.device_info.algo);
         let unique_id_enabled = false;
@@ -1611,14 +1616,18 @@ impl SupportsTuningConfig for PowerPlayV1 {
                 "power" | "powertune" => Ok("PowerTune"),
                 "boardtune" => Ok("BoardTune"),
                 _ => anyhow::bail!(
-                    "Unsupported perpetual tune algorithm '{algorithm_input}' for ePIC PowerPlay"
+                    "Unsupported perpetual tune algorithm '{algorithm_input}' for {}",
+                    EPicFirmware::default()
                 ),
             }
         };
 
         let (algorithm, target) = match &config.target {
             TuningTarget::Manual { .. } => {
-                anyhow::bail!("Manual tuning target is not supported for ePIC PowerPlay config")
+                anyhow::bail!(
+                    "Manual tuning target is not supported for {} config",
+                    EPicFirmware::default()
+                )
             }
             TuningTarget::Power(power) => (
                 "PowerTune",
@@ -1640,15 +1649,21 @@ impl SupportsTuningConfig for PowerPlayV1 {
                 (algorithm, target)
             }
             TuningTarget::MiningMode(_) => {
-                anyhow::bail!("MiningMode tuning target is not supported on ePIC PowerPlay")
+                anyhow::bail!(
+                    "MiningMode tuning target is not supported on {}",
+                    EPicFirmware::default()
+                )
             }
             TuningTarget::Preset(_) => {
-                anyhow::bail!("Preset tuning target is not supported on ePIC PowerPlay")
+                anyhow::bail!(
+                    "Preset tuning target is not supported on {}",
+                    EPicFirmware::default()
+                )
             }
         };
 
         let Some(scaling) = scaling_config else {
-            anyhow::bail!("ScalingConfig is required for ePIC PowerPlay")
+            anyhow::bail!("ScalingConfig is required for {}", EPicFirmware::default())
         };
 
         let payload = json!({

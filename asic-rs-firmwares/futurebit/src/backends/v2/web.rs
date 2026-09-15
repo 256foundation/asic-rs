@@ -1,3 +1,5 @@
+use crate::firmware::ApolloFirmware;
+
 use std::{net::IpAddr, time::Duration};
 
 use anyhow::Context;
@@ -75,32 +77,49 @@ impl ApolloGraphQLAPI {
             .timeout(self.timeout)
             .send()
             .await
-            .context("Apollo GraphQL auth request failed")?;
+            .with_context(|| {
+                format!("{} GraphQL auth request failed", ApolloFirmware::default())
+            })?;
 
         if !response.status().is_success() {
-            anyhow::bail!("Apollo GraphQL auth HTTP error: {}", response.status());
+            anyhow::bail!(
+                "{} GraphQL auth HTTP error: {}",
+                ApolloFirmware::default(),
+                response.status()
+            );
         }
 
         let data = response
             .json::<Value>()
             .await
-            .context("Apollo GraphQL auth parse error")?;
+            .with_context(|| format!("{} GraphQL auth parse error", ApolloFirmware::default()))?;
 
         if let Some(errors) = data.get("errors") {
-            anyhow::bail!("Apollo GraphQL auth errors: {errors}");
+            anyhow::bail!(
+                "{} GraphQL auth errors: {errors}",
+                ApolloFirmware::default()
+            );
         }
 
         if let Some(message) = data
             .pointer("/data/Auth/login/error/message")
             .and_then(Value::as_str)
         {
-            anyhow::bail!("Apollo GraphQL auth failed: {message}");
+            anyhow::bail!(
+                "{} GraphQL auth failed: {message}",
+                ApolloFirmware::default()
+            );
         }
 
         data.pointer("/data/Auth/login/result/accessToken")
             .and_then(Value::as_str)
             .map(ToOwned::to_owned)
-            .ok_or_else(|| anyhow::anyhow!("Apollo GraphQL auth returned no access token"))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "{} GraphQL auth returned no access token",
+                    ApolloFirmware::default()
+                )
+            })
     }
 
     async fn ensure_authenticated(&self) -> anyhow::Result<()> {
@@ -140,25 +159,28 @@ impl ApolloGraphQLAPI {
         let response = request
             .send()
             .await
-            .context("Apollo GraphQL request failed")?;
+            .with_context(|| format!("{} GraphQL request failed", ApolloFirmware::default()))?;
 
         if !response.status().is_success() {
-            anyhow::bail!("Apollo GraphQL HTTP error: {}", response.status());
+            anyhow::bail!(
+                "{} GraphQL HTTP error: {}",
+                ApolloFirmware::default(),
+                response.status()
+            );
         }
 
         let json_response = response
             .json::<Value>()
             .await
-            .context("Apollo GraphQL parse error")?;
+            .with_context(|| format!("{} GraphQL parse error", ApolloFirmware::default()))?;
 
         if let Some(errors) = json_response.get("errors") {
-            anyhow::bail!("Apollo GraphQL errors: {errors}");
+            anyhow::bail!("{} GraphQL errors: {errors}", ApolloFirmware::default());
         }
 
-        json_response
-            .get("data")
-            .cloned()
-            .ok_or_else(|| anyhow::anyhow!("Apollo GraphQL returned no data"))
+        json_response.get("data").cloned().ok_or_else(|| {
+            anyhow::anyhow!("{} GraphQL returned no data", ApolloFirmware::default())
+        })
     }
 
     pub async fn get_miner_stats(&self) -> anyhow::Result<Value> {
@@ -188,7 +210,12 @@ impl ApolloGraphQLAPI {
             .and_then(|v| v.as_array())
             .and_then(|items| items.first())
             .cloned()
-            .ok_or_else(|| anyhow::anyhow!("Apollo GraphQL returned no miner stats"))?;
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "{} GraphQL returned no miner stats",
+                    ApolloFirmware::default()
+                )
+            })?;
 
         Ok(stats)
     }
@@ -212,7 +239,8 @@ impl APIClient for ApolloGraphQLAPI {
         match command {
             MinerCommand::GraphQL { command } => self.send_command(command, false, None).await,
             _ => Err(anyhow::anyhow!(
-                "Unsupported command type for Apollo GraphQL client"
+                "Unsupported command type for {} GraphQL client",
+                ApolloFirmware::default()
             )),
         }
     }

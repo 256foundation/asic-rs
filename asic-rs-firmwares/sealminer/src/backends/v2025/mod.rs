@@ -68,7 +68,10 @@ impl APIClient for SealMinerV2025 {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
-            _ => Err(anyhow::anyhow!("Unsupported command type for SealMiner")),
+            _ => Err(anyhow::anyhow!(
+                "Unsupported command type for {}",
+                SealMinerStockFirmware::default()
+            )),
         }
     }
 }
@@ -806,17 +809,29 @@ impl SupportsTuningConfig for SealMinerV2025 {
     ) -> anyhow::Result<bool> {
         match config.target {
             TuningTarget::Manual { .. } => {
-                anyhow::bail!("Manual tuning not supported on SealMiner")
+                anyhow::bail!(
+                    "Manual tuning not supported on {}",
+                    SealMinerStockFirmware::default()
+                )
             }
             TuningTarget::Power(power) => self.set_power_limit(power).await,
             TuningTarget::HashRate(_) => {
-                anyhow::bail!("Hashrate tuning not supported on SealMiner")
+                anyhow::bail!(
+                    "Hashrate tuning not supported on {}",
+                    SealMinerStockFirmware::default()
+                )
             }
             TuningTarget::MiningMode(_) => {
-                anyhow::bail!("Mining mode not supported on SealMiner")
+                anyhow::bail!(
+                    "Mining mode not supported on {}",
+                    SealMinerStockFirmware::default()
+                )
             }
             TuningTarget::Preset(_) => {
-                anyhow::bail!("Preset tuning not supported on SealMiner")
+                anyhow::bail!(
+                    "Preset tuning not supported on {}",
+                    SealMinerStockFirmware::default()
+                )
             }
         }
     }

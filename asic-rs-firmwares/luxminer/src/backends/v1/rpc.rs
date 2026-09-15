@@ -1,3 +1,5 @@
+use crate::firmware::LuxMinerFirmware;
+
 use std::net::IpAddr;
 
 use anyhow;
@@ -387,7 +389,8 @@ impl APIClient for LUXMinerRPCAPI {
                 .await
                 .map_err(|e| anyhow::anyhow!(e.to_string())),
             _ => Err(anyhow::anyhow!(
-                "Unsupported command type for LuxMiner RPC API"
+                "Unsupported command type for {} RPC API",
+                LuxMinerFirmware::default()
             )),
         }
     }
@@ -454,9 +457,10 @@ impl StatusFromLuxMiner for RPCCommandStatus {
             .pointer("/STATUS/0/STATUS")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                RPCError::StatusCheckFailed(
-                    "Failed to parse status from LuxMiner response".to_string(),
-                )
+                RPCError::StatusCheckFailed(format!(
+                    "Failed to parse status from {} response",
+                    LuxMinerFirmware::default()
+                ))
             })?;
 
         let message = json.pointer("/STATUS/0/Msg").and_then(|v| v.as_str());

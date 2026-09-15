@@ -1,3 +1,5 @@
+use crate::firmware::SealMinerStockFirmware;
+
 use std::{net::IpAddr, time::Duration};
 
 use asic_rs_core::{
@@ -92,7 +94,8 @@ impl APIClient for SealMinerWebAPI {
                     .await
             }
             _ => Err(anyhow::anyhow!(
-                "Unsupported command type for SealMiner API"
+                "Unsupported command type for {} API",
+                SealMinerStockFirmware::default()
             )),
         }
     }

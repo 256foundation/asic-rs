@@ -165,7 +165,8 @@ impl PowerPlayWebAPI {
                 miner_ip = %self.ip,
                 endpoint = "/systemupdate",
                 error = error,
-                "ePIC firmware update API returned result=false"
+                "{} firmware update API returned result=false",
+                crate::firmware::EPicFirmware::default()
             );
         }
 

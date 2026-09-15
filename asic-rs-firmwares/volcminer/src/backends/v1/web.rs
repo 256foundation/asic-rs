@@ -1,3 +1,5 @@
+use crate::firmware::VolcMinerStockFirmware;
+
 use std::{net::IpAddr, time::Duration};
 
 use once_cell::sync::OnceCell;
@@ -91,7 +93,10 @@ impl VolcMinerWebAPI {
                 }
                 Ok(Some(serializer.finish()))
             }
-            Some(_) => bail!("VolcMiner POST parameters must be an object or raw form body string"),
+            Some(_) => bail!(
+                "{} POST parameters must be an object or raw form body string",
+                VolcMinerStockFirmware::default()
+            ),
         }
     }
 
@@ -179,7 +184,10 @@ impl VolcMinerWebAPI {
         let response = match *method {
             Method::GET => {
                 if parameters.is_some() {
-                    bail!("VolcMiner GET commands do not support parameters");
+                    bail!(
+                        "{} GET commands do not support parameters",
+                        VolcMinerStockFirmware::default()
+                    );
                 }
                 client
                     .get(url)
@@ -254,8 +262,12 @@ impl VolcMinerWebAPI {
             .rsplit_once("\n\n")
             .map(|(_, body)| body)
             .unwrap_or(&response);
-        let response = serde_json::from_str::<Value>(response.trim())
-            .context("failed to parse VolcMiner password response")?;
+        let response = serde_json::from_str::<Value>(response.trim()).with_context(|| {
+            format!(
+                "failed to parse {} password response",
+                VolcMinerStockFirmware::default()
+            )
+        })?;
 
         Ok(response.get("code").and_then(Value::as_str) == Some("200"))
     }
