@@ -3,7 +3,7 @@ use std::{fmt, fmt::Display, net::IpAddr};
 use asic_rs_core::traits::model::MinerModelAlgorithm;
 use asic_rs_core::{
     data::{
-        command::MinerCommand,
+        command::DiscoveryCommand,
         device::{HashAlgorithm, MinerHardware},
     },
     discovery::HTTP_WEB_ROOT,
@@ -101,7 +101,7 @@ impl Display for EPicFirmware {
 }
 
 impl DiscoveryCommands for EPicFirmware {
-    fn get_discovery_commands(&self) -> Vec<MinerCommand> {
+    fn get_discovery_commands(&self) -> Vec<DiscoveryCommand> {
         vec![HTTP_WEB_ROOT]
     }
 }

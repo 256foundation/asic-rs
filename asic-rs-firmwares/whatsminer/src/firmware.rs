@@ -1,7 +1,7 @@
 use std::{fmt::Display, net::IpAddr};
 
 use asic_rs_core::{
-    data::command::MinerCommand,
+    data::command::{DiscoveryCommand, MinerCommand},
     discovery::{HTTP_WEB_ROOT, RPC_DEVDETAILS},
     errors::ModelSelectionError,
     traits::{
@@ -52,7 +52,7 @@ async fn send_v3_get_device_info(ip: &IpAddr) -> Option<serde_json::Value> {
 }
 
 impl DiscoveryCommands for WhatsMinerFirmware {
-    fn get_discovery_commands(&self) -> Vec<MinerCommand> {
+    fn get_discovery_commands(&self) -> Vec<DiscoveryCommand> {
         vec![RPC_DEVDETAILS, HTTP_WEB_ROOT]
     }
 }

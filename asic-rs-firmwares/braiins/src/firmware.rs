@@ -3,7 +3,7 @@ use std::{fmt, fmt::Display, net::IpAddr};
 use asic_rs_core::traits::model::MinerModelAlgorithm;
 use asic_rs_core::{
     data::{
-        command::MinerCommand,
+        command::DiscoveryCommand,
         device::{HashAlgorithm, MinerHardware},
     },
     discovery::{HTTP_WEB_ROOT, RPC_VERSION},
@@ -87,7 +87,7 @@ impl Display for BraiinsFirmware {
 }
 
 impl DiscoveryCommands for BraiinsFirmware {
-    fn get_discovery_commands(&self) -> Vec<MinerCommand> {
+    fn get_discovery_commands(&self) -> Vec<DiscoveryCommand> {
         vec![RPC_VERSION, HTTP_WEB_ROOT]
     }
 }

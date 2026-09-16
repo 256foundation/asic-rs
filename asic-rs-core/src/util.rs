@@ -193,10 +193,19 @@ pub async fn write_all_with_timeout(
 
 #[tracing::instrument(level = "debug")]
 pub async fn send_rpc_command(ip: &IpAddr, command: &'static str) -> Option<serde_json::Value> {
+    send_rpc_command_on_port(ip, command, 4028).await
+}
+
+#[tracing::instrument(level = "debug", fields(port))]
+pub async fn send_rpc_command_on_port(
+    ip: &IpAddr,
+    command: &'static str,
+    port: u16,
+) -> Option<serde_json::Value> {
     let response = {
-        let mut stream = connect_tcp_stream((*ip, 4028), DEFAULT_RPC_TIMEOUT)
+        let mut stream = connect_tcp_stream((*ip, port), DEFAULT_RPC_TIMEOUT)
             .await
-            .map_err(|_| tracing::debug!("failed to connect to {ip} rpc"))
+            .map_err(|_| tracing::debug!("failed to connect to {ip}:{port} rpc"))
             .ok()?;
 
         let command = format!("{{\"command\":\"{command}\"}}");
@@ -226,11 +235,20 @@ pub async fn send_web_command(
     ip: &IpAddr,
     command: &'static str,
 ) -> Option<(String, HeaderMap, StatusCode)> {
+    send_web_command_on_port(ip, command, 80).await
+}
+
+#[tracing::instrument(level = "debug", fields(port))]
+pub async fn send_web_command_on_port(
+    ip: &IpAddr,
+    command: &'static str,
+    port: u16,
+) -> Option<(String, HeaderMap, StatusCode)> {
     let data = http_client()?
-        .get(format!("http://{ip}{command}"))
+        .get(format!("http://{ip}:{port}{command}"))
         .send()
         .await
-        .map_err(|_| tracing::debug!("failed to connect to {ip} web"))
+        .map_err(|_| tracing::debug!("failed to connect to {ip}:{port} web"))
         .ok()?;
 
     let headers = data.headers().clone();

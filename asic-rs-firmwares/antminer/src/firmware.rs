@@ -3,7 +3,7 @@ use std::{fmt, fmt::Display, net::IpAddr};
 use asic_rs_core::data::device::{HashAlgorithm, MinerHardware};
 use asic_rs_core::traits::model::{MinerModelAlgorithm, UnknownMinerModel};
 use asic_rs_core::{
-    data::command::MinerCommand,
+    data::command::DiscoveryCommand,
     discovery::{HTTP_WEB_ROOT, RPC_VERSION},
     errors::ModelSelectionError,
     traits::{
@@ -83,7 +83,7 @@ impl Display for AntMinerStockFirmware {
 }
 
 impl DiscoveryCommands for AntMinerStockFirmware {
-    fn get_discovery_commands(&self) -> Vec<MinerCommand> {
+    fn get_discovery_commands(&self) -> Vec<DiscoveryCommand> {
         vec![RPC_VERSION, HTTP_WEB_ROOT]
     }
 }
