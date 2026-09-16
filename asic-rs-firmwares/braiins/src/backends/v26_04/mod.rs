@@ -16,7 +16,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
-        firmware::{FirmwareStats, FirmwareUpdate},
+        firmware::{FirmwareStats, FirmwareUpdate, RestoreStockOsResult},
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
@@ -957,7 +957,17 @@ impl FactoryReset for BraiinsV2604 {
     }
 }
 
-impl RestoreStockOs for BraiinsV2604 {}
+#[async_trait]
+impl RestoreStockOs for BraiinsV2604 {
+    async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
+        self.web.restore_stock_os().await?;
+        Ok(RestoreStockOsResult::accepted(None))
+    }
+
+    fn supports_restore_stock_os(&self) -> bool {
+        true
+    }
+}
 
 #[async_trait]
 impl SupportsScalingConfig for BraiinsV2604 {
@@ -1061,10 +1071,15 @@ impl SupportsPresets for BraiinsV2604 {}
 mod tests {
     use std::str::FromStr;
 
+    use anyhow::Context;
     use asic_rs_core::{data::collector::DataCollector, test::api::MockAPIClient};
     use asic_rs_makes_antminer::models::AntMinerModel;
     use macaddr::MacAddr;
     use measurements::Power;
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::{TcpListener, TcpStream},
+    };
 
     use super::*;
     use crate::test::json::v26_04::{
@@ -1073,6 +1088,158 @@ mod tests {
         WEB_NETWORK_COMMAND, WEB_PERFORMANCE_TUNER_STATE_COMMAND, WEB_POOLS_COMMAND,
         WEB_VERSION_COMMAND,
     };
+
+    struct MockHttpServer {
+        port: u16,
+        task: tokio::task::JoinHandle<anyhow::Result<String>>,
+    }
+
+    async fn read_http_request(socket: &mut TcpStream) -> anyhow::Result<String> {
+        let mut request = Vec::new();
+        let mut chunk = [0_u8; 1024];
+
+        loop {
+            if let Some(header_end) = request
+                .windows(4)
+                .position(|window| window == b"\r\n\r\n")
+                .map(|position| position + 4)
+            {
+                let headers = std::str::from_utf8(&request[..header_end])?;
+                let content_length = headers
+                    .lines()
+                    .filter_map(|line| line.split_once(':'))
+                    .find_map(|(name, value)| {
+                        name.eq_ignore_ascii_case("content-length")
+                            .then(|| value.trim().parse::<usize>().ok())
+                            .flatten()
+                    })
+                    .unwrap_or_default();
+                if request.len() >= header_end + content_length {
+                    break;
+                }
+            }
+
+            let bytes_read = socket.read(&mut chunk).await?;
+            if bytes_read == 0 {
+                break;
+            }
+            request.extend_from_slice(&chunk[..bytes_read]);
+        }
+
+        Ok(String::from_utf8(request)?)
+    }
+
+    async fn mock_http_server(
+        status: u16,
+        reason: &'static str,
+        body: &'static str,
+    ) -> anyhow::Result<MockHttpServer> {
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+        let task = tokio::spawn(async move {
+            let (mut socket, _) = tokio::time::timeout(Duration::from_secs(2), listener.accept())
+                .await
+                .context("timed out waiting for HTTP request")??;
+            let request = read_http_request(&mut socket).await?;
+            let response = format!(
+                "HTTP/1.1 {status} {reason}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            socket.write_all(response.as_bytes()).await?;
+            Ok(request)
+        });
+
+        Ok(MockHttpServer { port, task })
+    }
+
+    fn miner_with_mock_web(port: u16) -> BraiinsV2604 {
+        let ip = IpAddr::from([127, 0, 0, 1]);
+        let mut miner = BraiinsV2604::new(ip, AntMinerModel::S21Pro);
+        miner.web = BraiinsWebAPI::new_with_port(ip, port, MinerAuth::from_token("test-token"));
+        miner
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_accepts_empty_204_response() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } = mock_http_server(204, "No Content", "").await?;
+        let miner = miner_with_mock_web(port);
+
+        assert!(miner.supports_restore_stock_os());
+        assert_eq!(
+            miner.restore_stock_os().await?,
+            RestoreStockOsResult::accepted(None)
+        );
+
+        let request = task.await??;
+        assert!(request.starts_with("POST /api/v1/upgrade/restore-stock HTTP/1.1\r\n"));
+        assert!(
+            request
+                .lines()
+                .any(|line| line.eq_ignore_ascii_case("authorization: test-token"))
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn factory_reset_accepts_empty_204_response() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } = mock_http_server(204, "No Content", "").await?;
+        let miner = miner_with_mock_web(port);
+
+        assert!(miner.factory_reset().await?);
+
+        let request = task.await??;
+        assert!(request.starts_with("PUT /api/v1/actions/factory-reset HTTP/1.1\r\n"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_preserves_conflict_and_unsupported_errors() -> anyhow::Result<()> {
+        for (status, reason, body) in [
+            (
+                409,
+                "Conflict",
+                "another system task is already in progress",
+            ),
+            (
+                501,
+                "Not Implemented",
+                "restore stock is not supported on BMM or SD card installations",
+            ),
+        ] {
+            let MockHttpServer { port, task } = mock_http_server(status, reason, body).await?;
+            let miner = miner_with_mock_web(port);
+
+            let error = miner.restore_stock_os().await.unwrap_err();
+
+            let request = task.await??;
+            assert!(request.starts_with("POST /api/v1/upgrade/restore-stock HTTP/1.1\r\n"));
+            let error = error.to_string();
+            assert!(error.contains(&status.to_string()));
+            assert!(error.contains(body));
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn successful_non_empty_response_is_still_decoded() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } =
+            mock_http_server(200, "OK", r#"{"status":"ok"}"#).await?;
+        let miner = miner_with_mock_web(port);
+
+        let response = miner
+            .web
+            .send_command("version", false, None, Method::GET)
+            .await?;
+
+        let request = task.await??;
+        assert!(request.starts_with("GET /api/v1/version HTTP/1.1\r\n"));
+        assert_eq!(response, json!({ "status": "ok" }));
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_braiins_v26_04() {
