@@ -29,6 +29,15 @@ impl LUXMinerRPCAPI {
         }
     }
 
+    #[cfg(test)]
+    pub(super) fn new_with_port(ip: IpAddr, port: u16) -> Self {
+        Self {
+            ip,
+            port,
+            session_token: None,
+        }
+    }
+
     fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
         let status = RPCCommandStatus::from_luxminer(response)?;
         match status.into_result() {
@@ -147,6 +156,10 @@ impl LUXMinerRPCAPI {
 
     pub async fn reset_miner(&self) -> anyhow::Result<Value> {
         self.send_command("resetminer", true, None).await
+    }
+
+    pub async fn uninstall_luxos(&self) -> anyhow::Result<Value> {
+        self.send_command("uninstallluxos", true, None).await
     }
 
     pub async fn sleep(&self) -> anyhow::Result<Value> {
