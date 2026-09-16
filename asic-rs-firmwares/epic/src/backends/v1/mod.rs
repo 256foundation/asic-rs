@@ -1935,7 +1935,10 @@ impl RestoreStockOs for PowerPlayV1 {
         self.restore_stock_os_supported
             .get()
             .copied()
-            .unwrap_or(false)
+            // An empty cell means the OpenAPI probe failed transiently, not
+            // that this build is known to lack the endpoint. Keep the action
+            // available so restore_stock_os() can retry the probe.
+            .unwrap_or(true)
     }
 }
 
@@ -2228,11 +2231,12 @@ mod tests {
             PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
 
         miner.detect_restore_stock_os_support().await;
-        assert!(!miner.supports_restore_stock_os());
+        assert!(miner.supports_restore_stock_os());
         assert_eq!(
             miner.restore_stock_os().await?,
             RestoreStockOsResult::accepted(None)
         );
+        assert!(miner.supports_restore_stock_os());
 
         let requests = task.await??;
         assert!(requests[0].starts_with("GET /openapi.json HTTP/1.1\r\n"));
