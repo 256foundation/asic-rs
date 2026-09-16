@@ -1,7 +1,7 @@
 use std::{fmt::Display, net::IpAddr};
 
 use asic_rs_core::{
-    data::command::MinerCommand,
+    data::command::DiscoveryCommand,
     discovery::RPC_VERSION,
     errors::ModelSelectionError,
     traits::{
@@ -28,7 +28,7 @@ impl Display for MarathonFirmware {
 }
 
 impl DiscoveryCommands for MarathonFirmware {
-    fn get_discovery_commands(&self) -> Vec<MinerCommand> {
+    fn get_discovery_commands(&self) -> Vec<DiscoveryCommand> {
         vec![RPC_VERSION]
     }
 }

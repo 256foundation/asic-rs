@@ -3,9 +3,9 @@ use std::{collections::HashSet, net::IpAddr, panic::AssertUnwindSafe, sync::Arc,
 use futures::{FutureExt, StreamExt, pin_mut, stream::FuturesUnordered};
 
 use crate::{
-    data::command::MinerCommand,
+    data::command::DiscoveryCommand,
     traits::{entry::FirmwareEntry, identification::WebResponse, miner::Miner},
-    util::{send_rpc_command, send_web_command},
+    util::{send_rpc_command_on_port, send_web_command_on_port},
 };
 
 pub async fn get_miner(
@@ -15,7 +15,7 @@ pub async fn get_miner(
     let registry: Arc<[Arc<dyn FirmwareEntry>]> = Arc::new([firmware]);
 
     let found = {
-        let mut commands: HashSet<MinerCommand> = HashSet::new();
+        let mut commands: HashSet<DiscoveryCommand> = HashSet::new();
         for fw in registry.iter() {
             for cmd in fw.get_discovery_commands() {
                 commands.insert(cmd);
@@ -103,17 +103,17 @@ pub async fn get_miner(
 
 async fn get_miner_type_from_command(
     ip: IpAddr,
-    command: MinerCommand,
+    command: DiscoveryCommand,
     registry: Arc<[Arc<dyn FirmwareEntry>]>,
 ) -> Option<Arc<dyn FirmwareEntry>> {
     match command {
-        MinerCommand::RPC { command, .. } => {
-            let response = send_rpc_command(&ip, command).await?;
+        DiscoveryCommand::RPC { command, port } => {
+            let response = send_rpc_command_on_port(&ip, command, port).await?;
             let upper = response.to_string().to_uppercase();
             registry.iter().find(|fw| fw.identify_rpc(&upper)).cloned()
         }
-        MinerCommand::WebAPI { command, .. } => {
-            let (body, headers, status) = send_web_command(&ip, command).await?;
+        DiscoveryCommand::Web { command, port } => {
+            let (body, headers, status) = send_web_command_on_port(&ip, command, port).await?;
             let auth_header = headers
                 .get("www-authenticate")
                 .and_then(|h| h.to_str().ok())
@@ -138,6 +138,5 @@ async fn get_miner_type_from_command(
                 .find(|fw| fw.identify_web(&web_resp))
                 .cloned()
         }
-        _ => None,
     }
 }

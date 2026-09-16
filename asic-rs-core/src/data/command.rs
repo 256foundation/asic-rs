@@ -3,6 +3,14 @@ use serde_json::Value;
 
 use crate::errors::RPCError;
 
+/// Command sent during miner discovery. Carries an explicit port so non-standard
+/// deployments can probe on remapped ports without changing global defaults.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DiscoveryCommand {
+    RPC { command: &'static str, port: u16 },
+    Web { command: &'static str, port: u16 },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MinerCommand {
     RPC {

@@ -1,7 +1,7 @@
 use std::{fmt::Display, net::IpAddr};
 
 use asic_rs_core::{
-    data::command::MinerCommand,
+    data::command::DiscoveryCommand,
     discovery::{HTTP_WEB_ROOT, RPC_VERSION},
     errors::ModelSelectionError,
     traits::{
@@ -27,7 +27,7 @@ impl Display for AvalonStockFirmware {
     }
 }
 impl DiscoveryCommands for AvalonStockFirmware {
-    fn get_discovery_commands(&self) -> Vec<MinerCommand> {
+    fn get_discovery_commands(&self) -> Vec<DiscoveryCommand> {
         vec![RPC_VERSION, HTTP_WEB_ROOT]
     }
 }
