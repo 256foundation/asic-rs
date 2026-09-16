@@ -276,6 +276,27 @@ impl VnishWebAPI {
             .map(|_| true)
     }
 
+    /// Remove VNish and restore the manufacturer stock OS.
+    ///
+    /// VNish 1.2.x expects this request without a body and reports the delay
+    /// before its background restore task reboots the miner.
+    pub async fn restore_stock_os(&self) -> anyhow::Result<u64> {
+        let response = self
+            .send_command("firmware/remove", true, None, Method::POST)
+            .await?;
+
+        response
+            .get("after")
+            .and_then(Value::as_u64)
+            .ok_or_else(|| {
+                VnishError::ParseError(
+                    "firmware/remove response is missing an unsigned integer 'after' field"
+                        .to_string(),
+                )
+                .into()
+            })
+    }
+
     async fn read_log(&self, log_type: &str) -> anyhow::Result<String> {
         self.ensure_authenticated().await?;
 

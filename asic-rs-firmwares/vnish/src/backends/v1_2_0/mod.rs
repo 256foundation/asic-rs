@@ -19,6 +19,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::DeviceInfo,
         fan::FanData,
+        firmware::RestoreStockOsResult,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
@@ -1195,7 +1196,17 @@ impl FactoryReset for VnishV120 {
     }
 }
 
-impl RestoreStockOs for VnishV120 {}
+#[async_trait]
+impl RestoreStockOs for VnishV120 {
+    async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
+        let reboot_after_seconds = self.web.restore_stock_os().await?;
+        Ok(RestoreStockOsResult::accepted(Some(reboot_after_seconds)))
+    }
+
+    fn supports_restore_stock_os(&self) -> bool {
+        true
+    }
+}
 
 #[async_trait]
 impl SupportsScalingConfig for VnishV120 {
@@ -1333,6 +1344,55 @@ mod tests {
     use asic_rs_makes_antminer::models::AntMinerModel;
 
     use super::*;
+    use crate::backends::test::{MockHttpServer, mock_http_server};
+
+    fn miner_with_mock_web(port: u16) -> VnishV120 {
+        let ip = IpAddr::from([127, 0, 0, 1]);
+        let mut miner = VnishV120::new(ip, AntMinerModel::S19);
+        miner.web = VnishWebAPI::new(ip, port, MinerAuth::from_token("test-token"));
+        miner
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_sends_bodyless_request_and_parses_delay() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } = mock_http_server(200, "OK", r#"{"after":3}"#).await?;
+        let miner = miner_with_mock_web(port);
+
+        assert!(miner.supports_restore_stock_os());
+        assert_eq!(
+            miner.restore_stock_os().await?,
+            RestoreStockOsResult::accepted(Some(3))
+        );
+
+        let request = task.await??;
+        let (headers, body) = request
+            .split_once("\r\n\r\n")
+            .expect("complete HTTP request");
+        assert!(headers.starts_with("POST /api/v1/firmware/remove HTTP/1.1\r\n"));
+        assert!(
+            headers
+                .lines()
+                .any(|line| { line.eq_ignore_ascii_case("authorization: Bearer test-token") })
+        );
+        assert!(body.is_empty(), "VNish 1.2.x request body was {body:?}");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_surfaces_incompatible_model() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } =
+            mock_http_server(400, "Bad Request", r#"{"error":"unsupported model"}"#).await?;
+        let miner = miner_with_mock_web(port);
+
+        let error = miner.restore_stock_os().await.unwrap_err();
+
+        let request = task.await??;
+        assert!(request.starts_with("POST /api/v1/firmware/remove HTTP/1.1\r\n"));
+        assert!(error.to_string().contains("HTTP error: 400"));
+
+        Ok(())
+    }
 
     /// The 1.2.x backend carries the same hashrate parsing as 1.3.x, so it had
     /// the same hardcoded SHA-256/GH-per-second assumption. `hr_measure` is in

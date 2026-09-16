@@ -11,6 +11,9 @@ pub use v1_3_0::VnishV130;
 pub mod v1_2_0;
 pub mod v1_3_0;
 
+#[cfg(test)]
+mod test;
+
 pub struct Vnish;
 
 fn parse_devfee_connected(pools: &Value) -> Option<bool> {
