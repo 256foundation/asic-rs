@@ -79,3 +79,36 @@ impl FirmwareEntry for LuxMinerFirmware {
         Ok(miner)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{str::FromStr, sync::Arc};
+
+    use anyhow::Context;
+    use asic_rs_core::test::util::get_miner;
+
+    use super::*;
+
+    #[tokio::test]
+    #[ignore = "DESTRUCTIVE: restores stock OS; set MINER_IP"]
+    async fn restore_stock_os_live_test_auto_detect() -> anyhow::Result<()> {
+        let ip_str = std::env::var("MINER_IP").context("MINER_IP is not set")?;
+        let ip =
+            IpAddr::from_str(&ip_str).with_context(|| format!("invalid MINER_IP: {ip_str}"))?;
+
+        let miner = get_miner(ip, Arc::new(LuxMinerFirmware::default()))
+            .await?
+            .context("no miner detected at MINER_IP")?;
+
+        anyhow::ensure!(
+            miner.supports_restore_stock_os(),
+            "miner does not advertise restore stock OS support"
+        );
+        let result = miner.restore_stock_os().await?;
+
+        println!("restore stock OS result: {result:?}");
+        assert!(result.accepted);
+
+        Ok(())
+    }
+}
