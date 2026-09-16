@@ -11,7 +11,6 @@ use asic_rs_core::{
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
         miner::{HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
-        model::MinerModel,
     },
 };
 use asic_rs_makes_elphapex::{make::ElphapexMake, models::ElphapexModel};
@@ -81,7 +80,9 @@ async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::V
 
 #[async_trait]
 impl MinerFirmware for ElphapexStockFirmware {
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel, ModelSelectionError> {
+    type Model = ElphapexModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let default = ElphapexV1::default_auth();
         get_model_with_auth(ip, &default).await
     }

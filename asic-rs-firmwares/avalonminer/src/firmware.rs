@@ -11,7 +11,6 @@ use asic_rs_core::{
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
         miner::{Miner, MinerAuth, MinerConstructor},
-        model::MinerModel,
     },
     util,
 };
@@ -34,7 +33,9 @@ impl DiscoveryCommands for AvalonStockFirmware {
 
 #[async_trait]
 impl MinerFirmware for AvalonStockFirmware {
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel + Send, ModelSelectionError> {
+    type Model = asic_rs_makes_avalon::models::AvalonMinerModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let response = util::send_rpc_command(&ip, "version").await;
 
         match response {

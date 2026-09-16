@@ -173,9 +173,11 @@ async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::V
 
 #[async_trait]
 impl MinerFirmware for AntMinerStockFirmware {
+    type Model = AntMinerCompatibleModel;
+
     /// Uses default credentials. For custom credentials, use `build_miner`
     /// which passes auth through to the underlying digest-auth requests.
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel + Send, ModelSelectionError> {
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let default = crate::backends::v2020::AntMinerV2020::default_auth();
         get_model_with_auth(ip, &default).await
     }

@@ -11,7 +11,6 @@ use asic_rs_core::{
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
         miner::{HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
-        model::MinerModel,
     },
 };
 use asic_rs_makes_volcminer::{make::VolcMinerMake, models::VolcMinerModel};
@@ -80,7 +79,9 @@ async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::V
 
 #[async_trait]
 impl MinerFirmware for VolcMinerStockFirmware {
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel + Send, ModelSelectionError> {
+    type Model = VolcMinerModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let default = VolcMinerV1::default_auth();
         get_model_with_auth(ip, &default).await
     }

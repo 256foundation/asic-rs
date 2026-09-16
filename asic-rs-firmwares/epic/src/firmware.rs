@@ -9,12 +9,13 @@ use asic_rs_core::{
     discovery::HTTP_WEB_ROOT,
     errors::ModelSelectionError,
     traits::{
+        auth::HasAuth,
         discovery::DiscoveryCommands,
         entry::FirmwareEntry,
         firmware::MinerFirmware,
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
-        miner::{Miner, MinerAuth, MinerConstructor},
+        miner::{Miner, MinerAuth},
         model::{MinerModel, UnknownMinerModel},
     },
     util::build_discovery_client,
@@ -108,7 +109,9 @@ impl DiscoveryCommands for EPicFirmware {
 
 #[async_trait]
 impl MinerFirmware for EPicFirmware {
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel + Send, ModelSelectionError> {
+    type Model = EPicCompatibleModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let url = format!("http://{}:4028/capabilities", ip);
         let response = build_discovery_client()?
             .get(&url)
@@ -195,10 +198,11 @@ impl FirmwareEntry for EPicFirmware {
     ) -> Result<Box<dyn Miner>, ModelSelectionError> {
         let model = EPicFirmware::get_model(ip).await?;
         let version = EPicFirmware::get_version(ip).await;
-        let mut miner = crate::backends::PowerPlay::new(ip, model, version);
+        let mut miner = crate::backends::PowerPlay::build(ip, model, version);
         if let Some(auth) = auth {
             miner.set_auth(auth.clone());
         }
-        Ok(miner)
+        miner.detect_restore_stock_os_support().await;
+        Ok(Box::new(miner))
     }
 }

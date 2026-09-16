@@ -11,7 +11,6 @@ use asic_rs_core::{
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
         miner::{Miner, MinerAuth, MinerConstructor},
-        model::MinerModel,
     },
     util,
 };
@@ -35,7 +34,9 @@ impl DiscoveryCommands for BitaxeFirmware {
 
 #[async_trait]
 impl MinerFirmware for BitaxeFirmware {
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel + Send, ModelSelectionError> {
+    type Model = asic_rs_makes_bitaxe::models::BitaxeModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let response = util::send_web_command(&ip, "/api/system/info").await;
 
         match response {

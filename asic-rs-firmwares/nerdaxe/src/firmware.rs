@@ -11,7 +11,6 @@ use asic_rs_core::{
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
         miner::{Miner, MinerAuth, MinerConstructor},
-        model::MinerModel,
     },
     util,
 };
@@ -35,7 +34,9 @@ impl DiscoveryCommands for NerdAxeFirmware {
 
 #[async_trait]
 impl MinerFirmware for NerdAxeFirmware {
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel + Send, ModelSelectionError> {
+    type Model = asic_rs_makes_nerdaxe::models::NerdAxeModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let (text, _, _) = util::send_web_command(&ip, "/api/system/info")
             .await
             .ok_or(ModelSelectionError::NoModelResponse)?;
