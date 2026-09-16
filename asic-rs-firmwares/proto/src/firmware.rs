@@ -38,9 +38,9 @@ impl DiscoveryCommands for ProtoFirmware {
 
 #[async_trait]
 impl MinerFirmware for ProtoFirmware {
-    async fn get_model(
-        ip: IpAddr,
-    ) -> Result<impl asic_rs_core::traits::model::MinerModel, ModelSelectionError> {
+    type Model = asic_rs_makes_proto::models::ProtoModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let (body, _, _) = send_web_command(&ip, WEB_SYSTEM)
             .await
             .ok_or(ModelSelectionError::NoModelResponse)?;

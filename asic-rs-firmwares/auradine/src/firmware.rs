@@ -11,7 +11,6 @@ use asic_rs_core::{
         identification::FirmwareIdentification,
         make::MinerMake,
         miner::{Miner, MinerAuth, MinerConstructor},
-        model::MinerModel,
     },
     util,
 };
@@ -57,7 +56,9 @@ fn parse_semver_like(version_str: &str) -> Option<semver::Version> {
 
 #[async_trait]
 impl MinerFirmware for AuradineFirmware {
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel + Send, ModelSelectionError> {
+    type Model = asic_rs_makes_auradine::models::AuradineModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let data = util::send_rpc_command(&ip, "devdetails")
             .await
             .ok_or(ModelSelectionError::NoModelResponse)?;

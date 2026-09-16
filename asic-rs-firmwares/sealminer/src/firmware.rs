@@ -11,7 +11,6 @@ use asic_rs_core::{
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
         miner::{HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
-        model::MinerModel,
     },
     util::{build_discovery_client, send_rpc_command},
 };
@@ -120,7 +119,9 @@ async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::V
 
 #[async_trait]
 impl MinerFirmware for SealMinerStockFirmware {
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel + Send, ModelSelectionError> {
+    type Model = SealMinerModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let default = crate::backends::v2025::SealMinerV2025::default_auth();
         get_model_with_auth(ip, &default).await
     }

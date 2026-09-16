@@ -109,7 +109,9 @@ impl DiscoveryCommands for EPicFirmware {
 
 #[async_trait]
 impl MinerFirmware for EPicFirmware {
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel + Send, ModelSelectionError> {
+    type Model = EPicCompatibleModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let url = format!("http://{}:4028/capabilities", ip);
         let response = build_discovery_client()?
             .get(&url)

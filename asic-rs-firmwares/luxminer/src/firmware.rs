@@ -11,7 +11,6 @@ use asic_rs_core::{
         identification::{FirmwareIdentification, WebResponse},
         make::MinerMake,
         miner::{Miner, MinerAuth, MinerConstructor},
-        model::MinerModel,
     },
     util,
 };
@@ -35,7 +34,9 @@ impl DiscoveryCommands for LuxMinerFirmware {
 
 #[async_trait]
 impl MinerFirmware for LuxMinerFirmware {
-    async fn get_model(ip: IpAddr) -> Result<impl MinerModel + Send, ModelSelectionError> {
+    type Model = asic_rs_makes_antminer::models::AntMinerModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let data = util::send_rpc_command(&ip, "version")
             .await
             .ok_or(ModelSelectionError::NoModelResponse)?;
