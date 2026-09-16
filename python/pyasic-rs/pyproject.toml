@@ -14,7 +14,7 @@ documentation = "https://256foundation.github.io/asic-rs"
 issues = "https://github.com/256foundation/asic-rs/issues"
 
 license = "Apache-2.0"
-readme = "docs-shared/guide.md"
+readme = "../../docs-shared/guide.md"
 
 requires-python = ">=3.11, <4.0"
 dependencies = [
@@ -57,11 +57,12 @@ test = [
 package-name = "pyasic_rs"
 module-name = "pyasic_rs.asic_rs"
 features = ["python"]
-python-source = "python"
+python-source = "."
+manifest-path = "Cargo.toml"
 
 [tool.mypy]
-files = ["python/pyasic_rs"]
-mypy_path = ["python"]
+files = ["$MYPY_CONFIG_FILE_DIR/pyasic_rs"]
+mypy_path = ["$MYPY_CONFIG_FILE_DIR"]
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 python_version = "3.11"
@@ -69,7 +70,8 @@ strict = true
 
 [[tool.mypy.overrides]]
 module = "pyasic_rs.asic_rs"
-disable_error_code = ["no-redef"]
+# PyO3 generates enum variants and equality methods with narrower argument types.
+disable_error_code = ["no-redef", "override"]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

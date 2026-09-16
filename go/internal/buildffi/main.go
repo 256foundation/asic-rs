@@ -76,7 +76,7 @@ func run() error {
 		return fmt.Errorf("Cargo reported no asic-rs-ffi libraries")
 	}
 	output := filepath.Join(*root, "go", "asic_go")
-	if err := install(filepath.Join(*root, "asic-rs-ffi", "include", "asic_rs_ffi.h"), filepath.Join(output, "include")); err != nil {
+	if err := install(filepath.Join(*root, "c", "asic-rs-ffi", "include", "asic_rs_ffi.h"), filepath.Join(output, "include")); err != nil {
 		return err
 	}
 	for _, path := range artifacts {

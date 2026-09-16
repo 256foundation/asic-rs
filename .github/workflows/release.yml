@@ -57,7 +57,7 @@ jobs:
 
           sed -i '/^\[workspace\.package\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' Cargo.toml
           sed -i '/^\[workspace\.dependencies\]/,/^\[/{s/version = "'"$CURRENT_VERSION"'"/version = "'"$VERSION"'"/g}' Cargo.toml
-          sed -i '/^\[project\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' pyproject.toml
+          sed -i '/^\[project\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' python/pyasic-rs/pyproject.toml
 
           declare -A CARGO_MANIFESTS=()
           CARGO_MANIFESTS["./Cargo.toml"]=1
@@ -84,7 +84,7 @@ jobs:
             codeberg.org/msrd0/cargo-doc2readme:nightly \
             cargo doc2readme --expand-macros
 
-          git add Cargo.toml pyproject.toml README.md
+          git add Cargo.toml python/pyasic-rs/pyproject.toml README.md
 
           while IFS= read -r -d '' lockfile; do
             git add "$lockfile"
@@ -198,7 +198,8 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter
+          working-directory: python/pyasic-rs
+          args: --release --out ../../dist --find-interpreter
           sccache: true
           manylinux: ${{ matrix.manylinux }}
 
@@ -220,8 +221,9 @@ jobs:
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
+          working-directory: python/pyasic-rs
           command: sdist
-          args: --out dist
+          args: --out ../../dist
 
       - name: Upload sdist
         uses: actions/upload-artifact@v6
@@ -244,7 +246,7 @@ jobs:
       - name: Publish crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo workspaces publish --from-git --yes --allow-dirty --publish-interval 15
+        run: cargo workspaces publish --from-git --yes --allow-dirty --publish-interval 15 --exclude pyasic-rs --exclude asic-rs-ffi
 
   release:
     runs-on: ubuntu-24.04

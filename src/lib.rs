@@ -39,5 +39,3 @@ pub use asic_rs_firmwares_whatsminer as whatsminer;
 
 pub mod factory;
 pub mod listener;
-#[cfg(feature = "python")]
-mod python;

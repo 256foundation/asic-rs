@@ -1,0 +1,73 @@
+[package]
+name = "pyasic-rs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+keywords.workspace = true
+description = "Python bindings for asic-rs"
+publish = false
+
+[lib]
+name = "asic_rs"
+crate-type = ["cdylib"]
+
+[features]
+default = [
+    "antminer",
+    "futurebit",
+    "auradine",
+    "avalonminer",
+    "bitaxe",
+    "braiins",
+    "elphapex",
+    "epic",
+    "luxminer",
+    "marathon",
+    "nerdaxe",
+    "proto",
+    "sealminer",
+    "vnish",
+    "volcminer",
+    "whatsminer",
+]
+
+python = ["core"]
+core = ["asic-rs/core", "asic-rs/python"]
+antminer = ["core", "asic-rs/antminer"]
+futurebit = ["core", "asic-rs/futurebit"]
+auradine = ["core", "asic-rs/auradine"]
+avalonminer = ["core", "asic-rs/avalonminer"]
+bitaxe = ["core", "asic-rs/bitaxe"]
+braiins = ["core", "asic-rs/braiins"]
+elphapex = ["core", "asic-rs/elphapex"]
+epic = ["core", "asic-rs/epic"]
+luxminer = ["core", "asic-rs/luxminer"]
+marathon = ["core", "asic-rs/marathon"]
+nerdaxe = ["core", "asic-rs/nerdaxe"]
+proto = ["core", "asic-rs/proto"]
+sealminer = ["core", "asic-rs/sealminer"]
+vnish = ["core", "asic-rs/vnish"]
+volcminer = ["core", "asic-rs/volcminer"]
+whatsminer = ["core", "asic-rs/whatsminer"]
+
+[dependencies]
+asic-rs = { path = "../..", default-features = false }
+asic-rs-core.workspace = true
+asic-rs-pydantic.workspace = true
+anyhow.workspace = true
+async-stream.workspace = true
+futures.workspace = true
+measurements.workspace = true
+pyo3.workspace = true
+pyo3-async-runtimes.workspace = true
+pyo3-log.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+
+[build-dependencies]
+pyo3-build-config.workspace = true
+
+[lints]
+workspace = true

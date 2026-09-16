@@ -1211,7 +1211,8 @@ mod tests {
     #[test]
     fn go_configuration_fixtures_are_valid_rust_inputs() {
         let fixtures: serde_json::Value =
-            serde_json::from_str(include_str!("../../go/asic_go/testdata/configs.json")).unwrap();
+            serde_json::from_str(include_str!("../../../go/asic_go/testdata/configs.json"))
+                .unwrap();
         let zone: TimezoneConfig = serde_json::from_value(fixtures["timezone"].clone()).unwrap();
         assert!(zone.available.is_empty());
         let group: PoolGroupConfig =

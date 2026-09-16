@@ -7,15 +7,13 @@ use std::{
 };
 
 use crate::{
-    factory::MinerFactory as MinerFactory_Base,
-    python::{
-        miner::Miner,
-        typing::{
-            CancelAction, PyAsyncIterator, PyAwaitable, abortable_future_into_py_with_cancel,
-            future_into_py,
-        },
+    miner::Miner,
+    typing::{
+        CancelAction, PyAsyncIterator, PyAwaitable, abortable_future_into_py_with_cancel,
+        future_into_py,
     },
 };
+use asic_rs::factory::MinerFactory as MinerFactory_Base;
 use asic_rs_core::traits::miner::Miner as MinerTrait;
 use asic_rs_pydantic::py_to_string;
 use futures::{Stream, StreamExt};

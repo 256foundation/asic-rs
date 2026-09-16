@@ -59,7 +59,8 @@ members = [
     "asic-rs-firmwares/whatsminer",
     "asic-rs-pydantic",
     "asic-rs-pydantic-macros",
-    "asic-rs-ffi",
+    "c/asic-rs-ffi",
+    "python/pyasic-rs",
 ]
 
 [workspace.dependencies]
@@ -194,10 +195,6 @@ volcminer = ["dep:asic-rs-firmwares-volcminer"]
 whatsminer = ["dep:asic-rs-firmwares-whatsminer"]
 
 python = [
-    "dep:asic-rs-pydantic",
-    "dep:pyo3",
-    "dep:pyo3-async-runtimes",
-    "dep:pyo3-log",
     "asic-rs-core/python",
     "asic-rs-makes-antminer/python",
     "asic-rs-makes-auradine/python",
@@ -233,7 +230,6 @@ python = [
 
 [dependencies]
 asic-rs-core.workspace = true
-asic-rs-pydantic = { workspace = true, optional = true }
 
 asic-rs-makes-antminer.workspace = true
 asic-rs-makes-auradine.workspace = true
@@ -280,13 +276,6 @@ async-stream.workspace = true
 tracing.workspace = true
 rlimit.workspace = true
 
-pyo3 = {workspace = true, optional = true}
-pyo3-async-runtimes = {workspace = true, optional = true}
-pyo3-log = {workspace = true, optional = true}
-
-[build-dependencies]
-pyo3-build-config.workspace = true
-
 [lints]
 workspace = true
 
@@ -300,4 +289,4 @@ strip = true
 
 [lib]
 name = "asic_rs"
-crate-type = ["cdylib", "lib"]
+crate-type = ["lib"]

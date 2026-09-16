@@ -1,9 +1,12 @@
+from pathlib import Path
 import subprocess
 import sys
 
 
 def run(*args: str) -> None:
-    subprocess.run(args, check=True)
+    subprocess.run(
+        args, check=True, cwd=Path(__file__).resolve().parents[1] / "python/pyasic-rs"
+    )
 
 
 def main() -> int:
@@ -22,7 +25,7 @@ def main() -> int:
         "--extras",
         "test",
     )
-    run(*uv, "run", "--extra", "test", "pytest", "python/tests")
+    run(*uv, "run", "--extra", "test", "pytest", "tests")
     return 0
 
 
