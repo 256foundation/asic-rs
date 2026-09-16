@@ -14,6 +14,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
+        firmware::RestoreStockOsResult,
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
@@ -1198,7 +1199,17 @@ impl FactoryReset for LuxMinerV1 {
     }
 }
 
-impl RestoreStockOs for LuxMinerV1 {}
+#[async_trait]
+impl RestoreStockOs for LuxMinerV1 {
+    async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
+        self.rpc.uninstall_luxos().await?;
+        Ok(RestoreStockOsResult::accepted(None))
+    }
+
+    fn supports_restore_stock_os(&self) -> bool {
+        true
+    }
+}
 
 #[async_trait]
 impl SupportsScalingConfig for LuxMinerV1 {
@@ -1258,6 +1269,68 @@ mod tests {
         CONFIG, DEVS, EVENTS, FANS, HEALTHCHIPGET_0, HEALTHCHIPGET_1, HEALTHCHIPGET_2, POOLS,
         POWER, PROFILES, STATS, SUMMARY, TEMPS, VERSION, VOLTAGEGET_0, VOLTAGEGET_1, VOLTAGEGET_2,
     };
+
+    struct MockRestoreServer {
+        port: u16,
+        requests: Arc<Mutex<Vec<Value>>>,
+        task: tokio::task::JoinHandle<anyhow::Result<()>>,
+    }
+
+    async fn mock_restore_server(
+        uninstall_status: &'static str,
+        uninstall_message: &'static str,
+    ) -> anyhow::Result<MockRestoreServer> {
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let server_requests = Arc::clone(&requests);
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+
+        let task = tokio::spawn(async move {
+            for request_idx in 0..2 {
+                let (socket, _) =
+                    tokio::time::timeout(std::time::Duration::from_secs(2), listener.accept())
+                        .await
+                        .map_err(|_| {
+                            anyhow::anyhow!("timed out waiting for request {}", request_idx + 1)
+                        })??;
+                let (reader, mut writer) = socket.into_split();
+                let mut reader = BufReader::new(reader);
+                let mut line = String::new();
+                reader.read_line(&mut line).await?;
+
+                let request: Value = serde_json::from_str(line.trim_end())?;
+                let command = request
+                    .get("command")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                server_requests.lock().unwrap().push(request.clone());
+
+                let response = match command {
+                    "session" => json!({
+                        "SESSION": [{ "SessionID": "test-session-id" }],
+                        "STATUS": [{ "STATUS": "S", "Msg": "Session found" }]
+                    }),
+                    "uninstallluxos" => json!({
+                        "STATUS": [{
+                            "STATUS": uninstall_status,
+                            "Msg": uninstall_message
+                        }]
+                    }),
+                    other => anyhow::bail!("unexpected command: {other}"),
+                };
+
+                writer.write_all(format!("{response}\n").as_bytes()).await?;
+            }
+
+            Ok(())
+        });
+
+        Ok(MockRestoreServer {
+            port,
+            requests,
+            task,
+        })
+    }
 
     #[tokio::test]
 
@@ -1645,6 +1718,65 @@ mod tests {
         assert_eq!(
             requests[3],
             ("removegroup".to_string(), Some("0".to_string()))
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_sends_authenticated_uninstall_command() -> anyhow::Result<()> {
+        let MockRestoreServer {
+            port,
+            requests,
+            task,
+        } = mock_restore_server("S", "Uninstalling LuxOS").await?;
+        let mut miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19KPro);
+        miner.rpc = LUXMinerRPCAPI::new_with_port(miner.ip, port);
+
+        assert!(miner.supports_restore_stock_os());
+        assert_eq!(
+            miner.restore_stock_os().await?,
+            RestoreStockOsResult::accepted(None)
+        );
+
+        task.await??;
+        assert_eq!(
+            *requests.lock().unwrap(),
+            vec![
+                json!({ "command": "session" }),
+                json!({
+                    "command": "uninstallluxos",
+                    "parameter": "test-session-id"
+                })
+            ]
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_returns_rpc_rejection() -> anyhow::Result<()> {
+        let MockRestoreServer {
+            port,
+            requests,
+            task,
+        } = mock_restore_server("E", "Uninstall denied").await?;
+        let mut miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19KPro);
+        miner.rpc = LUXMinerRPCAPI::new_with_port(miner.ip, port);
+
+        let error = miner.restore_stock_os().await.unwrap_err();
+
+        task.await??;
+        assert!(error.to_string().contains("Uninstall denied"));
+        assert_eq!(
+            *requests.lock().unwrap(),
+            vec![
+                json!({ "command": "session" }),
+                json!({
+                    "command": "uninstallluxos",
+                    "parameter": "test-session-id"
+                })
+            ]
         );
 
         Ok(())
