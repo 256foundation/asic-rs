@@ -57,11 +57,16 @@ impl WebAPIClient for BraiinsWebAPI {
 
         let status = response.status();
         if status.is_success() {
-            let json_data = response
-                .json()
+            let body = response
+                .bytes()
                 .await
                 .map_err(|e| BraiinsError::ParseError(e.to_string()))?;
-            Ok(json_data)
+            if body.iter().all(|byte| byte.is_ascii_whitespace()) {
+                Ok(Value::Null)
+            } else {
+                serde_json::from_slice(&body)
+                    .map_err(|e| BraiinsError::ParseError(e.to_string()).into())
+            }
         } else {
             // The API reports why it rejected a request in the body.
             let status = status.as_u16();
@@ -82,6 +87,13 @@ impl BraiinsWebAPI {
             bearer_token: RwLock::new(None),
             auth,
         }
+    }
+
+    #[cfg(test)]
+    pub(super) fn new_with_port(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
+        let mut api = Self::new(ip, auth);
+        api.port = port;
+        api
     }
 
     pub fn set_auth(&mut self, auth: MinerAuth) {
@@ -167,6 +179,16 @@ impl BraiinsWebAPI {
 
         let logs = response.text().await?;
         Ok(logs)
+    }
+
+    /// Start restoring the manufacturer stock OS.
+    ///
+    /// A successful response only confirms that the background restoration
+    /// task started; the miner becomes unreachable while it proceeds.
+    pub async fn restore_stock_os(&self) -> anyhow::Result<()> {
+        self.send_command("upgrade/restore-stock", true, None, Method::POST)
+            .await?;
+        Ok(())
     }
 
     /// Execute the actual HTTP request
