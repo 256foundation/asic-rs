@@ -99,8 +99,8 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "requires live miner; set MINER_IP"]
-    async fn parse_data_live_test_auto_detect() -> anyhow::Result<()> {
+    #[ignore = "DESTRUCTIVE: restores stock OS; set MINER_IP"]
+    async fn restore_stock_os_live_test_auto_detect() -> anyhow::Result<()> {
         let ip_str = std::env::var("MINER_IP").context("MINER_IP is not set")?;
         let ip =
             IpAddr::from_str(&ip_str).with_context(|| format!("invalid MINER_IP: {ip_str}"))?;
@@ -108,21 +108,15 @@ mod tests {
         let miner = get_miner(ip, Arc::new(VnishFirmware::default()))
             .await?
             .context("no miner detected at MINER_IP")?;
-        let miner_data = miner.get_data().await;
-        let mut miner_data_print = miner_data.clone();
-        for hashboard in &mut miner_data_print.hashboards {
-            hashboard.chips.clear();
-        }
-        println!("data {}", serde_json::to_string_pretty(&miner_data_print)?);
 
-        println!(
-            "pools {}",
-            serde_json::to_string_pretty(&miner.get_pools_config().await?)?
+        anyhow::ensure!(
+            miner.supports_restore_stock_os(),
+            "miner does not advertise restore stock OS support"
         );
+        let result = miner.restore_stock_os().await?;
 
-        assert_eq!(miner_data.ip, ip);
-        assert!(miner_data.timestamp > 0);
-        assert!(!miner_data.schema_version.is_empty());
+        println!("restore stock OS result: {result:?}");
+        assert!(result.accepted);
 
         Ok(())
     }
