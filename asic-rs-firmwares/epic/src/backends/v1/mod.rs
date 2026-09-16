@@ -18,7 +18,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
-        firmware::FirmwareImage,
+        firmware::{FirmwareImage, RestoreStockOsResult},
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
@@ -47,6 +47,7 @@ pub struct PowerPlayV1 {
     ip: IpAddr,
     web: PowerPlayWebAPI,
     device_info: DeviceInfo,
+    restore_stock_os_supported: bool,
 }
 
 impl PowerPlayV1 {
@@ -57,7 +58,19 @@ impl PowerPlayV1 {
             ip,
             web: PowerPlayWebAPI::new(ip, 4028, auth),
             device_info: DeviceInfo::new(model, EPicFirmware::default(), hash_algorithm),
+            restore_stock_os_supported: false,
         }
+    }
+
+    #[cfg(test)]
+    fn new_with_port(ip: IpAddr, model: impl MinerModel, port: u16) -> Self {
+        let mut miner = Self::new(ip, model);
+        miner.web = PowerPlayWebAPI::new(ip, port, Self::default_auth());
+        miner
+    }
+
+    pub(crate) async fn detect_restore_stock_os_support(&mut self) {
+        self.restore_stock_os_supported = self.web.supports_uninstall().await.unwrap_or(false);
     }
 
     fn coin_type_for_hash_algorithm(hash_algorithm: HashAlgorithm) -> &'static str {
@@ -1899,7 +1912,21 @@ impl FactoryReset for PowerPlayV1 {
     }
 }
 
-impl RestoreStockOs for PowerPlayV1 {}
+#[async_trait]
+impl RestoreStockOs for PowerPlayV1 {
+    async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
+        if !self.restore_stock_os_supported {
+            anyhow::bail!("Restoring the stock OS is not supported by this UMC OS build");
+        }
+
+        self.web.uninstall().await?;
+        Ok(RestoreStockOsResult::accepted(None))
+    }
+
+    fn supports_restore_stock_os(&self) -> bool {
+        self.restore_stock_os_supported
+    }
+}
 
 #[async_trait]
 impl UpgradeFirmware for PowerPlayV1 {
@@ -1948,6 +1975,10 @@ mod tests {
         traits::firmware::MinerFirmware,
     };
     use asic_rs_makes_antminer::models::AntMinerModel;
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::{TcpListener, TcpStream},
+    };
 
     use super::*;
     use crate::test::json::v1::{
@@ -1958,6 +1989,74 @@ mod tests {
     struct SummaryClient {
         summary: Value,
         calls: AtomicUsize,
+    }
+
+    struct MockJsonServer {
+        port: u16,
+        task: tokio::task::JoinHandle<anyhow::Result<String>>,
+    }
+
+    async fn read_http_request(socket: &mut TcpStream) -> anyhow::Result<String> {
+        let mut request = Vec::new();
+        let mut chunk = [0_u8; 1024];
+
+        loop {
+            if let Some(header_end) = request
+                .windows(4)
+                .position(|window| window == b"\r\n\r\n")
+                .map(|position| position + 4)
+            {
+                let headers = std::str::from_utf8(&request[..header_end])?;
+                let content_length = headers
+                    .lines()
+                    .filter_map(|line| line.split_once(':'))
+                    .find_map(|(name, value)| {
+                        name.eq_ignore_ascii_case("content-length")
+                            .then(|| value.trim().parse::<usize>().ok())
+                            .flatten()
+                    })
+                    .unwrap_or_default();
+                if request.len() >= header_end + content_length {
+                    break;
+                }
+            }
+
+            let bytes_read = socket.read(&mut chunk).await?;
+            if bytes_read == 0 {
+                break;
+            }
+            request.extend_from_slice(&chunk[..bytes_read]);
+        }
+
+        Ok(String::from_utf8(request)?)
+    }
+
+    async fn mock_json_server(response: Value) -> anyhow::Result<MockJsonServer> {
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+        let task = tokio::spawn(async move {
+            let (mut socket, _) = tokio::time::timeout(Duration::from_secs(2), listener.accept())
+                .await
+                .context("timed out waiting for HTTP request")??;
+            let request = read_http_request(&mut socket).await?;
+            let body = response.to_string();
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            socket.write_all(response.as_bytes()).await?;
+            Ok(request)
+        });
+
+        Ok(MockJsonServer { port, task })
+    }
+
+    fn json_request_body(request: &str) -> anyhow::Result<Value> {
+        let (_, body) = request
+            .split_once("\r\n\r\n")
+            .context("HTTP request did not contain a body separator")?;
+        Ok(serde_json::from_str(body)?)
     }
 
     #[async_trait]
@@ -1973,6 +2072,100 @@ mod tests {
             self.calls.fetch_add(1, Ordering::SeqCst);
             Ok(self.summary.clone())
         }
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_support_is_discovered_from_openapi() -> anyhow::Result<()> {
+        let cases = [
+            (json!({ "paths": { "/uninstall": { "post": {} } } }), true),
+            (
+                json!({ "paths": { "/defaultconfig": { "post": {} } } }),
+                false,
+            ),
+        ];
+
+        for (openapi, expected) in cases {
+            let MockJsonServer { port, task } = mock_json_server(openapi).await?;
+            let mut miner = PowerPlayV1::new_with_port(
+                IpAddr::from([127, 0, 0, 1]),
+                AntMinerModel::S19XP,
+                port,
+            );
+
+            miner.detect_restore_stock_os_support().await;
+
+            let request = task.await??;
+            assert!(request.starts_with("GET /openapi.json HTTP/1.1\r\n"));
+            assert_eq!(miner.supports_restore_stock_os(), expected);
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_posts_authenticated_null_parameter() -> anyhow::Result<()> {
+        let MockJsonServer { port, task } =
+            mock_json_server(json!({ "result": true, "error": null })).await?;
+        let mut miner =
+            PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
+        miner.restore_stock_os_supported = true;
+        miner.set_auth(MinerAuth::new("", "test-password"));
+
+        assert_eq!(
+            miner.restore_stock_os().await?,
+            RestoreStockOsResult::accepted(None)
+        );
+
+        let request = task.await??;
+        assert!(request.starts_with("POST /uninstall HTTP/1.1\r\n"));
+        assert_eq!(
+            json_request_body(&request)?,
+            json!({ "param": null, "password": "test-password" })
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_surfaces_uninstall_errors() -> anyhow::Result<()> {
+        for error_message in [
+            "uninstall script not found: /usr/html/data/uninstall.sh",
+            "uninstalling failed with error: exit status: 1",
+        ] {
+            let MockJsonServer { port, task } = mock_json_server(json!({
+                "result": false,
+                "error": { "UninstallError": error_message }
+            }))
+            .await?;
+            let mut miner = PowerPlayV1::new_with_port(
+                IpAddr::from([127, 0, 0, 1]),
+                AntMinerModel::S19XP,
+                port,
+            );
+            miner.restore_stock_os_supported = true;
+
+            let error = miner.restore_stock_os().await.unwrap_err();
+
+            let request = task.await??;
+            assert!(request.starts_with("POST /uninstall HTTP/1.1\r\n"));
+            assert!(error.to_string().contains(error_message));
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_refuses_unadvertised_endpoint() {
+        let miner =
+            PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, 1);
+
+        assert!(!miner.supports_restore_stock_os());
+        let error = miner.restore_stock_os().await.unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("not supported by this UMC OS build")
+        );
     }
 
     #[tokio::test]
