@@ -36,6 +36,7 @@ use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use reqwest::Method;
 use serde_json::{Value, json};
+use tokio::sync::OnceCell;
 use web::PowerPlayWebAPI;
 
 use crate::firmware::EPicFirmware;
@@ -47,7 +48,7 @@ pub struct PowerPlayV1 {
     ip: IpAddr,
     web: PowerPlayWebAPI,
     device_info: DeviceInfo,
-    restore_stock_os_supported: bool,
+    restore_stock_os_supported: OnceCell<bool>,
 }
 
 impl PowerPlayV1 {
@@ -58,7 +59,7 @@ impl PowerPlayV1 {
             ip,
             web: PowerPlayWebAPI::new(ip, 4028, auth),
             device_info: DeviceInfo::new(model, EPicFirmware::default(), hash_algorithm),
-            restore_stock_os_supported: false,
+            restore_stock_os_supported: OnceCell::new(),
         }
     }
 
@@ -70,7 +71,14 @@ impl PowerPlayV1 {
     }
 
     pub(crate) async fn detect_restore_stock_os_support(&mut self) {
-        self.restore_stock_os_supported = self.web.supports_uninstall().await.unwrap_or(false);
+        let _ = self.restore_stock_os_support().await;
+    }
+
+    async fn restore_stock_os_support(&self) -> anyhow::Result<bool> {
+        self.restore_stock_os_supported
+            .get_or_try_init(|| self.web.supports_uninstall())
+            .await
+            .copied()
     }
 
     fn coin_type_for_hash_algorithm(hash_algorithm: HashAlgorithm) -> &'static str {
@@ -1915,7 +1923,7 @@ impl FactoryReset for PowerPlayV1 {
 #[async_trait]
 impl RestoreStockOs for PowerPlayV1 {
     async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
-        if !self.restore_stock_os_supported {
+        if !self.restore_stock_os_support().await? {
             anyhow::bail!("Restoring the stock OS is not supported by this UMC OS build");
         }
 
@@ -1925,6 +1933,9 @@ impl RestoreStockOs for PowerPlayV1 {
 
     fn supports_restore_stock_os(&self) -> bool {
         self.restore_stock_os_supported
+            .get()
+            .copied()
+            .unwrap_or(false)
     }
 }
 
@@ -1996,6 +2007,11 @@ mod tests {
         task: tokio::task::JoinHandle<anyhow::Result<String>>,
     }
 
+    struct MockJsonSequenceServer {
+        port: u16,
+        task: tokio::task::JoinHandle<anyhow::Result<Vec<String>>>,
+    }
+
     async fn read_http_request(socket: &mut TcpStream) -> anyhow::Result<String> {
         let mut request = Vec::new();
         let mut chunk = [0_u8; 1024];
@@ -2050,6 +2066,34 @@ mod tests {
         });
 
         Ok(MockJsonServer { port, task })
+    }
+
+    async fn mock_json_sequence_server(
+        responses: Vec<(&'static str, Value)>,
+    ) -> anyhow::Result<MockJsonSequenceServer> {
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+        let task = tokio::spawn(async move {
+            let mut requests = Vec::with_capacity(responses.len());
+            for (status, body) in responses {
+                let (mut socket, _) =
+                    tokio::time::timeout(Duration::from_secs(2), listener.accept())
+                        .await
+                        .context("timed out waiting for HTTP request")??;
+                requests.push(read_http_request(&mut socket).await?);
+
+                let body = body.to_string();
+                let response = format!(
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    body.len(),
+                    body
+                );
+                socket.write_all(response.as_bytes()).await?;
+            }
+            Ok(requests)
+        });
+
+        Ok(MockJsonSequenceServer { port, task })
     }
 
     fn json_request_body(request: &str) -> anyhow::Result<Value> {
@@ -2108,7 +2152,7 @@ mod tests {
             mock_json_server(json!({ "result": true, "error": null })).await?;
         let mut miner =
             PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
-        miner.restore_stock_os_supported = true;
+        miner.restore_stock_os_supported.set(true)?;
         miner.set_auth(MinerAuth::new("", "test-password"));
 
         assert_eq!(
@@ -2137,12 +2181,12 @@ mod tests {
                 "error": { "UninstallError": error_message }
             }))
             .await?;
-            let mut miner = PowerPlayV1::new_with_port(
+            let miner = PowerPlayV1::new_with_port(
                 IpAddr::from([127, 0, 0, 1]),
                 AntMinerModel::S19XP,
                 port,
             );
-            miner.restore_stock_os_supported = true;
+            miner.restore_stock_os_supported.set(true)?;
 
             let error = miner.restore_stock_os().await.unwrap_err();
 
@@ -2158,6 +2202,7 @@ mod tests {
     async fn restore_stock_os_refuses_unadvertised_endpoint() {
         let miner =
             PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, 1);
+        miner.restore_stock_os_supported.set(false).unwrap();
 
         assert!(!miner.supports_restore_stock_os());
         let error = miner.restore_stock_os().await.unwrap_err();
@@ -2166,6 +2211,35 @@ mod tests {
                 .to_string()
                 .contains("not supported by this UMC OS build")
         );
+    }
+
+    #[tokio::test]
+    async fn restore_stock_os_retries_support_probe_after_transient_error() -> anyhow::Result<()> {
+        let MockJsonSequenceServer { port, task } = mock_json_sequence_server(vec![
+            ("503 Service Unavailable", json!({ "error": "temporary" })),
+            (
+                "200 OK",
+                json!({ "paths": { "/uninstall": { "post": {} } } }),
+            ),
+            ("200 OK", json!({ "result": true, "error": null })),
+        ])
+        .await?;
+        let mut miner =
+            PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
+
+        miner.detect_restore_stock_os_support().await;
+        assert!(!miner.supports_restore_stock_os());
+        assert_eq!(
+            miner.restore_stock_os().await?,
+            RestoreStockOsResult::accepted(None)
+        );
+
+        let requests = task.await??;
+        assert!(requests[0].starts_with("GET /openapi.json HTTP/1.1\r\n"));
+        assert!(requests[1].starts_with("GET /openapi.json HTTP/1.1\r\n"));
+        assert!(requests[2].starts_with("POST /uninstall HTTP/1.1\r\n"));
+
+        Ok(())
     }
 
     #[tokio::test]
