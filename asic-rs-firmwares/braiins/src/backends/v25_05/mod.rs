@@ -1121,6 +1121,20 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn restore_stock_os_is_unsupported_on_braiins_v25_05() {
+        let miner = BraiinsV2505::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S21Plus);
+
+        assert!(miner.supports_factory_reset());
+        assert!(!miner.supports_restore_stock_os());
+        let error = miner.restore_stock_os().await.unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("Restoring the stock OS is not supported")
+        );
+    }
+
+    #[tokio::test]
     async fn test_braiins_v25_05() {
         let miner = BraiinsV2505::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S21Plus);
 
