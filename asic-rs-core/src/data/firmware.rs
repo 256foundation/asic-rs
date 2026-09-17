@@ -10,6 +10,15 @@ use tokio::io::AsyncReadExt;
 ///
 /// The request generally starts a disruptive background operation. Acceptance
 /// does not mean that the miner has finished restoring or rebooting.
+#[cfg_attr(
+    feature = "python",
+    pyclass(
+        name = "RestoreStockOsResult",
+        skip_from_py_object,
+        get_all,
+        module = "asic_rs"
+    )
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RestoreStockOsResult {
     /// Whether the miner accepted and started the restore request.
@@ -24,6 +33,17 @@ impl RestoreStockOsResult {
             accepted: true,
             reboot_after_seconds,
         }
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl RestoreStockOsResult {
+    fn __repr__(&self) -> String {
+        format!(
+            "RestoreStockOsResult(accepted={}, reboot_after_seconds={:?})",
+            self.accepted, self.reboot_after_seconds
+        )
     }
 }
 

@@ -724,6 +724,13 @@ type FirmwareStats struct {
 	Firmware        json.RawMessage `json:"firmware"`
 }
 
+// RestoreStockOSResult reports acceptance of a stock-OS restore request.
+// A non-nil RebootAfterSeconds is the firmware's expected reboot delay.
+type RestoreStockOSResult struct {
+	Accepted           bool    `json:"accepted"`
+	RebootAfterSeconds *uint64 `json:"reboot_after_seconds"`
+}
+
 // ExpectedCounts is the expected hardware shape reported by a miner handle.
 type ExpectedCounts struct {
 	Hashboards *uint8  `json:"hashboards"`
@@ -743,6 +750,7 @@ type Supports struct {
 	ChangePassword      bool `json:"change_password"`
 	ReadLogs            bool `json:"read_logs"`
 	FactoryReset        bool `json:"factory_reset"`
+	RestoreStockOS      bool `json:"restore_stock_os"`
 	PoolsConfig         bool `json:"pools_config"`
 	UpgradeFirmware     bool `json:"upgrade_firmware"`
 	PrepareFirmware     bool `json:"prepare_firmware"`
