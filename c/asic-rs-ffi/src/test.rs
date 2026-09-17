@@ -7,7 +7,7 @@ use asic_rs::core::{
         collector::{DataCollector, DataField, DataLocation},
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm, MinerHardware},
-        firmware::FirmwareStats,
+        firmware::{FirmwareStats, RestoreStockOsResult},
     },
     traits::miner::*,
 };
@@ -91,6 +91,16 @@ impl Restart for TestMiner {
         panic!("backend restart panic")
     }
 }
+#[async_trait]
+impl RestoreStockOs for TestMiner {
+    fn supports_restore_stock_os(&self) -> bool {
+        true
+    }
+
+    async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
+        Ok(RestoreStockOsResult::accepted(Some(7)))
+    }
+}
 macro_rules! default_traits {
     ($($name:ident),* $(,)?) => { $(impl $name for TestMiner {})* };
 }
@@ -120,7 +130,6 @@ default_traits!(
     GetBestShare,
     GetSessionBestShare,
     SetTuningPercent,
-    RestoreStockOs,
     SupportsPresets,
     SupportsTemperatureConfig,
     SupportsTimezoneConfig,

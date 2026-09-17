@@ -12,7 +12,7 @@ use asic_rs_core::{
         board::BoardData,
         device::{HashAlgorithm, MinerHardware},
         fan::FanData,
-        firmware::{FirmwareImage, FirmwareStats},
+        firmware::{FirmwareImage, FirmwareStats, RestoreStockOsResult},
         hashrate::HashRate,
         message::MinerMessage,
         miner::{MinerData, TuningTarget},
@@ -219,6 +219,11 @@ impl Miner {
     #[getter]
     fn supports_factory_reset(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_factory_reset())
+    }
+    /// Whether this miner supports restoring the manufacturer stock OS.
+    #[getter]
+    fn supports_restore_stock_os(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_restore_stock_os())
     }
     /// Whether this miner supports reading and writing pool configuration.
     #[getter]
@@ -699,6 +704,22 @@ impl Miner {
             let inner = inner.read().await;
             inner
                 .factory_reset()
+                .await
+                .map_err(|e| PyRuntimeError::new_err(e.to_string()))
+        })
+    }
+    /// Restore the manufacturer's stock OS, uninstalling an aftermarket OS.
+    ///
+    /// This is distinct from `factory_reset`, which only restores settings.
+    pub fn restore_stock_os<'a>(
+        &self,
+        py: Python<'a>,
+    ) -> PyResult<PyAwaitable<RestoreStockOsResult>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            inner
+                .restore_stock_os()
                 .await
                 .map_err(|e| PyRuntimeError::new_err(e.to_string()))
         })

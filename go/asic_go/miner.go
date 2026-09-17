@@ -618,6 +618,16 @@ func (m *Miner) FactoryReset() (bool, error) {
 	})
 }
 
+// RestoreStockOS requests restoration of the manufacturer's stock OS.
+// This is distinct from FactoryReset, which only restores settings.
+func (m *Miner) RestoreStockOS() (RestoreStockOSResult, error) {
+	var result RestoreStockOSResult
+	err := m.getJSON(func(ptr *C.AsicMiner) *C.char {
+		return C.asic_rs_miner_restore_stock_os_json(ptr)
+	}, &result)
+	return result, err
+}
+
 // ReadLogs returns miner logs, if supported.
 func (m *Miner) ReadLogs() (string, error) {
 	return m.ownedString(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_read_logs(ptr) })

@@ -548,6 +548,14 @@ char *asic_rs_miner_revalidate_json(const struct AsicMiner *miner);
 // `miner` must be a live handle.
 int32_t asic_rs_miner_factory_reset(const struct AsicMiner *miner);
 
+// Restore the manufacturer stock OS as JSON, or null on error / unsupported.
+//
+// The result contains `accepted` and an optional `reboot_after_seconds`.
+//
+// # Safety
+// `miner` must be a live handle.
+char *asic_rs_miner_restore_stock_os_json(const struct AsicMiner *miner);
+
 // Read logs as a newly allocated C string (or null on error / unsupported).
 //
 // # Safety

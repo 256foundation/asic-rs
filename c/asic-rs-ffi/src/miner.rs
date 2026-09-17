@@ -11,7 +11,9 @@ use asic_rs::core::config::temperature::TemperatureConfig;
 use asic_rs::core::config::timezone::TimezoneConfig;
 use asic_rs::core::config::tuning::TuningConfig;
 use asic_rs::core::data::collector::DataField;
-use asic_rs::core::data::firmware::{FirmwareImage, FirmwareStats, FirmwareUpdate};
+use asic_rs::core::data::firmware::{
+    FirmwareImage, FirmwareStats, FirmwareUpdate, RestoreStockOsResult,
+};
 use asic_rs::core::traits::auth::MinerAuth;
 use asic_rs::core::traits::miner::Miner as MinerTrait;
 use measurements::Power;
@@ -122,6 +124,13 @@ fn firmware_stats_json(stats: &FirmwareStats) -> serde_json::Value {
             Some(FirmwareUpdate::Local(_)) => json!({"kind": "local"}),
             None => serde_json::Value::Null,
         }
+    })
+}
+
+fn restore_stock_os_json(result: &RestoreStockOsResult) -> serde_json::Value {
+    json!({
+        "accepted": result.accepted,
+        "reboot_after_seconds": result.reboot_after_seconds,
     })
 }
 
@@ -243,6 +252,7 @@ pub unsafe extern "C" fn asic_rs_miner_supports_json(miner: *const AsicMiner) ->
                 "change_password": m.supports_change_password(),
                 "read_logs": m.supports_read_logs(),
                 "factory_reset": m.supports_factory_reset(),
+                "restore_stock_os": m.supports_restore_stock_os(),
                 "pools_config": m.supports_pools_config(),
                 "upgrade_firmware": m.supports_upgrade_firmware(),
                 "prepare_firmware": m.supports_prepare_firmware(),
@@ -1066,6 +1076,24 @@ pub unsafe extern "C" fn asic_rs_miner_factory_reset(miner: *const AsicMiner) ->
     })
 }
 
+/// Restore the manufacturer stock OS as JSON, or null on error / unsupported.
+///
+/// The result contains `accepted` and an optional `reboot_after_seconds`.
+///
+/// # Safety
+/// `miner` must be a live handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn asic_rs_miner_restore_stock_os_json(
+    miner: *const AsicMiner,
+) -> *mut c_char {
+    ffi_guard(ptr::null_mut(), || {
+        miner_json(miner, |m| {
+            let result = block_on(m.restore_stock_os())?.map_err(|e| e.to_string())?;
+            Ok(restore_stock_os_json(&result))
+        })
+    })
+}
+
 /// Read logs as a newly allocated C string (or null on error / unsupported).
 ///
 /// # Safety
@@ -1231,6 +1259,34 @@ mod tests {
             let board: serde_json::Value =
                 serde_json::from_slice(CStr::from_ptr(raw).to_bytes()).unwrap();
             assert_eq!(board, serde_json::json!({"known":false,"name":"new-board"}));
+            crate::error::asic_rs_free_string(raw);
+            asic_rs_miner_free(miner);
+        }
+    }
+
+    #[test]
+    fn restore_stock_os_crosses_the_c_boundary_as_json() {
+        let miner = Box::into_raw(Box::new(AsicMiner::new(Box::new(TestMiner))));
+        unsafe {
+            let supports_raw = asic_rs_miner_supports_json(miner);
+            assert!(!supports_raw.is_null());
+            let supports: serde_json::Value =
+                serde_json::from_slice(CStr::from_ptr(supports_raw).to_bytes()).unwrap();
+            assert_eq!(supports["factory_reset"], false);
+            assert_eq!(supports["restore_stock_os"], true);
+            crate::error::asic_rs_free_string(supports_raw);
+
+            let raw = asic_rs_miner_restore_stock_os_json(miner);
+            assert!(!raw.is_null());
+            let result: serde_json::Value =
+                serde_json::from_slice(CStr::from_ptr(raw).to_bytes()).unwrap();
+            assert_eq!(
+                result,
+                serde_json::json!({
+                    "accepted": true,
+                    "reboot_after_seconds": 7,
+                })
+            );
             crate::error::asic_rs_free_string(raw);
             asic_rs_miner_free(miner);
         }

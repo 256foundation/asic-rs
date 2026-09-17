@@ -152,6 +152,7 @@ Python exposes matching `supports_*` properties; Go returns them from
 | `supports_change_password` | `change_password(...)` |
 | `supports_read_logs` | `read_logs()` |
 | `supports_factory_reset` | `factory_reset()` |
+| `supports_restore_stock_os` | `restore_stock_os()` |
 | `supports_prepare_firmware` | `prepare_firmware(...)` |
 | `supports_upgrade_firmware` | `upgrade_firmware(...)` |
 
@@ -163,6 +164,12 @@ still valid for the existing miner handle.
 and may query miner metadata to select a compatible payload, but it never starts
 an upload. The returned `FirmwareImage` contains the filename and bytes that an
 upgrade would use.
+
+`factory_reset()` restores the miner's settings to their factory defaults; it
+does not replace the installed operating system. `restore_stock_os()` is a
+separate, disruptive operation that uninstalls an aftermarket OS and restores
+the manufacturer's stock OS. A successful request may reboot the miner and
+does not mean the restore has already completed.
 
 === "Rust"
 
