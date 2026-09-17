@@ -1935,7 +1935,7 @@ impl RestoreStockOs for PowerPlayV1 {
         self.restore_stock_os_supported
             .get()
             .copied()
-            // An empty cell means the OpenAPI probe failed transiently, not
+            // An empty cell means the capabilities probe failed transiently, not
             // that this build is known to lack the endpoint. Keep the action
             // available so restore_stock_os() can retry the probe.
             .unwrap_or(true)
@@ -2122,17 +2122,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn restore_stock_os_support_is_discovered_from_openapi() -> anyhow::Result<()> {
+    async fn restore_stock_os_support_is_discovered_from_capabilities() -> anyhow::Result<()> {
         let cases = [
-            (json!({ "paths": { "/uninstall": { "post": {} } } }), true),
-            (
-                json!({ "paths": { "/defaultconfig": { "post": {} } } }),
-                false,
-            ),
+            (json!({ "UninstallSupported": true }), true),
+            (json!({ "UninstallSupported": false }), false),
+            (json!({}), false),
         ];
 
-        for (openapi, expected) in cases {
-            let MockJsonServer { port, task } = mock_json_server(openapi).await?;
+        for (capabilities, expected) in cases {
+            let MockJsonServer { port, task } = mock_json_server(capabilities).await?;
             let mut miner = PowerPlayV1::new_with_port(
                 IpAddr::from([127, 0, 0, 1]),
                 AntMinerModel::S19XP,
@@ -2142,7 +2140,7 @@ mod tests {
             miner.detect_restore_stock_os_support().await;
 
             let request = task.await??;
-            assert!(request.starts_with("GET /openapi.json HTTP/1.1\r\n"));
+            assert!(request.starts_with("GET /capabilities HTTP/1.1\r\n"));
             assert_eq!(miner.supports_restore_stock_os(), expected);
         }
 
@@ -2220,10 +2218,7 @@ mod tests {
     async fn restore_stock_os_retries_support_probe_after_transient_error() -> anyhow::Result<()> {
         let MockJsonSequenceServer { port, task } = mock_json_sequence_server(vec![
             ("503 Service Unavailable", json!({ "error": "temporary" })),
-            (
-                "200 OK",
-                json!({ "paths": { "/uninstall": { "post": {} } } }),
-            ),
+            ("200 OK", json!({ "UninstallSupported": true })),
             ("200 OK", json!({ "result": true, "error": null })),
         ])
         .await?;
@@ -2239,8 +2234,8 @@ mod tests {
         assert!(miner.supports_restore_stock_os());
 
         let requests = task.await??;
-        assert!(requests[0].starts_with("GET /openapi.json HTTP/1.1\r\n"));
-        assert!(requests[1].starts_with("GET /openapi.json HTTP/1.1\r\n"));
+        assert!(requests[0].starts_with("GET /capabilities HTTP/1.1\r\n"));
+        assert!(requests[1].starts_with("GET /capabilities HTTP/1.1\r\n"));
         assert!(requests[2].starts_with("POST /uninstall HTTP/1.1\r\n"));
 
         Ok(())
@@ -2819,6 +2814,12 @@ mod tests {
         let miner = get_miner(ip, Arc::new(EPicFirmware::default()))
             .await?
             .context("no miner detected at MINER_IP")?;
+
+        println!(
+            "supports_restore_stock_os {}",
+            miner.supports_restore_stock_os()
+        );
+
         let miner_data = miner.get_data().await;
         let mut miner_data_print = miner_data.clone();
         for hashboard in &mut miner_data_print.hashboards {

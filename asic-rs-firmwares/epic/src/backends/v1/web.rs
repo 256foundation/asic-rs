@@ -174,10 +174,13 @@ impl PowerPlayWebAPI {
     }
 
     pub async fn supports_uninstall(&self) -> anyhow::Result<bool> {
-        let openapi = self
-            .send_command("openapi.json", false, None, Method::GET)
+        let capabilities = self
+            .send_command("capabilities", false, None, Method::GET)
             .await?;
-        Ok(openapi.pointer("/paths/~1uninstall/post").is_some())
+        Ok(capabilities
+            .get("UninstallSupported")
+            .and_then(Value::as_bool)
+            .unwrap_or(false))
     }
 
     /// Queue the UMC OS uninstall script and restore the manufacturer stock OS.
