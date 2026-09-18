@@ -1733,6 +1733,7 @@ mod tests {
         let mut miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19KPro);
         miner.rpc = LUXMinerRPCAPI::new_with_port(miner.ip, port);
 
+        assert!(!miner.supports_factory_reset());
         assert!(miner.supports_restore_stock_os());
         assert_eq!(
             miner.restore_stock_os().await?,

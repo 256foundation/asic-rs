@@ -23,7 +23,8 @@ SUPPORT_COLUMNS = [
     ("Resume", "supports_resume", "Pause/Resume"),
     ("UpgradeFirmware", "supports_upgrade_firmware", "Upgrade FW"),
     ("ChangePassword", "supports_change_password", "Change PWD"),
-    ("FactoryReset", "supports_factory_reset", "Factory Reset"),
+    ("FactoryReset", "supports_factory_reset", "Factory Reset Settings"),
+    ("RestoreStockOs", "supports_restore_stock_os", "Restore Stock OS"),
     ("ReadLogs", "supports_read_logs", "Read Logs"),
 ]
 

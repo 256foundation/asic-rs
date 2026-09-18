@@ -1358,6 +1358,7 @@ mod tests {
         let MockHttpServer { port, task } = mock_http_server(200, "OK", r#"{"after":3}"#).await?;
         let miner = miner_with_mock_web(port);
 
+        assert!(miner.supports_factory_reset());
         assert!(miner.supports_restore_stock_os());
         assert_eq!(
             miner.restore_stock_os().await?,

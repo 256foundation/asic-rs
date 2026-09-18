@@ -2156,6 +2156,7 @@ mod tests {
         miner.restore_stock_os_supported.set(true)?;
         miner.set_auth(MinerAuth::new("", "test-password"));
 
+        assert!(!miner.supports_factory_reset());
         assert_eq!(
             miner.restore_stock_os().await?,
             RestoreStockOsResult::accepted(None)
@@ -2857,6 +2858,26 @@ mod tests {
         assert_eq!(miner_data.ip, ip);
         assert!(miner_data.timestamp > 0);
         assert!(!miner_data.schema_version.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore = "requires live miner; set MINER_IP"]
+    async fn restore_stock_os_support_live_test_auto_detect() -> anyhow::Result<()> {
+        let ip_str = std::env::var("MINER_IP").context("MINER_IP is not set")?;
+        let ip =
+            IpAddr::from_str(&ip_str).with_context(|| format!("invalid MINER_IP: {ip_str}"))?;
+
+        let miner = get_miner(ip, Arc::new(EPicFirmware::default()))
+            .await?
+            .context("no miner detected at MINER_IP")?;
+
+        anyhow::ensure!(
+            miner.supports_restore_stock_os(),
+            "miner does not advertise restore stock OS support"
+        );
+        println!("supports_restore_stock_os true");
 
         Ok(())
     }
