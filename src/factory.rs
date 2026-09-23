@@ -364,6 +364,68 @@ impl Default for MinerFactory {
 }
 
 impl MinerFactory {
+    /// Poll one address until a stock firmware backend can construct a miner.
+    /// This deliberately uses `get_stock_miner` rather than a range scan:
+    /// readiness means stock firmware is identifiable at the original address.
+    async fn wait_for_stock_miner(
+        &self,
+        ip: IpAddr,
+        timeout_secs: u64,
+        rescan_interval_secs: u64,
+    ) -> Result<()> {
+        let timeout_duration = Duration::from_secs(timeout_secs);
+        let rescan_interval = Duration::from_secs(rescan_interval_secs);
+        let poll = async {
+            loop {
+                match self.get_stock_miner(ip).await {
+                    Ok(Some(_miner)) => return Ok(()),
+                    Ok(None) => {
+                        tracing::debug!(%ip, "stock firmware is not ready yet");
+                    }
+                    Err(error) => {
+                        tracing::debug!(%ip, %error, "stock firmware probe failed");
+                    }
+                }
+                tokio::time::sleep(rescan_interval).await;
+            }
+        };
+
+        tokio::time::timeout(timeout_duration, poll)
+            .await
+            .map_err(|_| {
+                anyhow::anyhow!(
+                    "stock OS restore was accepted, but stock firmware did not come online at {ip} within {:?}; its IP may have changed",
+                    timeout_duration
+                )
+            })?
+    }
+
+    /// Request a stock-OS restore and wait until the same physical miner is
+    /// rediscovered on stock firmware.
+    ///
+    /// This only probes the miner's original IP; it never scans the factory's
+    /// configured address range. If DHCP assigns a different IP, this operation
+    /// returns an error and the caller must perform a separate discovery.
+    /// `timeout_secs` and `rescan_interval_secs` are expressed in seconds.
+    pub async fn restore_stock_os_and_wait(
+        &self,
+        miner: &dyn Miner,
+        timeout_secs: u64,
+        rescan_interval_secs: u64,
+    ) -> Result<()> {
+        if timeout_secs == 0 {
+            anyhow::bail!("stock OS restore wait timeout must be greater than zero");
+        }
+        if rescan_interval_secs == 0 {
+            anyhow::bail!("stock OS restore rescan interval must be greater than zero");
+        }
+
+        let restore_ip = miner.get_ip();
+        miner.restore_stock_os().await?;
+        self.wait_for_stock_miner(restore_ip, timeout_secs, rescan_interval_secs)
+            .await
+    }
+
     #[tracing::instrument(level = "debug", skip(self))]
     pub async fn scan_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
         let connection_limit = self
@@ -418,6 +480,38 @@ impl MinerFactory {
                 Ok(None)
             }
         }
+    }
+
+    /// Discover and construct a stock-firmware miner at the given IP.
+    ///
+    /// Only firmware entries that identify themselves as stock are considered.
+    #[tracing::instrument(level = "debug", skip(self))]
+    pub async fn get_stock_miner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
+        let stock_firmwares = self
+            .search_firmwares
+            .clone()
+            .unwrap_or_else(default_firmware_registry)
+            .into_iter()
+            .filter(|firmware| firmware.is_stock())
+            .collect::<Vec<_>>();
+        if stock_firmwares.is_empty() {
+            return Ok(None);
+        }
+
+        MinerFactory {
+            search_firmwares: Some(stock_firmwares),
+            ips: Vec::new(),
+            discovery_auth_by_firmware: self.discovery_auth_by_firmware.clone(),
+            identification_timeout: self.identification_timeout,
+            connectivity_timeout: self.connectivity_timeout,
+            connectivity_retries: self.connectivity_retries,
+            concurrent: self.concurrent,
+            nofile_limit: self.nofile_limit,
+            nofile_adjustment: self.nofile_adjustment,
+            check_port: self.check_port,
+        }
+        .get_miner(ip)
+        .await
     }
 
     async fn get_miner_inner(&self, ip: IpAddr) -> Result<Option<Box<dyn Miner>>> {
