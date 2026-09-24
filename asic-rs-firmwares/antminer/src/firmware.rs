@@ -223,6 +223,11 @@ impl FirmwareEntry for AntMinerStockFirmware {
 
 #[cfg(test)]
 mod tests {
+    use std::{net::IpAddr, str::FromStr, sync::Arc};
+
+    use anyhow::Context;
+    use asic_rs_core::data::command::MinerCommand;
+    use asic_rs_core::test::util::get_miner;
     use asic_rs_makes_antminer::models::AntMinerModel;
 
     use super::*;
@@ -252,5 +257,70 @@ mod tests {
             .hash_algorithm(),
             HashAlgorithm::Unknown
         );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires live miner; requests sleep mode and leaves it paused on success; set MINER_IP"]
+    async fn pause_live_test_auto_detect() -> anyhow::Result<()> {
+        let ip_str = std::env::var("MINER_IP").context("MINER_IP is not set")?;
+        let ip =
+            IpAddr::from_str(&ip_str).with_context(|| format!("invalid MINER_IP: {ip_str}"))?;
+
+        let miner = get_miner(ip, Arc::new(AntMinerStockFirmware::default()))
+            .await?
+            .context("no miner detected at MINER_IP")?;
+
+        let pause_result = miner.pause(None).await;
+        println!("pause_success={}", matches!(&pause_result, Ok(true)));
+
+        let miner_data = miner.get_data().await;
+        println!(
+            "hashrate_after_pause_request={}",
+            serde_json::to_string(&miner_data.hashrate)?
+        );
+        let summary_command = MinerCommand::RPC {
+            command: "summary",
+            parameters: None,
+        };
+        match miner.get_api_result(&summary_command).await {
+            Ok(summary) => {
+                let rate = summary
+                    .get("SUMMARY")
+                    .and_then(|rows| rows.get(0))
+                    .map(|row| {
+                        let mut rate_fields = serde_json::Map::new();
+                        for key in [
+                            "rate_5s",
+                            "rate_avg",
+                            "rate_unit",
+                            "MHS 5s",
+                            "MHS av",
+                            "GHS 5s",
+                            "GHS av",
+                        ] {
+                            if let Some(value) = row.get(key) {
+                                rate_fields.insert(key.to_string(), value.clone());
+                            }
+                        }
+                        serde_json::Value::Object(rate_fields)
+                    })
+                    .unwrap_or(serde_json::Value::Null);
+                println!(
+                    "raw_summary_hashrate_after_pause_request={}",
+                    serde_json::to_string(&rate)?
+                );
+            }
+            Err(error) => println!("raw_summary_error={error:#}"),
+        }
+        println!("is_mining_after_pause={}", miner_data.is_mining);
+        println!(
+            "operating_state_after_pause={:?}",
+            miner_data.operating_state
+        );
+
+        let paused = pause_result?;
+        anyhow::ensure!(paused, "miner did not confirm pause/sleep");
+
+        Ok(())
     }
 }
