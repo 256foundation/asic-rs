@@ -254,7 +254,7 @@ impl BraiinsGraphQLAPI {
                         }
                     }
                 }"#,
-                false,
+                true,
                 None,
             )
             .await?
