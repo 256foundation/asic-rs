@@ -308,8 +308,11 @@ impl APIClient for PowerPlayV1 {
             )),
         }
     }
+}
 
-    async fn set_hashboards_enabled_api(
+#[async_trait]
+impl SetHashboardsEnabled for PowerPlayV1 {
+    async fn set_hashboards_enabled(
         &self,
         board_indices: &[u8],
         enabled: bool,
@@ -346,7 +349,7 @@ impl APIClient for PowerPlayV1 {
         }
     }
 
-    fn supports_set_hashboards_enabled_api(&self) -> bool {
+    fn supports_set_hashboards_enabled(&self) -> bool {
         true
     }
 }

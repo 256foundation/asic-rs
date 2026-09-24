@@ -850,6 +850,8 @@ impl Validate for ApolloV2 {
 
 impl SupportsTemperatureConfig for ApolloV2 {}
 impl GetTuningPercent for ApolloV2 {}
+impl SetHashboardsEnabled for ApolloV2 {}
+
 impl SetTuningPercent for ApolloV2 {}
 
 impl SupportsPresets for ApolloV2 {}

@@ -1020,6 +1020,8 @@ impl SupportsTemperatureConfig for ElphapexV1 {}
 impl SupportsPresets for ElphapexV1 {}
 impl SupportsTimezoneConfig for ElphapexV1 {}
 impl UpgradeFirmware for ElphapexV1 {}
+impl SetHashboardsEnabled for ElphapexV1 {}
+
 impl SetTuningPercent for ElphapexV1 {}
 
 impl HasDefaultAuth for ElphapexV1 {

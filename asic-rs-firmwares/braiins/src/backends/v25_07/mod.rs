@@ -79,8 +79,11 @@ impl APIClient for BraiinsV2507 {
             )),
         }
     }
+}
 
-    async fn set_hashboards_enabled_api(
+#[async_trait]
+impl SetHashboardsEnabled for BraiinsV2507 {
+    async fn set_hashboards_enabled(
         &self,
         board_indices: &[u8],
         enabled: bool,
@@ -122,7 +125,7 @@ impl APIClient for BraiinsV2507 {
         Ok(true)
     }
 
-    fn supports_set_hashboards_enabled_api(&self) -> bool {
+    fn supports_set_hashboards_enabled(&self) -> bool {
         true
     }
 }

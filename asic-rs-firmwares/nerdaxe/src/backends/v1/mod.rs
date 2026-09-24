@@ -620,5 +620,7 @@ impl SupportsFanConfig for NerdAxeV1 {
 
 impl SupportsTemperatureConfig for NerdAxeV1 {}
 impl GetTuningPercent for NerdAxeV1 {}
+impl SetHashboardsEnabled for NerdAxeV1 {}
+
 impl SetTuningPercent for NerdAxeV1 {}
 impl SupportsPresets for NerdAxeV1 {}

@@ -1194,6 +1194,8 @@ impl SupportsFanConfig for MaraV1 {
 
 impl SupportsTemperatureConfig for MaraV1 {}
 impl GetTuningPercent for MaraV1 {}
+impl SetHashboardsEnabled for MaraV1 {}
+
 impl SetTuningPercent for MaraV1 {}
 
 impl SupportsPresets for MaraV1 {}

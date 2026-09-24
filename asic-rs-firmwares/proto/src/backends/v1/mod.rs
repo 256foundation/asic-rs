@@ -1045,6 +1045,8 @@ impl Validate for ProtoV1 {
 
 impl SupportsTemperatureConfig for ProtoV1 {}
 impl GetTuningPercent for ProtoV1 {}
+impl SetHashboardsEnabled for ProtoV1 {}
+
 impl SetTuningPercent for ProtoV1 {}
 
 impl SupportsPresets for ProtoV1 {}

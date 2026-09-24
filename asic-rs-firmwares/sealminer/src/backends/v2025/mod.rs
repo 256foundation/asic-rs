@@ -877,6 +877,8 @@ impl Validate for SealMinerV2025 {
 
 impl SupportsTemperatureConfig for SealMinerV2025 {}
 impl GetTuningPercent for SealMinerV2025 {}
+impl SetHashboardsEnabled for SealMinerV2025 {}
+
 impl SetTuningPercent for SealMinerV2025 {}
 
 impl SupportsPresets for SealMinerV2025 {}
