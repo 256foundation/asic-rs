@@ -83,6 +83,7 @@ impl<
 pub trait HasMinerControl:
     SetFaultLight
     + SetPowerLimit
+    + SetHashboardsEnabled
     + SetTuningPercent
     + Restart
     + Resume
@@ -96,6 +97,7 @@ pub trait HasMinerControl:
 impl<
     T: SetFaultLight
         + SetPowerLimit
+        + SetHashboardsEnabled
         + SetTuningPercent
         + Restart
         + Resume
@@ -396,6 +398,19 @@ impl<
 #[async_trait]
 pub trait APIClient: Send + Sync {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value>;
+
+    #[allow(unused_variables)]
+    async fn set_hashboards_enabled_api(
+        &self,
+        board_indices: &[u8],
+        enabled: bool,
+    ) -> anyhow::Result<bool> {
+        anyhow::bail!("Enabling or disabling hashboards is not supported on this platform");
+    }
+
+    fn supports_set_hashboards_enabled_api(&self) -> bool {
+        false
+    }
 }
 
 #[async_trait]
@@ -947,6 +962,26 @@ pub trait SetPowerLimit {
     }
     fn supports_set_power_limit(&self) -> bool;
 }
+
+/// Enable or disable one or more hashboards by their zero-based position.
+#[async_trait]
+pub trait SetHashboardsEnabled: APIClient {
+    async fn set_hashboards_enabled(
+        &self,
+        board_indices: &[u8],
+        enabled: bool,
+    ) -> anyhow::Result<bool> {
+        self.set_hashboards_enabled_api(board_indices, enabled)
+            .await
+    }
+
+    /// Whether this backend can enable or disable individual hashboards.
+    fn supports_set_hashboards_enabled(&self) -> bool {
+        self.supports_set_hashboards_enabled_api()
+    }
+}
+
+impl<T: APIClient> SetHashboardsEnabled for T {}
 
 #[async_trait]
 pub trait SetTuningPercent {

@@ -232,6 +232,80 @@ impl BraiinsGraphQLAPI {
 
         Ok(logs)
     }
+
+    /// Enable or disable hashboards by their zero-based position in BOSminer.
+    pub async fn set_hashboards_enabled(
+        &self,
+        board_indices: &[u8],
+        enabled: bool,
+    ) -> anyhow::Result<bool> {
+        if board_indices.is_empty() {
+            return Ok(true);
+        }
+
+        let solvers = self
+            .send_graphql_command(
+                r#"query {
+                    bosminer {
+                        info {
+                            workSolver {
+                                childSolvers { name }
+                            }
+                        }
+                    }
+                }"#,
+                false,
+                None,
+            )
+            .await?
+            .pointer("/bosminer/info/workSolver/childSolvers")
+            .and_then(Value::as_array)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Braiins API did not return hashboard identifiers"))?;
+
+        let mut hash_chains = Vec::with_capacity(board_indices.len());
+        for index in board_indices {
+            let name = solvers
+                .get(*index as usize)
+                .and_then(|solver| solver.get("name"))
+                .and_then(Value::as_str)
+                .ok_or_else(|| {
+                    anyhow::anyhow!("Hashboard index {index} is not available on this miner")
+                })?;
+            hash_chains.push(json!({ "name": name, "enabled": enabled }));
+        }
+
+        let mutation = r#"mutation ($input: PerformanceIn!) {
+            bosminer {
+                config {
+                    updatePerformance(input: $input, apply: true) {
+                        ... on PerformanceOut { hashChains { name enabled } }
+                        ... on PerformanceError { message }
+                        ... on AttributeError { message }
+                    }
+                }
+            }
+        }"#;
+        let result = self
+            .send_graphql_command(
+                mutation,
+                true,
+                Some(json!({ "input": { "hashChains": hash_chains } })),
+            )
+            .await?;
+        let update = result
+            .pointer("/bosminer/config/updatePerformance")
+            .ok_or_else(|| anyhow::anyhow!("Invalid Braiins hashboard update response"))?;
+
+        if let Some(message) = update.get("message").and_then(Value::as_str) {
+            anyhow::bail!("Braiins rejected hashboard state change: {message}");
+        }
+        if update.get("hashChains").is_none() {
+            anyhow::bail!("Invalid Braiins hashboard update response: missing hashChains");
+        }
+
+        Ok(true)
+    }
 }
 
 #[async_trait]

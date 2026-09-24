@@ -73,6 +73,20 @@ impl APIClient for BraiinsV2503 {
             )),
         }
     }
+
+    async fn set_hashboards_enabled_api(
+        &self,
+        board_indices: &[u8],
+        enabled: bool,
+    ) -> anyhow::Result<bool> {
+        self.graphql
+            .set_hashboards_enabled(board_indices, enabled)
+            .await
+    }
+
+    fn supports_set_hashboards_enabled_api(&self) -> bool {
+        true
+    }
 }
 
 impl GetConfigsLocations for BraiinsV2503 {

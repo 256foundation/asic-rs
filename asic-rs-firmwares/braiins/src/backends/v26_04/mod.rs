@@ -81,6 +81,52 @@ impl APIClient for BraiinsV2604 {
             )),
         }
     }
+
+    async fn set_hashboards_enabled_api(
+        &self,
+        board_indices: &[u8],
+        enabled: bool,
+    ) -> anyhow::Result<bool> {
+        if board_indices.is_empty() {
+            return Ok(true);
+        }
+
+        let current = self
+            .web
+            .send_command("miner/hw/hashboards", false, None, Method::GET)
+            .await?;
+        let hashboards = current
+            .get("hashboards")
+            .and_then(Value::as_array)
+            .ok_or_else(|| anyhow::anyhow!("Braiins API did not return hashboard identifiers"))?;
+
+        let mut ids = Vec::with_capacity(board_indices.len());
+        for index in board_indices {
+            // Braiins exposes IDs starting at 1; asic-rs board positions start at 0.
+            let id = (u16::from(*index) + 1).to_string();
+            if !hashboards
+                .iter()
+                .any(|board| board.get("id").and_then(Value::as_str) == Some(id.as_str()))
+            {
+                anyhow::bail!("Hashboard index {index} is not available on this miner");
+            }
+            ids.push(id);
+        }
+
+        self.web
+            .send_command(
+                "miner/hw/hashboards",
+                true,
+                Some(json!({ "enable": enabled, "hashboard_ids": ids })),
+                Method::PATCH,
+            )
+            .await?;
+        Ok(true)
+    }
+
+    fn supports_set_hashboards_enabled_api(&self) -> bool {
+        true
+    }
 }
 
 impl GetConfigsLocations for BraiinsV2604 {

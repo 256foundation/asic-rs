@@ -244,6 +244,7 @@ pub unsafe extern "C" fn asic_rs_miner_supports_json(miner: *const AsicMiner) ->
             Ok(json!({
                 "set_fault_light": m.supports_set_fault_light(),
                 "set_power_limit": m.supports_set_power_limit(),
+                "set_hashboards_enabled": m.supports_set_hashboards_enabled(),
                 "set_tuning_percent": m.supports_set_tuning_percent(),
                 "presets": m.supports_presets(),
                 "restart": m.supports_restart(),
@@ -995,6 +996,31 @@ pub unsafe extern "C" fn asic_rs_miner_set_power_limit(miner: *const AsicMiner, 
     ffi_guard(-1, || {
         miner_control(miner, |m| {
             result_bool(block_on(m.set_power_limit(Power::from_watts(watts)))?)
+        })
+    })
+}
+
+/// Enable or disable hashboards by their zero-based positions. `indices_json`
+/// must contain a JSON array of board indices (for example, `[0,2]`). Returns 1/0/-1.
+///
+/// # Safety
+/// `miner` must be a live handle and `indices_json` must be a valid C string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn asic_rs_miner_set_hashboards_enabled(
+    miner: *const AsicMiner,
+    indices_json: *const c_char,
+    enabled: bool,
+) -> i32 {
+    ffi_guard(-1, || {
+        let indices = match parse_json::<Vec<u8>>(indices_json) {
+            Ok(indices) => indices,
+            Err(e) => {
+                set_error(e);
+                return -1;
+            }
+        };
+        miner_control(miner, |m| {
+            result_bool(block_on(m.set_hashboards_enabled(&indices, enabled))?)
         })
     })
 }

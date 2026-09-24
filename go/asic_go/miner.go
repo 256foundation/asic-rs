@@ -568,6 +568,16 @@ func (m *Miner) SetPowerLimit(watts float64) (bool, error) {
 	})
 }
 
+// SetHashboardsEnabled enables or disables hashboards by zero-based position.
+func (m *Miner) SetHashboardsEnabled(boardIndices []uint8, enabled bool) (bool, error) {
+	if boardIndices == nil {
+		boardIndices = []uint8{}
+	}
+	return m.setJSON(func(ptr *C.AsicMiner, indicesJSON *C.char) C.int32_t {
+		return C.asic_rs_miner_set_hashboards_enabled(ptr, indicesJSON, C.bool(enabled))
+	}, boardIndices)
+}
+
 // SetTuningPercent sets a manual throttle percent (100 = unthrottled).
 func (m *Miner) SetTuningPercent(percent uint8) (bool, error) {
 	return m.control(func(ptr *C.AsicMiner) C.int32_t {
