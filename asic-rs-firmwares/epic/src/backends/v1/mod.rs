@@ -310,6 +310,50 @@ impl APIClient for PowerPlayV1 {
     }
 }
 
+#[async_trait]
+impl SetHashboardsEnabled for PowerPlayV1 {
+    async fn set_hashboards_enabled(
+        &self,
+        board_indices: &[u8],
+        enabled: bool,
+    ) -> anyhow::Result<bool> {
+        if board_indices.is_empty() {
+            return Ok(true);
+        }
+
+        let boards = board_indices
+            .iter()
+            .map(|index| json!({ "Index": index, "Data": enabled }))
+            .collect::<Vec<_>>();
+        let response = self
+            .web
+            .send_command(
+                "boardenable",
+                false,
+                Some(json!({ "param": boards })),
+                Method::POST,
+            )
+            .await?;
+
+        match response.get("result").and_then(Value::as_bool) {
+            Some(true) => Ok(true),
+            Some(false) => {
+                let error = response
+                    .get("error")
+                    .filter(|error| !error.is_null())
+                    .map(Value::to_string)
+                    .unwrap_or_else(|| "unknown error".to_string());
+                anyhow::bail!("ePIC rejected hashboard state change: {error}");
+            }
+            None => anyhow::bail!("Invalid ePIC boardenable response: missing boolean result"),
+        }
+    }
+
+    fn supports_set_hashboards_enabled(&self) -> bool {
+        true
+    }
+}
+
 impl GetConfigsLocations for PowerPlayV1 {
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {

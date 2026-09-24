@@ -512,6 +512,12 @@ int32_t asic_rs_miner_set_fault_light(const struct AsicMiner *miner, bool fault)
 // `miner` must be a live handle.
 int32_t asic_rs_miner_set_power_limit(const struct AsicMiner *miner, double watts);
 
+// Enable or disable hashboards by zero-based position. `indices_json` is a JSON array, e.g. "[0,2]". Returns 1/0/-1.
+//
+// # Safety
+// `miner` must be a live handle and `indices_json` must be a valid C string.
+int32_t asic_rs_miner_set_hashboards_enabled(const struct AsicMiner *miner, const char *indices_json, bool enabled);
+
 // Set a manual tuning percent. Returns 1/0/-1.
 //
 // # Safety

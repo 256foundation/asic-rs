@@ -742,6 +742,7 @@ type ExpectedCounts struct {
 type Supports struct {
 	SetFaultLight       bool `json:"set_fault_light"`
 	SetPowerLimit       bool `json:"set_power_limit"`
+	SetHashboardsEnabled bool `json:"set_hashboards_enabled"`
 	SetTuningPercent    bool `json:"set_tuning_percent"`
 	Presets             bool `json:"presets"`
 	Restart             bool `json:"restart"`

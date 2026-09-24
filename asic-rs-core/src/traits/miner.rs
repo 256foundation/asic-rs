@@ -83,6 +83,7 @@ impl<
 pub trait HasMinerControl:
     SetFaultLight
     + SetPowerLimit
+    + SetHashboardsEnabled
     + SetTuningPercent
     + Restart
     + Resume
@@ -96,6 +97,7 @@ pub trait HasMinerControl:
 impl<
     T: SetFaultLight
         + SetPowerLimit
+        + SetHashboardsEnabled
         + SetTuningPercent
         + Restart
         + Resume
@@ -946,6 +948,24 @@ pub trait SetPowerLimit {
         anyhow::bail!("Setting power limit is not supported on this platform");
     }
     fn supports_set_power_limit(&self) -> bool;
+}
+
+/// Enable or disable one or more hashboards by their zero-based position.
+#[async_trait]
+pub trait SetHashboardsEnabled {
+    #[allow(unused_variables)]
+    async fn set_hashboards_enabled(
+        &self,
+        board_indices: &[u8],
+        enabled: bool,
+    ) -> anyhow::Result<bool> {
+        anyhow::bail!("Enabling or disabling hashboards is not supported on this platform");
+    }
+
+    /// Whether this backend can enable or disable individual hashboards.
+    fn supports_set_hashboards_enabled(&self) -> bool {
+        false
+    }
 }
 
 #[async_trait]

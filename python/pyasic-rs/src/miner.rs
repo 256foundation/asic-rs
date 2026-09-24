@@ -180,6 +180,11 @@ impl Miner {
     fn supports_set_power_limit(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_set_power_limit())
     }
+    /// Whether this miner supports enabling or disabling individual hashboards.
+    #[getter]
+    fn supports_set_hashboards_enabled(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_set_hashboards_enabled())
+    }
     /// Whether this miner supports setting a manual tuning percent.
     #[getter]
     fn supports_set_tuning_percent(&self, py: Python<'_>) -> bool {
@@ -758,6 +763,22 @@ impl Miner {
             let inner = inner.read().await;
             inner
                 .set_power_limit(Power::from_watts(watts))
+                .await
+                .map_err(|e| PyRuntimeError::new_err(e.to_string()))
+        })
+    }
+    /// Enable or disable hashboards by their zero-based positions.
+    pub fn set_hashboards_enabled<'a>(
+        &self,
+        py: Python<'a>,
+        board_indices: Vec<u8>,
+        enabled: bool,
+    ) -> PyResult<PyAwaitable<bool>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            inner
+                .set_hashboards_enabled(&board_indices, enabled)
                 .await
                 .map_err(|e| PyRuntimeError::new_err(e.to_string()))
         })

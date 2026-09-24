@@ -79,6 +79,23 @@ impl APIClient for BraiinsV2109 {
     }
 }
 
+#[async_trait]
+impl SetHashboardsEnabled for BraiinsV2109 {
+    async fn set_hashboards_enabled(
+        &self,
+        board_indices: &[u8],
+        enabled: bool,
+    ) -> anyhow::Result<bool> {
+        self.graphql
+            .set_hashboards_enabled(board_indices, enabled)
+            .await
+    }
+
+    fn supports_set_hashboards_enabled(&self) -> bool {
+        true
+    }
+}
+
 impl GetConfigsLocations for BraiinsV2109 {
     #[allow(unused_variables)]
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {

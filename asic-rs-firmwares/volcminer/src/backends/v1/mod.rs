@@ -870,6 +870,8 @@ impl SupportsTemperatureConfig for VolcMinerV1 {}
 impl SupportsPresets for VolcMinerV1 {}
 impl SupportsTimezoneConfig for VolcMinerV1 {}
 impl GetTuningPercent for VolcMinerV1 {}
+impl SetHashboardsEnabled for VolcMinerV1 {}
+
 impl SetTuningPercent for VolcMinerV1 {}
 
 #[cfg(test)]

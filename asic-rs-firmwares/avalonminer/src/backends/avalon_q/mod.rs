@@ -910,6 +910,8 @@ impl SupportsFanConfig for AvalonQMiner {
 
 impl SupportsTemperatureConfig for AvalonQMiner {}
 impl GetTuningPercent for AvalonQMiner {}
+impl SetHashboardsEnabled for AvalonQMiner {}
+
 impl SetTuningPercent for AvalonQMiner {}
 
 impl SupportsPresets for AvalonQMiner {}

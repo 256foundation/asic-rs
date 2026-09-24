@@ -1251,5 +1251,7 @@ mod integration_tests {
 
 impl SupportsTemperatureConfig for WhatsMinerV3 {}
 impl GetTuningPercent for WhatsMinerV3 {}
+impl SetHashboardsEnabled for WhatsMinerV3 {}
+
 impl SetTuningPercent for WhatsMinerV3 {}
 impl SupportsPresets for WhatsMinerV3 {}

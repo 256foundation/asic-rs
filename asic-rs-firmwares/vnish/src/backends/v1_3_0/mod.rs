@@ -1004,6 +1004,8 @@ impl SetPowerLimit for VnishV130 {
     }
 }
 
+impl SetHashboardsEnabled for VnishV130 {}
+
 #[async_trait]
 impl SetTuningPercent for VnishV130 {
     fn supports_set_tuning_percent(&self) -> bool {

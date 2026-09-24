@@ -129,6 +129,7 @@ default_traits!(
     GetPools,
     GetBestShare,
     GetSessionBestShare,
+    SetHashboardsEnabled,
     SetTuningPercent,
     SupportsPresets,
     SupportsTemperatureConfig,

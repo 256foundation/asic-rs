@@ -1052,6 +1052,8 @@ impl SetPowerLimit for VnishV120 {
 
 // VNish 1.2.x has no manual throttle endpoint; tuning_percent lands in v1_3_0.
 #[async_trait]
+impl SetHashboardsEnabled for VnishV120 {}
+
 impl SetTuningPercent for VnishV120 {}
 
 #[async_trait]
