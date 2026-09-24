@@ -53,7 +53,15 @@ impl WebAPIClient for BraiinsWebAPI {
 
         let url = format!("http://{}:{}/api/v1/{}", self.ip, self.port, command);
 
-        let response = self.execute_request(&url, &method, parameters).await?;
+        let mut response = self
+            .execute_request(&url, &method, parameters.clone())
+            .await?;
+
+        if response.status().as_u16() == 401 {
+            *self.bearer_token.write().await = None;
+            self.ensure_authenticated().await?;
+            response = self.execute_request(&url, &method, parameters).await?;
+        }
 
         let status = response.status();
         if status.is_success() {
@@ -71,7 +79,10 @@ impl WebAPIClient for BraiinsWebAPI {
             // The API reports why it rejected a request in the body.
             let status = status.as_u16();
             let body = response.text().await.unwrap_or_default();
-            Err(BraiinsError::HttpError { status, body })?
+            Err(match status {
+                401 => BraiinsError::Unauthorized,
+                _ => BraiinsError::HttpError { status, body },
+            })?
         }
     }
 }
