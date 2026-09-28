@@ -359,6 +359,7 @@ pub struct MinerFactory {
     connectivity_timeout: Duration,
     connectivity_retries: u32,
     concurrent: Option<usize>,
+    identification_concurrent: Option<usize>,
     nofile_limit: Option<u64>,
     nofile_adjustment: bool,
     check_port: bool,
@@ -380,6 +381,7 @@ impl std::fmt::Debug for MinerFactory {
             .field("connectivity_timeout", &self.connectivity_timeout)
             .field("connectivity_retries", &self.connectivity_retries)
             .field("concurrent", &self.concurrent)
+            .field("identification_concurrent", &self.identification_concurrent)
             .field("nofile_limit", &self.nofile_limit)
             .field("nofile_adjustment", &self.nofile_adjustment)
             .field("check_port", &self.check_port)
@@ -399,29 +401,37 @@ impl MinerFactory {
         let connection_limit = self
             .concurrent
             .unwrap_or(calculate_optimal_concurrency(self.ips.len().max(1)));
-        self.scan_miner_with_connection_limit(ip, Arc::new(Semaphore::new(connection_limit.max(1))))
-            .await
+        let identification_limit = self.identification_concurrent.unwrap_or(connection_limit);
+        self.scan_miner_with_connection_limits(
+            ip,
+            Arc::new(Semaphore::new(connection_limit.max(1))),
+            Arc::new(Semaphore::new(identification_limit.max(1))),
+        )
+        .await
     }
 
-    async fn scan_miner_with_connection_limit(
+    async fn scan_miner_with_connection_limits(
         &self,
         ip: IpAddr,
         connection_limit: Arc<Semaphore>,
+        identification_limit: Arc<Semaphore>,
     ) -> Result<Option<Box<dyn Miner>>> {
-        if !self.check_port {
-            return self.get_miner(ip).await;
-        }
-        if retry_connectivity(
-            self.connectivity_retries,
-            CONNECTIVITY_RETRY_BACKOFF,
-            || check_miner_ports(ip, self.connectivity_timeout, Arc::clone(&connection_limit)),
-        )
-        .await
+        if self.check_port
+            && !retry_connectivity(
+                self.connectivity_retries,
+                CONNECTIVITY_RETRY_BACKOFF,
+                || check_miner_ports(ip, self.connectivity_timeout, Arc::clone(&connection_limit)),
+            )
+            .await
         {
-            return self.get_miner(ip).await;
+            tracing::trace!("no response from any miner-specific ports");
+            return Ok(None);
         }
-        tracing::trace!("no response from any miner-specific ports");
-        Ok(None)
+
+        let Ok(_permit) = identification_limit.acquire_owned().await else {
+            return Ok(None);
+        };
+        self.get_miner(ip).await
     }
 
     /// Discover and construct a miner at the given IP.
@@ -544,6 +554,7 @@ impl MinerFactory {
             connectivity_timeout: CONNECTIVITY_TIMEOUT,
             connectivity_retries: CONNECTIVITY_RETRIES,
             concurrent: None,
+            identification_concurrent: None,
             nofile_limit: None,
             nofile_adjustment: true,
             check_port: true,
@@ -578,6 +589,17 @@ impl MinerFactory {
     /// scan concurrency is chosen from the number of queued hosts.
     pub fn with_concurrent_limit(mut self, limit: usize) -> Self {
         self.concurrent = Some(limit);
+        self
+    }
+
+    /// Set the maximum number of hosts undergoing firmware identification
+    /// after passing the TCP reachability check.
+    ///
+    /// This allows scans to keep probing queued hosts while slow firmware
+    /// identification is in progress. If unset, identification uses the same
+    /// limit as the overall scan concurrency.
+    pub fn with_identification_concurrent_limit(mut self, limit: usize) -> Self {
+        self.identification_concurrent = Some(limit);
         self
     }
 
@@ -842,14 +864,22 @@ impl MinerFactory {
         }
 
         let connection_limit = Arc::new(Semaphore::new(concurrency.max(1)));
+        let identification_limit = Arc::new(Semaphore::new(
+            self.identification_concurrent.unwrap_or(concurrency).max(1),
+        ));
         let miners: Vec<Box<dyn Miner>> = stream::iter(self.ips.iter().copied())
             .map(|ip| {
                 let connection_limit = Arc::clone(&connection_limit);
+                let identification_limit = Arc::clone(&identification_limit);
                 async move {
-                    self.scan_miner_with_connection_limit(ip, connection_limit)
-                        .await
-                        .ok()
-                        .flatten()
+                    self.scan_miner_with_connection_limits(
+                        ip,
+                        connection_limit,
+                        identification_limit,
+                    )
+                    .await
+                    .ok()
+                    .flatten()
                 }
             })
             .buffer_unordered(concurrency)
@@ -879,6 +909,9 @@ impl MinerFactory {
         let factory = Arc::new(self.clone());
         let ips: Arc<[IpAddr]> = Arc::from(self.ips.as_slice());
         let connection_limit = Arc::new(Semaphore::new(concurrency.max(1)));
+        let identification_limit = Arc::new(Semaphore::new(
+            self.identification_concurrent.unwrap_or(concurrency).max(1),
+        ));
 
         let ip_count = ips.len();
         let stream = stream::iter(0..ip_count)
@@ -886,9 +919,14 @@ impl MinerFactory {
                 let factory = Arc::clone(&factory);
                 let ips = Arc::clone(&ips);
                 let connection_limit = Arc::clone(&connection_limit);
+                let identification_limit = Arc::clone(&identification_limit);
                 async move {
                     factory
-                        .scan_miner_with_connection_limit(ips[i], connection_limit)
+                        .scan_miner_with_connection_limits(
+                            ips[i],
+                            connection_limit,
+                            identification_limit,
+                        )
                         .await
                         .ok()
                         .flatten()
@@ -922,6 +960,9 @@ impl MinerFactory {
         let factory = Arc::new(self.clone());
         let ips: Arc<[IpAddr]> = Arc::from(self.ips.as_slice());
         let connection_limit = Arc::new(Semaphore::new(concurrency.max(1)));
+        let identification_limit = Arc::new(Semaphore::new(
+            self.identification_concurrent.unwrap_or(concurrency).max(1),
+        ));
 
         let ip_count = ips.len();
         let stream = stream::iter(0..ip_count)
@@ -929,11 +970,16 @@ impl MinerFactory {
                 let factory = Arc::clone(&factory);
                 let ips = Arc::clone(&ips);
                 let connection_limit = Arc::clone(&connection_limit);
+                let identification_limit = Arc::clone(&identification_limit);
                 async move {
                     (
                         ips[i],
                         factory
-                            .scan_miner_with_connection_limit(ips[i], connection_limit)
+                            .scan_miner_with_connection_limits(
+                                ips[i],
+                                connection_limit,
+                                identification_limit,
+                            )
                             .await
                             .ok()
                             .flatten(),
