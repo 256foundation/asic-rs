@@ -28,7 +28,7 @@ use futures::{
 };
 use ipnet::IpNet;
 use rand::seq::SliceRandom;
-use tokio::{net::TcpStream, sync::Semaphore, time::timeout};
+use tokio::{net::TcpSocket, sync::Semaphore, time::timeout};
 
 const IDENTIFICATION_TIMEOUT: Duration = Duration::from_secs(10);
 const CONNECTIVITY_TIMEOUT: Duration = Duration::from_secs(1);
@@ -56,12 +56,42 @@ fn calculate_desired_nofile_limit(concurrency: usize) -> u64 {
 
 async fn check_port_open(ip: IpAddr, port: u16, connectivity_timeout: Duration) -> bool {
     let addr: SocketAddr = (ip, port).into();
-    let stream = match timeout(connectivity_timeout, TcpStream::connect(addr)).await {
-        Ok(Ok(stream)) => stream,
-        _ => return false,
+    let socket = match ip {
+        IpAddr::V4(_) => TcpSocket::new_v4(),
+        IpAddr::V6(_) => TcpSocket::new_v6(),
     };
-    let _ = stream.set_nodelay(true);
-    true
+    let socket = match socket {
+        Ok(socket) => socket,
+        Err(error) => {
+            tracing::warn!(%ip, port, %error, "cannot allocate discovery socket");
+            return false;
+        }
+    };
+
+    // Reachability probes exchange no application data. Reset these temporary
+    // connections on close instead of occupying local ports in TIME_WAIT.
+    // Set this before connecting so canceled port races also release their ports.
+    if let Err(error) = socket.set_zero_linger() {
+        tracing::debug!(%ip, port, %error, "cannot set zero linger on discovery socket");
+    }
+
+    match timeout(connectivity_timeout, socket.connect(addr)).await {
+        Ok(Ok(_stream)) => true,
+        Ok(Err(error)) => {
+            tracing::debug!(
+                %ip,
+                port,
+                %error,
+                os_error = ?error.raw_os_error(),
+                "TCP discovery probe failed"
+            );
+            false
+        }
+        Err(_) => {
+            tracing::debug!(%ip, port, "TCP discovery probe timed out");
+            false
+        }
+    }
 }
 
 async fn with_connectivity_permit<Fut>(permits: Arc<Semaphore>, probe: Fut) -> bool
@@ -484,7 +514,10 @@ impl MinerFactory {
             Some(fw) => {
                 let auth = self.discovery_auth_by_firmware.get(&fw.to_string());
                 match fw.build_miner(ip, auth).await {
-                    Ok(miner) => Ok(Some(miner)),
+                    Ok(miner) => {
+                        tracing::debug!(%ip, "miner identified");
+                        Ok(Some(miner))
+                    }
                     Err(e) => {
                         tracing::debug!("failed to build miner for {ip}: {e}");
                         Ok(None)

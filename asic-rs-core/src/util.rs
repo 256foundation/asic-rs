@@ -84,6 +84,12 @@ fn build_discovery_client_with_timeout(
     reqwest::Client::builder()
         .connect_timeout(timeout)
         .timeout(timeout)
+        // These requests do not reuse connections. Let the peer initiate close
+        // after its response to reduce local TIME_WAIT pressure during scans.
+        .default_headers(HeaderMap::from_iter([(
+            reqwest::header::CONNECTION,
+            reqwest::header::HeaderValue::from_static("close"),
+        )]))
         .pool_max_idle_per_host(0)
         .build()
         .map_err(|_| ModelSelectionError::NoModelResponse)
@@ -105,6 +111,10 @@ static HTTP_CLIENT: LazyLock<Result<reqwest::Client, reqwest::Error>> = LazyLock
         .gzip(true)
         .connect_timeout(DEFAULT_RPC_TIMEOUT)
         .timeout(DEFAULT_RPC_TIMEOUT)
+        .default_headers(HeaderMap::from_iter([(
+            reqwest::header::CONNECTION,
+            reqwest::header::HeaderValue::from_static("close"),
+        )]))
         .pool_max_idle_per_host(0)
         .build()
 });
@@ -205,7 +215,7 @@ pub async fn send_rpc_command_on_port(
     let response = {
         let mut stream = connect_tcp_stream((*ip, port), DEFAULT_RPC_TIMEOUT)
             .await
-            .map_err(|_| tracing::debug!("failed to connect to {ip}:{port} rpc"))
+            .map_err(|error| tracing::debug!(%error, "failed to connect to {ip}:{port} rpc"))
             .ok()?;
 
         let command = format!("{{\"command\":\"{command}\"}}");
