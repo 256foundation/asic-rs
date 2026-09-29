@@ -589,7 +589,10 @@ impl GetHashboards for BraiinsV2503 {
                 .pointer("/hwDetails/frequencyMhz")
                 .and_then(|v| v.as_f64())
                 .map(Frequency::from_megahertz);
-            board.active = board.hashrate.as_ref().map(|hr| hr.value > 0.0);
+            board.active = board
+                .frequency
+                .as_ref()
+                .map(|frequency| frequency.as_megahertz() > 0.0);
         }
 
         hashboards

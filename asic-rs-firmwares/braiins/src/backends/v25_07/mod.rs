@@ -528,7 +528,10 @@ impl GetHashboards for BraiinsV2507 {
                 .pointer("/current_frequency/hertz")
                 .and_then(|v| v.as_f64())
                 .map(Frequency::from_hertz);
-            board.active = chain.pointer("/enabled").and_then(|v| v.as_bool());
+            board.active = board
+                .frequency
+                .as_ref()
+                .map(|frequency| frequency.as_megahertz() > 0.0);
         }
 
         hashboards

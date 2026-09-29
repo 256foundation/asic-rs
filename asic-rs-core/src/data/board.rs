@@ -88,7 +88,7 @@ pub struct BoardData {
     pub frequency: Option<Frequency>,
     /// Whether this board has been tuned and optimizations have completed
     pub tuned: Option<bool>,
-    /// Whether this board is enabled and actively mining
+    /// Whether this board is active, as reported or inferred from firmware telemetry
     pub active: Option<bool>,
 }
 
