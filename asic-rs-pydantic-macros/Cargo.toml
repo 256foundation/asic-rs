@@ -20,6 +20,8 @@ quote = "1.0"
 syn = { version = "2.0", features = ["full"] }
 
 [dev-dependencies]
-asic-rs-pydantic.workspace = true
+# Omit the version so Cargo excludes this test-only dependency when publishing.
+# The library depends on these macros and must be published after them.
+asic-rs-pydantic = { path = "../asic-rs-pydantic" }
 pyo3.workspace = true
 trybuild = "1.0"

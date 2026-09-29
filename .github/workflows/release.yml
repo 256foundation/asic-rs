@@ -255,6 +255,9 @@ jobs:
           # as `asic-rs` rather than attempting to republish the default members.
           publish_plan="$(cargo workspaces plan --skip-published)"
 
+          publish_log="$(mktemp)"
+          trap 'rm -f "$publish_log"' EXIT
+
           published_any=false
           while IFS= read -r crate; do
             if [ -z "$crate" ]; then
@@ -266,7 +269,24 @@ jobs:
             fi
 
             echo "::group::Publishing ${crate}"
-            cargo publish --package "$crate"
+            retry_delay=60
+            for attempt in 1 2 3 4 5; do
+              if cargo publish --package "$crate" 2>&1 | tee "$publish_log"; then
+                break
+              else
+                publish_status=$?
+              fi
+
+              # Retry only registry rate limits; surface packaging, compilation,
+              # authentication, and other publishing failures immediately.
+              if [ "$attempt" -eq 5 ] || ! grep -Eq 'status 429|429 Too Many Requests' "$publish_log"; then
+                exit "$publish_status"
+              fi
+
+              echo "::warning::Rate limited publishing ${crate}; retrying in ${retry_delay}s (attempt ${attempt}/5)"
+              sleep "$retry_delay"
+              retry_delay=$((retry_delay * 2))
+            done
             echo "::endgroup::"
             published_any=true
           done <<< "$publish_plan"
