@@ -7,7 +7,7 @@ use std::{
     pin::Pin,
     str::FromStr,
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::Result;
@@ -39,6 +39,18 @@ const MINER_PORTS: [u16; 4] = [80, 4028, 4029, 8889];
 const NOFILE_PER_CONCURRENCY: u64 = 8;
 const MIN_NOFILE_LIMIT: u64 = 2048;
 
+/// Result of probing one miner TCP port for one address.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PortProbeResult {
+    /// Address that was probed.
+    pub ip: IpAddr,
+    /// Candidate miner TCP port that was probed.
+    pub port: u16,
+    /// TCP connection establishment time when the port accepted a connection.
+    /// Failed and timed-out attempts have no response time.
+    pub response_time: Option<Duration>,
+}
+
 fn calculate_optimal_concurrency(ip_count: usize) -> usize {
     match ip_count {
         0..=1000 => 1000,
@@ -54,7 +66,11 @@ fn calculate_desired_nofile_limit(concurrency: usize) -> u64 {
         .max(MIN_NOFILE_LIMIT)
 }
 
-async fn check_port_open(ip: IpAddr, port: u16, connectivity_timeout: Duration) -> bool {
+async fn check_port_open(
+    ip: IpAddr,
+    port: u16,
+    connectivity_timeout: Duration,
+) -> Option<Duration> {
     let addr: SocketAddr = (ip, port).into();
     let socket = match ip {
         IpAddr::V4(_) => TcpSocket::new_v4(),
@@ -64,7 +80,7 @@ async fn check_port_open(ip: IpAddr, port: u16, connectivity_timeout: Duration) 
         Ok(socket) => socket,
         Err(error) => {
             tracing::warn!(%ip, port, %error, "cannot allocate discovery socket");
-            return false;
+            return None;
         }
     };
 
@@ -75,8 +91,9 @@ async fn check_port_open(ip: IpAddr, port: u16, connectivity_timeout: Duration) 
         tracing::debug!(%ip, port, %error, "cannot set zero linger on discovery socket");
     }
 
+    let started_at = Instant::now();
     match timeout(connectivity_timeout, socket.connect(addr)).await {
-        Ok(Ok(_stream)) => true,
+        Ok(Ok(_stream)) => Some(started_at.elapsed()),
         Ok(Err(error)) => {
             tracing::debug!(
                 %ip,
@@ -85,11 +102,11 @@ async fn check_port_open(ip: IpAddr, port: u16, connectivity_timeout: Duration) 
                 os_error = ?error.raw_os_error(),
                 "TCP discovery probe failed"
             );
-            false
+            None
         }
         Err(_) => {
             tracing::debug!(%ip, port, "TCP discovery probe timed out");
-            false
+            None
         }
     }
 }
@@ -127,12 +144,30 @@ async fn check_miner_ports(
     permits: Arc<Semaphore>,
 ) -> bool {
     race_miner_ports(|port| {
-        with_connectivity_permit(
-            Arc::clone(&permits),
-            check_port_open(ip, port, connectivity_timeout),
-        )
+        let permits = Arc::clone(&permits);
+        async move {
+            with_connectivity_permit(permits, async move {
+                check_port_open(ip, port, connectivity_timeout)
+                    .await
+                    .is_some()
+            })
+            .await
+        }
     })
     .await
+}
+
+async fn with_connectivity_response_time_permit<Fut>(
+    permits: Arc<Semaphore>,
+    probe: Fut,
+) -> Option<Duration>
+where
+    Fut: Future<Output = Option<Duration>>,
+{
+    let Ok(_permit) = permits.acquire_owned().await else {
+        return None;
+    };
+    probe.await
 }
 
 fn connectivity_retry_delay(retry_index: u32, initial_backoff: Duration) -> Duration {
@@ -156,6 +191,61 @@ where
         }
     }
     false
+}
+
+async fn retry_connectivity_with_response_time<F, Fut>(
+    retries: u32,
+    initial_backoff: Duration,
+    mut probe: F,
+) -> Option<Duration>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Option<Duration>>,
+{
+    for attempt in 0..=retries {
+        if attempt > 0 {
+            tokio::time::sleep(connectivity_retry_delay(attempt - 1, initial_backoff)).await;
+        }
+        if let Some(response_time) = probe().await {
+            return Some(response_time);
+        }
+    }
+    None
+}
+
+async fn probe_miner_ports_with_response_times(
+    ip: IpAddr,
+    connectivity_timeout: Duration,
+    connectivity_retries: u32,
+    permits: Arc<Semaphore>,
+) -> Vec<PortProbeResult> {
+    let mut results: Vec<_> = stream::iter(MINER_PORTS)
+        .map(|port| {
+            let permits = Arc::clone(&permits);
+            async move {
+                let response_time = retry_connectivity_with_response_time(
+                    connectivity_retries,
+                    CONNECTIVITY_RETRY_BACKOFF,
+                    || {
+                        with_connectivity_response_time_permit(
+                            Arc::clone(&permits),
+                            check_port_open(ip, port, connectivity_timeout),
+                        )
+                    },
+                )
+                .await;
+                PortProbeResult {
+                    ip,
+                    port,
+                    response_time,
+                }
+            }
+        })
+        .buffer_unordered(MINER_PORTS.len())
+        .collect()
+        .await;
+    results.sort_unstable_by_key(|result| result.port);
+    results
 }
 
 async fn get_miner_type_from_command(
@@ -935,6 +1025,53 @@ impl MinerFactory {
                     )
                     .await;
                     (ip, reachable)
+                }
+            })
+            .buffer_unordered(concurrency.max(1));
+
+        Box::pin(stream)
+    }
+
+    /// Probe every configured miner TCP port for each queued address and return
+    /// the successful connection time for each port.
+    ///
+    /// Unlike [`Self::probe_stream_with_ip`], this method does not stop after
+    /// the first port accepts a connection. All port attempts share one
+    /// connectivity limit. Failed and timed-out attempts are returned with no
+    /// response time.
+    pub fn probe_ports_stream_with_ip(
+        &self,
+    ) -> Pin<Box<impl Stream<Item = (IpAddr, Vec<PortProbeResult>)> + Send + use<>>> {
+        let concurrency = self
+            .concurrent
+            .unwrap_or(calculate_optimal_concurrency(self.ips.len()));
+
+        if let Some(desired_nofile) = self.nofile_limit.or_else(|| {
+            self.nofile_adjustment
+                .then(|| calculate_desired_nofile_limit(concurrency))
+        }) {
+            maybe_adjust_nofile_limit(desired_nofile);
+        }
+
+        let factory = Arc::new(self.clone());
+        let ips: Arc<[IpAddr]> = Arc::from(self.ips.as_slice());
+        let connection_limit = Arc::new(Semaphore::new(concurrency.max(1)));
+        let ip_count = ips.len();
+        let stream = stream::iter(0..ip_count)
+            .map(move |index| {
+                let factory = Arc::clone(&factory);
+                let ips = Arc::clone(&ips);
+                let connection_limit = Arc::clone(&connection_limit);
+                async move {
+                    let ip = ips[index];
+                    let results = probe_miner_ports_with_response_times(
+                        ip,
+                        factory.connectivity_timeout,
+                        factory.connectivity_retries,
+                        connection_limit,
+                    )
+                    .await;
+                    (ip, results)
                 }
             })
             .buffer_unordered(concurrency.max(1));
