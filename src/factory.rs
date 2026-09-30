@@ -131,7 +131,11 @@ async fn connect_port(ip: IpAddr, port: u16, connectivity_timeout: Duration) -> 
                 os_error = ?error.raw_os_error(),
                 "TCP discovery probe failed"
             );
-            PortConnectOutcome::ConnectionError
+            if error.kind() == std::io::ErrorKind::TimedOut {
+                PortConnectOutcome::TimedOut
+            } else {
+                PortConnectOutcome::ConnectionError
+            }
         }
         Err(_) => {
             tracing::debug!(%ip, port, "TCP discovery probe timed out");
