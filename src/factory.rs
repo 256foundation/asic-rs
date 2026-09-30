@@ -890,6 +890,58 @@ impl MinerFactory {
         Ok(miners)
     }
 
+    /// Probe queued addresses for miner-specific TCP reachability without
+    /// performing firmware identification.
+    ///
+    /// Each item contains the attempted IP and whether any configured miner
+    /// port accepted a TCP connection. All port probes share the scan's
+    /// connectivity limit. This is useful for measuring network reachability
+    /// separately from firmware discovery.
+    pub fn probe_stream_with_ip(
+        &self,
+    ) -> Pin<Box<impl Stream<Item = (IpAddr, bool)> + Send + use<>>> {
+        let concurrency = self
+            .concurrent
+            .unwrap_or(calculate_optimal_concurrency(self.ips.len()));
+
+        if let Some(desired_nofile) = self.nofile_limit.or_else(|| {
+            self.nofile_adjustment
+                .then(|| calculate_desired_nofile_limit(concurrency))
+        }) {
+            maybe_adjust_nofile_limit(desired_nofile);
+        }
+
+        let factory = Arc::new(self.clone());
+        let ips: Arc<[IpAddr]> = Arc::from(self.ips.as_slice());
+        let connection_limit = Arc::new(Semaphore::new(concurrency.max(1)));
+        let ip_count = ips.len();
+        let stream = stream::iter(0..ip_count)
+            .map(move |index| {
+                let factory = Arc::clone(&factory);
+                let ips = Arc::clone(&ips);
+                let connection_limit = Arc::clone(&connection_limit);
+                async move {
+                    let ip = ips[index];
+                    let reachable = retry_connectivity(
+                        factory.connectivity_retries,
+                        CONNECTIVITY_RETRY_BACKOFF,
+                        || {
+                            check_miner_ports(
+                                ip,
+                                factory.connectivity_timeout,
+                                Arc::clone(&connection_limit),
+                            )
+                        },
+                    )
+                    .await;
+                    (ip, reachable)
+                }
+            })
+            .buffer_unordered(concurrency.max(1));
+
+        Box::pin(stream)
+    }
+
     /// Scan queued addresses as a stream of successfully identified miners.
     ///
     /// Use this when callers should process miners as soon as they are found
