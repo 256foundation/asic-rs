@@ -122,7 +122,21 @@ async fn connect_port(ip: IpAddr, port: u16, connectivity_timeout: Duration) -> 
 
     let started_at = Instant::now();
     match timeout(connectivity_timeout, socket.connect(addr)).await {
-        Ok(Ok(_stream)) => PortConnectOutcome::Connected(started_at.elapsed()),
+        Ok(Ok(_stream)) => {
+            let elapsed = started_at.elapsed();
+            if elapsed > connectivity_timeout {
+                tracing::debug!(
+                    %ip,
+                    port,
+                    elapsed = ?elapsed,
+                    timeout = ?connectivity_timeout,
+                    "TCP discovery probe completed after its timeout"
+                );
+                PortConnectOutcome::TimedOut
+            } else {
+                PortConnectOutcome::Connected(elapsed)
+            }
+        }
         Ok(Err(error)) => {
             tracing::debug!(
                 %ip,
