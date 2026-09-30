@@ -40,7 +40,7 @@ const NOFILE_PER_CONCURRENCY: u64 = 8;
 const MIN_NOFILE_LIMIT: u64 = 2048;
 
 /// Result of probing one miner TCP port for one address.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PortProbeResult {
     /// Address that was probed.
     pub ip: IpAddr,
@@ -49,6 +49,9 @@ pub struct PortProbeResult {
     /// TCP connection establishment time when the port accepted a connection.
     /// Failed and timed-out attempts have no response time.
     pub response_time: Option<Duration>,
+    /// Results of fresh connections made after a slow successful first connection.
+    /// This is empty unless the slow-retry probe method is used.
+    pub slow_retry_response_times: Vec<Option<Duration>>,
 }
 
 fn calculate_optimal_concurrency(ip_count: usize) -> usize {
@@ -218,6 +221,8 @@ async fn probe_miner_ports_with_response_times(
     connectivity_timeout: Duration,
     connectivity_retries: u32,
     permits: Arc<Semaphore>,
+    slow_retry_threshold: Option<Duration>,
+    slow_retry_count: u32,
 ) -> Vec<PortProbeResult> {
     let mut results: Vec<_> = stream::iter(MINER_PORTS)
         .map(|port| {
@@ -234,10 +239,25 @@ async fn probe_miner_ports_with_response_times(
                     },
                 )
                 .await;
+                let mut slow_retry_response_times = Vec::new();
+                if response_time.is_some_and(|elapsed| {
+                    slow_retry_threshold.is_some_and(|threshold| elapsed > threshold)
+                }) {
+                    for _ in 0..slow_retry_count {
+                        slow_retry_response_times.push(
+                            with_connectivity_response_time_permit(
+                                Arc::clone(&permits),
+                                check_port_open(ip, port, connectivity_timeout),
+                            )
+                            .await,
+                        );
+                    }
+                }
                 PortProbeResult {
                     ip,
                     port,
                     response_time,
+                    slow_retry_response_times,
                 }
             }
         })
@@ -1042,6 +1062,30 @@ impl MinerFactory {
     pub fn probe_ports_stream_with_ip(
         &self,
     ) -> Pin<Box<impl Stream<Item = (IpAddr, Vec<PortProbeResult>)> + Send + use<>>> {
+        self.probe_ports_stream_with_ip_config(None, 0)
+    }
+
+    /// Probe every miner TCP port and retry slow successful connections with fresh sockets.
+    ///
+    /// The first successful connection is kept as the reachability result. If
+    /// its connection time exceeds `slow_threshold`, `retry_count` additional
+    /// connection attempts are made and their individual successful durations
+    /// are included in [`PortProbeResult::slow_retry_response_times`]. Each
+    /// attempt shares the factory's connection limit and uses its configured
+    /// connectivity timeout.
+    pub fn probe_ports_stream_with_ip_after_slow_success(
+        &self,
+        slow_threshold: Duration,
+        retry_count: u32,
+    ) -> Pin<Box<impl Stream<Item = (IpAddr, Vec<PortProbeResult>)> + Send + use<>>> {
+        self.probe_ports_stream_with_ip_config(Some(slow_threshold), retry_count)
+    }
+
+    fn probe_ports_stream_with_ip_config(
+        &self,
+        slow_retry_threshold: Option<Duration>,
+        slow_retry_count: u32,
+    ) -> Pin<Box<impl Stream<Item = (IpAddr, Vec<PortProbeResult>)> + Send + use<>>> {
         let concurrency = self
             .concurrent
             .unwrap_or(calculate_optimal_concurrency(self.ips.len()));
@@ -1062,6 +1106,8 @@ impl MinerFactory {
                 let factory = Arc::clone(&factory);
                 let ips = Arc::clone(&ips);
                 let connection_limit = Arc::clone(&connection_limit);
+                let slow_retry_threshold = slow_retry_threshold;
+                let slow_retry_count = slow_retry_count;
                 async move {
                     let ip = ips[index];
                     let results = probe_miner_ports_with_response_times(
@@ -1069,6 +1115,8 @@ impl MinerFactory {
                         factory.connectivity_timeout,
                         factory.connectivity_retries,
                         connection_limit,
+                        slow_retry_threshold,
+                        slow_retry_count,
                     )
                     .await;
                     (ip, results)
