@@ -1647,6 +1647,27 @@ impl SupportsScalingConfig for PowerPlayV1 {
         self.set_tuning_config(current, Some(config)).await
     }
 
+    async fn reset_scaling(&self) -> anyhow::Result<bool> {
+        let tuning = self.get_tuning_config().await?;
+        let algorithm = tuning.algorithm().ok_or_else(|| {
+            anyhow::anyhow!("Cannot reset scaling when perpetual tuning is not running")
+        })?;
+
+        self.web
+            .send_command(
+                "perpetualtune/reset",
+                false,
+                Some(json!({ "param": algorithm })),
+                Method::POST,
+            )
+            .await
+            .map(|v| v.get("result").and_then(Value::as_bool).unwrap_or(false))
+    }
+
+    fn supports_reset_scaling(&self) -> bool {
+        true
+    }
+
     fn parse_scaling_config(
         &self,
         data: &HashMap<ConfigField, Value>,
@@ -2555,6 +2576,59 @@ mod tests {
 
         assert_eq!(config.minimum, 50);
         assert_eq!(config.step, 5);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn reset_scaling_uses_active_algorithm() -> anyhow::Result<()> {
+        let mut summary = Value::from_str(SUMMARY)?;
+        let algorithm = summary
+            .pointer_mut("/PerpetualTune/Algorithm")
+            .context("missing perpetual tune algorithm")?;
+        let stats = algorithm
+            .as_object_mut()
+            .context("perpetual tune algorithm is not an object")?
+            .remove("VoltageOptimizer")
+            .context("missing VoltageOptimizer stats")?;
+        algorithm
+            .as_object_mut()
+            .context("perpetual tune algorithm is not an object")?
+            .insert("BoardTune".to_string(), stats);
+
+        let MockJsonSequenceServer { port, task } = mock_json_sequence_server(vec![
+            ("200 OK", summary),
+            ("200 OK", json!({ "result": true })),
+        ])
+        .await?;
+        let miner =
+            PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
+
+        assert!(miner.supports_reset_scaling());
+        assert!(miner.reset_scaling().await?);
+
+        let requests = task.await??;
+        assert!(requests[0].starts_with("GET /summary HTTP/1.1\r\n"));
+        assert!(requests[1].starts_with("POST /perpetualtune/reset HTTP/1.1\r\n"));
+        let body = json_request_body(&requests[1])?;
+        assert_eq!(body.get("param").and_then(Value::as_str), Some("BoardTune"));
+        assert!(body.get("password").and_then(Value::as_str).is_some());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn reset_scaling_requires_running_perpetual_tune() -> anyhow::Result<()> {
+        let mut summary = Value::from_str(SUMMARY)?;
+        summary["PerpetualTune"]["Running"] = json!(false);
+        let MockJsonServer { port, task } = mock_json_server(summary).await?;
+        let miner =
+            PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
+
+        let error = miner.reset_scaling().await.unwrap_err();
+        assert!(error.to_string().contains("not running"));
+        let request = task.await??;
+        assert!(request.starts_with("GET /summary HTTP/1.1\r\n"));
 
         Ok(())
     }

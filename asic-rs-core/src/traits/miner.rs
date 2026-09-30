@@ -1141,6 +1141,13 @@ pub trait SupportsScalingConfig: CollectConfigs {
     async fn set_scaling_config(&self, config: ScalingConfig) -> anyhow::Result<bool> {
         anyhow::bail!("Setting scaling config is not supported on this platform");
     }
+    /// Clear the active scaling state and restart tuning at its configured target.
+    async fn reset_scaling(&self) -> anyhow::Result<bool> {
+        anyhow::bail!("Resetting scaling is not supported on this platform");
+    }
+    fn supports_reset_scaling(&self) -> bool {
+        false
+    }
     #[tracing::instrument(level = "debug")]
     async fn get_scaling_config(&self) -> anyhow::Result<ScalingConfig> {
         let mut collector = self.get_config_collector();
