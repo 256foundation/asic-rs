@@ -46,12 +46,29 @@ pub struct PortProbeResult {
     pub ip: IpAddr,
     /// Candidate miner TCP port that was probed.
     pub port: u16,
-    /// TCP connection establishment time when the port accepted a connection.
+    /// TCP connection establishment time for the first attempt that connected.
     /// Failed and timed-out attempts have no response time.
     pub response_time: Option<Duration>,
-    /// Results of fresh connections made after a slow successful first connection.
-    /// This is empty unless the slow-retry probe method is used.
-    pub slow_retry_response_times: Vec<Option<Duration>>,
+    /// Whether the initial connection attempt timed out.
+    pub initial_timed_out: bool,
+    /// Number of fresh attempts made after an initial or retry timeout.
+    pub timeout_retry_attempts: u32,
+    /// Number of timeout retries which also timed out.
+    pub timeout_retry_timeouts: u32,
+    /// Whether a timeout retry accepted a connection.
+    pub succeeded_on_timeout_retry: bool,
+    /// Socket allocation failures across the initial attempt and its retries.
+    pub socket_allocation_errors: u32,
+    /// Non-timeout errors returned while connecting across the initial attempt and retries.
+    pub connection_errors: u32,
+}
+
+#[derive(Clone, Copy)]
+enum PortConnectOutcome {
+    Connected(Duration),
+    TimedOut,
+    ConnectionError,
+    SocketAllocationError,
 }
 
 fn calculate_optimal_concurrency(ip_count: usize) -> usize {
@@ -74,6 +91,15 @@ async fn check_port_open(
     port: u16,
     connectivity_timeout: Duration,
 ) -> Option<Duration> {
+    match connect_port(ip, port, connectivity_timeout).await {
+        PortConnectOutcome::Connected(elapsed) => Some(elapsed),
+        PortConnectOutcome::TimedOut
+        | PortConnectOutcome::ConnectionError
+        | PortConnectOutcome::SocketAllocationError => None,
+    }
+}
+
+async fn connect_port(ip: IpAddr, port: u16, connectivity_timeout: Duration) -> PortConnectOutcome {
     let addr: SocketAddr = (ip, port).into();
     let socket = match ip {
         IpAddr::V4(_) => TcpSocket::new_v4(),
@@ -83,7 +109,7 @@ async fn check_port_open(
         Ok(socket) => socket,
         Err(error) => {
             tracing::warn!(%ip, port, %error, "cannot allocate discovery socket");
-            return None;
+            return PortConnectOutcome::SocketAllocationError;
         }
     };
 
@@ -96,7 +122,7 @@ async fn check_port_open(
 
     let started_at = Instant::now();
     match timeout(connectivity_timeout, socket.connect(addr)).await {
-        Ok(Ok(_stream)) => Some(started_at.elapsed()),
+        Ok(Ok(_stream)) => PortConnectOutcome::Connected(started_at.elapsed()),
         Ok(Err(error)) => {
             tracing::debug!(
                 %ip,
@@ -105,11 +131,11 @@ async fn check_port_open(
                 os_error = ?error.raw_os_error(),
                 "TCP discovery probe failed"
             );
-            None
+            PortConnectOutcome::ConnectionError
         }
         Err(_) => {
             tracing::debug!(%ip, port, "TCP discovery probe timed out");
-            None
+            PortConnectOutcome::TimedOut
         }
     }
 }
@@ -160,15 +186,15 @@ async fn check_miner_ports(
     .await
 }
 
-async fn with_connectivity_response_time_permit<Fut>(
+async fn with_connectivity_attempt_permit<Fut>(
     permits: Arc<Semaphore>,
     probe: Fut,
-) -> Option<Duration>
+) -> PortConnectOutcome
 where
-    Fut: Future<Output = Option<Duration>>,
+    Fut: Future<Output = PortConnectOutcome>,
 {
     let Ok(_permit) = permits.acquire_owned().await else {
-        return None;
+        return PortConnectOutcome::ConnectionError;
     };
     probe.await
 }
@@ -196,68 +222,72 @@ where
     false
 }
 
-async fn retry_connectivity_with_response_time<F, Fut>(
-    retries: u32,
-    initial_backoff: Duration,
-    mut probe: F,
-) -> Option<Duration>
-where
-    F: FnMut() -> Fut,
-    Fut: Future<Output = Option<Duration>>,
-{
-    for attempt in 0..=retries {
-        if attempt > 0 {
-            tokio::time::sleep(connectivity_retry_delay(attempt - 1, initial_backoff)).await;
-        }
-        if let Some(response_time) = probe().await {
-            return Some(response_time);
-        }
-    }
-    None
-}
-
 async fn probe_miner_ports_with_response_times(
     ip: IpAddr,
     connectivity_timeout: Duration,
-    connectivity_retries: u32,
+    timeout_retries: u32,
     permits: Arc<Semaphore>,
-    slow_retry_threshold: Option<Duration>,
-    slow_retry_count: u32,
 ) -> Vec<PortProbeResult> {
     let mut results: Vec<_> = stream::iter(MINER_PORTS)
         .map(|port| {
             let permits = Arc::clone(&permits);
             async move {
-                let response_time = retry_connectivity_with_response_time(
-                    connectivity_retries,
-                    CONNECTIVITY_RETRY_BACKOFF,
-                    || {
-                        with_connectivity_response_time_permit(
-                            Arc::clone(&permits),
-                            check_port_open(ip, port, connectivity_timeout),
-                        )
-                    },
+                let initial = with_connectivity_attempt_permit(
+                    Arc::clone(&permits),
+                    connect_port(ip, port, connectivity_timeout),
                 )
                 .await;
-                let mut slow_retry_response_times = Vec::new();
-                if response_time.is_some_and(|elapsed| {
-                    slow_retry_threshold.is_some_and(|threshold| elapsed > threshold)
-                }) {
-                    for _ in 0..slow_retry_count {
-                        slow_retry_response_times.push(
-                            with_connectivity_response_time_permit(
-                                Arc::clone(&permits),
-                                check_port_open(ip, port, connectivity_timeout),
-                            )
-                            .await,
-                        );
+                let initial_timed_out = matches!(initial, PortConnectOutcome::TimedOut);
+                let mut response_time = match initial {
+                    PortConnectOutcome::Connected(elapsed) => Some(elapsed),
+                    PortConnectOutcome::TimedOut
+                    | PortConnectOutcome::ConnectionError
+                    | PortConnectOutcome::SocketAllocationError => None,
+                };
+                let mut timeout_retry_attempts = 0;
+                let mut timeout_retry_timeouts = 0;
+                let mut succeeded_on_timeout_retry = false;
+                let mut socket_allocation_errors =
+                    u32::from(matches!(initial, PortConnectOutcome::SocketAllocationError));
+                let mut connection_errors =
+                    u32::from(matches!(initial, PortConnectOutcome::ConnectionError));
+
+                if initial_timed_out {
+                    for _ in 0..timeout_retries {
+                        timeout_retry_attempts += 1;
+                        match with_connectivity_attempt_permit(
+                            Arc::clone(&permits),
+                            connect_port(ip, port, connectivity_timeout),
+                        )
+                        .await
+                        {
+                            PortConnectOutcome::Connected(elapsed) => {
+                                response_time = Some(elapsed);
+                                succeeded_on_timeout_retry = true;
+                                break;
+                            }
+                            PortConnectOutcome::TimedOut => timeout_retry_timeouts += 1,
+                            PortConnectOutcome::ConnectionError => {
+                                connection_errors += 1;
+                                break;
+                            }
+                            PortConnectOutcome::SocketAllocationError => {
+                                socket_allocation_errors += 1;
+                                break;
+                            }
+                        }
                     }
                 }
                 PortProbeResult {
                     ip,
                     port,
                     response_time,
-                    slow_retry_response_times,
+                    initial_timed_out,
+                    timeout_retry_attempts,
+                    timeout_retry_timeouts,
+                    succeeded_on_timeout_retry,
+                    socket_allocation_errors,
+                    connection_errors,
                 }
             }
         })
@@ -1062,29 +1092,26 @@ impl MinerFactory {
     pub fn probe_ports_stream_with_ip(
         &self,
     ) -> Pin<Box<impl Stream<Item = (IpAddr, Vec<PortProbeResult>)> + Send + use<>>> {
-        self.probe_ports_stream_with_ip_config(None, 0)
+        self.probe_ports_stream_with_ip_config(self.connectivity_retries)
     }
 
-    /// Probe every miner TCP port and retry slow successful connections with fresh sockets.
+    /// Probe every miner TCP port and retry timed-out connects with fresh sockets.
     ///
-    /// The first successful connection is kept as the reachability result. If
-    /// its connection time exceeds `slow_threshold`, `retry_count` additional
-    /// connection attempts are made and their individual successful durations
-    /// are included in [`PortProbeResult::slow_retry_response_times`]. Each
+    /// A retry is made only after a timeout. Connection refusals and socket
+    /// allocation errors stop retries for that port. Retries stop on the first
+    /// successful connection or after `retry_count` additional attempts. Every
     /// attempt shares the factory's connection limit and uses its configured
     /// connectivity timeout.
-    pub fn probe_ports_stream_with_ip_after_slow_success(
+    pub fn probe_ports_stream_with_ip_retry_timeouts(
         &self,
-        slow_threshold: Duration,
         retry_count: u32,
     ) -> Pin<Box<impl Stream<Item = (IpAddr, Vec<PortProbeResult>)> + Send + use<>>> {
-        self.probe_ports_stream_with_ip_config(Some(slow_threshold), retry_count)
+        self.probe_ports_stream_with_ip_config(retry_count)
     }
 
     fn probe_ports_stream_with_ip_config(
         &self,
-        slow_retry_threshold: Option<Duration>,
-        slow_retry_count: u32,
+        timeout_retries: u32,
     ) -> Pin<Box<impl Stream<Item = (IpAddr, Vec<PortProbeResult>)> + Send + use<>>> {
         let concurrency = self
             .concurrent
@@ -1106,17 +1133,13 @@ impl MinerFactory {
                 let factory = Arc::clone(&factory);
                 let ips = Arc::clone(&ips);
                 let connection_limit = Arc::clone(&connection_limit);
-                let slow_retry_threshold = slow_retry_threshold;
-                let slow_retry_count = slow_retry_count;
                 async move {
                     let ip = ips[index];
                     let results = probe_miner_ports_with_response_times(
                         ip,
                         factory.connectivity_timeout,
-                        factory.connectivity_retries,
+                        timeout_retries,
                         connection_limit,
-                        slow_retry_threshold,
-                        slow_retry_count,
                     )
                     .await;
                     (ip, results)
