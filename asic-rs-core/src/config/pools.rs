@@ -32,9 +32,9 @@ impl PoolConfig {
         self
     }
 
-    /// Remove one exact trailing suffix from the worker username, if present.
-    pub fn clear_worker_suffix(mut self, suffix: &str) -> Self {
-        if let Some(username) = self.username.strip_suffix(suffix) {
+    /// Remove the worker name after the first dot, if present.
+    pub fn clear_worker_suffix(mut self) -> Self {
+        if let Some((username, _)) = self.username.split_once('.') {
             self.username = username.to_string();
         }
         self
@@ -75,12 +75,12 @@ impl PoolGroupConfig {
         self
     }
 
-    /// Remove one exact trailing suffix from each worker username, if present.
-    pub fn clear_worker_suffix(mut self, suffix: &str) -> Self {
+    /// Remove each worker name after the first dot, if present.
+    pub fn clear_worker_suffix(mut self) -> Self {
         self.pools = self
             .pools
             .into_iter()
-            .map(|pool| pool.clear_worker_suffix(suffix))
+            .map(PoolConfig::clear_worker_suffix)
             .collect();
         self
     }
@@ -112,7 +112,7 @@ mod tests {
     use crate::data::pool::PoolURL;
 
     #[test]
-    fn worker_suffix_round_trips_without_truncating_existing_worker_names() {
+    fn worker_suffix_can_be_cleared_after_the_first_dot() {
         let group = PoolGroupConfig {
             name: "default".to_string(),
             quota: 1,
@@ -127,6 +127,11 @@ mod tests {
                     username: "address.worker.extra".to_string(),
                     password: "secret".to_string(),
                 },
+                PoolConfig {
+                    url: PoolURL::from("stratum+tcp://third.example.com:3333".to_string()),
+                    username: "solo".to_string(),
+                    password: "x".to_string(),
+                },
             ],
         };
 
@@ -134,9 +139,10 @@ mod tests {
         assert_eq!(suffixed.pools[0].username, "account.worker.device-1");
         assert_eq!(suffixed.pools[1].username, "address.worker.extra.device-1");
 
-        let cleared = suffixed.clear_worker_suffix(".device-1");
-        assert_eq!(cleared.pools[0].username, "account.worker");
-        assert_eq!(cleared.pools[1].username, "address.worker.extra");
+        let cleared = suffixed.clear_worker_suffix();
+        assert_eq!(cleared.pools[0].username, "account");
+        assert_eq!(cleared.pools[1].username, "address");
+        assert_eq!(cleared.pools[2].username, "solo");
         assert_eq!(cleared.pools[1].password, "secret");
         assert_eq!(cleared.quota, 1);
     }
