@@ -42,16 +42,19 @@ impl WebAPIClient for VnishWebAPI {
     async fn send_command(
         &self,
         command: &str,
-        _privileged: bool,
+        privileged: bool,
         parameters: Option<Value>,
         method: Method,
     ) -> anyhow::Result<Value> {
-        // Ensure we're authenticated before making the request
-        if let Err(e) = self.ensure_authenticated().await {
-            return Err(anyhow::anyhow!("Failed to authenticate: {}", e));
-        }
-
         let url = format!("http://{}:{}/api/v1/{}", self.ip, self.port, command);
+
+        // Public reads should work on miners that expose their API without a
+        // password. Privileged operations still authenticate before sending.
+        if privileged {
+            self.ensure_authenticated()
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to authenticate: {}", e))?;
+        }
 
         let mut response = self
             .execute_request(&url, &method, parameters.clone())
@@ -59,7 +62,9 @@ impl WebAPIClient for VnishWebAPI {
 
         if response.status().as_u16() == 401 {
             *self.bearer_token.write().await = None;
-            self.ensure_authenticated().await?;
+            self.ensure_authenticated()
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to authenticate: {}", e))?;
             response = self.execute_request(&url, &method, parameters).await?;
         }
 
