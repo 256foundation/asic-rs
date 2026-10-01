@@ -9,6 +9,8 @@ use reqwest::{Client, Method, Response};
 use serde_json::{Value, json};
 use tokio::sync::RwLock;
 
+use crate::backends::is_public_read_endpoint;
+
 /// VNish WebAPI client
 #[derive(Debug)]
 pub struct VnishWebAPI {
@@ -42,16 +44,19 @@ impl WebAPIClient for VnishWebAPI {
     async fn send_command(
         &self,
         command: &str,
-        _privileged: bool,
+        privileged: bool,
         parameters: Option<Value>,
         method: Method,
     ) -> anyhow::Result<Value> {
-        // Ensure we're authenticated before making the request
-        if let Err(e) = self.ensure_authenticated().await {
-            return Err(anyhow::anyhow!("Failed to authenticate: {}", e));
-        }
-
         let url = format!("http://{}:{}/api/v1/{}", self.ip, self.port, command);
+
+        // Only skip eager authentication for read endpoints confirmed to be
+        // public. Unknown or privileged requests authenticate before sending.
+        if privileged || !is_public_read_endpoint(command, &method) {
+            self.ensure_authenticated()
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to authenticate: {}", e))?;
+        }
 
         let mut response = self
             .execute_request(&url, &method, parameters.clone())
