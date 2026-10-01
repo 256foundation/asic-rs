@@ -4,6 +4,7 @@ use asic_rs_core::traits::{
     miner::{Miner, MinerConstructor, Validate},
     model::MinerModel,
 };
+use reqwest::Method;
 use serde_json::Value;
 pub use v1_2_0::VnishV120;
 pub use v1_3_0::VnishV130;
@@ -15,6 +16,21 @@ pub mod v1_3_0;
 mod test;
 
 pub struct Vnish;
+
+fn is_public_read_endpoint(command: &str, method: &Method) -> bool {
+    *method == Method::GET
+        && matches!(
+            command,
+            "info"
+                | "status"
+                | "summary"
+                | "metrics"
+                | "chains"
+                | "chains/factory-info"
+                | "settings"
+                | "autotune/presets"
+        )
+}
 
 fn parse_devfee_connected(pools: &Value) -> Option<bool> {
     let mut disconnected = false;

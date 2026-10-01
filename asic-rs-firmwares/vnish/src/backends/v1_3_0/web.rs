@@ -9,20 +9,7 @@ use reqwest::{Client, Method, Response};
 use serde_json::{Value, json};
 use tokio::sync::RwLock;
 
-fn is_public_read_endpoint(command: &str, method: &Method) -> bool {
-    *method == Method::GET
-        && matches!(
-            command,
-            "info"
-                | "status"
-                | "summary"
-                | "metrics"
-                | "chains"
-                | "chains/factory-info"
-                | "settings"
-                | "autotune/presets"
-        )
-}
+use crate::backends::is_public_read_endpoint;
 
 /// VNish WebAPI client
 #[derive(Debug)]
@@ -77,9 +64,7 @@ impl WebAPIClient for VnishWebAPI {
 
         if response.status().as_u16() == 401 {
             *self.bearer_token.write().await = None;
-            self.ensure_authenticated()
-                .await
-                .map_err(|e| anyhow::anyhow!("Failed to authenticate: {}", e))?;
+            self.ensure_authenticated().await?;
             response = self.execute_request(&url, &method, parameters).await?;
         }
 
