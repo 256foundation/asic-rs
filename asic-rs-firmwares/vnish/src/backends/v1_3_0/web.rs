@@ -9,6 +9,21 @@ use reqwest::{Client, Method, Response};
 use serde_json::{Value, json};
 use tokio::sync::RwLock;
 
+fn is_public_read_endpoint(command: &str, method: &Method) -> bool {
+    *method == Method::GET
+        && matches!(
+            command,
+            "info"
+                | "status"
+                | "summary"
+                | "metrics"
+                | "chains"
+                | "chains/factory-info"
+                | "settings"
+                | "autotune/presets"
+        )
+}
+
 /// VNish WebAPI client
 #[derive(Debug)]
 pub struct VnishWebAPI {
@@ -48,9 +63,9 @@ impl WebAPIClient for VnishWebAPI {
     ) -> anyhow::Result<Value> {
         let url = format!("http://{}:{}/api/v1/{}", self.ip, self.port, command);
 
-        // Public reads should work on miners that expose their API without a
-        // password. Privileged operations still authenticate before sending.
-        if privileged {
+        // Only skip eager authentication for read endpoints confirmed to be
+        // public. Unknown or privileged requests authenticate before sending.
+        if privileged || !is_public_read_endpoint(command, &method) {
             self.ensure_authenticated()
                 .await
                 .map_err(|e| anyhow::anyhow!("Failed to authenticate: {}", e))?;
