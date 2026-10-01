@@ -659,9 +659,10 @@ func NewPoolConfig(rawURL, username, password string) (PoolConfig, error) {
 
 // PoolGroupConfig is a named group of pools.
 type PoolGroupConfig struct {
-	Name  string       `json:"name"`
-	Quota uint32       `json:"quota"`
-	Pools []PoolConfig `json:"pools"`
+	Name           string       `json:"name"`
+	Quota          uint32       `json:"quota"`
+	UniqueWorkerID *string      `json:"unique_worker_id,omitempty"`
+	Pools          []PoolConfig `json:"pools"`
 }
 
 // ScalingConfig controls power/hashrate step scaling.

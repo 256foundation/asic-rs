@@ -949,6 +949,7 @@ impl SupportsPoolsConfig for ElphapexV1 {
             return Ok(vec![PoolGroupConfig {
                 name: "default".to_string(),
                 quota: 1,
+                unique_worker_id: None,
                 pools,
             }]);
         }
@@ -990,6 +991,7 @@ impl SupportsPoolsConfig for ElphapexV1 {
         Ok(vec![PoolGroupConfig {
             name: "default".to_string(),
             quota: 1,
+            unique_worker_id: None,
             pools,
         }])
     }

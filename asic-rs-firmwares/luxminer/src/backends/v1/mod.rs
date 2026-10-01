@@ -112,6 +112,7 @@ impl LuxMinerV1 {
                             .unwrap_or_default()
                             .to_string(),
                         quota: Self::parse_quota(group.get("Quota")),
+                        unique_worker_id: None,
                         pools: vec![],
                     },
                 ))
@@ -156,6 +157,7 @@ impl LuxMinerV1 {
                     PoolGroupConfig {
                         name: String::new(),
                         quota: Self::parse_quota(pool.get("Quota")),
+                        unique_worker_id: None,
                         pools: vec![pool_config],
                     },
                 ));

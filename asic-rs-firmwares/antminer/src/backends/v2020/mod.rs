@@ -1045,6 +1045,7 @@ impl SupportsPoolsConfig for AntMinerV2020 {
             return Ok(vec![PoolGroupConfig {
                 name: String::new(),
                 quota: 1,
+                unique_worker_id: None,
                 pools: vec![],
             }]);
         };
@@ -1081,6 +1082,7 @@ impl SupportsPoolsConfig for AntMinerV2020 {
         Ok(vec![PoolGroupConfig {
             name: String::new(),
             quota: 1,
+            unique_worker_id: None,
             pools,
         }])
     }

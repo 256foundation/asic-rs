@@ -118,6 +118,7 @@ impl MaraV1 {
                             .unwrap_or_default()
                             .to_string(),
                         quota,
+                        unique_worker_id: None,
                         pools: vec![],
                     },
                 ))
@@ -130,6 +131,7 @@ impl MaraV1 {
                 PoolGroupConfig {
                     name: String::new(),
                     quota: 100,
+                    unique_worker_id: None,
                     pools: vec![],
                 },
             ));
@@ -169,6 +171,7 @@ impl MaraV1 {
                     PoolGroupConfig {
                         name: String::new(),
                         quota: 0,
+                        unique_worker_id: None,
                         pools: vec![pool_config],
                     },
                 ));
@@ -1253,11 +1256,13 @@ mod tests {
             PoolGroupConfig {
                 name: "primary".to_string(),
                 quota: 80,
+                unique_worker_id: None,
                 pools: vec![],
             },
             PoolGroupConfig {
                 name: "backup".to_string(),
                 quota: 20,
+                unique_worker_id: None,
                 pools: vec![],
             },
         ];
@@ -1280,6 +1285,7 @@ mod tests {
             PoolGroupConfig {
                 name: "primary".to_string(),
                 quota: 40,
+                unique_worker_id: None,
                 pools: vec![PoolConfig {
                     url: PoolURL::from("stratum+tcp://pool0.invalid:3333".to_string()),
                     username: "user0".to_string(),
@@ -1289,6 +1295,7 @@ mod tests {
             PoolGroupConfig {
                 name: "secondary".to_string(),
                 quota: 30,
+                unique_worker_id: None,
                 pools: vec![PoolConfig {
                     url: PoolURL::from("stratum+tcp://pool1.invalid:3333".to_string()),
                     username: "user1".to_string(),
@@ -1298,6 +1305,7 @@ mod tests {
             PoolGroupConfig {
                 name: "tertiary".to_string(),
                 quota: 20,
+                unique_worker_id: None,
                 pools: vec![PoolConfig {
                     url: PoolURL::from("stratum+tcp://pool2.invalid:3333".to_string()),
                     username: "user2".to_string(),
@@ -1307,6 +1315,7 @@ mod tests {
             PoolGroupConfig {
                 name: "ignored".to_string(),
                 quota: 10,
+                unique_worker_id: None,
                 pools: vec![PoolConfig {
                     url: PoolURL::from("stratum+tcp://pool3.invalid:3333".to_string()),
                     username: "user3".to_string(),

@@ -708,6 +708,7 @@ impl SupportsPoolsConfig for VolcMinerV1 {
             return Ok(vec![PoolGroupConfig {
                 name: "default".to_string(),
                 quota: 1,
+                unique_worker_id: None,
                 pools: vec![],
             }]);
         };
@@ -744,6 +745,7 @@ impl SupportsPoolsConfig for VolcMinerV1 {
         Ok(vec![PoolGroupConfig {
             name: "default".to_string(),
             quota: 1,
+            unique_worker_id: None,
             pools,
         }])
     }

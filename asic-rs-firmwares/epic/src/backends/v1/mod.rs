@@ -387,6 +387,14 @@ impl GetConfigsLocations for PowerPlayV1 {
                     },
                 ),
                 (
+                    WEB_SUMMARY,
+                    ConfigExtractor {
+                        func: get_by_pointer,
+                        key: Some("/Stratum"),
+                        tag: Some("stratum"),
+                    },
+                ),
+                (
                     WEB_HASHRATESPLIT_CONFIG,
                     ConfigExtractor {
                         func: get_by_pointer,
@@ -1500,8 +1508,24 @@ impl SupportsPoolsConfig for PowerPlayV1 {
                         .get("stratum_configs")
                         .map(Self::parse_stratum_configs)
                         .unwrap_or_default();
+                    let unique_worker_id = split
+                        .get("unique_id")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false)
+                        .then(|| {
+                            split
+                                .get("unique_worker_id_variant")
+                                .and_then(Value::as_str)
+                                .unwrap_or("MacAddress")
+                                .to_string()
+                        });
 
-                    groups.push(PoolGroupConfig { name, quota, pools });
+                    groups.push(PoolGroupConfig {
+                        name,
+                        quota,
+                        unique_worker_id,
+                        pools,
+                    });
                 }
             }
 
@@ -1512,6 +1536,19 @@ impl SupportsPoolsConfig for PowerPlayV1 {
             let groups = vec![PoolGroupConfig {
                 name: String::new(),
                 quota: 1,
+                unique_worker_id: pools_object
+                    .get("stratum")
+                    .and_then(|stratum| stratum.get("Worker Unique Id"))
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+                    .then(|| {
+                        pools_object
+                            .get("stratum")
+                            .and_then(|stratum| stratum.get("Worker Unique Id Variant"))
+                            .and_then(Value::as_str)
+                            .unwrap_or("MacAddress")
+                            .to_string()
+                    }),
                 pools: pools_object
                     .get("summary")
                     .map(Self::parse_stratum_configs)
@@ -1538,7 +1575,15 @@ impl SupportsPoolsConfig for PowerPlayV1 {
         );
 
         let coin = Self::coin_type_for_hash_algorithm(self.device_info.algo);
-        let unique_id_enabled = false;
+        for group in &groups {
+            if group
+                .unique_worker_id
+                .as_ref()
+                .is_some_and(|variant| variant.trim().is_empty())
+            {
+                anyhow::bail!("Unique worker ID variant cannot be empty");
+            }
+        }
 
         if let [group] = groups.as_slice() {
             let set_coin = self
@@ -1550,7 +1595,7 @@ impl SupportsPoolsConfig for PowerPlayV1 {
                         "param": {
                             "coin": coin,
                             "stratum_configs": Self::to_stratum_configs(group),
-                            "unique_id": unique_id_enabled,
+                            "unique_id": group.unique_worker_id.is_some(),
                         }
                     })),
                     Method::POST,
@@ -1571,7 +1616,34 @@ impl SupportsPoolsConfig for PowerPlayV1 {
                 )
                 .await?;
 
-            Ok(response_ok(&disable_split))
+            if !response_ok(&disable_split) {
+                return Ok(false);
+            }
+
+            if let Some(variant) = &group.unique_worker_id {
+                let enable_unique_id = self
+                    .web
+                    .send_command("id", false, Some(json!({ "param": true })), Method::POST)
+                    .await?;
+                if !response_ok(&enable_unique_id) {
+                    return Ok(false);
+                }
+
+                tokio::time::sleep(Duration::from_secs(1)).await;
+
+                let set_variant = self
+                    .web
+                    .send_command(
+                        "id/variant",
+                        false,
+                        Some(json!({ "param": variant })),
+                        Method::POST,
+                    )
+                    .await?;
+                return Ok(response_ok(&set_variant));
+            }
+
+            Ok(true)
         } else {
             let total_quota: u32 = groups.iter().map(|g| g.quota.max(1)).sum();
             let mut allocated_ratio = 0_u32;
@@ -1596,9 +1668,8 @@ impl SupportsPoolsConfig for PowerPlayV1 {
                         "ratio": ratio,
                         "sc_index": idx,
                         "stratum_configs": Self::to_stratum_configs(group),
-                        "unique_id": unique_id_enabled,
-                        // this needs to be set since it's not an option
-                        "unique_worker_id_variant": "MacAddress",
+                        "unique_id": group.unique_worker_id.is_some(),
+                        "unique_worker_id_variant": group.unique_worker_id.as_deref().unwrap_or("MacAddress"),
                     })
                 })
                 .collect();
@@ -2184,6 +2255,137 @@ mod tests {
             self.calls.fetch_add(1, Ordering::SeqCst);
             Ok(self.summary.clone())
         }
+    }
+
+    #[tokio::test]
+    async fn pool_config_reads_unique_worker_id_from_active_mode() -> anyhow::Result<()> {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let mock_api = MockAPIClient::new(HashMap::from([
+            (
+                MinerCommand::WebAPI {
+                    command: "summary",
+                    parameters: None,
+                },
+                json!({
+                    "StratumConfigs": [{ "pool": "stratum+tcp://pool.example.com:3333", "login": "worker" }],
+                    "Stratum": {
+                    "Worker Unique Id": true,
+                    "Worker Unique Id Variant": "MacAddress"
+                    }
+                }),
+            ),
+            (
+                MinerCommand::WebAPI {
+                    command: "hashratesplit/config",
+                    parameters: None,
+                },
+                json!({ "enabled": false }),
+            ),
+        ]));
+        let mut collector = ConfigCollector::new_with_client(&miner, &mock_api);
+        let standard = collector.collect(&[ConfigField::Pools]).await;
+        let groups = miner.parse_pools_config(&standard)?;
+        assert_eq!(groups[0].unique_worker_id.as_deref(), Some("MacAddress"));
+
+        let split = HashMap::from([(
+            ConfigField::Pools,
+            json!({
+                "Hashratesplit Config": {
+                    "enabled": true,
+                    "hashrate_splits": [
+                        { "ratio": 70, "stratum_configs": [], "unique_id": true,
+                          "unique_worker_id_variant": "IpAddress" },
+                        { "ratio": 30, "stratum_configs": [], "unique_id": false,
+                          "unique_worker_id_variant": "MacAddress" }
+                    ]
+                }
+            }),
+        )]);
+        let groups = miner.parse_pools_config(&split)?;
+        assert_eq!(groups[0].unique_worker_id.as_deref(), Some("IpAddress"));
+        assert_eq!(groups[1].unique_worker_id, None);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn single_pool_group_sets_unique_worker_id_variant() -> anyhow::Result<()> {
+        let MockJsonSequenceServer { port, task } = mock_json_sequence_server(vec![
+            ("200 OK", json!({ "result": true })),
+            ("200 OK", json!({ "result": true })),
+            ("200 OK", json!({ "result": true })),
+            ("200 OK", json!({ "result": true })),
+        ])
+        .await?;
+        let miner =
+            PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
+        let group = PoolGroupConfig {
+            name: "default".to_string(),
+            quota: 1,
+            unique_worker_id: Some("MacAddress".to_string()),
+            pools: vec![PoolConfig {
+                url: PoolURL::from("stratum+tcp://pool.example.com:3333".to_string()),
+                username: "worker".to_string(),
+                password: "x".to_string(),
+            }],
+        };
+
+        assert!(miner.set_pools_config(vec![group]).await?);
+        let requests = task.await??;
+        assert_eq!(requests.len(), 4);
+        assert!(requests[0].starts_with("POST /coin HTTP/1.1\r\n"));
+        assert_eq!(json_request_body(&requests[0])?["param"]["unique_id"], true);
+        assert!(requests[1].starts_with("POST /hashratesplit/enable HTTP/1.1\r\n"));
+        assert_eq!(json_request_body(&requests[1])?["param"], false);
+        assert!(requests[2].starts_with("POST /id HTTP/1.1\r\n"));
+        assert_eq!(json_request_body(&requests[2])?["param"], true);
+        assert!(requests[3].starts_with("POST /id/variant HTTP/1.1\r\n"));
+        assert_eq!(json_request_body(&requests[3])?["param"], "MacAddress");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn split_pool_groups_send_each_unique_worker_id_variant() -> anyhow::Result<()> {
+        let MockJsonSequenceServer { port, task } = mock_json_sequence_server(vec![
+            ("200 OK", json!({ "result": true })),
+            ("200 OK", json!({ "result": true })),
+        ])
+        .await?;
+        let miner =
+            PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
+        let pool = PoolConfig {
+            url: PoolURL::from("stratum+tcp://pool.example.com:3333".to_string()),
+            username: "worker".to_string(),
+            password: "x".to_string(),
+        };
+        let groups = vec![
+            PoolGroupConfig {
+                name: "one".to_string(),
+                quota: 1,
+                unique_worker_id: Some("IpAddress".to_string()),
+                pools: vec![pool.clone()],
+            },
+            PoolGroupConfig {
+                name: "two".to_string(),
+                quota: 1,
+                unique_worker_id: None,
+                pools: vec![pool],
+            },
+        ];
+
+        assert!(miner.set_pools_config(groups).await?);
+        let requests = task.await??;
+        assert_eq!(requests.len(), 2);
+        assert!(requests[0].starts_with("POST /hashratesplit HTTP/1.1\r\n"));
+        let splits = json_request_body(&requests[0])?["param"]
+            .as_array()
+            .cloned()
+            .unwrap();
+        assert_eq!(splits[0]["unique_id"], true);
+        assert_eq!(splits[0]["unique_worker_id_variant"], "IpAddress");
+        assert_eq!(splits[1]["unique_id"], false);
+        assert_eq!(splits[1]["unique_worker_id_variant"], "MacAddress");
+        assert!(requests[1].starts_with("POST /hashratesplit/enable HTTP/1.1\r\n"));
+        Ok(())
     }
 
     #[tokio::test]
@@ -3141,6 +3343,7 @@ mod tests {
             .map(|group| PoolGroupConfig {
                 name: group.name.clone(),
                 quota: group.quota,
+                unique_worker_id: group.unique_worker_id.clone(),
                 pools: group
                     .pools
                     .iter()
