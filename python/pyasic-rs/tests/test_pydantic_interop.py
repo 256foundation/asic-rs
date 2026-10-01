@@ -275,7 +275,6 @@ def test_pool_config_constructors_are_keyword_only_and_typed() -> None:
     assert group.model_dump() == {
         "name": "default",
         "quota": 1,
-        "unique_worker_id": None,
         "pools": [
             {
                 "url": "stratum+tcp://pool.example.com:3333",
@@ -284,10 +283,6 @@ def test_pool_config_constructors_are_keyword_only_and_typed() -> None:
             }
         ],
     }
-    group_with_unique_id = PoolGroup(
-        name="default", quota=1, unique_worker_id="MacAddress", pools=[pool]
-    )
-    assert group_with_unique_id.model_dump()["unique_worker_id"] == "MacAddress"
 
     with pytest.raises(TypeError):
         Pool("stratum+tcp://pool.example.com:3333", "worker.1", "x")

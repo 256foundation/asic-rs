@@ -25,6 +25,22 @@ pub struct PoolConfig {
     pub password: String,
 }
 
+impl PoolConfig {
+    /// Append an exact suffix to the worker username.
+    pub fn use_worker_suffix(mut self, suffix: &str) -> Self {
+        self.username.push_str(suffix);
+        self
+    }
+
+    /// Remove one exact trailing suffix from the worker username, if present.
+    pub fn clear_worker_suffix(mut self, suffix: &str) -> Self {
+        if let Some(username) = self.username.strip_suffix(suffix) {
+            self.username = username.to_string();
+        }
+        self
+    }
+}
+
 #[cfg_attr(
     feature = "python",
     pyclass(name = "PoolGroup", from_py_object, get_all, module = "asic_rs")
@@ -43,13 +59,31 @@ pub struct PoolGroupConfig {
     pub name: String,
     /// Pool group quota or priority weight.
     pub quota: u32,
-    /// Optional firmware-specific worker ID variant. None disables unique worker IDs.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "python", pydantic(default = None))]
-    pub unique_worker_id: Option<String>,
     /// Pools in this group.
     #[cfg_attr(feature = "python", pydantic(input_type = "list[Pool]"))]
     pub pools: Vec<PoolConfig>,
+}
+
+impl PoolGroupConfig {
+    /// Append an exact suffix to every worker username in this group.
+    pub fn use_worker_suffix(mut self, suffix: &str) -> Self {
+        self.pools = self
+            .pools
+            .into_iter()
+            .map(|pool| pool.use_worker_suffix(suffix))
+            .collect();
+        self
+    }
+
+    /// Remove one exact trailing suffix from each worker username, if present.
+    pub fn clear_worker_suffix(mut self, suffix: &str) -> Self {
+        self.pools = self
+            .pools
+            .into_iter()
+            .map(|pool| pool.clear_worker_suffix(suffix))
+            .collect();
+        self
+    }
 }
 
 impl From<PoolGroupData> for PoolGroupConfig {
@@ -57,7 +91,6 @@ impl From<PoolGroupData> for PoolGroupConfig {
         PoolGroupConfig {
             name: data.name,
             quota: data.quota,
-            unique_worker_id: None,
             pools: data
                 .pools
                 .into_iter()
@@ -75,25 +108,36 @@ impl From<PoolGroupData> for PoolGroupConfig {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
-
-    use super::PoolGroupConfig;
+    use super::{PoolConfig, PoolGroupConfig};
+    use crate::data::pool::PoolURL;
 
     #[test]
-    fn unique_worker_id_is_optional_in_existing_pool_group_json() {
-        let old_config = json!({ "name": "default", "quota": 1, "pools": [] });
-        let group: PoolGroupConfig = serde_json::from_value(old_config.clone()).unwrap();
-        assert_eq!(group.unique_worker_id, None);
-        assert_eq!(serde_json::to_value(&group).unwrap(), old_config);
+    fn worker_suffix_round_trips_without_truncating_existing_worker_names() {
+        let group = PoolGroupConfig {
+            name: "default".to_string(),
+            quota: 1,
+            pools: vec![
+                PoolConfig {
+                    url: PoolURL::from("stratum+tcp://first.example.com:3333".to_string()),
+                    username: "account.worker".to_string(),
+                    password: "x".to_string(),
+                },
+                PoolConfig {
+                    url: PoolURL::from("stratum+tcp://second.example.com:3333".to_string()),
+                    username: "address.worker.extra".to_string(),
+                    password: "secret".to_string(),
+                },
+            ],
+        };
 
-        let configured = json!({
-            "name": "default",
-            "quota": 1,
-            "unique_worker_id": "MacAddress",
-            "pools": []
-        });
-        let group: PoolGroupConfig = serde_json::from_value(configured.clone()).unwrap();
-        assert_eq!(group.unique_worker_id.as_deref(), Some("MacAddress"));
-        assert_eq!(serde_json::to_value(&group).unwrap(), configured);
+        let suffixed = group.use_worker_suffix(".device-1");
+        assert_eq!(suffixed.pools[0].username, "account.worker.device-1");
+        assert_eq!(suffixed.pools[1].username, "address.worker.extra.device-1");
+
+        let cleared = suffixed.clear_worker_suffix(".device-1");
+        assert_eq!(cleared.pools[0].username, "account.worker");
+        assert_eq!(cleared.pools[1].username, "address.worker.extra");
+        assert_eq!(cleared.pools[1].password, "secret");
+        assert_eq!(cleared.quota, 1);
     }
 }

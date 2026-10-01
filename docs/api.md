@@ -221,7 +221,6 @@ are backed by Rust structs and expose Pydantic-style helpers.
     let pool = PoolGroupConfig {
         name: "default".to_string(),
         quota: 1,
-        unique_worker_id: None,
         pools: vec![PoolConfig {
             url: PoolURL::from("stratum+tcp://pool.example.com:3333".to_string()),
             username: "worker.1".to_string(),
@@ -230,8 +229,14 @@ are backed by Rust structs and expose Pydantic-style helpers.
     };
     ```
 
-For ePIC UMC OS, `unique_worker_id: Some("MacAddress".to_string())` enables unique worker IDs for
-that pool group. `None` disables them.
+Rust pool configs can add an exact worker suffix without storing it in the config model:
+
+```rust
+let with_suffix = pool.use_worker_suffix(".device-1");
+let original = with_suffix.clear_worker_suffix(".device-1");
+```
+
+Pass the same suffix to clear it. Existing dots in the worker username are preserved.
 
 === "Python"
 

@@ -178,7 +178,6 @@ impl SealMinerWebAPI {
         Ok(PoolGroupConfig {
             name: String::new(),
             quota: 1,
-            unique_worker_id: None,
             pools,
         })
     }

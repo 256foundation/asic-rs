@@ -495,7 +495,6 @@ if miner.supports_pools_config() {
     let group = PoolGroupConfig {
         name: "default".to_string(),
         quota: 1,
-        unique_worker_id: None,
         pools: vec![PoolConfig {
             url: PoolURL::from("stratum+tcp://pool.example.com:3333".to_string()),
             username: "worker.1".to_string(),

@@ -927,7 +927,6 @@ impl SupportsPoolsConfig for ProtoV1 {
             vec![PoolGroupConfig {
                 name: "Default".to_string(),
                 quota: 1,
-                unique_worker_id: None,
                 pools,
             }]
         })

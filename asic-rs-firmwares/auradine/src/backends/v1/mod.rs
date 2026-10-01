@@ -1311,7 +1311,6 @@ impl SupportsPoolsConfig for AuradineV1 {
         Ok(vec![PoolGroupConfig {
             name: String::new(),
             quota: 1,
-            unique_worker_id: None,
             pools: parsed,
         }])
     }
@@ -1765,7 +1764,6 @@ mod tests {
         let config = vec![PoolGroupConfig {
             name: String::new(),
             quota: 1,
-            unique_worker_id: None,
             pools: vec![PoolConfig {
                 url: PoolURL::from("stratum+tcp://example.com:3333".to_string()),
                 username: "worker".to_string(),
@@ -1784,7 +1782,6 @@ mod tests {
         let config = vec![PoolGroupConfig {
             name: String::new(),
             quota: 1,
-            unique_worker_id: None,
             pools: (0..4)
                 .map(|idx| PoolConfig {
                     url: PoolURL::from(format!("stratum+tcp://pool{idx}.example.com:3333")),

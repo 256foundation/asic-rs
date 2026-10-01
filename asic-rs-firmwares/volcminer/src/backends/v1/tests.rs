@@ -381,7 +381,6 @@ async fn set_pools_config_live_test() -> anyhow::Result<()> {
     let target = vec![PoolGroupConfig {
         name: "default".to_string(),
         quota: 1,
-        unique_worker_id: None,
         pools: pools.clone(),
     }];
 
