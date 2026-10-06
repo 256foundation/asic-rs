@@ -129,6 +129,26 @@ fn browser_miner_conf_payload(miner_conf: &Value) -> serde_json::Map<String, Val
     payload
 }
 
+/// `set_miner_conf.cgi` only overwrites the pool slots it is sent, so a list
+/// shorter than the miner's three slots leaves the old trailing pools in
+/// place. Blank the unused slots so they are removed.
+fn pools_payload(config: Vec<PoolGroupConfig>) -> Vec<Value> {
+    let mut pools: Vec<Value> = config
+        .into_iter()
+        .flat_map(|group| group.pools.into_iter())
+        .map(|pool| {
+            json!({
+                "url": pool.url.to_string(),
+                "user": pool.username,
+                "pass": pool.password,
+            })
+        })
+        .collect();
+
+    pools.resize(3, json!({ "url": "", "user": "", "pass": "" }));
+    pools
+}
+
 fn miner_conf_with_miner_mode(miner_conf: &Value, mode: MinerMode) -> Option<Value> {
     miner_mode_config_key(miner_conf)?;
     let mut payload = browser_miner_conf_payload(miner_conf);
@@ -1063,19 +1083,7 @@ impl SupportsPoolsConfig for AntMinerV202307 {
     }
 
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
-        let mut pools: Vec<Value> = config
-            .into_iter()
-            .flat_map(|group| group.pools.into_iter())
-            .map(|pool| {
-                json!({
-                    "url": pool.url.to_string(),
-                    "user": pool.username,
-                    "pass": pool.password,
-                })
-            })
-            .collect();
-
-        pools.truncate(3);
+        let pools = pools_payload(config);
 
         Ok(self
             .web
@@ -1389,6 +1397,28 @@ mod tests {
         AM_DEVS, AM_POOLS, AM_STATS, AM_SUMMARY, AM_SYSTEM_INFO, AM_VERSION,
     };
     use crate::test::json::v2023_07::{L9_STATS, L9_SUMMARY, L11_STATS, L11_SUMMARY};
+
+    #[test]
+    fn pools_payload_blanks_the_slots_a_shorter_config_leaves_unused() {
+        let pool = |n: u8| PoolConfig {
+            url: PoolURL::from(format!("stratum+tcp://pool{n}.example:3333")),
+            username: format!("worker.{n}"),
+            password: "x".to_string(),
+        };
+
+        assert_eq!(
+            pools_payload(vec![PoolGroupConfig {
+                name: String::new(),
+                quota: 1,
+                pools: vec![pool(1), pool(2)],
+            }]),
+            vec![
+                json!({"url": "stratum+tcp://pool1.example:3333", "user": "worker.1", "pass": "x"}),
+                json!({"url": "stratum+tcp://pool2.example:3333", "user": "worker.2", "pass": "x"}),
+                json!({"url": "", "user": "", "pass": ""}),
+            ]
+        );
+    }
 
     #[test]
     fn set_miner_conf_payload_matches_cgi_contract_for_pause_resume() {
