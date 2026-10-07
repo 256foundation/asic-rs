@@ -4,8 +4,6 @@
 
 This page is generated from the Rust source. The support matrix is derived from each backend's `supports_...` methods; model lists are derived from the make model enums.
 
-Fork additions and validation limits: [ASIC-RS Support Extension](../SUPPORT-EXTENSION.md).
-
 Legend:
 
  - :lucide-check-check: means every backend subtype for that firmware type supports the function

@@ -469,9 +469,6 @@ impl GetHashboards for SealMinerV2025 {
                     board_temperature: board_temp,
                     inlet_chip_temperature: intake_temp,
                     outlet_chip_temperature: outlet_temp,
-                    // Support Extension: this backend does not report coolant.
-                    inlet_fluid_temperature: None,
-                    outlet_fluid_temperature: None,
                     expected_chips: self.device_info.hardware.chips_for_board(i),
                     working_chips,
                     serial_number: serial,

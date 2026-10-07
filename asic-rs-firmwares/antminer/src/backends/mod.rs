@@ -1,7 +1,3 @@
-// Support Extension modifications: shared stock telemetry parser module.
-mod telemetry;
-#[cfg(test)]
-mod telemetry_tests;
 pub mod v2020;
 pub mod v2023_07;
 

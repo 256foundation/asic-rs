@@ -1,5 +1,3 @@
-// Modified for Support Extension (2026-10-07): minimum confirmed
-// hardware metadata for separately identified S21/S23 hydro models.
 use asic_rs_core::data::collector::FromValue;
 use asic_rs_core::data::{board::MinerControlBoard, device::MinerHardware};
 use serde::{Deserialize, Serialize};
@@ -308,7 +306,7 @@ impl From<AntMinerControlBoard> for MinerControlBoard {
 }
 
 #[cfg(test)]
-mod support_extension_tests {
+mod hydro_model_tests {
     use super::*;
 
     #[test]

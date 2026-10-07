@@ -1,4 +1,3 @@
-// Support Extension modifications: stock telemetry schemas, sensor domains and observed mining state.
 use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::Duration};
 
 use anyhow;
@@ -18,7 +17,7 @@ use asic_rs_core::{
         device::DeviceInfo,
         fan::FanData,
         firmware::FirmwareImage,
-        hashrate::HashRate,
+        hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::{MiningMode, TuningTarget},
         pool::{PoolData, PoolGroupData, PoolURL},
@@ -28,14 +27,14 @@ use asic_rs_core::{
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use async_trait::async_trait;
 use macaddr::MacAddr;
-use measurements::{Power, Temperature};
+use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::AntMinerRPCAPI;
 use semver::Version;
 use serde_json::{Value, json};
 use web::AntMinerWebAPI;
 
 use self::firmware::resolve_firmware_image;
-use crate::{backends::telemetry, firmware::AntMinerStockFirmware};
+use crate::firmware::AntMinerStockFirmware;
 
 mod firmware;
 mod rpc;
@@ -233,6 +232,101 @@ impl AntMinerV2020 {
             device_info: DeviceInfo::new(model, AntMinerStockFirmware::default(), algo),
         }
     }
+
+    /// Read a numeric field that some firmware generations emit as a JSON
+    /// number and others as a quoted string.
+    fn parse_f64_field(value: &Value) -> Option<f64> {
+        value
+            .as_f64()
+            .or_else(|| value.as_str().and_then(|s| s.trim().parse::<f64>().ok()))
+    }
+
+    fn parse_temp_string(temp_str: &str) -> Option<Temperature> {
+        let temps: Vec<f64> = temp_str
+            .split('-')
+            .filter_map(|s| s.parse().ok())
+            .filter(|&temp| temp > 0.0)
+            .collect();
+
+        if !temps.is_empty() {
+            let avg = temps.iter().sum::<f64>() / temps.len() as f64;
+            Some(Temperature::from_celsius(avg))
+        } else {
+            None
+        }
+    }
+
+    fn _calculate_average_temp_s21_hyd(chain: &Value) -> Option<Temperature> {
+        let mut temps = Vec::new();
+
+        if let Some(temp_pic) = chain.get("temp_pic").and_then(|v| v.as_array()) {
+            for i in 1..=3 {
+                if let Some(temp) = temp_pic.get(i).and_then(|v| v.as_f64())
+                    && temp != 0.0
+                {
+                    temps.push(temp);
+                }
+            }
+        }
+
+        if let Some(temp_pcb) = chain.get("temp_pcb").and_then(|v| v.as_array()) {
+            if let Some(temp) = temp_pcb.get(1).and_then(|v| v.as_f64())
+                && temp != 0.0
+            {
+                temps.push(temp);
+            }
+            if let Some(temp) = temp_pcb.get(3).and_then(|v| v.as_f64())
+                && temp != 0.0
+            {
+                temps.push(temp);
+            }
+        }
+
+        if !temps.is_empty() {
+            let avg = temps.iter().sum::<f64>() / temps.len() as f64;
+            Some(Temperature::from_celsius(avg))
+        } else {
+            None
+        }
+    }
+
+    fn _calculate_average_temp_pcb(chain: &Value) -> Option<Temperature> {
+        if let Some(temp_pcb) = chain.get("temp_pcb").and_then(|v| v.as_array()) {
+            let temps: Vec<f64> = temp_pcb
+                .iter()
+                .filter_map(|v| v.as_f64())
+                .filter(|&temp| temp != 0.0)
+                .collect();
+
+            if !temps.is_empty() {
+                let avg = temps.iter().sum::<f64>() / temps.len() as f64;
+                Some(Temperature::from_celsius(avg))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    fn _calculate_average_temp_chip(chain: &Value) -> Option<Temperature> {
+        if let Some(temp_chip) = chain.get("temp_chip").and_then(|v| v.as_array()) {
+            let temps: Vec<f64> = temp_chip
+                .iter()
+                .filter_map(|v| v.as_f64())
+                .filter(|&temp| temp != 0.0)
+                .collect();
+
+            if !temps.is_empty() {
+                let avg = temps.iter().sum::<f64>() / temps.len() as f64;
+                Some(Temperature::from_celsius(avg))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 }
 
 #[async_trait]
@@ -292,6 +386,11 @@ impl GetDataLocations for AntMinerV2020 {
 
         const RPC_STATS: MinerCommand = MinerCommand::RPC {
             command: "stats",
+            parameters: None,
+        };
+
+        const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
+            command: "summary",
             parameters: None,
         };
 
@@ -366,12 +465,53 @@ impl GetDataLocations for AntMinerV2020 {
                     tag: None,
                 },
             )],
-            DataField::Hashrate => telemetry::rate_locations(),
-            DataField::ExpectedHashrate
-            | DataField::Fans
-            | DataField::Hashboards
-            | DataField::FluidTemperature
-            | DataField::OutletFluidTemperature => telemetry::stats_locations(),
+            // cgminer names its summary keys after the unit they are in —
+            // `GHS 5s` on SHA-256 models, `MHS 5s` on Scrypt ones — so keep
+            // the whole entry and let the parse pick the key that is present.
+            DataField::Hashrate => vec![(
+                RPC_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/SUMMARY/0"),
+                    tag: None,
+                },
+            )],
+            // `total_rateideal`, by contrast, says nothing about its own
+            // scale, so carry STATS' `rate_unit` alongside it.
+            DataField::ExpectedHashrate => vec![
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/1/total_rateideal"),
+                        tag: Some("hashrate"),
+                    },
+                ),
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/1/rate_unit"),
+                        tag: Some("unit"),
+                    },
+                ),
+            ],
+            DataField::Fans => vec![(
+                RPC_STATS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/STATS/1"),
+                    tag: None,
+                },
+            )],
+            DataField::Hashboards => vec![(
+                RPC_STATS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/STATS/1"),
+                    tag: None,
+                },
+            )],
             DataField::LightFlashing => vec![(
                 WEB_BLINK_STATUS,
                 DataExtractor {
@@ -380,28 +520,14 @@ impl GetDataLocations for AntMinerV2020 {
                     tag: None,
                 },
             )],
-            DataField::IsMining => {
-                let mut locations = telemetry::rate_locations();
-                locations.extend(["bitmain-work-mode", "miner-mode"].into_iter().map(|key| {
-                    (
-                        WEB_MINER_CONF,
-                        DataExtractor {
-                            func: get_by_pointer,
-                            key: Some(if key == "miner-mode" {
-                                "/miner-mode"
-                            } else {
-                                "/bitmain-work-mode"
-                            }),
-                            tag: Some(if key == "miner-mode" {
-                                "miner_mode"
-                            } else {
-                                "work_mode"
-                            }),
-                        },
-                    )
-                }));
-                locations
-            }
+            DataField::IsMining => vec![(
+                WEB_MINER_CONF,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/bitmain-work-mode"),
+                    tag: None,
+                },
+            )],
             DataField::Uptime => vec![(
                 RPC_STATS,
                 DataExtractor {
@@ -418,7 +544,32 @@ impl GetDataLocations for AntMinerV2020 {
                     tag: None,
                 },
             )],
-            DataField::Wattage => telemetry::stats_locations(),
+            DataField::Wattage => {
+                // Not a `const` because `json!` is not const-evaluable.
+                let rpc_new_stats = MinerCommand::RPC {
+                    command: "stats",
+                    parameters: Some(json!({ "new_api": true })),
+                };
+
+                vec![
+                    (
+                        RPC_STATS,
+                        DataExtractor {
+                            func: get_by_pointer,
+                            key: Some("/STATS/1"),
+                            tag: None,
+                        },
+                    ),
+                    (
+                        rpc_new_stats,
+                        DataExtractor {
+                            func: get_by_pointer,
+                            key: Some("/STATS/0"),
+                            tag: None,
+                        },
+                    ),
+                ]
+            }
             DataField::SerialNumber => vec![
                 (
                     WEB_SYSTEM_INFO,
@@ -503,48 +654,150 @@ impl GetFirmwareVersion for AntMinerV2020 {
 
 impl GetHashboards for AntMinerV2020 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        data.get(&DataField::Hashboards)
-            .map(|value| {
-                telemetry::hashboards(
-                    value,
-                    &self.device_info.model.to_string(),
-                    self.device_info.algo,
-                    &self.device_info.hardware,
-                )
-            })
-            .unwrap_or_else(|| {
-                (0..self.device_info.hardware.board_count().unwrap_or(0))
-                    .map(|position| {
-                        BoardData::new(
-                            position,
-                            self.device_info.hardware.chips_for_board(position as usize),
-                        )
-                    })
-                    .collect()
-            })
+        let mut hashboards: Vec<BoardData> =
+            (0..self.device_info.hardware.board_count().unwrap_or(0))
+                .map(|idx| {
+                    BoardData::new(idx, self.device_info.hardware.chips_for_board(idx as usize))
+                })
+                .collect();
+
+        let Some(stats_data) = data.get(&DataField::Hashboards).and_then(|v| v.as_object()) else {
+            return hashboards;
+        };
+
+        let unit = stats_data
+            .get("rate_unit")
+            .and_then(|v| v.as_str())
+            .and_then(|s| HashRateUnit::from_str(s).ok())
+            .unwrap_or(HashRateUnit::GigaHash);
+        let algo = self.device_info.algo;
+
+        for board in hashboards.iter_mut() {
+            let idx = board.position + 1;
+
+            board.hashrate = stats_data
+                .get(&format!("chain_rate{idx}"))
+                .and_then(Self::parse_f64_field)
+                .map(|r| {
+                    HashRate {
+                        value: r,
+                        unit,
+                        algo,
+                    }
+                    .as_default_unit()
+                });
+
+            // `temp_pcb{idx}` on older generations; newer ones split the
+            // reading into inlet/outlet pairs and omit the combined key.
+            board.board_temperature = stats_data
+                .get(&format!("temp_pcb{idx}"))
+                .and_then(|v| v.as_str())
+                .and_then(Self::parse_temp_string)
+                .or_else(|| {
+                    stats_data
+                        .get(&format!("temp_out_pcb_{idx}"))
+                        .and_then(Self::parse_f64_field)
+                        .filter(|&t| t > 0.0)
+                        .map(Temperature::from_celsius)
+                });
+
+            board.working_chips = stats_data
+                .get(&format!("chain_acn{idx}"))
+                .and_then(|v| v.as_u64())
+                .map(|u| u as u16);
+
+            board.frequency = stats_data
+                .get(&format!("freq{idx}"))
+                .and_then(|v| v.as_u64())
+                .map(|f| Frequency::from_megahertz(f as f64));
+
+            let has_hashrate = board
+                .hashrate
+                .as_ref()
+                .map(|h| h.value > 0.0)
+                .unwrap_or(false);
+            let has_chips = board.working_chips.map(|chips| chips > 0).unwrap_or(false);
+
+            board.active = Some(has_hashrate || has_chips);
+        }
+
+        hashboards
     }
 }
 
 impl GetHashrate for AntMinerV2020 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        telemetry::hashrate(data.get(&DataField::Hashrate)?, self.device_info.algo)
+        let summary = data.get(&DataField::Hashrate)?.as_object()?;
+
+        // cgminer names its rate keys `<unit> <window>` — `GHS 5s` on SHA-256
+        // models, `MHS 5s` on Scrypt ones — so the key states its own unit.
+        // Prefer the 5-second window and fall back to the average.
+        let (value, unit) = ["5s", "av"].into_iter().find_map(|window| {
+            summary.iter().find_map(|(key, raw)| {
+                let (unit, key_window) = key.split_once(' ')?;
+                if key_window != window {
+                    return None;
+                }
+                Some((
+                    Self::parse_f64_field(raw)?,
+                    HashRateUnit::from_str(unit).ok()?,
+                ))
+            })
+        })?;
+
+        Some(
+            HashRate {
+                value,
+                unit,
+                algo: self.device_info.algo,
+            }
+            .as_default_unit(),
+        )
     }
 }
 
 impl GetExpectedHashrate for AntMinerV2020 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        telemetry::expected_hashrate(
-            data.get(&DataField::ExpectedHashrate)?,
-            self.device_info.algo,
+        let field = data.get(&DataField::ExpectedHashrate);
+        let value = field?
+            .pointer("/hashrate")
+            .and_then(Self::parse_f64_field)?;
+        Some(
+            HashRate {
+                value,
+                // `total_rateideal` does not name its own scale, so take it
+                // from STATS' `rate_unit` (`"GH"` / `"MH"`).
+                unit: field
+                    .and_then(|v| v.pointer("/unit"))
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| HashRateUnit::from_str(s).ok())
+                    .unwrap_or(HashRateUnit::GigaHash),
+                algo: self.device_info.algo,
+            }
+            .as_default_unit(),
         )
     }
 }
 
 impl GetFans for AntMinerV2020 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
-        data.get(&DataField::Fans)
-            .map(telemetry::fans)
-            .unwrap_or_default()
+        let mut fans: Vec<FanData> = Vec::new();
+
+        if let Some(stats_data) = data.get(&DataField::Fans) {
+            for i in 1..=self.device_info.hardware.fans.unwrap_or(4) {
+                if let Some(fan_speed) =
+                    stats_data.get(format!("fan{}", i)).and_then(|v| v.as_f64())
+                    && fan_speed > 0.0
+                {
+                    fans.push(FanData {
+                        position: (i - 1) as i16,
+                        rpm: Some(AngularVelocity::from_rpm(fan_speed)),
+                    });
+                }
+            }
+        }
+
+        fans
     }
 }
 
@@ -572,14 +825,15 @@ impl GetDevFeeConnected for AntMinerV2020 {}
 
 impl GetIsMining for AntMinerV2020 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        let field = data.get(&DataField::IsMining);
-        let rate = field
-            .and_then(|value| telemetry::current_rate(value, self.device_info.algo))
-            .or_else(|| {
-                data.get(&DataField::Hashrate)
-                    .and_then(|value| telemetry::current_rate(value, self.device_info.algo))
-            });
-        telemetry::is_mining(field, rate)
+        data.extract::<String>(DataField::IsMining)
+            .map(|status| {
+                let status_lower = status.to_lowercase();
+                status_lower != "stopped"
+                    && status_lower != "idle"
+                    && status_lower != "sleep"
+                    && status_lower != "1"
+            })
+            .unwrap_or(true)
     }
 }
 
@@ -666,7 +920,30 @@ impl GetControlBoardVersion for AntMinerV2020 {
 
 impl GetWattage for AntMinerV2020 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
-        telemetry::wattage(data.get(&DataField::Wattage)?)
+        if let Some(stats_data) = data.get(&DataField::Wattage) {
+            if let Some(chain_power) = stats_data.get("chain_power")
+                && let Some(power_str) = chain_power.as_str()
+            {
+                // Parse "3250 W" format
+                if let Some(watt_part) = power_str.split_whitespace().next()
+                    && let Ok(watts) = watt_part.parse::<f64>()
+                {
+                    return Some(Power::from_watts(watts));
+                }
+            }
+
+            if let Some(power) = stats_data
+                .get("power")
+                .or_else(|| stats_data.get("Power"))
+                // Same firmware version spells this differently per model: the
+                // L9 reports `power`, the L11 `watt`.
+                .or_else(|| stats_data.get("watt"))
+                .and_then(|v| v.as_f64())
+            {
+                return Some(Power::from_watts(power));
+            }
+        }
+        None
     }
 }
 
@@ -686,32 +963,35 @@ impl GetScaledTuningTarget for AntMinerV2020 {
 
 impl GetFluidTemperature for AntMinerV2020 {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
-        let field = data
-            .get(&DataField::FluidTemperature)
-            .or_else(|| data.get(&DataField::Hashboards))?;
-        let boards = telemetry::hashboards(
-            field,
-            &self.device_info.model.to_string(),
-            self.device_info.algo,
-            &self.device_info.hardware,
-        );
-        telemetry::fluid_temperature(&boards, false)
-    }
+        // For S21+ Hyd models, use inlet/outlet temperature average
+        if self.device_info.model.to_string().contains("S21+ Hyd")
+            && let Some(hashboards_data) = data.get(&DataField::Hashboards)
+            && let Some(chains) = hashboards_data.as_array()
+        {
+            let mut temps = Vec::new();
 
-    fn parse_outlet_fluid_temperature(
-        &self,
-        data: &HashMap<DataField, Value>,
-    ) -> Option<Temperature> {
-        let field = data
-            .get(&DataField::OutletFluidTemperature)
-            .or_else(|| data.get(&DataField::Hashboards))?;
-        let boards = telemetry::hashboards(
-            field,
-            &self.device_info.model.to_string(),
-            self.device_info.algo,
-            &self.device_info.hardware,
-        );
-        telemetry::fluid_temperature(&boards, true)
+            for chain in chains {
+                if let Some(temp_pcb) = chain.get("temp_pcb").and_then(|v| v.as_array()) {
+                    // Inlet temp (index 0) and outlet temp (index 2)
+                    if let Some(inlet) = temp_pcb.first().and_then(|v| v.as_f64())
+                        && inlet != 0.0
+                    {
+                        temps.push(inlet);
+                    }
+                    if let Some(outlet) = temp_pcb.get(2).and_then(|v| v.as_f64())
+                        && outlet != 0.0
+                    {
+                        temps.push(outlet);
+                    }
+                }
+            }
+
+            if !temps.is_empty() {
+                let avg = temps.iter().sum::<f64>() / temps.len() as f64;
+                return Some(Temperature::from_celsius(avg));
+            }
+        }
+        None
     }
 }
 
@@ -1116,7 +1396,7 @@ impl SupportsPresets for AntMinerV2020 {}
 
 #[cfg(test)]
 mod tests {
-    use asic_rs_core::data::{device::HashAlgorithm, hashrate::HashRateUnit};
+    use asic_rs_core::data::device::HashAlgorithm;
     use std::sync::Arc;
 
     use anyhow::{self, Context};
@@ -1213,9 +1493,9 @@ mod tests {
                     {
                         "rate_unit": "MH",
                         "total_rateideal": 16000.0,
-                        "chain_rate1": 5.4,
-                        "chain_rate2": 5.4,
-                        "chain_rate3": 5.4
+                        "chain_rate1": 5400.0,
+                        "chain_rate2": 5400.0,
+                        "chain_rate3": 5400.0
                     }
                 ]
             }),

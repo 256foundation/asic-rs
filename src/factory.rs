@@ -1147,56 +1147,12 @@ mod tests {
     #[tokio::test]
     #[cfg(feature = "whatsminer")]
     async fn identification_timeout_bounds_miner_construction() -> anyhow::Result<()> {
-        use asic_rs_core::{
-            discovery::RPC_DEVDETAILS,
-            errors::ModelSelectionError,
-            traits::{discovery::DiscoveryCommands, identification::FirmwareIdentification},
-        };
         use asic_rs_firmwares_whatsminer::firmware::WhatsMinerFirmware;
         use tokio::{
             io::{AsyncReadExt, AsyncWriteExt},
             net::TcpListener,
             sync::oneshot,
         };
-
-        // Support Extension modification: isolate the construction deadline
-        // from platform-specific web connection timing. A pending web probe
-        // can occupy the stock-firmware upgrade window before construction.
-        #[derive(Debug, Default)]
-        struct RpcOnlyWhatsMinerFirmware(WhatsMinerFirmware);
-
-        impl std::fmt::Display for RpcOnlyWhatsMinerFirmware {
-            fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Display::fmt(&self.0, formatter)
-            }
-        }
-
-        impl DiscoveryCommands for RpcOnlyWhatsMinerFirmware {
-            fn get_discovery_commands(&self) -> Vec<DiscoveryCommand> {
-                vec![RPC_DEVDETAILS]
-            }
-        }
-
-        impl FirmwareIdentification for RpcOnlyWhatsMinerFirmware {
-            fn identify_rpc(&self, response: &str) -> bool {
-                self.0.identify_rpc(response)
-            }
-
-            fn is_stock(&self) -> bool {
-                self.0.is_stock()
-            }
-        }
-
-        #[async_trait::async_trait]
-        impl FirmwareEntry for RpcOnlyWhatsMinerFirmware {
-            async fn build_miner(
-                &self,
-                ip: IpAddr,
-                auth: Option<&MinerAuth>,
-            ) -> std::result::Result<Box<dyn Miner>, ModelSelectionError> {
-                self.0.build_miner(ip, auth).await
-            }
-        }
 
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 4028)).await?;
         let (construction_started, mut construction_started_rx) = oneshot::channel();
@@ -1216,7 +1172,7 @@ mod tests {
             std::io::Result::Ok(())
         });
         let factory = MinerFactory::new()
-            .with_firmwares(vec![Arc::new(RpcOnlyWhatsMinerFirmware::default())])
+            .with_firmwares(vec![Arc::new(WhatsMinerFirmware::default())])
             .with_identification_timeout(Duration::from_millis(250));
         let started = tokio::time::Instant::now();
 

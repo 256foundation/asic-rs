@@ -1,4 +1,3 @@
-// Modified by Support Extension: incomplete hardware chip totals remain unknown.
 package asic_go
 
 // ManualTuningValues maps board positions to scalar MHz/volt setpoints.
@@ -62,10 +61,9 @@ func (h MinerHardware) TotalChips() (uint16, bool) {
 	}
 	var total uint32
 	for _, chips := range h.Boards {
-		if chips == nil {
-			return 0, false
+		if chips != nil {
+			total += uint32(*chips)
 		}
-		total += uint32(*chips)
 		if total > 65535 {
 			return 0, false
 		}

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Generate the supported devices documentation page from Rust source."""
-# Modified for Support Extension: label fork additions in generated support docs.
 
 from __future__ import annotations
 
@@ -518,7 +517,6 @@ def build_markdown() -> str:
                         "derived from each backend's `supports_...` methods; model lists are "
                         "derived from the make model enums."
                     ),
-                    "Fork additions and validation limits: [ASIC-RS Support Extension](../SUPPORT-EXTENSION.md).",
                     (
                         "Legend:\n\n"
                         " - :lucide-check-check: means every backend subtype for that firmware type supports the function\n"

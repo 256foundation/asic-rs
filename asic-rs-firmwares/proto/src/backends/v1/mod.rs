@@ -1356,8 +1356,7 @@ mod tests {
                 Some(116),
             ])
         );
-        // Support Extension: unreported slots leave the full capacity unknown.
-        assert_eq!(discovered.total_chips(), None);
+        assert_eq!(discovered.total_chips(), Some(710));
         assert_eq!(discovered.fans, Some(4));
 
         let miner = ProtoV1::new(

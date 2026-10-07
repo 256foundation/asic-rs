@@ -373,7 +373,7 @@ func TestAlgorithmDefaultsAndHardwareHelpers(t *testing.T) {
 	if n, ok := hardware.BoardCount(); !ok || n != 3 {
 		t.Fatalf("board count: %d, %v", n, ok)
 	}
-	if n, ok := hardware.TotalChips(); ok || n != 0 {
+	if n, ok := hardware.TotalChips(); !ok || n != 158 {
 		t.Fatalf("total chips: %d, %v", n, ok)
 	}
 	if n, ok := hardware.ChipsForBoard(2); !ok || n != 80 {
@@ -386,27 +386,6 @@ func TestAlgorithmDefaultsAndHardwareHelpers(t *testing.T) {
 	}
 	if _, ok := (MinerHardware{}).TotalChips(); ok {
 		t.Fatal("missing boards became a known count")
-	}
-}
-
-// Support Extension: unconfirmed or overflowing counts are not valid totals.
-func TestHardwareTotalChipsPreservesUnknownAndOverflow(t *testing.T) {
-	first, second, maximum := uint16(78), uint16(80), uint16(65535)
-	for _, hardware := range []MinerHardware{
-		{},
-		{Boards: []*uint16{nil, nil, nil}},
-		{Boards: []*uint16{&first, nil, &second}},
-		{Boards: []*uint16{&maximum, &first}},
-	} {
-		if total, known := hardware.TotalChips(); known || total != 0 {
-			t.Fatalf("unconfirmed total became known: %d, %v for %+v", total, known, hardware)
-		}
-	}
-	if total, known := (MinerHardware{Boards: []*uint16{&first, &second}}).TotalChips(); !known || total != 158 {
-		t.Fatalf("confirmed count lost: %d, %v", total, known)
-	}
-	if total, known := (MinerHardware{Boards: []*uint16{}}).TotalChips(); !known || total != 0 {
-		t.Fatalf("explicit empty boards lost: %d, %v", total, known)
 	}
 }
 
@@ -467,37 +446,5 @@ func TestStructuredTelemetryModels(t *testing.T) {
 	}
 	if *data.TuningCapabilities.Power.Maximum.Watts != 3500 {
 		t.Fatalf("capabilities: %+v", data.TuningCapabilities)
-	}
-}
-
-// Support Extension: preserve separate coolant fields and older snapshots.
-func TestBoardCoolantTelemetry(t *testing.T) {
-	var board BoardData
-	if err := json.Unmarshal([]byte(`{"position":0,"board_temperature":61,"inlet_fluid_temperature":34,"outlet_fluid_temperature":42}`), &board); err != nil {
-		t.Fatal(err)
-	}
-	if board.InletFluidTemperature == nil || *board.InletFluidTemperature != 34 || board.OutletFluidTemperature == nil || *board.OutletFluidTemperature != 42 {
-		t.Fatalf("coolant fields: %+v", board)
-	}
-	if board.BoardTemperature == nil || *board.BoardTemperature != 61 || board.InletChipTemperature != nil || board.OutletChipTemperature != nil {
-		t.Fatalf("sensor domains: %+v", board)
-	}
-	raw, err := json.Marshal(board)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var again BoardData
-	if err := json.Unmarshal(raw, &again); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(board, again) {
-		t.Fatalf("round trip changed telemetry: %+v", again)
-	}
-	var old BoardData
-	if err := json.Unmarshal([]byte(`{"position":0}`), &old); err != nil {
-		t.Fatal(err)
-	}
-	if old.InletFluidTemperature != nil || old.OutletFluidTemperature != nil {
-		t.Fatalf("older snapshot invented coolant: %+v", old)
 	}
 }
