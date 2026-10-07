@@ -1,4 +1,3 @@
-// Modified for Support Extension: deserialize optional hydro coolant measurements in Celsius.
 use macaddr::MacAddr;
 use measurements::Temperature;
 use serde::{Deserialize, Deserializer};
