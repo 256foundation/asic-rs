@@ -190,6 +190,24 @@ pub enum AntMinerModel {
     #[serde(alias = "ANTMINER S21E XP HYDRO")]
     #[algorithm(HashAlgorithm::SHA256)]
     S21eXPHydro,
+    #[serde(alias = "ANTMINER S21 XP HYD.")]
+    #[serde(alias = "ANTMINER S21 XP HYDRO")]
+    #[serde(alias = "ANTMINER S21XPHYD.")]
+    #[serde(alias = "ANTMINER S21XPHYDRO")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    S21XPHydro,
+    #[serde(alias = "ANTMINER S21J XP HYD.")]
+    #[serde(alias = "ANTMINER S21J XP HYDRO")]
+    #[serde(alias = "ANTMINER S21JXPHYD.")]
+    #[serde(alias = "ANTMINER S21JXPHYDRO")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    S21jXPHydro,
+    #[serde(alias = "ANTMINER S23 HYD.")]
+    #[serde(alias = "ANTMINER S23 HYDRO")]
+    #[serde(alias = "ANTMINER S23HYD.")]
+    #[serde(alias = "ANTMINER S23HYDRO")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    S23Hydro,
     #[serde(alias = "ANTMINER T21")]
     #[algorithm(HashAlgorithm::SHA256)]
     T21,
@@ -291,5 +309,65 @@ mod tests {
         let model = AntMinerModel::from_str("ANTMINER S99").unwrap();
 
         assert_eq!(model.hash_algorithm(), HashAlgorithm::Unknown);
+    }
+
+    #[test]
+    fn new_hydro_models_accept_their_exact_aliases() {
+        for (expected, aliases) in [
+            (
+                AntMinerModel::S21XPHydro,
+                vec![
+                    "ANTMINER S21 XP HYD.",
+                    "ANTMINER S21 XP HYDRO",
+                    "ANTMINER S21XPHYD.",
+                    "ANTMINER S21XPHYDRO",
+                ],
+            ),
+            (
+                AntMinerModel::S21jXPHydro,
+                vec![
+                    "ANTMINER S21J XP HYD.",
+                    "ANTMINER S21J XP HYDRO",
+                    "ANTMINER S21JXPHYD.",
+                    "ANTMINER S21JXPHYDRO",
+                ],
+            ),
+            (
+                AntMinerModel::S23Hydro,
+                vec![
+                    "ANTMINER S23 HYD.",
+                    "ANTMINER S23 HYDRO",
+                    "ANTMINER S23HYD.",
+                    "ANTMINER S23HYDRO",
+                ],
+            ),
+        ] {
+            for alias in aliases {
+                assert_eq!(AntMinerModel::from_str(alias).unwrap(), expected, "{alias}");
+            }
+            assert_eq!(expected.hash_algorithm(), HashAlgorithm::SHA256);
+            assert!(expected.is_known());
+            assert_eq!(
+                serde_json::from_str::<AntMinerModel>(&serde_json::to_string(&expected).unwrap())
+                    .unwrap(),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn distinct_or_unconfirmed_variants_remain_unknown() {
+        for alias in [
+            "ANTMINER S21J XP",
+            "ANTMINER S23",
+            "ANTMINER S23 XP HYD.",
+            "ANTMINER S23 HYD. 3U",
+            "ANTMINER S21 XP HYD. PROTOTYPE",
+        ] {
+            assert_eq!(
+                AntMinerModel::from_str(alias).unwrap(),
+                AntMinerModel::Unknown(alias.to_string())
+            );
+        }
     }
 }

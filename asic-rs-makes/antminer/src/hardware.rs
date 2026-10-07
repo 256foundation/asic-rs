@@ -242,6 +242,18 @@ impl From<AntMinerModel> for MinerHardware {
                 fans: Some(0),
                 boards: Some(vec![Some(160), Some(160), Some(160)]),
             },
+            AntMinerModel::S21XPHydro => Self {
+                fans: Some(0),
+                // BITMAIN S21 XP Hyd. User Guide, section 1.2: three hashboards.
+                // Chip counts are not documented; do not borrow another model's.
+                boards: Some(vec![None, None, None]),
+            },
+            AntMinerModel::S21jXPHydro | AntMinerModel::S23Hydro => Self {
+                fans: Some(0),
+                // Manufacturer references confirm hydro cooling but not board
+                // or chip counts. Actual telemetry must provide those details.
+                boards: None,
+            },
             AntMinerModel::Unknown(_) => Default::default(),
         }
     }
@@ -290,5 +302,35 @@ impl FromValue for AntMinerControlBoard {
 impl From<AntMinerControlBoard> for MinerControlBoard {
     fn from(cb: AntMinerControlBoard) -> Self {
         MinerControlBoard::known(cb.to_string())
+    }
+}
+
+#[cfg(test)]
+mod hydro_model_tests {
+    use super::*;
+
+    #[test]
+    fn hydro_metadata_does_not_invent_unconfirmed_chip_counts() {
+        let xp: MinerHardware = AntMinerModel::S21XPHydro.into();
+        assert_eq!(xp.fans, Some(0));
+        assert_eq!(xp.boards, Some(vec![None, None, None]));
+        for model in [AntMinerModel::S21jXPHydro, AntMinerModel::S23Hydro] {
+            let hardware: MinerHardware = model.into();
+            assert_eq!(hardware.fans, Some(0));
+            assert_eq!(hardware.boards, None);
+        }
+    }
+
+    #[test]
+    fn existing_air_and_hydro_hardware_metadata_is_preserved() {
+        let air: MinerHardware = AntMinerModel::S21ProPlus.into();
+        assert_eq!(air.fans, Some(4));
+        assert_eq!(air.boards, Some(vec![Some(65), Some(65), Some(65)]));
+        let hydro: MinerHardware = AntMinerModel::S21eXPHydro.into();
+        assert_eq!(hydro.fans, Some(0));
+        assert_eq!(hydro.boards, Some(vec![Some(160), Some(160), Some(160)]));
+        let unknown: MinerHardware = AntMinerModel::Unknown("S21j Pro".to_string()).into();
+        assert_eq!(unknown.fans, None);
+        assert_eq!(unknown.boards, None);
     }
 }
