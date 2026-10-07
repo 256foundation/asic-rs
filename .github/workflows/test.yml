@@ -3,6 +3,8 @@ name: Run Tests
 on:
   push:
   pull_request:
+  # Support Extension: let maintainers rerun the suite without a new commit.
+  workflow_dispatch:
 
 jobs:
   cargo-test:
