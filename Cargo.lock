@@ -139,6 +139,7 @@ dependencies = [
  "asic-rs-makes-volcminer",
  "asic-rs-makes-whatsminer",
  "async-stream",
+ "async-trait",
  "futures",
  "ipnet",
  "measurements",

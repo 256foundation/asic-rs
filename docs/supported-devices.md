@@ -4,6 +4,8 @@
 
 This page is generated from the Rust source. The support matrix is derived from each backend's `supports_...` methods; model lists are derived from the make model enums.
 
+Fork additions and validation limits: [ASIC-RS Support Extension](../SUPPORT-EXTENSION.md).
+
 Legend:
 
  - :lucide-check-check: means every backend subtype for that firmware type supports the function
@@ -34,7 +36,7 @@ Legend:
 
 ## Exact Supported Models
 
-??? quote "AntMiner (58 models across 23 families)"
+??? quote "AntMiner (61 models across 24 families)"
 
 	??? note "D3 family (1 model)"
 		 - [x] `ANTMINER D3`
@@ -94,16 +96,20 @@ Legend:
 		 - [x] `ANTMINER S19K PRO`
 		 - [x] `ANTMINER S19L`
 		 - [x] `ANTMINER S19PRO+`
-	??? note "S21 family (9 models)"
+	??? note "S21 family (11 models)"
 		 - [x] `ANTMINER S21` (also: `ANTMINER BHB68601`, `ANTMINER BHB68606`)
 		 - [x] `ANTMINER S21 HYD.` (also: `ANTMINER S21 HYDRO`)
 		 - [x] `ANTMINER S21 PRO`
 		 - [x] `ANTMINER S21 PRO+`
 		 - [x] `ANTMINER S21 XP`
+		 - [x] `ANTMINER S21 XP HYD.` (also: `ANTMINER S21 XP HYDRO`, `ANTMINER S21XPHYD.`, `ANTMINER S21XPHYDRO`)
 		 - [x] `ANTMINER S21+`
 		 - [x] `ANTMINER S21+ HYD.` (also: `ANTMINER S21+ HYDRO`)
 		 - [x] `ANTMINER S21++`
 		 - [x] `ANTMINER S21E XP HYD.` (also: `ANTMINER S21E XP HYDRO`)
+		 - [x] `ANTMINER S21J XP HYD.` (also: `ANTMINER S21J XP HYDRO`, `ANTMINER S21JXPHYD.`, `ANTMINER S21JXPHYDRO`)
+	??? note "S23 family (1 model)"
+		 - [x] `ANTMINER S23 HYD.` (also: `ANTMINER S23 HYDRO`, `ANTMINER S23HYD.`, `ANTMINER S23HYDRO`)
 	??? note "T9 family (1 model)"
 		 - [x] `ANTMINER T9`
 	??? note "T17 family (3 models)"

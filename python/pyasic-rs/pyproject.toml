@@ -18,7 +18,9 @@ readme = "../../docs-shared/guide.md"
 
 requires-python = ">=3.11, <4.0"
 dependencies = [
-    "pydantic>=2"
+    "pydantic>=2",
+    # Support Extension: Windows does not provide the IANA database used by ZoneInfo.
+    "tzdata; sys_platform == 'win32'",
 ]
 
 keywords = [

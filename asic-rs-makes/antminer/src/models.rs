@@ -1,3 +1,5 @@
+// Modified for Support Extension (2026-10-07): exact hydro model
+// identities and conservative normalization of manufacturer model strings.
 use std::str::FromStr;
 
 use asic_rs_core::data::device::HashAlgorithm;
@@ -190,6 +192,24 @@ pub enum AntMinerModel {
     #[serde(alias = "ANTMINER S21E XP HYDRO")]
     #[algorithm(HashAlgorithm::SHA256)]
     S21eXPHydro,
+    #[serde(alias = "ANTMINER S21 XP HYD.")]
+    #[serde(alias = "ANTMINER S21 XP HYDRO")]
+    #[serde(alias = "ANTMINER S21XPHYD.")]
+    #[serde(alias = "ANTMINER S21XPHYDRO")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    S21XPHydro,
+    #[serde(alias = "ANTMINER S21J XP HYD.")]
+    #[serde(alias = "ANTMINER S21J XP HYDRO")]
+    #[serde(alias = "ANTMINER S21JXPHYD.")]
+    #[serde(alias = "ANTMINER S21JXPHYDRO")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    S21jXPHydro,
+    #[serde(alias = "ANTMINER S23 HYD.")]
+    #[serde(alias = "ANTMINER S23 HYDRO")]
+    #[serde(alias = "ANTMINER S23HYD.")]
+    #[serde(alias = "ANTMINER S23HYDRO")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    S23Hydro,
     #[serde(alias = "ANTMINER T21")]
     #[algorithm(HashAlgorithm::SHA256)]
     T21,
@@ -202,7 +222,28 @@ impl FromStr for AntMinerModel {
     type Err = ModelSelectionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        serde_json::from_value(serde_json::Value::String(s.to_string()))
+        // Keep serialized enum names working, then normalize only formatting.
+        // The serde aliases remain the exact model allowlist: a new suffix or
+        // variant is never collapsed into the nearest known S21/S23 model.
+        if let Ok(model) = serde_json::from_value(serde_json::Value::String(s.to_string())) {
+            return Ok(model);
+        }
+
+        let normalized = s
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_ascii_uppercase();
+        let without_manufacturer = normalized.strip_prefix("BITMAIN ").unwrap_or(&normalized);
+        let model = without_manufacturer
+            .strip_prefix("ANTMINER ")
+            .unwrap_or(without_manufacturer);
+        let model = if model.ends_with(" HYD") || model.ends_with("XPHYD") || model == "S23HYD" {
+            format!("{model}.")
+        } else {
+            model.to_string()
+        };
+        serde_json::from_value(serde_json::Value::String(format!("ANTMINER {model}")))
             .or_else(|_| Ok(Self::Unknown(s.to_string())))
     }
 }
@@ -291,5 +332,92 @@ mod tests {
         let model = AntMinerModel::from_str("ANTMINER S99").unwrap();
 
         assert_eq!(model.hash_algorithm(), HashAlgorithm::Unknown);
+    }
+
+    #[test]
+    fn distinct_hydro_models_parse_with_exact_aliases_and_formatting() {
+        for (expected, aliases) in [
+            (
+                AntMinerModel::S21XPHydro,
+                vec![
+                    "ANTMINER S21 XP HYD.",
+                    "Antminer S21 XP Hyd",
+                    "S21 XP Hydro",
+                    "S21XPHyd.",
+                    "s21xphyd",
+                    "S21XPHydro",
+                ],
+            ),
+            (
+                AntMinerModel::S21jXPHydro,
+                vec![
+                    "ANTMINER S21J XP HYD.",
+                    "Antminer S21j XP Hyd",
+                    "S21j XP Hydro",
+                    "S21jXPHyd.",
+                    "s21jxphyd",
+                    "S21jXPHydro",
+                ],
+            ),
+            (
+                AntMinerModel::S23Hydro,
+                vec![
+                    "ANTMINER S23 HYD.",
+                    "Antminer S23 Hyd",
+                    "S23 Hydro",
+                    "S23Hyd.",
+                    "s23hyd",
+                    "S23Hydro",
+                ],
+            ),
+        ] {
+            for alias in aliases {
+                assert_eq!(AntMinerModel::from_str(alias).unwrap(), expected, "{alias}");
+            }
+            assert_eq!(expected.hash_algorithm(), HashAlgorithm::SHA256);
+            assert!(expected.is_known());
+            assert_eq!(
+                serde_json::from_str::<AntMinerModel>(&serde_json::to_string(&expected).unwrap())
+                    .unwrap(),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn normalizes_manufacturer_prefix_case_and_whitespace() {
+        for (alias, expected) in [
+            (
+                "  Bitmain  Antminer\tS21j   XP Hyd  ",
+                AntMinerModel::S21jXPHydro,
+            ),
+            ("bitmain S21 XP Hyd.", AntMinerModel::S21XPHydro),
+            ("s21 pro+", AntMinerModel::S21ProPlus),
+            ("AntMiner S21+ Hyd", AntMinerModel::S21PlusHydro),
+            ("s21e XP hydro", AntMinerModel::S21eXPHydro),
+            ("s19 pro HYD", AntMinerModel::S19ProHydro),
+        ] {
+            assert_eq!(AntMinerModel::from_str(alias).unwrap(), expected, "{alias}");
+        }
+    }
+
+    #[test]
+    fn unsupported_variants_remain_unknown_without_losing_their_original_identity() {
+        for alias in [
+            "Antminer S21j Pro",
+            "Antminer S21e",
+            "S21 XP+ Hyd.",
+            "S21j XP",
+            "S23",
+            "S23 XP Hyd.",
+            "S23 Hyd. 3U",
+            "S21 XP Hyd. Prototype",
+            "Antminer S21++ Hyd",
+        ] {
+            let model = AntMinerModel::from_str(alias).unwrap();
+            assert_eq!(model, AntMinerModel::Unknown(alias.to_string()), "{alias}");
+            assert!(!model.is_known());
+            assert_eq!(model.hash_algorithm(), HashAlgorithm::Unknown);
+        }
     }
 }

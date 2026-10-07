@@ -1,0 +1,19 @@
+{
+  "STATUS": [{"STATUS": "S"}],
+  "STATS": [{
+    "rate_5s": 600000,
+    "rate_avg": 590000,
+    "rate_ideal": 600000,
+    "rate_unit": "GH/s",
+    "fan_num": 0,
+    "fan": [],
+    "chain": [{
+      "index": 2,
+      "rate_real": 600000,
+      "asic_num": 120,
+      "frequency_mhz": 525,
+      "temp_pcb": [30, 51, 39, 52],
+      "temp_pic": [80, 53, 54, 55]
+    }]
+  }]
+}

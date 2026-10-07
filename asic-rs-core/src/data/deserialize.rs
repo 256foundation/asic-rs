@@ -1,5 +1,21 @@
+// Modified for Support Extension: deserialize optional hydro coolant measurements in Celsius.
 use macaddr::MacAddr;
+use measurements::Temperature;
 use serde::{Deserialize, Deserializer};
+
+pub(crate) fn deserialize_temperature<'de, D>(
+    deserializer: D,
+) -> Result<Option<Temperature>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<f64>::deserialize(deserializer)?;
+    match value {
+        Some(celsius) if celsius.is_finite() => Ok(Some(Temperature::from_celsius(celsius))),
+        Some(_) => Err(serde::de::Error::custom("temperature must be finite")),
+        None => Ok(None),
+    }
+}
 
 pub(crate) fn deserialize_macaddr<'de, D>(deserializer: D) -> Result<Option<MacAddr>, D::Error>
 where

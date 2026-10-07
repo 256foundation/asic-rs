@@ -312,6 +312,10 @@ async-stream.workspace = true
 tracing.workspace = true
 rlimit.workspace = true
 
+# Support Extension: deterministic construction-deadline test firmware wrapper.
+[dev-dependencies]
+async-trait.workspace = true
+
 [lints]
 workspace = true
 
