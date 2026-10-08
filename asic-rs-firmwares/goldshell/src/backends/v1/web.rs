@@ -34,10 +34,7 @@ impl GoldshellWebAPI {
     }
 
     pub fn allows_read(command: &str) -> bool {
-        matches!(
-            command,
-            "status" | "setting" | "pools" | "cgminer?cgminercmd=devs"
-        )
+        matches!(command, "status" | "setting")
     }
 
     fn client(&self) -> anyhow::Result<&Client> {
@@ -47,9 +44,6 @@ impl GoldshellWebAPI {
     }
 
     async fn login(&self) -> anyhow::Result<SecretString> {
-        if let MinerAuth::TokenAuth(token) = &self.auth {
-            return Ok(token.clone());
-        }
         // Do not invalidate another user's session via /user/logout.
         let response = self
             .client()?
@@ -129,6 +123,8 @@ mod tests {
             "user/logout",
             "setting?select=0",
             "cgminer?cgminercmd=restart",
+            "cgminer?cgminercmd=devs",
+            "pools",
         ] {
             assert!(!GoldshellWebAPI::allows_read(command));
         }

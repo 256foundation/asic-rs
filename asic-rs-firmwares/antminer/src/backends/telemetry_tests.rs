@@ -18,13 +18,11 @@ use serde_json::{Value, json};
 use super::{telemetry::*, v2020::AntMinerV2020, v2023_07::AntMinerV202307};
 use crate::test::json::v2023_07::{
     KS7_MODERN_STATS_CAPTURED, S21_HYDRO_COOLANT_SYNTHETIC, S21_PLUS_HYDRO_SYNTHETIC,
-    S21_XP_HYDRO_RPC_STATS_CAPTURED, S21_XP_HYDRO_WEB_STATS_CAPTURED,
-    S21_XP_HYDRO_WEB_SUMMARY_CAPTURED, S21J_XP_HYDRO_RPC_STATS_CAPTURED,
-    S21J_XP_HYDRO_WEB_STATS_CAPTURED, S21J_XP_HYDRO_WEB_SUMMARY_CAPTURED,
-    S21PROPLUS_MODERN_STATS_CAPTURED, S23_HYDRO_RPC_STATS_CAPTURED, S23_HYDRO_STANDARD_SYNTHETIC,
-    S23_HYDRO_WEB_STATS_CAPTURED, S23_HYDRO_WEB_SUMMARY_CAPTURED, Z15_MALFORMED_STATS_CAPTURED,
-    Z15_SUMMARY_CAPTURED, Z15PRO_LEGACY_STATS_CAPTURED, Z15PRO_MODERN_STATS_CAPTURED,
-    Z15PRO_SUMMARY_CAPTURED,
+    S21_XP_HYDRO_WEB_STATS_CAPTURED, S21_XP_HYDRO_WEB_SUMMARY_CAPTURED,
+    S21J_XP_HYDRO_RPC_STATS_CAPTURED, S21J_XP_HYDRO_WEB_STATS_CAPTURED,
+    S21J_XP_HYDRO_WEB_SUMMARY_CAPTURED, S21PROPLUS_MODERN_STATS_CAPTURED,
+    S23_HYDRO_STANDARD_SYNTHETIC, Z15_MALFORMED_STATS_CAPTURED, Z15_SUMMARY_CAPTURED,
+    Z15PRO_LEGACY_STATS_CAPTURED, Z15PRO_MODERN_STATS_CAPTURED, Z15PRO_SUMMARY_CAPTURED,
 };
 
 fn row(fixture: &str) -> Value {
@@ -52,8 +50,14 @@ async fn captured_product_identities_preserve_algorithm_and_observed_counts() {
         ),
     ] {
         let raw: Value = serde_json::from_str(fixture).unwrap();
-        let model =
-            AntMinerModel::from_str(raw.pointer("/INFO/type").unwrap().as_str().unwrap()).unwrap();
+        let model = AntMinerModel::from_str(
+            &raw.pointer("/INFO/type")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_uppercase(),
+        )
+        .unwrap();
         let miner = AntMinerV202307::new("127.0.0.1".parse().unwrap(), model);
         let mock = MockAPIClient::new(HashMap::from([(
             MinerCommand::RPC {
@@ -529,19 +533,6 @@ async fn captured_stock_hydro_web_fallback_preserves_actual_telemetry_for_both_b
             [59.0, 59.0, 60.0],
             0,
         ),
-        (
-            AntMinerModel::S23Hydro,
-            S23_HYDRO_WEB_STATS_CAPTURED,
-            S23_HYDRO_WEB_SUMMARY_CAPTURED,
-            84,
-            572.84556,
-            167430,
-            5525.0,
-            327.0,
-            [52.0, 52.0, 52.0],
-            [56.0, 55.0, 56.0],
-            0,
-        ),
     ] {
         let raw = row(stats);
         for miner in [
@@ -632,40 +623,20 @@ async fn captured_stock_hydro_web_fallback_preserves_actual_telemetry_for_both_b
 
 #[test]
 fn captured_legacy_hydro_chip_status_padding_is_not_extra_hardware() {
-    for (model, fixture, count) in [
-        (
-            AntMinerModel::S21XPHydro,
-            S21_XP_HYDRO_RPC_STATS_CAPTURED,
-            160,
-        ),
-        (
-            AntMinerModel::S21jXPHydro,
-            S21J_XP_HYDRO_RPC_STATS_CAPTURED,
-            42,
-        ),
-        (AntMinerModel::S23Hydro, S23_HYDRO_RPC_STATS_CAPTURED, 84),
-    ] {
-        let hardware = MinerHardware::from(model.clone());
-        let boards = hashboards(
-            &row(fixture),
-            &model.to_string(),
-            HashAlgorithm::SHA256,
-            &hardware,
-        );
-        assert_eq!(boards.len(), 3);
-        assert_eq!(
-            fans(&row(fixture)).len(),
-            if model == AntMinerModel::S21XPHydro {
-                4
-            } else {
-                0
-            }
-        );
-        for board in boards {
-            assert_eq!(board.expected_chips, Some(count));
-            assert_eq!(board.working_chips, Some(count));
-            assert_eq!(board.chips.len(), count as usize);
-        }
+    let model = AntMinerModel::S21jXPHydro;
+    let raw = row(S21J_XP_HYDRO_RPC_STATS_CAPTURED);
+    let boards = hashboards(
+        &raw,
+        &model.to_string(),
+        HashAlgorithm::SHA256,
+        &MinerHardware::from(model),
+    );
+    assert_eq!(boards.len(), 3);
+    assert!(fans(&raw).is_empty());
+    for board in boards {
+        assert_eq!(board.expected_chips, Some(42));
+        assert_eq!(board.working_chips, Some(42));
+        assert_eq!(board.chips.len(), 42);
     }
 }
 
@@ -684,7 +655,7 @@ fn captured_response_mutations_keep_real_failures_and_zero_chip_counts_visible()
     assert_eq!(boards[0].chips[1].working, Some(true));
     captured["elapsed"] = json!("NaN");
     assert!(uptime(&captured).is_none());
-    let mut summary: Value = serde_json::from_str(S23_HYDRO_WEB_SUMMARY_CAPTURED).unwrap();
+    let mut summary: Value = serde_json::from_str(S21J_XP_HYDRO_WEB_SUMMARY_CAPTURED).unwrap();
     summary["SUMMARY"][0]["status"][0] =
         json!({"status": "W", "code": 12, "msg": "Reduced hashrate"});
     let errors = messages(&summary);

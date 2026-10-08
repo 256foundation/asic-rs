@@ -288,13 +288,13 @@ pub(crate) fn fans(value: &Value) -> Vec<FanData> {
 }
 fn descriptions(value: &Value) -> impl Iterator<Item = &str> {
     [
-        "status",
-        "work_mode",
-        "work-mode",
         "indicator_long",
         "status_long",
         "indicator",
         "description",
+        "status",
+        "work_mode",
+        "work-mode",
     ]
     .into_iter()
     .filter_map(|key| value.get(key).and_then(Value::as_str))
@@ -342,19 +342,9 @@ pub(crate) fn messages(value: &Value) -> Vec<MinerMessage> {
     } else {
         MessageSeverity::Info
     };
-    [
-        "indicator_long",
-        "status_long",
-        "indicator",
-        "description",
-        "status",
-        "work_mode",
-        "work-mode",
-    ]
-    .into_iter()
-    .filter_map(|key| {
-        let text = value.get(key)?.as_str()?.trim();
-        (!text.is_empty()).then(|| MinerMessage::new(0, 0, text.to_owned(), severity.clone()))
-    })
-    .collect()
+    descriptions(value)
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+        .map(|text| MinerMessage::new(0, 0, text.to_owned(), severity.clone()))
+        .collect()
 }

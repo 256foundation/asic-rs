@@ -52,6 +52,12 @@ impl FirmwareIdentification for KaonsuFirmware {
 }
 pub(crate) fn model_from_overview(value: &Value) -> Result<AntMinerModel, ModelSelectionError> {
     let overview = payload(value, None).ok_or(ModelSelectionError::UnexpectedModelResponse)?;
+    let parse = |model: &str| {
+        AntMinerMake::parse_model(model.to_uppercase()).map(|parsed| match parsed {
+            AntMinerModel::Unknown(_) => AntMinerModel::Unknown(model.to_owned()),
+            known => known,
+        })
+    };
     let model = ["model_extended", "model"]
         .into_iter()
         .find_map(|key| {
@@ -62,13 +68,13 @@ pub(crate) fn model_from_overview(value: &Value) -> Result<AntMinerModel, ModelS
                 .filter(|model| !model.is_empty())
         })
         .ok_or(ModelSelectionError::UnexpectedModelResponse)?;
-    let extended = AntMinerMake::parse_model(model.to_owned())?;
+    let extended = parse(model)?;
     if let Some(base) = overview
         .get("model")
         .and_then(Value::as_str)
         .map(str::trim)
         .filter(|model| !model.is_empty())
-        .map(|model| AntMinerMake::parse_model(model.to_owned()))
+        .map(parse)
         .transpose()?
         .filter(|model| !matches!(model, AntMinerModel::Unknown(_)))
     {

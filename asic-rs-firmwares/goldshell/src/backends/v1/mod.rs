@@ -491,26 +491,6 @@ mod tests {
         )
     }
     #[test]
-    fn declared_rates_remain_observable_without_a_guessed_algorithm() {
-        let raw: Value =
-            serde_json::from_str(include_str!("../../../tests/fixtures/rpc_contract.json"))
-                .unwrap();
-        let rate = miner()
-            .parse_hashrate(&HashMap::from([(
-                DataField::Hashrate,
-                raw["SUMMARY"][0].clone(),
-            )]))
-            .unwrap();
-        assert_eq!(rate.value, 25.0);
-        assert_eq!(rate.unit, HashRateUnit::MegaHash);
-        assert_eq!(rate.algo, HashAlgorithm::Unknown);
-        assert!(!miner().parse_is_mining(&HashMap::from([(
-            DataField::IsMining,
-            json!({"MHS 20s":0,"MHS av":999})
-        )])));
-        assert!(!miner().parse_is_mining(&HashMap::new()));
-    }
-    #[test]
     fn present_invalid_current_rate_does_not_fall_back_to_older_samples() {
         let miner = miner();
         for invalid in [json!("NaN"), json!(-1), json!(null), json!(true)] {
@@ -527,17 +507,25 @@ mod tests {
             (DataField::Hashrate, row.clone()),
             (DataField::IsMining, row),
         ]);
-        assert_eq!(miner.parse_hashrate(&data).unwrap().value, 25.0);
+        let rate = miner.parse_hashrate(&data).unwrap();
+        assert_eq!(rate.value, 25.0);
+        assert_eq!(rate.unit, HashRateUnit::MegaHash);
+        assert_eq!(rate.algo, HashAlgorithm::Unknown);
         assert!(miner.parse_is_mining(&data));
+        assert!(!miner.parse_is_mining(&HashMap::from([(
+            DataField::IsMining,
+            json!({"MHS 20s": 0, "MHS av": 999}),
+        )])));
+        assert!(!miner.parse_is_mining(&HashMap::new()));
     }
     #[test]
     fn observed_boards_do_not_require_expected_hardware_or_fabricate_chips() {
-        let raw: Value =
-            serde_json::from_str(include_str!("../../../tests/fixtures/rpc_contract.json"))
-                .unwrap();
         let boards = miner().parse_hashboards(&HashMap::from([(
             DataField::Hashboards,
-            json!({"devices":raw["DEVS"],"details":raw["DEVDETAILS"]}),
+            json!({
+                "devices": [{"ID": 0}, {"ID": 1}],
+                "details": [{"ID": 0, "chips-nr": 16}, {"ID": 1, "chips-nr": 0}],
+            }),
         )]));
         assert_eq!(boards.len(), 2);
         assert_eq!(boards[0].working_chips, Some(16));
@@ -584,22 +572,12 @@ mod tests {
         for (fan, expected) in fans.iter().zip([2040.0, 2040.0, 2040.0, 2100.0]) {
             assert!((fan.rpm.unwrap().as_rpm() - expected).abs() < 1e-6);
         }
-        assert!(miner().parse_wattage(&HashMap::new()).is_none());
-    }
-    #[test]
-    fn sc5_pro_live_summary_rate_is_blake2b_without_nominal_power_or_hardware() {
-        let model = crate::firmware::model_from_status(&json!({
-            "model": "Goldshell-SC5Pro", "firmware": "2.2.0"
-        }))
-        .unwrap();
-        let miner = GoldshellV1::new(IpAddr::from([127, 0, 0, 1]), model);
         let data = HashMap::from([(DataField::Hashrate, json!({"MHS 20s": 10_861_769.547}))]);
-        let rate = miner.parse_hashrate(&data).unwrap();
+        let rate = live_miner.parse_hashrate(&data).unwrap();
         assert_eq!(rate.algo, HashAlgorithm::Blake2b);
         assert_eq!(rate.unit, HashRateUnit::TeraHash);
         assert!((rate.value - 10.861769547).abs() < 1e-9);
-        assert!(miner.get_expected_hashboards().is_none());
-        assert!(miner.parse_wattage(&HashMap::new()).is_none());
+        assert!(live_miner.parse_wattage(&HashMap::new()).is_none());
     }
     #[test]
     fn live_unknown_ari31_preserves_declared_units_and_observed_boards() {

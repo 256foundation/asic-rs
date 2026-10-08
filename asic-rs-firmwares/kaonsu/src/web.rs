@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Contract source: existing Mara/KaonSu firmware GET request paths.
 use asic_rs_core::traits::miner::MinerAuth;
 use diqwest::WithDigestAuth;
 use once_cell::sync::OnceCell;
@@ -57,8 +56,7 @@ impl KaonsuWebAPI {
         if !matches!(command, "brief" | "overview" | "hashboards" | "fans") {
             anyhow::bail!("KaonSu telemetry supports only brief, overview, hashboards and fans");
         }
-        // Same local-miner HTTPS compatibility as the established native
-        // driver. Do not follow redirects to another host or use system proxies.
+        // Local firmware may use self-signed HTTPS certificates.
         let client = self.client.get_or_try_init(|| {
             Client::builder()
                 .timeout(Duration::from_secs(5))

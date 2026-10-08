@@ -172,11 +172,13 @@ def iter_impl_blocks(text: str) -> tuple[tuple[str, str, str], ...]:
     return tuple(blocks)
 
 
-def collect_backend_supports() -> dict[str, dict[str, str]]:
+def collect_backend_supports(
+    paths: tuple[Path, ...] | None = None,
+) -> dict[str, dict[str, str]]:
     supports: dict[str, dict[str, str]] = {}
     firmwares_dir = REPO_ROOT / "asic-rs-firmwares"
 
-    for path in firmwares_dir.rglob("*.rs"):
+    for path in paths if paths is not None else firmwares_dir.rglob("*.rs"):
         text = read_text(path)
         for trait, target, block in iter_impl_blocks(text):
             if trait not in SUPPORT_TRAITS:
@@ -194,20 +196,24 @@ def collect_backend_supports() -> dict[str, dict[str, str]]:
     return supports
 
 
-def parse_display_string(path: Path) -> str | None:
+def parse_display_string(path: Path, target: str | None = None) -> str | None:
     if not path.exists():
         return None
 
-    match = re.search(r'write!\(\s*f\s*,\s*"([^"]+)"\s*\)', read_text(path))
+    text = read_text(path)
+    if target is not None:
+        text = next(
+            (block for trait, name, block in iter_impl_blocks(text)
+             if trait == "Display" and name == target),
+            "",
+        )
+    match = re.search(r'(?:write!\(\s*f\s*,\s*|f\.write_str\(\s*)"([^"]+)"\s*\)', text)
     return match.group(1) if match else None
 
 
 def parse_make_crate_names(firmware_rs: Path) -> tuple[str, ...]:
     text = read_text(firmware_rs)
-    names = re.findall(r"asic_rs_makes_([A-Za-z0-9_]+)::make::", text)
-    names.extend(
-        re.findall(r"asic_rs_makes_([A-Za-z0-9_]+)::\{[^}]*\bmake::", text, flags=re.S)
-    )
+    names = re.findall(r"asic_rs_makes_([A-Za-z0-9_]+)::", text)
     return tuple(dict.fromkeys(names))
 
 
@@ -253,20 +259,35 @@ def collect_support_rows() -> tuple[SupportRow, ...]:
 
     for crate in sorted((REPO_ROOT / "asic-rs-firmwares").iterdir()):
         firmware_rs = crate / "src" / "firmware.rs"
-        if not firmware_rs.exists():
-            continue
+        for path in sorted((crate / "src").glob("*.rs")):
+            if path == firmware_rs:
+                backends = concrete_backend_structs(crate, supports)
+                backend_supports = supports
+                firmware = parse_display_string(path) or crate.name
+            else:
+                blocks = iter_impl_blocks(read_text(path))
+                entries = {name for trait, name, _ in blocks if trait == "FirmwareEntry"}
+                if len(entries) != 1:
+                    continue
+                entry = entries.pop()
+                backends = [
+                    name for trait, name, block in blocks
+                    if trait == "Validate" and re.search(
+                        rf"\btype\s+Firmware\s*=\s*{re.escape(entry)}\s*;", block
+                    )
+                ]
+                backend_supports = collect_backend_supports((path,))
+                firmware = parse_display_string(path, entry) or entry
 
-        make = make_display_names(parse_make_crate_names(firmware_rs))
-        firmware = parse_display_string(firmware_rs) or crate.name
-
-        for backend in concrete_backend_structs(crate, supports):
-            values = {
-                trait: supports.get(backend, {}).get(trait, "No")
-                for trait, _, _ in SUPPORT_COLUMNS
-            }
-            rows.append(
-                SupportRow(make=make, firmware=firmware, backend=backend, support=values)
-            )
+            make = make_display_names(parse_make_crate_names(path))
+            for backend in backends:
+                values = {
+                    trait: backend_supports.get(backend, {}).get(trait, "No")
+                    for trait, _, _ in SUPPORT_COLUMNS
+                }
+                rows.append(
+                    SupportRow(make=make, firmware=firmware, backend=backend, support=values)
+                )
 
     return tuple(
         sorted(rows, key=lambda r: (r.make.casefold(), r.firmware.casefold(), r.backend))

@@ -254,7 +254,7 @@ impl GetMessages for KaonsuMiner {
             .and_then(Value::as_array)
         {
             for board in rows {
-                let identity = ["id", "slot", "chain_id", "index"]
+                let identity = ["index", "id", "slot", "chain_id"]
                     .into_iter()
                     .find_map(|key| board.get(key));
                 for mut message in telemetry::messages(board) {

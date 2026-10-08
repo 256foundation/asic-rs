@@ -78,7 +78,7 @@ fn model_from_version(value: &Value) -> Result<AntMinerModel, ModelSelectionErro
         // evidence for any stock algorithm or board/chip template.
         return Ok(AntMinerModel::Unknown("Hiveon".to_owned()));
     };
-    AntMinerModel::from_str(raw)
+    AntMinerModel::from_str(&raw.to_uppercase())
 }
 
 #[async_trait]
@@ -349,7 +349,7 @@ mod tests {
         );
         assert_eq!(
             model_from_version(&json!({"VERSION": [{"Type": "Antminer S99 HIVEON"}]})).unwrap(),
-            AntMinerModel::Unknown("Antminer S99 HIVEON".to_owned())
+            AntMinerModel::Unknown("ANTMINER S99 HIVEON".to_owned())
         );
         assert!(!HiveonFirmware.identify_rpc("ANTMINER S19"));
         assert!(HiveonFirmware.identify_rpc("ANTMINER S19 HIVEON"));

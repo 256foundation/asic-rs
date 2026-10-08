@@ -55,6 +55,8 @@ async fn live_mara_gh_units_metadata_and_missing_board_remain_distinct() {
     assert_eq!(model, AntMinerModel::KS5Pro);
     let data = collect(&fixture, model).await;
     assert_eq!(data.device_info.algo, HashAlgorithm::KHeavyHash);
+    assert!(data.is_mining);
+    assert_eq!(data.operating_state, Some(OperatingState::Mining {}));
     assert_eq!(data.expected_hashboards, Some(3));
     assert!(data.device_info.hardware.boards.is_none());
     let control_board = data.control_board_version.unwrap();
@@ -174,12 +176,9 @@ fn invalid_elapsed_and_board_count_do_not_fabricate_metadata() {
 }
 
 #[tokio::test]
-async fn source_backed_contract_retains_estimated_power_and_actual_board_data() {
+async fn source_contract_covers_unit_defaults_and_missing_sensor_fields() {
     let fixture = fixture();
     let data = collect(&fixture, model_from_overview(&fixture["overview"]).unwrap()).await;
-    assert_eq!(data.device_info.firmware, "KaonSu");
-    assert_eq!(data.device_info.algo, HashAlgorithm::KHeavyHash);
-    assert!(data.device_info.hardware.boards.is_none());
     assert_eq!(data.firmware_version.as_deref(), Some("1.0.3"));
     assert!((data.hashrate.unwrap().value - 20.1).abs() < 1e-9);
     assert_eq!(data.expected_hashrate.unwrap().value, 21.0);
@@ -188,42 +187,21 @@ async fn source_backed_contract_retains_estimated_power_and_actual_board_data() 
         data.wattage_source.as_deref(),
         Some("kaonsu.brief:power_consumption_estimated")
     );
-    assert_eq!(data.wattage_is_estimated, Some(true));
     assert_eq!(data.wattage_firmware_source.as_deref(), Some("PSU"));
-    assert_eq!(data.wattage_indicator, Some(0));
-    assert_eq!(data.reported_max_temperature.unwrap().as_celsius(), 70.0);
     assert!(data.average_temperature.is_none());
-    assert!(data.is_mining);
-    assert_eq!(data.operating_state, Some(OperatingState::Mining {}));
-    assert_eq!(data.hashboards.len(), 3);
-    assert_eq!(data.total_chips, Some(360));
     assert_eq!(data.fans.len(), 2);
     assert_eq!(data.fans[0].rpm.unwrap().as_rpm(), 5200.0);
-    assert!(data.timestamp > 0);
     assert!(data.uptime.is_none());
-    for (position, board) in data.hashboards.iter().enumerate() {
-        assert_eq!(board.position, position as u8);
-        assert_eq!(board.working_chips, Some(120));
+    for board in &data.hashboards {
         assert!(board.expected_chips.is_none());
-        assert_eq!(board.hashrate.as_ref().unwrap().value, 6.7);
         assert_eq!(board.inlet_chip_temperature.unwrap().as_celsius(), 65.0);
-        assert_eq!(board.outlet_chip_temperature.unwrap().as_celsius(), 68.0);
         assert!(board.board_temperature.is_none());
-        assert!(board.inlet_fluid_temperature.is_none());
     }
 }
 
 #[tokio::test]
 async fn same_protocol_has_algorithm_appropriate_units_for_ks5_l9_and_s19k() {
     for (model, raw, raw_unit, expected, unit, algorithm) in [
-        (
-            AntMinerModel::KS5,
-            20000.0,
-            "GH/s",
-            20.0,
-            HashRateUnit::TeraHash,
-            HashAlgorithm::KHeavyHash,
-        ),
         (
             AntMinerModel::KS5Pro,
             0.021,

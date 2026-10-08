@@ -120,10 +120,6 @@ fn temperature(value: &Value) -> Option<Temperature> {
         .map(Temperature::from_celsius)
 }
 
-fn panel(data: &HashMap<DataField, Value>, field: DataField) -> Option<&Value> {
-    data.get(&field)
-}
-
 #[derive(Debug)]
 pub struct IceRiverV1 {
     ip: IpAddr,
@@ -207,7 +203,8 @@ impl GetDeviceInfo for IceRiverV1 {
 impl GetMAC for IceRiverV1 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         MacAddr::from_str(
-            &panel(data, DataField::Mac)?
+            &data
+                .get(&DataField::Mac)?
                 .get("mac")?
                 .as_str()?
                 .replace('-', ":"),
@@ -218,7 +215,7 @@ impl GetMAC for IceRiverV1 {
 
 impl GetHostname for IceRiverV1 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
-        panel(data, DataField::Hostname)?
+        data.get(&DataField::Hostname)?
             .get("host")?
             .as_str()
             .map(str::to_owned)
@@ -227,7 +224,7 @@ impl GetHostname for IceRiverV1 {
 
 impl GetFirmwareVersion for IceRiverV1 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
-        panel(data, DataField::FirmwareVersion)?
+        data.get(&DataField::FirmwareVersion)?
             .get("softver1")?
             .as_str()
             .map(str::to_owned)
@@ -236,7 +233,7 @@ impl GetFirmwareVersion for IceRiverV1 {
 
 impl GetHashboards for IceRiverV1 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
-        let Some(panel) = panel(data, DataField::Hashboards) else {
+        let Some(panel) = data.get(&DataField::Hashboards) else {
             return vec![];
         };
         let Some(reported) = panel.get("boards").and_then(Value::as_array) else {
@@ -306,7 +303,7 @@ impl GetHashboards for IceRiverV1 {
 
 impl GetHashrate for IceRiverV1 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        let panel = panel(data, DataField::Hashrate)?;
+        let panel = data.get(&DataField::Hashrate)?;
         let unit = panel
             .get("unit")
             .and_then(Value::as_str)
@@ -317,7 +314,7 @@ impl GetHashrate for IceRiverV1 {
 
 impl GetFans for IceRiverV1 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
-        panel(data, DataField::Fans)
+        data.get(&DataField::Fans)
             .and_then(|data| data.get("fans"))
             .and_then(Value::as_array)
             .map(|fans| {
@@ -338,13 +335,13 @@ impl GetFans for IceRiverV1 {
 
 impl GetLightFlashing for IceRiverV1 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
-        boolean(panel(data, DataField::LightFlashing)?.get("locate")?)
+        boolean(data.get(&DataField::LightFlashing)?.get("locate")?)
     }
 }
 
 impl GetUptime for IceRiverV1 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
-        let runtime = panel(data, DataField::Uptime)?.get("runtime")?.as_str()?;
+        let runtime = data.get(&DataField::Uptime)?.get("runtime")?.as_str()?;
         let parts = runtime
             .split(':')
             .map(str::parse::<u64>)
@@ -367,7 +364,7 @@ impl GetUptime for IceRiverV1 {
 
 impl GetIsMining for IceRiverV1 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        panel(data, DataField::IsMining)
+        data.get(&DataField::IsMining)
             .and_then(|panel| panel.get("powstate"))
             .and_then(boolean)
             .unwrap_or(false)
@@ -376,7 +373,8 @@ impl GetIsMining for IceRiverV1 {
 
 impl GetPools for IceRiverV1 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
-        let Some(reported) = panel(data, DataField::Pools)
+        let Some(reported) = data
+            .get(&DataField::Pools)
             .and_then(|panel| panel.get("pools"))
             .and_then(Value::as_array)
         else {

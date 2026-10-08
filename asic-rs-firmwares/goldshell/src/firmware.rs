@@ -35,7 +35,7 @@ impl DiscoveryCommands for GoldshellFirmware {
         ]
     }
 }
-pub fn model_from_status(status: &Value) -> Result<GoldshellModel, ModelSelectionError> {
+pub(crate) fn model_from_status(status: &Value) -> Result<GoldshellModel, ModelSelectionError> {
     let raw = status
         .get("model")
         .and_then(Value::as_str)
@@ -108,8 +108,7 @@ mod tests {
     use asic_rs_core::traits::model::MinerModelAlgorithm;
     #[test]
     fn generic_inventory_identity_and_firmware_do_not_imply_an_algorithm() {
-        let value: Value =
-            serde_json::from_str(include_str!("../tests/fixtures/status_contract.json")).unwrap();
+        let value = serde_json::json!({"model": "Goldshell", "firmware": "2.2.0"});
         assert_eq!(
             model_from_status(&value).unwrap().hash_algorithm(),
             HashAlgorithm::Unknown
