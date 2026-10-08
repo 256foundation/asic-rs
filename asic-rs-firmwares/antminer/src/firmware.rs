@@ -167,15 +167,12 @@ async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::V
         .get(format!("http://{ip}/cgi-bin/summary.cgi"))
         .send_digest_auth((auth.username(), auth.password()))
         .await
+        && let Ok(data) = response.json::<Value>().await
+        && let Some(version) = data["INFO"]["CompileTime"]
+            .as_str()
+            .and_then(parse_version_date)
     {
-        if let Ok(data) = response.json::<Value>().await {
-            if let Some(version) = data["INFO"]["CompileTime"]
-                .as_str()
-                .and_then(parse_version_date)
-            {
-                return Some(version);
-            }
-        }
+        return Some(version);
     }
 
     // Older stock firmware (including Z15) has no summary.cgi, but reports
