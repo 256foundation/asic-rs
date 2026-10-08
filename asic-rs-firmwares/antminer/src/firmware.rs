@@ -142,18 +142,7 @@ async fn get_model_with_auth(
     }
 }
 
-/// Fetch the firmware version from a miner using digest auth.
-async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::Version> {
-    let client = build_discovery_client().ok()?;
-    let data: Response = client
-        .get(format!("http://{ip}/cgi-bin/summary.cgi"))
-        .send_digest_auth((auth.username(), auth.password()))
-        .await
-        .ok()?;
-
-    let json_data = data.json::<serde_json::Value>().await.ok()?;
-    let fw_version = json_data["INFO"]["CompileTime"].as_str().unwrap_or("");
-
+fn parse_version_date(fw_version: &str) -> Option<semver::Version> {
     let cleaned: String = {
         let mut parts: Vec<&str> = fw_version.split_whitespace().collect();
         if parts.len() > 4 {
@@ -169,6 +158,34 @@ async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::V
         dt.month() as u64,
         dt.day() as u64,
     ))
+}
+
+/// Fetch the firmware version from a miner using digest auth.
+async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::Version> {
+    let client = build_discovery_client().ok()?;
+    if let Ok(response) = client
+        .get(format!("http://{ip}/cgi-bin/summary.cgi"))
+        .send_digest_auth((auth.username(), auth.password()))
+        .await
+        && let Ok(data) = response.json::<Value>().await
+        && let Some(version) = data["INFO"]["CompileTime"]
+            .as_str()
+            .and_then(parse_version_date)
+    {
+        return Some(version);
+    }
+
+    // Older stock firmware (including Z15) has no summary.cgi, but reports
+    // the build date through get_system_info.cgi.
+    let response: Response = client
+        .get(format!("http://{ip}/cgi-bin/get_system_info.cgi"))
+        .send_digest_auth((auth.username(), auth.password()))
+        .await
+        .ok()?;
+    let data = response.json::<Value>().await.ok()?;
+    data["system_filesystem_version"]
+        .as_str()
+        .and_then(parse_version_date)
 }
 
 #[async_trait]
@@ -228,9 +245,21 @@ mod tests {
     use anyhow::Context;
     use asic_rs_core::data::command::MinerCommand;
     use asic_rs_core::test::util::get_miner;
+    use asic_rs_core::traits::miner::Validate;
     use asic_rs_makes_antminer::models::AntMinerModel;
 
     use super::*;
+
+    #[test]
+    fn legacy_system_info_date_selects_legacy_backend() {
+        let version = parse_version_date("Fri Jul 3 11:39:06 CST 2020").unwrap();
+        assert_eq!(version, semver::Version::new(2020, 7, 3));
+        assert!(crate::backends::v2020::AntMinerV2020::validate(Some(
+            &version
+        )));
+
+        assert!(parse_version_date("FR-1.12(251009-S21)").is_none());
+    }
 
     /// Live model detection always yields an [`AntMinerCompatibleModel`], never
     /// a bare [`AntMinerModel`]. When this wrapper failed to forward

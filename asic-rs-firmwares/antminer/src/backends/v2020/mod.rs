@@ -352,14 +352,24 @@ impl GetDataLocations for AntMinerV2020 {
                     tag: None,
                 },
             )],
-            DataField::ControlBoardVersion => vec![(
-                WEB_MINER_TYPE,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/subtype"),
-                    tag: None,
-                },
-            )],
+            DataField::ControlBoardVersion => vec![
+                (
+                    WEB_MINER_TYPE,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/subtype"),
+                        tag: Some("subtype"),
+                    },
+                ),
+                (
+                    WEB_SYSTEM_INFO,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/system_kernel_version"),
+                        tag: Some("kernel_version"),
+                    },
+                ),
+            ],
             DataField::Hashrate => telemetry::rate_locations(),
             DataField::ExpectedHashrate
             | DataField::Fans
@@ -657,12 +667,25 @@ impl GetControlBoardVersion for AntMinerV2020 {
         &self,
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
-        let cb_type = data.extract::<String>(DataField::ControlBoardVersion)?;
-        match cb_type.as_str() {
-            s if s.to_uppercase().contains("AML") => Some(AntMinerControlBoard::AMLogic.into()),
-            _ => AntMinerControlBoard::parse(cb_type.split("_").collect::<Vec<&str>>()[0])
-                .map(|cb| cb.into()),
-        }
+        let subtype = data.extract_nested::<String>(DataField::ControlBoardVersion, "subtype");
+        let board = subtype.as_deref().and_then(|cb_type| {
+            if cb_type.to_ascii_uppercase().contains("AML") {
+                Some(AntMinerControlBoard::AMLogic)
+            } else {
+                AntMinerControlBoard::parse(cb_type.split('_').next()?)
+            }
+        });
+
+        board
+            .or_else(|| {
+                let kernel_version = data
+                    .extract_nested::<String>(DataField::ControlBoardVersion, "kernel_version")?;
+                kernel_version
+                    .to_ascii_lowercase()
+                    .contains("-xilinx")
+                    .then_some(AntMinerControlBoard::Xilinx)
+            })
+            .map(Into::into)
     }
 }
 
@@ -1108,6 +1131,50 @@ mod tests {
     use crate::test::json::v2020::{
         AM_DEVS, AM_POOLS, AM_STATS, AM_SUMMARY, AM_SYSTEM_INFO, AM_VERSION,
     };
+
+    #[tokio::test]
+    async fn control_board_falls_back_to_kernel_and_prefers_subtype() {
+        let miner = AntMinerV2020::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::Z15);
+
+        for (subtype, kernel, expected) in [
+            (
+                None,
+                "Linux 4.6.0-xilinx-g0387054-dirty #45 SMP PREEMPT",
+                Some("Xilinx"),
+            ),
+            (
+                Some("BeagleBoneBlack_B"),
+                "Linux 4.6.0-xilinx",
+                Some("BeagleBoneBlack"),
+            ),
+            (None, "Linux 4.9.113 #1 SMP PREEMPT", None),
+        ] {
+            let mut results = HashMap::new();
+            results.insert(
+                MinerCommand::WebAPI {
+                    command: "get_system_info",
+                    parameters: None,
+                },
+                json!({"system_kernel_version": kernel}),
+            );
+            if let Some(subtype) = subtype {
+                results.insert(
+                    MinerCommand::WebAPI {
+                        command: "miner_type",
+                        parameters: None,
+                    },
+                    json!({"subtype": subtype}),
+                );
+            }
+
+            let mock_api = MockAPIClient::new(results);
+            let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+            let data = collector.collect(&[DataField::ControlBoardVersion]).await;
+            let board = miner.parse_control_board_version(&data);
+
+            assert_eq!(board.as_ref().map(|board| board.name.as_str()), expected);
+        }
+    }
 
     #[test]
     fn pools_payload_blanks_the_slots_a_shorter_config_leaves_unused() {
