@@ -61,9 +61,10 @@ func (h MinerHardware) TotalChips() (uint16, bool) {
 	}
 	var total uint32
 	for _, chips := range h.Boards {
-		if chips != nil {
-			total += uint32(*chips)
+		if chips == nil {
+			return 0, false
 		}
+		total += uint32(*chips)
 		if total > 65535 {
 			return 0, false
 		}

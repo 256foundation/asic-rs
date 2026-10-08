@@ -13,6 +13,8 @@ const (
 	HashAlgorithmScrypt      HashAlgorithm = "Scrypt"
 	HashAlgorithmX11         HashAlgorithm = "X11"
 	HashAlgorithmBlake2S256  HashAlgorithm = "Blake2S256"
+	HashAlgorithmBlake2b     HashAlgorithm = "Blake2b"
+	HashAlgorithmBlake3      HashAlgorithm = "Blake3"
 	HashAlgorithmKadena      HashAlgorithm = "Kadena"
 	HashAlgorithmKHeavyHash  HashAlgorithm = "KHeavyHash"
 	HashAlgorithmEaglesong   HashAlgorithm = "Eaglesong"
@@ -32,7 +34,7 @@ func (a HashAlgorithm) DefaultHashrateUnit() (HashRateUnit, error) {
 		return HashRateUnitMegaHash, nil
 	case HashAlgorithmEquihash:
 		return HashRateUnitKiloHash, nil
-	case HashAlgorithmSHA256, HashAlgorithmBlake2S256, HashAlgorithmKadena,
+	case HashAlgorithmSHA256, HashAlgorithmBlake2S256, HashAlgorithmBlake2b, HashAlgorithmBlake3, HashAlgorithmKadena,
 		HashAlgorithmKHeavyHash, HashAlgorithmEaglesong, HashAlgorithmHandshake, HashAlgorithmBlake256R14:
 		return HashRateUnitTeraHash, nil
 	case HashAlgorithmUnknown:

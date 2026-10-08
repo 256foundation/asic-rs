@@ -1,0 +1,96 @@
+{
+  "INFO": {
+    "CompileTime": "Tue Feb  3 17:23:14 CST 2026",
+    "miner_version": "86.48-2.0.0",
+    "type": "Antminer KS7"
+  },
+  "STATS": [
+    {
+      "chain": [
+        {
+          "asic": "ooooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo ooo",
+          "asic_num": 108,
+          "freq_avg": 550,
+          "index": 0,
+          "rate_ideal": 13780.8,
+          "rate_real": 13727.36,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            49,
+            66
+          ],
+          "temp_pcb": [
+            37,
+            54
+          ],
+          "temp_pic": [
+            0,
+            0
+          ]
+        },
+        {
+          "asic": "ooooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo ooo",
+          "asic_num": 108,
+          "freq_avg": 550,
+          "index": 1,
+          "rate_ideal": 13780.8,
+          "rate_real": 13817.5,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            46,
+            62
+          ],
+          "temp_pcb": [
+            36,
+            52
+          ],
+          "temp_pic": [
+            0,
+            0
+          ]
+        },
+        {
+          "asic": "ooooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo ooo",
+          "asic_num": 108,
+          "freq_avg": 550,
+          "index": 2,
+          "rate_ideal": 13780.8,
+          "rate_real": 13733.31,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            48,
+            64
+          ],
+          "temp_pcb": [
+            38,
+            54
+          ],
+          "temp_pic": [
+            0,
+            0
+          ]
+        }
+      ],
+      "chain_num": 3,
+      "elapsed": 2634239,
+      "fan": [
+        5070,
+        5070,
+        5250,
+        5190
+      ],
+      "fan_num": 4,
+      "rate_5s": 42606.07,
+      "rate_avg": 41256.91,
+      "rate_ideal": 41342.4,
+      "rate_unit": "GH/s",
+      "watt": 3123
+    }
+  ],
+  "STATUS": {
+    "Msg": "stats",
+    "STATUS": "S",
+    "api_version": "1.0.0",
+    "when": 1791471263
+  }
+}

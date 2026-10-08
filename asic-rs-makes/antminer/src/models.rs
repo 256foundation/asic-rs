@@ -39,6 +39,9 @@ pub enum AntMinerModel {
     #[serde(alias = "ANTMINER KS5 PRO")]
     #[algorithm(HashAlgorithm::KHeavyHash)]
     KS5Pro,
+    #[serde(alias = "ANTMINER KS7")]
+    #[algorithm(HashAlgorithm::KHeavyHash)]
+    KS7,
     #[serde(alias = "ANTMINER L7")]
     #[algorithm(HashAlgorithm::Scrypt)]
     L7,
@@ -102,6 +105,9 @@ pub enum AntMinerModel {
     #[serde(alias = "ANTMINER S19")]
     #[algorithm(HashAlgorithm::SHA256)]
     S19,
+    #[serde(alias = "ANTMINER S19NOPIC", alias = "ANTMINER S19X88")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    S19NoPIC,
     #[serde(alias = "ANTMINER S19L")]
     #[algorithm(HashAlgorithm::SHA256)]
     S19L,
@@ -220,8 +226,34 @@ impl FromStr for AntMinerModel {
     type Err = ModelSelectionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        serde_json::from_value(serde_json::Value::String(s.to_string()))
-            .or_else(|_| Ok(Self::Unknown(s.to_string())))
+        if let Ok(model) = serde_json::from_value(serde_json::Value::String(s.to_string())) {
+            return Ok(model);
+        }
+        let normalized = s
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_ascii_uppercase();
+        let normalized = normalized.strip_suffix(" HIVEON").unwrap_or(&normalized);
+        let model = normalized.strip_prefix("ANTMINER ").unwrap_or(normalized);
+        let parsed = match model.replace(' ', "").as_str() {
+            "KS7" => Self::KS7,
+            "KS5PRO" => Self::KS5Pro,
+            "S19NOPIC" | "S19X88" => Self::S19NoPIC,
+            "S19JPRO" => Self::S19jPro,
+            "S19KPRO" => Self::S19KPro,
+            "S19XP" => Self::S19XP,
+            "S21PRO" => Self::S21Pro,
+            "S21PRO+" => Self::S21ProPlus,
+            "S21++" => Self::S21PlusPlus,
+            "S21XP" => Self::S21XP,
+            "S21XPHYD" | "S21XPHYD." | "S21XPHYDRO" => Self::S21XPHydro,
+            "S21JXPHYD" | "S21JXPHYD." | "S21JXPHYDRO" => Self::S21jXPHydro,
+            "S23HYD" | "S23HYD." | "S23HYDRO" => Self::S23Hydro,
+            _ => serde_json::from_value(serde_json::Value::String(format!("ANTMINER {model}")))
+                .unwrap_or_else(|_| Self::Unknown(s.to_string())),
+        };
+        Ok(parsed)
     }
 }
 
@@ -309,5 +341,20 @@ mod tests {
         let model = AntMinerModel::from_str("ANTMINER S99").unwrap();
 
         assert_eq!(model.hash_algorithm(), HashAlgorithm::Unknown);
+    }
+
+    #[test]
+    fn unsupported_product_suffixes_do_not_select_nearby_models() {
+        for raw in [
+            "KS7 Pro",
+            "S21Pro+ Prototype",
+            "S21++ Hyd",
+            "Antminer S19x88 HIVEON prototype",
+            "S23 Hyd 3U",
+        ] {
+            let model = AntMinerModel::from_str(raw).unwrap();
+            assert_eq!(model, AntMinerModel::Unknown(raw.to_owned()));
+            assert_eq!(model.hash_algorithm(), HashAlgorithm::Unknown);
+        }
     }
 }

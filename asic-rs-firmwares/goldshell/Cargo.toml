@@ -1,0 +1,24 @@
+[package]
+name = "asic-rs-firmwares-goldshell"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Read-only Goldshell BFGMiner and HTTP telemetry for asic-rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+asic-rs-core.workspace = true
+asic-rs-makes-goldshell.workspace = true
+anyhow.workspace = true
+async-trait.workspace = true
+macaddr.workspace = true
+measurements.workspace = true
+reqwest.workspace = true
+semver.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+
+[features]
+python = ["asic-rs-core/python", "asic-rs-makes-goldshell/python"]

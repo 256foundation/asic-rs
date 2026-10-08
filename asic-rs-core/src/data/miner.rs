@@ -18,7 +18,7 @@ use super::{
     pool::PoolGroupData,
 };
 use crate::data::{
-    deserialize::deserialize_macaddr,
+    deserialize::{deserialize_macaddr, deserialize_temperature},
     serialize::{serialize_macaddr, serialize_power, serialize_temperature},
 };
 
@@ -180,6 +180,16 @@ pub struct MinerData {
     #[serde(serialize_with = "serialize_temperature")]
     #[ts(type = "number | null")]
     pub average_temperature: Option<Temperature>,
+    /// Maximum temperature explicitly reported for the whole miner, in Celsius.
+    /// This does not identify a board/chip sensor or replace board measurements.
+    #[serde(
+        default,
+        serialize_with = "serialize_temperature",
+        deserialize_with = "deserialize_temperature"
+    )]
+    #[ts(type = "number | null")]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub reported_max_temperature: Option<Temperature>,
     /// The environment temperature of the miner, such as air temperature or immersion fluid temperature
     #[serde(serialize_with = "serialize_temperature")]
     #[ts(type = "number | null")]
@@ -192,6 +202,22 @@ pub struct MinerData {
     #[serde(serialize_with = "serialize_power")]
     #[ts(type = "number | null")]
     pub wattage: Option<Power>,
+    /// Firmware field or parser provenance for wattage, when known.
+    #[serde(default)]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub wattage_source: Option<String>,
+    /// Whether wattage is an explicit estimate; unknown provenance stays None.
+    #[serde(default)]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub wattage_is_estimated: Option<bool>,
+    /// Original firmware power-source label, when supplied.
+    #[serde(default)]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub wattage_firmware_source: Option<String>,
+    /// Original integer power indicator, including a reported zero.
+    #[serde(default)]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub wattage_indicator: Option<i64>,
     /// The current manual tuning percent of full power (100 = unthrottled), where supported
     pub tuning_percent: Option<u8>,
     /// The current tuning target of the miner, such as power target or hashrate target

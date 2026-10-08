@@ -1,0 +1,52 @@
+{
+  "INFO": {
+    "CompileTime": "Mon May 25 20:43:41 CST 2026",
+    "miner_version": "platform[AML]",
+    "type": "Antminer S21j XP Hyd."
+  },
+  "STATUS": {
+    "Msg": "summary",
+    "STATUS": "S",
+    "api_version": "1.0.0",
+    "when": 1791401146
+  },
+  "SUMMARY": [
+    {
+      "bestshare": 0,
+      "elapsed": 602135,
+      "hw_all": 4,
+      "rate_30m": 505650.13,
+      "rate_5s": 503576.33,
+      "rate_avg": 504638.0,
+      "rate_ideal": 507154.0,
+      "rate_unit": "GH/s",
+      "safe_mode": false,
+      "status": [
+        {
+          "code": 0,
+          "msg": "",
+          "status": "s",
+          "type": "rate"
+        },
+        {
+          "code": 0,
+          "msg": "",
+          "status": "s",
+          "type": "network"
+        },
+        {
+          "code": 0,
+          "msg": "",
+          "status": "",
+          "type": "fans"
+        },
+        {
+          "code": 0,
+          "msg": "",
+          "status": "s",
+          "type": "temp"
+        }
+      ]
+    }
+  ]
+}

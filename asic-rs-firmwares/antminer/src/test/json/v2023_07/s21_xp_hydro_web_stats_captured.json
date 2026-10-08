@@ -1,0 +1,114 @@
+{
+  "INFO": {
+    "CompileTime": "Thu Jan 8 15:44:15 CST 20266",
+    "miner_version": "71.0.1.3",
+    "type": "Antminer S21 XP Hyd."
+  },
+  "STATS": [
+    {
+      "chain": [
+        {
+          "asic": " oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo",
+          "asic_num": 160,
+          "freq_avg": 495,
+          "index": 0,
+          "rate_ideal": 161568.0,
+          "rate_real": 161794.68,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            63,
+            59,
+            56,
+            61
+          ],
+          "temp_pcb": [
+            38,
+            48,
+            47,
+            52
+          ],
+          "temp_pic": [
+            54,
+            47,
+            53,
+            49
+          ]
+        },
+        {
+          "asic": " oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo",
+          "asic_num": 160,
+          "freq_avg": 495,
+          "index": 1,
+          "rate_ideal": 161568.0,
+          "rate_real": 159226.51,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            63,
+            58,
+            56,
+            61
+          ],
+          "temp_pcb": [
+            38,
+            48,
+            47,
+            51
+          ],
+          "temp_pic": [
+            53,
+            47,
+            53,
+            49
+          ]
+        },
+        {
+          "asic": " oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo oooooooo",
+          "asic_num": 160,
+          "freq_avg": 495,
+          "index": 2,
+          "rate_ideal": 161568.0,
+          "rate_real": 162958.04,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            63,
+            57,
+            56,
+            59
+          ],
+          "temp_pcb": [
+            37,
+            48,
+            47,
+            51
+          ],
+          "temp_pic": [
+            52,
+            47,
+            53,
+            49
+          ]
+        }
+      ],
+      "chain_num": 3,
+      "elapsed": 602533,
+      "fan": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fan_num": 4,
+      "rate_5s": 483979.25,
+      "rate_avg": 487129.58,
+      "rate_ideal": 473000.0,
+      "rate_unit": "GH/s",
+      "watt": 0
+    }
+  ],
+  "STATUS": {
+    "Msg": "stats",
+    "STATUS": "S",
+    "api_version": "1.0.0",
+    "when": 1791401145
+  }
+}

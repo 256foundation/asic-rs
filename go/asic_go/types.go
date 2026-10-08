@@ -203,20 +203,22 @@ type ChipData struct {
 
 // BoardData is per-hashboard telemetry.
 type BoardData struct {
-	Position              uint8      `json:"position"`
-	Hashrate              *HashRate  `json:"hashrate"`
-	ExpectedHashrate      *HashRate  `json:"expected_hashrate"`
-	BoardTemperature      *float64   `json:"board_temperature"`
-	InletChipTemperature  *float64   `json:"inlet_chip_temperature"`
-	OutletChipTemperature *float64   `json:"outlet_chip_temperature"`
-	ExpectedChips         *uint16    `json:"expected_chips"`
-	WorkingChips          *uint16    `json:"working_chips"`
-	SerialNumber          *string    `json:"serial_number"`
-	Chips                 []ChipData `json:"chips"`
-	Voltage               *float64   `json:"voltage"`
-	Frequency             *float64   `json:"frequency"`
-	Tuned                 *bool      `json:"tuned"`
-	Active                *bool      `json:"active"`
+	Position               uint8      `json:"position"`
+	Hashrate               *HashRate  `json:"hashrate"`
+	ExpectedHashrate       *HashRate  `json:"expected_hashrate"`
+	BoardTemperature       *float64   `json:"board_temperature"`
+	InletChipTemperature   *float64   `json:"inlet_chip_temperature"`
+	OutletChipTemperature  *float64   `json:"outlet_chip_temperature"`
+	InletFluidTemperature  *float64   `json:"inlet_fluid_temperature"`
+	OutletFluidTemperature *float64   `json:"outlet_fluid_temperature"`
+	ExpectedChips          *uint16    `json:"expected_chips"`
+	WorkingChips           *uint16    `json:"working_chips"`
+	SerialNumber           *string    `json:"serial_number"`
+	Chips                  []ChipData `json:"chips"`
+	Voltage                *float64   `json:"voltage"`
+	Frequency              *float64   `json:"frequency"`
+	Tuned                  *bool      `json:"tuned"`
+	Active                 *bool      `json:"active"`
 }
 
 // FanData is a single fan reading (RPM as float when present).
@@ -603,9 +605,14 @@ type MinerData struct {
 	Fans                   []FanData           `json:"fans"`
 	PSUFans                []FanData           `json:"psu_fans"`
 	AverageTemperature     *float64            `json:"average_temperature"`
+	ReportedMaxTemperature *float64            `json:"reported_max_temperature"`
 	FluidTemperature       *float64            `json:"fluid_temperature"`
 	OutletFluidTemperature *float64            `json:"outlet_fluid_temperature"`
 	Wattage                *float64            `json:"wattage"`
+	WattageSource          *string             `json:"wattage_source"`
+	WattageIsEstimated     *bool               `json:"wattage_is_estimated"`
+	WattageFirmwareSource  *string             `json:"wattage_firmware_source"`
+	WattageIndicator       *int64              `json:"wattage_indicator"`
 	TuningPercent          *uint8              `json:"tuning_percent"`
 	TuningTarget           *TuningTarget       `json:"tuning_target"`
 	ScaledTuningTarget     *TuningTarget       `json:"scaled_tuning_target"`
@@ -740,27 +747,27 @@ type ExpectedCounts struct {
 
 // Supports reports which control/config features this miner backend exposes.
 type Supports struct {
-	SetFaultLight       bool `json:"set_fault_light"`
-	SetPowerLimit       bool `json:"set_power_limit"`
+	SetFaultLight        bool `json:"set_fault_light"`
+	SetPowerLimit        bool `json:"set_power_limit"`
 	SetHashboardsEnabled bool `json:"set_hashboards_enabled"`
-	SetTuningPercent    bool `json:"set_tuning_percent"`
-	Presets             bool `json:"presets"`
-	Restart             bool `json:"restart"`
-	Pause               bool `json:"pause"`
-	Resume              bool `json:"resume"`
-	ChangePassword      bool `json:"change_password"`
-	ReadLogs            bool `json:"read_logs"`
-	FactoryReset        bool `json:"factory_reset"`
-	RestoreStockOS      bool `json:"restore_stock_os"`
-	PoolsConfig         bool `json:"pools_config"`
-	UpgradeFirmware     bool `json:"upgrade_firmware"`
-	PrepareFirmware     bool `json:"prepare_firmware"`
-	CheckFirmwareUpdate bool `json:"check_firmware_update"`
-	TimezoneConfig      bool `json:"timezone_config"`
-	ScalingConfig       bool `json:"scaling_config"`
-	TemperatureConfig   bool `json:"temperature_config"`
-	TuningConfig        bool `json:"tuning_config"`
-	FanConfig           bool `json:"fan_config"`
+	SetTuningPercent     bool `json:"set_tuning_percent"`
+	Presets              bool `json:"presets"`
+	Restart              bool `json:"restart"`
+	Pause                bool `json:"pause"`
+	Resume               bool `json:"resume"`
+	ChangePassword       bool `json:"change_password"`
+	ReadLogs             bool `json:"read_logs"`
+	FactoryReset         bool `json:"factory_reset"`
+	RestoreStockOS       bool `json:"restore_stock_os"`
+	PoolsConfig          bool `json:"pools_config"`
+	UpgradeFirmware      bool `json:"upgrade_firmware"`
+	PrepareFirmware      bool `json:"prepare_firmware"`
+	CheckFirmwareUpdate  bool `json:"check_firmware_update"`
+	TimezoneConfig       bool `json:"timezone_config"`
+	ScalingConfig        bool `json:"scaling_config"`
+	TemperatureConfig    bool `json:"temperature_config"`
+	TuningConfig         bool `json:"tuning_config"`
+	FanConfig            bool `json:"fan_config"`
 }
 
 // Required Rust collections are sequences, even when a Go slice is nil.

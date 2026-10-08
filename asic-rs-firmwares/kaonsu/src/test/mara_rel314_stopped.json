@@ -1,0 +1,140 @@
+{
+  "brief": {
+    "elapsed": 264,
+    "hashrate_average": 0,
+    "hashrate_ideal": 0,
+    "hashrate_realtime": 0,
+    "hashrate_realtime_1d": 0,
+    "hashrate_realtime_1h": 0,
+    "hashrate_sales": 21000,
+    "hashrate_stock": 21735,
+    "hashrate_unit": "GH/s",
+    "indicator": "Fully functional",
+    "indicator_long": "",
+    "power_consumption_estimated": 25,
+    "power_indicator": 0,
+    "power_source": "EST",
+    "status": "Sleep",
+    "status_long": "Sleeping...",
+    "temperature_average": 26.311716,
+    "temperature_max": 27.125,
+    "temperature_min": 25.499697,
+    "work_mode": "Sleep"
+  },
+  "fans": {
+    "error": false,
+    "error_description": "",
+    "fans": [
+      {
+        "current_speed": 0,
+        "index": 0,
+        "max_speed": 3377,
+        "power_consumption": 0
+      },
+      {
+        "current_speed": 0,
+        "index": 1,
+        "max_speed": 3420,
+        "power_consumption": 0
+      },
+      {
+        "current_speed": 0,
+        "index": 2,
+        "max_speed": 3491,
+        "power_consumption": 0
+      },
+      {
+        "current_speed": 0,
+        "index": 3,
+        "max_speed": 3516,
+        "power_consumption": 0
+      }
+    ],
+    "percent": 0,
+    "profile": "AirCooling",
+    "total_power_consumption": 0
+  },
+  "hashboards": {
+    "frequency_average": 50,
+    "hashboard_num": 3,
+    "hashboard_num_ideal": 3,
+    "hashboards": [
+      {
+        "asic_num": 92,
+        "asic_num_ideal": 92,
+        "frequency_average": 50,
+        "hashrate_average": 0,
+        "hashrate_ideal": 579.6,
+        "hashrate_realtime_10m": 0,
+        "index": 0,
+        "power_consumption_estimated": 0,
+        "present": true,
+        "temperature_chip": [
+          40.625,
+          42.125
+        ],
+        "temperature_pcb": [
+          35.625,
+          37.125
+        ],
+        "temperature_raw": [
+          25.625,
+          27.125
+        ]
+      },
+      {
+        "asic_num": 92,
+        "asic_num_ideal": 92,
+        "frequency_average": 50,
+        "hashrate_average": 0,
+        "hashrate_ideal": 579.6,
+        "hashrate_realtime_10m": 0,
+        "index": 1,
+        "power_consumption_estimated": 0,
+        "present": true,
+        "temperature_chip": [
+          40.499695,
+          41.998985
+        ],
+        "temperature_pcb": [
+          35.499695,
+          36.998985
+        ],
+        "temperature_raw": [
+          25.499697,
+          26.998987
+        ]
+      },
+      {
+        "asic_num": 92,
+        "asic_num_ideal": 92,
+        "frequency_average": 50,
+        "hashrate_average": 0,
+        "hashrate_ideal": 579.6,
+        "hashrate_realtime_10m": 0,
+        "index": 2,
+        "power_consumption_estimated": 0,
+        "present": true,
+        "temperature_chip": [
+          40.621628,
+          42
+        ],
+        "temperature_pcb": [
+          35.621628,
+          37
+        ],
+        "temperature_raw": [
+          25.621626,
+          27
+        ]
+      }
+    ]
+  },
+  "overview": {
+    "control_board": "CVCtrl",
+    "is_one_shot_firmware": false,
+    "model": "Antminer KS5 Pro",
+    "model_extended": "Antminer KS5 Pro (21.0TH)",
+    "version_firmware": "MaraFW rel 3.14_584"
+  }
+}

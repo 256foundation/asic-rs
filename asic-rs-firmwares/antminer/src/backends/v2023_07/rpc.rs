@@ -2,7 +2,7 @@ use std::net::IpAddr;
 
 use anyhow;
 use asic_rs_core::{
-    data::command::{MinerCommand, RPCCommandStatus},
+    data::command::MinerCommand,
     errors::RPCError,
     traits::miner::*,
     util::{DEFAULT_RPC_TIMEOUT, connect_tcp_stream, read_stream_response, write_all_with_timeout},
@@ -75,11 +75,7 @@ impl AntMinerRPCAPI {
     }
 
     fn parse_rpc_result(&self, response: &str) -> anyhow::Result<Value> {
-        let status = RPCCommandStatus::from_antminer(response)?;
-        match status.into_result() {
-            Ok(_) => Ok(serde_json::from_str(response)?),
-            Err(e) => Err(e)?,
-        }
+        super::super::rpc_response::parse_response(response)
     }
 
     pub async fn stats(&self, new_api: bool) -> anyhow::Result<Value> {
@@ -154,29 +150,6 @@ impl RPCAPIClient for AntMinerRPCAPI {
         parameters: Option<Value>,
     ) -> anyhow::Result<Value> {
         self.send_rpc_command(command, privileged, parameters).await
-    }
-}
-
-trait StatusFromAntMiner {
-    fn from_antminer(response: &str) -> Result<Self, RPCError>
-    where
-        Self: Sized;
-}
-
-impl StatusFromAntMiner for RPCCommandStatus {
-    fn from_antminer(response: &str) -> Result<Self, RPCError> {
-        let value: Value = serde_json::from_str(response)?;
-
-        if let Some(status_array) = value.get("STATUS")
-            && let Some(status_obj) = status_array.get(0)
-            && let Some(status) = status_obj.get("STATUS").and_then(|v| v.as_str())
-        {
-            let message = status_obj.get("Msg").and_then(|v| v.as_str());
-
-            return Ok(Self::from_str(status, message));
-        }
-
-        Ok(Self::Success)
     }
 }
 

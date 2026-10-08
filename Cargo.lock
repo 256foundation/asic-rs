@@ -116,6 +116,9 @@ dependencies = [
  "asic-rs-firmwares-elphapex",
  "asic-rs-firmwares-epic",
  "asic-rs-firmwares-futurebit",
+ "asic-rs-firmwares-goldshell",
+ "asic-rs-firmwares-iceriver",
+ "asic-rs-firmwares-kaonsu",
  "asic-rs-firmwares-luxminer",
  "asic-rs-firmwares-marathon",
  "asic-rs-firmwares-nerdaxe",
@@ -132,6 +135,8 @@ dependencies = [
  "asic-rs-makes-elphapex",
  "asic-rs-makes-epic",
  "asic-rs-makes-futurebit",
+ "asic-rs-makes-goldshell",
+ "asic-rs-makes-iceriver",
  "asic-rs-makes-marathon",
  "asic-rs-makes-nerdaxe",
  "asic-rs-makes-proto",
@@ -336,6 +341,57 @@ dependencies = [
  "asic-rs-makes-futurebit",
  "async-trait",
  "macaddr",
+ "measurements",
+ "once_cell",
+ "pyo3",
+ "reqwest",
+ "semver",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "asic-rs-firmwares-goldshell"
+version = "0.8.5"
+dependencies = [
+ "anyhow",
+ "asic-rs-core",
+ "asic-rs-makes-goldshell",
+ "async-trait",
+ "macaddr",
+ "measurements",
+ "reqwest",
+ "semver",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "asic-rs-firmwares-iceriver"
+version = "0.8.5"
+dependencies = [
+ "anyhow",
+ "asic-rs-core",
+ "asic-rs-makes-iceriver",
+ "async-trait",
+ "macaddr",
+ "measurements",
+ "pyo3",
+ "reqwest",
+ "semver",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "asic-rs-firmwares-kaonsu"
+version = "0.8.5"
+dependencies = [
+ "anyhow",
+ "asic-rs-core",
+ "asic-rs-makes-antminer",
+ "async-trait",
+ "diqwest",
  "measurements",
  "once_cell",
  "pyo3",
@@ -604,6 +660,29 @@ dependencies = [
 
 [[package]]
 name = "asic-rs-makes-futurebit"
+version = "0.8.5"
+dependencies = [
+ "asic-rs-core",
+ "asic-rs-macros",
+ "pyo3",
+ "serde",
+ "serde_json",
+ "strum",
+ "ts-rs",
+]
+
+[[package]]
+name = "asic-rs-makes-goldshell"
+version = "0.8.5"
+dependencies = [
+ "asic-rs-core",
+ "serde",
+ "strum",
+ "ts-rs",
+]
+
+[[package]]
+name = "asic-rs-makes-iceriver"
 version = "0.8.5"
 dependencies = [
  "asic-rs-core",
@@ -2364,6 +2443,7 @@ dependencies = [
  "rustls-platform-verifier",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
@@ -2502,6 +2582,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
+name = "ryu"
+version = "1.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2622,6 +2708,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6662b5879511e06e8999a8a235d848113e942c9124f211511b16466ee2995f26"
 dependencies = [
  "serde_core",
+]
+
+[[package]]
+name = "serde_urlencoded"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3491c14715ca2294c4d6a88f15e84739788c1d030eed8c110436aafdaa2f3fd"
+dependencies = [
+ "form_urlencoded",
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]

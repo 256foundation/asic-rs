@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use super::{
+    deserialize::deserialize_temperature,
     hashrate::HashRate,
     serialize::{serialize_frequency, serialize_temperature, serialize_voltage},
 };
@@ -67,6 +68,28 @@ pub struct BoardData {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional, type = "number")]
     pub outlet_chip_temperature: Option<Temperature>,
+    /// Coolant entering this hashboard, when a dedicated hydro sensor is reported.
+    /// This is not a PCB or chip temperature.
+    #[serde(
+        default,
+        serialize_with = "serialize_temperature",
+        deserialize_with = "deserialize_temperature"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "number")]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub inlet_fluid_temperature: Option<Temperature>,
+    /// Coolant leaving this hashboard, when a dedicated hydro sensor is reported.
+    /// This is not a PCB or chip temperature.
+    #[serde(
+        default,
+        serialize_with = "serialize_temperature",
+        deserialize_with = "deserialize_temperature"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "number")]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub outlet_fluid_temperature: Option<Temperature>,
     /// The expected number of chips on this board
     pub expected_chips: Option<u16>,
     /// The number of working chips on this board
@@ -151,5 +174,37 @@ impl Display for MinerControlBoard {
         } else {
             write!(f, "Unknown: {}", self.name)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn coolant_fields_round_trip_as_celsius_without_changing_chip_or_board_values() {
+        let board = BoardData {
+            inlet_fluid_temperature: Some(Temperature::from_celsius(34.0)),
+            outlet_fluid_temperature: Some(Temperature::from_celsius(42.0)),
+            ..Default::default()
+        };
+        let json = serde_json::to_value(&board).unwrap();
+        assert_eq!(json["inlet_fluid_temperature"], 34.0);
+        assert_eq!(json["outlet_fluid_temperature"], 42.0);
+        let restored: BoardData = serde_json::from_value(json).unwrap();
+        assert_eq!(restored, board);
+        assert!(restored.board_temperature.is_none());
+        assert!(restored.inlet_chip_temperature.is_none());
+        assert!(restored.outlet_chip_temperature.is_none());
+    }
+
+    #[test]
+    fn older_board_snapshots_do_not_require_coolant_fields() {
+        let json = serde_json::to_value(BoardData::default()).unwrap();
+        assert!(json.get("inlet_fluid_temperature").is_none());
+        assert!(json.get("outlet_fluid_temperature").is_none());
+        let restored: BoardData = serde_json::from_value(json).unwrap();
+        assert!(restored.inlet_fluid_temperature.is_none());
+        assert!(restored.outlet_fluid_temperature.is_none());
     }
 }

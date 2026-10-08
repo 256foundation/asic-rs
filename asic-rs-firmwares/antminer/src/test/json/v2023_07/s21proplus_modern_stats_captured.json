@@ -1,0 +1,114 @@
+{
+  "INFO": {
+    "CompileTime": "Thu Apr 30 20:05:42 CST 2026",
+    "miner_version": "uart_trans.1.3",
+    "type": "Antminer S21 Pro+"
+  },
+  "STATS": [
+    {
+      "chain": [
+        {
+          "asic": " ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo",
+          "asic_num": 65,
+          "freq_avg": 625,
+          "index": 0,
+          "rate_ideal": 82875.0,
+          "rate_real": 81336.88,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            53,
+            53,
+            73,
+            73
+          ],
+          "temp_pcb": [
+            48,
+            66,
+            68,
+            68
+          ],
+          "temp_pic": [
+            38,
+            56,
+            58,
+            58
+          ]
+        },
+        {
+          "asic": " ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo",
+          "asic_num": 65,
+          "freq_avg": 625,
+          "index": 1,
+          "rate_ideal": 82875.0,
+          "rate_real": 84558.79,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            53,
+            53,
+            70,
+            70
+          ],
+          "temp_pcb": [
+            48,
+            64,
+            65,
+            65
+          ],
+          "temp_pic": [
+            38,
+            54,
+            55,
+            55
+          ]
+        },
+        {
+          "asic": " ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo ooooo",
+          "asic_num": 65,
+          "freq_avg": 625,
+          "index": 2,
+          "rate_ideal": 82875.0,
+          "rate_real": 84098.51,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            51,
+            51,
+            70,
+            70
+          ],
+          "temp_pcb": [
+            46,
+            65,
+            65,
+            65
+          ],
+          "temp_pic": [
+            36,
+            55,
+            55,
+            55
+          ]
+        }
+      ],
+      "chain_num": 3,
+      "elapsed": 1800211,
+      "fan": [
+        4020,
+        4020,
+        3960,
+        3960
+      ],
+      "fan_num": 4,
+      "rate_5s": 249994.18,
+      "rate_avg": 246852.1,
+      "rate_ideal": 245000.0,
+      "rate_unit": "GH/s",
+      "watt": 3499
+    }
+  ],
+  "STATUS": {
+    "Msg": "stats",
+    "STATUS": "S",
+    "api_version": "1.0.0",
+    "when": 1791471264
+  }
+}

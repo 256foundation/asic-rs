@@ -10,6 +10,10 @@ use crate::models::AntMinerModel;
 impl From<AntMinerModel> for MinerHardware {
     fn from(value: AntMinerModel) -> Self {
         match &value {
+            AntMinerModel::KS7 => Self {
+                fans: None,
+                boards: Some(vec![None; 3]),
+            },
             AntMinerModel::D3 => Self {
                 fans: Some(4),
                 boards: Some(vec![Some(60), Some(60), Some(60)]),
@@ -129,6 +133,10 @@ impl From<AntMinerModel> for MinerHardware {
             AntMinerModel::S19 => Self {
                 fans: Some(4),
                 boards: Some(vec![Some(76), Some(76), Some(76)]),
+            },
+            AntMinerModel::S19NoPIC => Self {
+                fans: Some(4),
+                boards: Some(vec![Some(88); 3]),
             },
             AntMinerModel::S19L => Self {
                 fans: Some(4),

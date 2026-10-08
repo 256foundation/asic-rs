@@ -22,6 +22,9 @@ Legend:
 | Braiins | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-list-todo: | :lucide-list-todo: | :lucide-check-check: |
 | Elphapex Stock | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | FutureBit Stock | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
+| Goldshell Stock | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
+| IceRiver Stock | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
+| KaonSu | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | LuxOS | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: |
 | Marathon | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | Nerdaxe Stock | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
@@ -34,7 +37,7 @@ Legend:
 
 ## Exact Supported Models
 
-??? quote "AntMiner (61 models across 24 families)"
+??? quote "AntMiner (63 models across 25 families)"
 
 	??? note "D3 family (1 model)"
 		 - [x] `ANTMINER D3`
@@ -57,6 +60,8 @@ Legend:
 	??? note "KS5 family (2 models)"
 		 - [x] `ANTMINER KS5`
 		 - [x] `ANTMINER KS5 PRO`
+	??? note "KS7 family (1 model)"
+		 - [x] `ANTMINER KS7`
 	??? note "L3 family (2 models)"
 		 - [x] `ANTMINER L3+`
 		 - [x] `ANTMINER L3++`
@@ -75,7 +80,7 @@ Legend:
 		 - [x] `ANTMINER S17 PRO`
 		 - [x] `ANTMINER S17+`
 		 - [x] `ANTMINER S17E`
-	??? note "S19 family (18 models)"
+	??? note "S19 family (19 models)"
 		 - [x] `ANTMINER S19`
 		 - [x] `ANTMINER S19 HYDRO`
 		 - [x] `ANTMINER S19 PRO`
@@ -93,6 +98,7 @@ Legend:
 		 - [x] `ANTMINER S19J XP`
 		 - [x] `ANTMINER S19K PRO`
 		 - [x] `ANTMINER S19L`
+		 - [x] `ANTMINER S19NOPIC` (also: `ANTMINER S19X88`)
 		 - [x] `ANTMINER S19PRO+`
 	??? note "S21 family (11 models)"
 		 - [x] `ANTMINER S21` (also: `ANTMINER BHB68601`, `ANTMINER BHB68606`)
@@ -201,6 +207,14 @@ Legend:
 		 - [x] `Apollo1`
 	??? note "APOLLO2 family (1 model)"
 		 - [x] `Apollo2`
+??? quote "Goldshell (1 model across 1 family)"
+
+	??? note "SC5 family (1 model)"
+		 - [x] `SC5Pro`
+??? quote "IceRiver (1 model across 1 family)"
+
+	??? note "AL3 family (1 model)"
+		 - [x] `ICERIVER AL3` (also: `10306`)
 ??? quote "Nerdaxe (4 models across 4 families)"
 
 	??? note "BM1366 family (1 model)"

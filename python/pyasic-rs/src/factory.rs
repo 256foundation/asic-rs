@@ -14,7 +14,7 @@ use crate::{
     },
 };
 use asic_rs::factory::MinerFactory as MinerFactory_Base;
-use asic_rs_core::traits::miner::Miner as MinerTrait;
+use asic_rs_core::traits::miner::{Miner as MinerTrait, MinerAuth};
 use asic_rs_pydantic::py_to_string;
 use futures::{Stream, StreamExt};
 use pyo3::{
@@ -373,6 +373,26 @@ impl MinerFactory {
         Ok(Self::update_inner(slf, |inner| {
             inner.with_port_check(enabled)
         }))
+    }
+
+    /// Set credentials used when constructing a matching discovered firmware.
+    ///
+    /// `firmware_name` must be an exact registered Display name, for example
+    /// `AntMiner Stock`, `Hiveon`, `KaonSu`, `VNish`, or `IceRiver Stock`.
+    /// Unknown names raise `ValueError` without exposing credentials or input.
+    /// Firmware identification requests remain unauthenticated.
+    pub fn with_firmware_discovery_auth<'py>(
+        slf: PyRefMut<'py, Self>,
+        firmware_name: &str,
+        username: &str,
+        password: &str,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        Self::try_update_inner(slf, |inner| {
+            inner.with_firmware_discovery_auth_by_name(
+                firmware_name,
+                MinerAuth::new(username, password),
+            )
+        })
     }
 
     /// Await a scan of all queued addresses and return every supported miner.

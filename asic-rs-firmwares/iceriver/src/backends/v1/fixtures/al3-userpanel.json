@@ -1,0 +1,39 @@
+{
+  "data": {
+    "boards": [
+      {
+        "chipnum": 18,
+        "intmp": 60,
+        "no": 1,
+        "outtmp": 80,
+        "rtpow": "5000G"
+      },
+      {
+        "chipnum": 18,
+        "intmp": "61",
+        "no": "2",
+        "outtmp": "81",
+        "rtpow": "5100G"
+      },
+      {
+        "chipnum": 17,
+        "intmp": 62,
+        "no": 3,
+        "outtmp": 82,
+        "rtpow": "4900G"
+      }
+    ],
+    "fans": [
+      6000,
+      "5900",
+      0,
+      "unavailable"
+    ],
+    "locate": false,
+    "powstate": true,
+    "rtpow": "15.0T",
+    "runtime": "1:02:03:04",
+    "softver1": "fixture_10306_miner",
+    "unit": "T"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "DEVDETAILS": [
+    {
+      "ID": 0,
+      "chips-nr": 84
+    },
+    {
+      "ID": 1,
+      "chips-nr": 84
+    },
+    {
+      "ID": 2,
+      "chips-nr": 84
+    },
+    {
+      "ID": 3,
+      "chips-nr": 84
+    }
+  ],
+  "DEVS": [
+    {
+      "ID": 0,
+      "MHS 20s": 2770500.143,
+      "Status": "Alive",
+      "clock": 840.0,
+      "fan0": 2100,
+      "fan1": 2100,
+      "fan2": 2100,
+      "fan3": 2100,
+      "tstemp-0": 88.0,
+      "tstemp-1": 88.0,
+      "tstemp-2": 78.69,
+      "voltage": 12090.0
+    },
+    {
+      "ID": 1,
+      "MHS 20s": 2885706.541,
+      "Status": "Alive",
+      "clock": 840.0,
+      "fan0": 2100,
+      "fan1": 2100,
+      "fan2": 2100,
+      "fan3": 2100,
+      "tstemp-0": 91.0,
+      "tstemp-1": 91.0,
+      "tstemp-2": 81.25,
+      "voltage": 12090.0
+    },
+    {
+      "ID": 2,
+      "MHS 20s": 2808366.416,
+      "Status": "Alive",
+      "clock": 840.0,
+      "fan0": 2100,
+      "fan1": 2100,
+      "fan2": 2100,
+      "fan3": 2100,
+      "tstemp-0": 89.0,
+      "tstemp-1": 89.0,
+      "tstemp-2": 81.44,
+      "voltage": 12090.0
+    },
+    {
+      "ID": 3,
+      "MHS 20s": 2752386.896,
+      "Status": "Alive",
+      "clock": 840.0,
+      "fan0": 2040,
+      "fan1": 2040,
+      "fan2": 2040,
+      "fan3": 2100,
+      "tstemp-0": 83.0,
+      "tstemp-1": 83.0,
+      "tstemp-2": 74.31,
+      "voltage": 12090.0
+    }
+  ],
+  "status": {
+    "firmware": "2.2.0",
+    "hardware": "30.50.SA",
+    "mcbversion": "MCB_V4_3",
+    "model": "Goldshell-SC5Pro"
+  }
+}

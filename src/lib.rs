@@ -20,6 +20,12 @@ pub use asic_rs_firmwares_elphapex as elphapex;
 pub use asic_rs_firmwares_epic as epic;
 #[cfg(feature = "futurebit")]
 pub use asic_rs_firmwares_futurebit as futurebit;
+#[cfg(feature = "goldshell")]
+pub use asic_rs_firmwares_goldshell as goldshell;
+#[cfg(feature = "iceriver")]
+pub use asic_rs_firmwares_iceriver as iceriver;
+#[cfg(feature = "kaonsu")]
+pub use asic_rs_firmwares_kaonsu as kaonsu;
 #[cfg(feature = "luxminer")]
 pub use asic_rs_firmwares_luxminer as luxminer;
 #[cfg(feature = "marathon")]

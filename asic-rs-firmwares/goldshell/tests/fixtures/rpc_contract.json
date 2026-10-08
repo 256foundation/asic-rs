@@ -1,0 +1,39 @@
+{
+  "DEVDETAILS": [
+    {
+      "ID": 0,
+      "chips-nr": 16
+    },
+    {
+      "ID": 1,
+      "chips-nr": 0
+    }
+  ],
+  "DEVS": [
+    {
+      "ID": 0,
+      "MHS 20s": 25.0,
+      "tstemp-2": 40
+    },
+    {
+      "ID": 1,
+      "MHS 20s": 0,
+      "tstemp-2": 0
+    }
+  ],
+  "POOLS": [],
+  "STATS": [
+    {},
+    {
+      "fan1": 1200,
+      "fan2": 0
+    }
+  ],
+  "SUMMARY": [
+    {
+      "Elapsed": 120,
+      "MHS 20s": 25.0,
+      "MHS av": 999.0
+    }
+  ]
+}

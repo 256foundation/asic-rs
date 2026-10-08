@@ -45,6 +45,7 @@ pub struct MinerHardware {
     /// Expected number of fans.
     pub fans: Option<u8>,
     /// Expected hashboards, represented as the expected number of chips per board.
+    /// A `None` entry has an unknown count; use `Some(0)` for a confirmed empty slot.
     pub boards: Option<Vec<Option<u16>>>,
 }
 
@@ -58,9 +59,11 @@ impl MinerHardware {
 
     /// Expected total chip count across all hashboards.
     pub fn total_chips(&self) -> Option<u16> {
-        self.boards
-            .as_ref()
-            .map(|boards| boards.iter().copied().flatten().sum())
+        self.boards.as_ref().and_then(|boards| {
+            boards
+                .iter()
+                .try_fold(0u16, |total, chips| total.checked_add((*chips)?))
+        })
     }
 
     /// Expected chip count for a specific hashboard position.
@@ -170,6 +173,14 @@ pub enum HashAlgorithm {
     #[cfg_attr(feature = "python", pydantic(value = "Unknown"))]
     #[serde(rename = "Unknown")]
     Unknown,
+    /// Blake2b mining, as used by Sia.
+    #[cfg_attr(feature = "python", pydantic(value = "Blake2b"))]
+    #[serde(rename = "Blake2b")]
+    Blake2b,
+    /// Blake3 mining, as used by Alephium.
+    #[cfg_attr(feature = "python", pydantic(value = "Blake3"))]
+    #[serde(rename = "Blake3")]
+    Blake3,
 }
 
 impl HashAlgorithm {
@@ -181,11 +192,13 @@ impl HashAlgorithm {
             HashAlgorithm::Equihash => HashRateUnit::KiloHash,
             HashAlgorithm::SHA256
             | HashAlgorithm::Blake2S256
+            | HashAlgorithm::Blake2b
             | HashAlgorithm::Kadena
             | HashAlgorithm::KHeavyHash
             | HashAlgorithm::Eaglesong
             | HashAlgorithm::Handshake
-            | HashAlgorithm::Blake256R14 => HashRateUnit::TeraHash,
+            | HashAlgorithm::Blake256R14
+            | HashAlgorithm::Blake3 => HashRateUnit::TeraHash,
             HashAlgorithm::Unknown => HashRateUnit::Hash,
         }
     }
@@ -241,6 +254,28 @@ mod tests {
     use strum::IntoEnumIterator;
 
     use super::*;
+
+    #[test]
+    fn total_chips_remains_unknown_when_any_board_count_is_unknown() {
+        for boards in [
+            None,
+            Some(vec![None, None, None]),
+            Some(vec![Some(100), None]),
+        ] {
+            let hardware = MinerHardware { fans: None, boards };
+            assert_eq!(hardware.total_chips(), None);
+        }
+        let known = MinerHardware {
+            fans: None,
+            boards: Some(vec![Some(100), Some(120)]),
+        };
+        assert_eq!(known.total_chips(), Some(220));
+        let overflow = MinerHardware {
+            fans: None,
+            boards: Some(vec![Some(u16::MAX), Some(1)]),
+        };
+        assert_eq!(overflow.total_chips(), None);
+    }
 
     /// `Display` and `EnumString` are derived independently, so a variant whose
     /// rendered name does not parse back would be a silent one-way trip.

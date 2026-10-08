@@ -149,6 +149,33 @@ def minimal_miner_data(**overrides: object) -> dict[str, object]:
     return data
 
 
+def test_optional_telemetry_provenance_survives_native_python_round_trip() -> None:
+    payload = minimal_miner_data(
+        wattage=0.0, wattage_source="vendor.brief", wattage_is_estimated=True,
+        wattage_firmware_source="PSU", wattage_indicator=0,
+        reported_max_temperature=70.0,
+    )
+    model = MinerDataModel.model_validate({"miner": payload})
+    restored = MinerDataModel.model_validate_json(model.model_dump_json()).miner
+    assert restored.wattage == 0.0
+    assert restored.wattage_source == "vendor.brief"
+    assert restored.wattage_is_estimated is True
+    assert restored.wattage_firmware_source == "PSU"
+    assert restored.wattage_indicator == 0
+    assert restored.reported_max_temperature == 70.0
+    assert restored.average_temperature is None
+    assert restored.hashboards == []
+
+
+def test_old_snapshots_do_not_require_new_provenance_or_max_temperature() -> None:
+    model = MinerDataModel.model_validate({"miner": minimal_miner_data()}).miner
+    assert model.wattage_source is None
+    assert model.wattage_is_estimated is None
+    assert model.wattage_firmware_source is None
+    assert model.wattage_indicator is None
+    assert model.reported_max_temperature is None
+
+
 @pytest.mark.parametrize(
     ("payload", "state"),
     [
@@ -1104,7 +1131,8 @@ def test_shared_config_names_preserve_python_aliases() -> None:
 
 def test_hardware_helpers_use_shared_names() -> None:
     hardware = MinerHardware.model_validate({"fans": 4, "boards": [78, None, 80]})
-    assert hardware.total_chips == hardware.chips == 158
+    assert hardware.total_chips is None
+    assert hardware.chips is None
     assert hardware.board_count == 3
     assert hardware.chips_for_board(0) == 78
     assert hardware.chips_for_board(1) is None

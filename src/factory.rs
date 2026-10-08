@@ -237,6 +237,9 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
     #[cfg_attr(
         not(any(
             feature = "antminer",
+            feature = "iceriver",
+            feature = "kaonsu",
+            feature = "goldshell",
             feature = "auradine",
             feature = "avalonminer",
             feature = "bitaxe",
@@ -262,10 +265,16 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
         asic_rs_firmwares_braiins::firmware::BraiinsFirmware::default(),
     ));
 
+    #[cfg(feature = "antminer")]
+    registry.push(Arc::new(asic_rs_firmwares_antminer::hiveon::HiveonFirmware));
+
     #[cfg(feature = "luxminer")]
     registry.push(Arc::new(
         asic_rs_firmwares_luxminer::firmware::LuxMinerFirmware::default(),
     ));
+
+    #[cfg(feature = "kaonsu")]
+    registry.push(Arc::new(asic_rs_firmwares_kaonsu::firmware::KaonsuFirmware));
 
     #[cfg(feature = "marathon")]
     registry.push(Arc::new(
@@ -293,6 +302,16 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
     ));
 
     // Stock firmwares — checked last so non-stock take priority
+    #[cfg(feature = "goldshell")]
+    registry.push(Arc::new(
+        asic_rs_firmwares_goldshell::firmware::GoldshellFirmware,
+    ));
+
+    #[cfg(feature = "iceriver")]
+    registry.push(Arc::new(
+        asic_rs_firmwares_iceriver::firmware::IceRiverStockFirmware,
+    ));
+
     #[cfg(feature = "futurebit")]
     registry.push(Arc::new(
         asic_rs_firmwares_futurebit::firmware::ApolloFirmware::default(),
@@ -570,6 +589,32 @@ impl MinerFactory {
         self.discovery_auth_by_firmware
             .insert(firmware.to_string(), auth);
         self
+    }
+
+    /// Set construction credentials by the exact Display name of a registered
+    /// firmware. Discovery requests remain unauthenticated; credentials are
+    /// supplied only to the identified firmware's `build_miner` method.
+    ///
+    /// Unknown names are rejected without including caller input in the error.
+    pub fn with_firmware_discovery_auth_by_name(
+        mut self,
+        firmware_name: &str,
+        auth: MinerAuth,
+    ) -> Result<Self> {
+        let registry = self
+            .search_firmwares
+            .clone()
+            .unwrap_or_else(default_firmware_registry);
+        let registered_name = registry
+            .iter()
+            .map(|firmware| firmware.to_string())
+            .find(|name| name == firmware_name)
+            .ok_or_else(|| {
+                anyhow::anyhow!("Firmware is not registered for discovery authentication")
+            })?;
+        self.discovery_auth_by_firmware
+            .insert(registered_name, auth);
+        Ok(self)
     }
 
     /// Set the maximum number of addresses scanned at the same time.
@@ -1036,6 +1081,41 @@ fn generate_ips_from_ranges(
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn named_discovery_auth_uses_registered_display_keys_and_redacts_debug() {
+        let registry = default_firmware_registry();
+        for firmware in &registry {
+            let name = firmware.to_string();
+            let factory = MinerFactory::new()
+                .with_firmware_discovery_auth_by_name(
+                    &name,
+                    MinerAuth::new("private-user", "private-password"),
+                )
+                .unwrap();
+            let auth = factory.discovery_auth_by_firmware.get(&name).unwrap();
+            assert_eq!(auth.username(), "private-user");
+            assert_eq!(auth.password(), "private-password");
+            let debug = format!("{factory:?}");
+            assert!(!debug.contains("private-user"));
+            assert!(!debug.contains("private-password"));
+        }
+    }
+
+    #[test]
+    fn named_discovery_auth_respects_custom_registry_and_rejects_unknown_names() {
+        let factory = MinerFactory::new().with_firmwares(Vec::new());
+        let error = factory
+            .with_firmware_discovery_auth_by_name(
+                "private-user/private-password",
+                MinerAuth::new("private-user", "private-password"),
+            )
+            .unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "Firmware is not registered for discovery authentication"
+        );
+    }
 
     #[tokio::test]
     async fn port_race_checks_every_port_when_none_succeed() {

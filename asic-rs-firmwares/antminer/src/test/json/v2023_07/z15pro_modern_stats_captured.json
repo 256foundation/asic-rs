@@ -1,0 +1,129 @@
+{
+  "INFO": {
+    "CompileTime": "Wed Dec 13 11:33:17 CST 2023",
+    "miner_version": "81.0-2.0.0",
+    "type": "Antminer Z15 Pro"
+  },
+  "STATS": [
+    {
+      "chain": [
+        {
+          "asic": "oooooo",
+          "asic_num": 6,
+          "freq_avg": 800,
+          "index": 0,
+          "rate_ideal": 293.32,
+          "rate_real": 285.88,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            60,
+            62,
+            64,
+            68,
+            70,
+            71
+          ],
+          "temp_pcb": [
+            38,
+            37,
+            43,
+            52,
+            54,
+            55
+          ],
+          "temp_pic": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "asic": "oooooo",
+          "asic_num": 6,
+          "freq_avg": 800,
+          "index": 1,
+          "rate_ideal": 287.46,
+          "rate_real": 290.54,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            60,
+            62,
+            63,
+            64,
+            69,
+            70
+          ],
+          "temp_pcb": [
+            37,
+            37,
+            41,
+            49,
+            53,
+            53
+          ],
+          "temp_pic": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "asic": "oooooo",
+          "asic_num": 6,
+          "freq_avg": 800,
+          "index": 3,
+          "rate_ideal": 293.32,
+          "rate_real": 286.31,
+          "sn": "REDACTED-SERIAL",
+          "temp_chip": [
+            60,
+            60,
+            63,
+            70,
+            70,
+            72
+          ],
+          "temp_pcb": [
+            37,
+            36,
+            41,
+            51,
+            53,
+            54
+          ],
+          "temp_pic": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "chain_num": 3,
+      "elapsed": 1893038,
+      "fan": [
+        4560,
+        4440
+      ],
+      "fan_num": 2,
+      "rate_5s": 891.28,
+      "rate_avg": 819.73,
+      "rate_ideal": 874.11,
+      "rate_unit": "Ksol/s"
+    }
+  ],
+  "STATUS": {
+    "Msg": "stats",
+    "STATUS": "S",
+    "api_version": "1.0.0",
+    "when": 1791467421
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "data": {
+    "algo": "none",
+    "avgpow": "14888G",
+    "boards": [
+      {
+        "chipnum": 18.0,
+        "freq": 875.0,
+        "intmp": 56.0,
+        "no": 1.0,
+        "outtmp": 65.0,
+        "rtpow": "5153.04G",
+        "state": true
+      },
+      {
+        "chipnum": 18.0,
+        "freq": 875.0,
+        "intmp": 55.0,
+        "no": 2.0,
+        "outtmp": 64.0,
+        "rtpow": "4581.30G",
+        "state": true
+      },
+      {
+        "chipnum": 18.0,
+        "freq": 875.0,
+        "intmp": 61.0,
+        "no": 3.0,
+        "outtmp": 69.0,
+        "rtpow": "5028.43G",
+        "state": true
+      }
+    ],
+    "fancount": "4",
+    "fans": [
+      3531,
+      3486,
+      3486,
+      3486
+    ],
+    "firmtype": "Factory",
+    "firmver1": "BOOT_4_1",
+    "firmver2": "image_1.0",
+    "model": "none",
+    "online": true,
+    "powstate": true,
+    "rtpow": "14762G",
+    "runtime": "02:20:07:21",
+    "softver1": "ICM168_04_02_1810_10306_miner",
+    "softver2": "ICM168_04_02_1810_10306_bg",
+    "unit": "G"
+  },
+  "error": 0,
+  "message": ""
+}

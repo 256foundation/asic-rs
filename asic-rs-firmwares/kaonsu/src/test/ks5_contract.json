@@ -1,0 +1,64 @@
+{
+  "brief": {
+    "hashrate_realtime_10m": 20.1,
+    "hashrate_stock": 21,
+    "hashrate_unit": "TH/s",
+    "power_consumption_estimated": 3400,
+    "power_indicator": 0,
+    "power_source": "PSU",
+    "status": "Mining",
+    "status_long": "Healthy",
+    "temperature_max": 70
+  },
+  "fans": {
+    "fans": [
+      {
+        "rpm": 5200
+      },
+      {
+        "rpm": 5100
+      }
+    ]
+  },
+  "hashboards": {
+    "hashboards": [
+      {
+        "asic_num": 120,
+        "hashrate_average": 6.7,
+        "hashrate_average_unit": "TH/s",
+        "id": 0,
+        "present": true,
+        "temperature_chip": [
+          65,
+          68
+        ]
+      },
+      {
+        "asic_num": 120,
+        "hashrate_average": 6.7,
+        "hashrate_average_unit": "TH/s",
+        "id": 1,
+        "present": true,
+        "temperature_chip": [
+          65,
+          68
+        ]
+      },
+      {
+        "asic_num": 120,
+        "hashrate_average": 6.7,
+        "hashrate_average_unit": "TH/s",
+        "id": 2,
+        "present": true,
+        "temperature_chip": [
+          65,
+          68
+        ]
+      }
+    ]
+  },
+  "overview": {
+    "model_extended": "Antminer KS5 Pro",
+    "version_firmware": "1.0.3"
+  }
+}

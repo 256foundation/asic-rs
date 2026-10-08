@@ -28,6 +28,8 @@ members = [
     "asic-rs-core",
     "asic-rs-macros",
     "asic-rs-makes/antminer",
+    "asic-rs-makes/iceriver",
+    "asic-rs-makes/goldshell",
     "asic-rs-makes/auradine",
     "asic-rs-makes/avalon",
     "asic-rs-makes/bitaxe",
@@ -42,6 +44,9 @@ members = [
     "asic-rs-makes/whatsminer",
     "asic-rs-makes/marathon",
     "asic-rs-firmwares/antminer",
+    "asic-rs-firmwares/iceriver",
+    "asic-rs-firmwares/kaonsu",
+    "asic-rs-firmwares/goldshell",
     "asic-rs-firmwares/futurebit",
     "asic-rs-firmwares/auradine",
     "asic-rs-firmwares/avalonminer",
@@ -66,6 +71,8 @@ default-members = [
     "asic-rs-core",
     "asic-rs-macros",
     "asic-rs-makes/antminer",
+    "asic-rs-makes/iceriver",
+    "asic-rs-makes/goldshell",
     "asic-rs-makes/auradine",
     "asic-rs-makes/avalon",
     "asic-rs-makes/bitaxe",
@@ -80,6 +87,9 @@ default-members = [
     "asic-rs-makes/whatsminer",
     "asic-rs-makes/marathon",
     "asic-rs-firmwares/antminer",
+    "asic-rs-firmwares/iceriver",
+    "asic-rs-firmwares/kaonsu",
+    "asic-rs-firmwares/goldshell",
     "asic-rs-firmwares/futurebit",
     "asic-rs-firmwares/auradine",
     "asic-rs-firmwares/avalonminer",
@@ -106,6 +116,8 @@ asic-rs-pydantic = { path = "asic-rs-pydantic", version = "0.8.5" }
 asic-rs-pydantic-macros = { path = "asic-rs-pydantic-macros", version = "0.8.5" }
 
 asic-rs-makes-antminer = { path = "asic-rs-makes/antminer", version = "0.8.5" }
+asic-rs-makes-iceriver = { path = "asic-rs-makes/iceriver", version = "0.8.5" }
+asic-rs-makes-goldshell = { path = "asic-rs-makes/goldshell", version = "0.8.5" }
 asic-rs-makes-auradine = { path = "asic-rs-makes/auradine", version = "0.8.5" }
 asic-rs-makes-avalon = { path = "asic-rs-makes/avalon", version = "0.8.5" }
 asic-rs-makes-bitaxe = { path = "asic-rs-makes/bitaxe", version = "0.8.5" }
@@ -121,6 +133,9 @@ asic-rs-makes-whatsminer = { path = "asic-rs-makes/whatsminer", version = "0.8.5
 asic-rs-makes-marathon = { path = "asic-rs-makes/marathon", version = "0.8.5" }
 
 asic-rs-firmwares-antminer = { path = "asic-rs-firmwares/antminer", version = "0.8.5" }
+asic-rs-firmwares-iceriver = { path = "asic-rs-firmwares/iceriver", version = "0.8.5" }
+asic-rs-firmwares-kaonsu = { path = "asic-rs-firmwares/kaonsu", version = "0.8.5" }
+asic-rs-firmwares-goldshell = { path = "asic-rs-firmwares/goldshell", version = "0.8.5" }
 asic-rs-firmwares-futurebit = { path = "asic-rs-firmwares/futurebit", version = "0.8.5" }
 asic-rs-firmwares-auradine = { path = "asic-rs-firmwares/auradine", version = "0.8.5" }
 asic-rs-firmwares-avalonminer = { path = "asic-rs-firmwares/avalonminer", version = "0.8.5" }
@@ -142,7 +157,7 @@ digest_auth = "0.3.1"
 futures = "0.3"
 macaddr = { version = "1.0", features = ["serde_std"] }
 measurements = { version = "0.11", features = ["serde"] }
-reqwest = { version = "0.13.3", features = ["json", "gzip", "rustls", "multipart", "stream"], default-features = false }
+reqwest = { version = "0.13.3", features = ["json", "query", "gzip", "rustls", "multipart", "stream"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ts-rs = { version = "12.0.1", features = ["no-serde-warnings"] }
@@ -195,6 +210,9 @@ panic = "deny"
 default = [
     "core",
     "antminer",
+    "iceriver",
+    "kaonsu",
+    "goldshell",
     "futurebit",
     "auradine",
     "avalonminer",
@@ -214,6 +232,9 @@ default = [
 
 core = []
 antminer = ["dep:asic-rs-firmwares-antminer"]
+iceriver = ["dep:asic-rs-firmwares-iceriver"]
+kaonsu = ["dep:asic-rs-firmwares-kaonsu"]
+goldshell = ["dep:asic-rs-firmwares-goldshell"]
 futurebit = ["dep:asic-rs-firmwares-futurebit"]
 auradine = ["dep:asic-rs-firmwares-auradine"]
 avalonminer = ["dep:asic-rs-firmwares-avalonminer"]
@@ -233,6 +254,8 @@ whatsminer = ["dep:asic-rs-firmwares-whatsminer"]
 python = [
     "asic-rs-core/python",
     "asic-rs-makes-antminer/python",
+    "asic-rs-makes-iceriver/python",
+    "asic-rs-makes-goldshell/python",
     "asic-rs-makes-auradine/python",
     "asic-rs-makes-avalon/python",
     "asic-rs-makes-bitaxe/python",
@@ -247,6 +270,9 @@ python = [
     "asic-rs-makes-whatsminer/python",
     "asic-rs-makes-marathon/python",
     "asic-rs-firmwares-antminer?/python",
+    "asic-rs-firmwares-iceriver?/python",
+    "asic-rs-firmwares-kaonsu?/python",
+    "asic-rs-firmwares-goldshell?/python",
     "asic-rs-firmwares-futurebit?/python",
     "asic-rs-firmwares-auradine?/python",
     "asic-rs-firmwares-avalonminer?/python",
@@ -268,6 +294,8 @@ python = [
 asic-rs-core.workspace = true
 
 asic-rs-makes-antminer.workspace = true
+asic-rs-makes-iceriver.workspace = true
+asic-rs-makes-goldshell.workspace = true
 asic-rs-makes-auradine.workspace = true
 asic-rs-makes-avalon.workspace = true
 asic-rs-makes-bitaxe.workspace = true
@@ -283,6 +311,9 @@ asic-rs-makes-whatsminer.workspace = true
 asic-rs-makes-marathon.workspace = true
 
 asic-rs-firmwares-antminer = { workspace = true, optional = true }
+asic-rs-firmwares-iceriver = { workspace = true, optional = true }
+asic-rs-firmwares-kaonsu = { workspace = true, optional = true }
+asic-rs-firmwares-goldshell = { workspace = true, optional = true }
 asic-rs-firmwares-futurebit = { workspace = true, optional = true }
 asic-rs-firmwares-auradine = { workspace = true, optional = true }
 asic-rs-firmwares-avalonminer = { workspace = true, optional = true }

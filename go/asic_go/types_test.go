@@ -353,6 +353,7 @@ func TestRequiredCollectionsMatchRustFixtures(t *testing.T) {
 func TestAlgorithmDefaultsAndHardwareHelpers(t *testing.T) {
 	cases := map[HashAlgorithm]HashRateUnit{
 		HashAlgorithmSHA256:   HashRateUnitTeraHash,
+		HashAlgorithmBlake3:   HashRateUnitTeraHash,
 		HashAlgorithmScrypt:   HashRateUnitGigaHash,
 		HashAlgorithmEtHash:   HashRateUnitMegaHash,
 		HashAlgorithmEquihash: HashRateUnitKiloHash,
@@ -373,7 +374,7 @@ func TestAlgorithmDefaultsAndHardwareHelpers(t *testing.T) {
 	if n, ok := hardware.BoardCount(); !ok || n != 3 {
 		t.Fatalf("board count: %d, %v", n, ok)
 	}
-	if n, ok := hardware.TotalChips(); !ok || n != 158 {
+	if n, ok := hardware.TotalChips(); ok || n != 0 {
 		t.Fatalf("total chips: %d, %v", n, ok)
 	}
 	if n, ok := hardware.ChipsForBoard(2); !ok || n != 80 {
@@ -386,6 +387,55 @@ func TestAlgorithmDefaultsAndHardwareHelpers(t *testing.T) {
 	}
 	if _, ok := (MinerHardware{}).TotalChips(); ok {
 		t.Fatal("missing boards became a known count")
+	}
+}
+
+func TestBlake2bReportedMegaHashRateConvertsToTeraHash(t *testing.T) {
+	var rate HashRate
+	if err := json.Unmarshal([]byte(`{"value":11000000,"unit":"MH/s","algo":"Blake2b"}`), &rate); err != nil {
+		t.Fatal(err)
+	}
+	normalized, err := rate.IntoDefaultUnit()
+	if err != nil || normalized.Value != 11 || normalized.Unit != HashRateUnitTeraHash || normalized.Algo != HashAlgorithmBlake2b {
+		t.Fatalf("reported SC5Pro rate: %+v, %v", normalized, err)
+	}
+	raw, err := json.Marshal(normalized)
+	if err != nil || !strings.Contains(string(raw), `"algo":"Blake2b"`) {
+		t.Fatalf("normalized algorithm identity: %s, %v", raw, err)
+	}
+}
+
+func TestPowerProvenancePreservesReportedZeroAndUnknown(t *testing.T) {
+	var data MinerData
+	if err := json.Unmarshal([]byte(`{"wattage":0,"wattage_source":"vendor.brief","wattage_is_estimated":true,"wattage_firmware_source":"PSU","wattage_indicator":0,"reported_max_temperature":70}`), &data); err != nil {
+		t.Fatal(err)
+	}
+	if data.Wattage == nil || *data.Wattage != 0 || data.WattageIsEstimated == nil || !*data.WattageIsEstimated || data.WattageIndicator == nil || *data.WattageIndicator != 0 || data.ReportedMaxTemperature == nil || *data.ReportedMaxTemperature != 70 {
+		t.Fatalf("reported values lost: %+v", data)
+	}
+	var missing MinerData
+	if err := json.Unmarshal([]byte(`{}`), &missing); err != nil || missing.WattageIsEstimated != nil || missing.WattageIndicator != nil || missing.ReportedMaxTemperature != nil {
+		t.Fatalf("missing fields became known: %+v, %v", missing, err)
+	}
+}
+
+func TestHardwareTotalChipsPreservesUnknownAndOverflow(t *testing.T) {
+	first, second, maximum := uint16(78), uint16(80), uint16(65535)
+	for _, hardware := range []MinerHardware{
+		{},
+		{Boards: []*uint16{nil, nil, nil}},
+		{Boards: []*uint16{&first, nil, &second}},
+		{Boards: []*uint16{&maximum, &first}},
+	} {
+		if total, known := hardware.TotalChips(); known || total != 0 {
+			t.Fatalf("unconfirmed total became known: %d, %v for %+v", total, known, hardware)
+		}
+	}
+	if total, known := (MinerHardware{Boards: []*uint16{&first, &second}}).TotalChips(); !known || total != 158 {
+		t.Fatalf("confirmed count lost: %d, %v", total, known)
+	}
+	if total, known := (MinerHardware{Boards: []*uint16{}}).TotalChips(); !known || total != 0 {
+		t.Fatalf("explicit empty boards lost: %d, %v", total, known)
 	}
 }
 
@@ -446,5 +496,36 @@ func TestStructuredTelemetryModels(t *testing.T) {
 	}
 	if *data.TuningCapabilities.Power.Maximum.Watts != 3500 {
 		t.Fatalf("capabilities: %+v", data.TuningCapabilities)
+	}
+}
+
+func TestBoardCoolantTelemetry(t *testing.T) {
+	var board BoardData
+	if err := json.Unmarshal([]byte(`{"position":0,"board_temperature":61,"inlet_fluid_temperature":34,"outlet_fluid_temperature":42}`), &board); err != nil {
+		t.Fatal(err)
+	}
+	if board.InletFluidTemperature == nil || *board.InletFluidTemperature != 34 || board.OutletFluidTemperature == nil || *board.OutletFluidTemperature != 42 {
+		t.Fatalf("coolant fields: %+v", board)
+	}
+	if board.BoardTemperature == nil || *board.BoardTemperature != 61 || board.InletChipTemperature != nil || board.OutletChipTemperature != nil {
+		t.Fatalf("sensor domains: %+v", board)
+	}
+	raw, err := json.Marshal(board)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var again BoardData
+	if err := json.Unmarshal(raw, &again); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(board, again) {
+		t.Fatalf("round trip changed telemetry: %+v", again)
+	}
+	var old BoardData
+	if err := json.Unmarshal([]byte(`{"position":0}`), &old); err != nil {
+		t.Fatal(err)
+	}
+	if old.InletFluidTemperature != nil || old.OutletFluidTemperature != nil {
+		t.Fatalf("older snapshot invented coolant: %+v", old)
 	}
 }

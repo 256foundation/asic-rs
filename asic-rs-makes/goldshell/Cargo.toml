@@ -1,0 +1,18 @@
+[package]
+name = "asic-rs-makes-goldshell"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Goldshell model identities for asic-rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+asic-rs-core.workspace = true
+serde.workspace = true
+strum.workspace = true
+ts-rs.workspace = true
+
+[features]
+python = ["asic-rs-core/python"]
