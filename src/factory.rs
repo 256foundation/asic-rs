@@ -237,6 +237,7 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
     #[cfg_attr(
         not(any(
             feature = "antminer",
+            feature = "goldshell",
             feature = "auradine",
             feature = "avalonminer",
             feature = "bitaxe",
@@ -293,6 +294,11 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
     ));
 
     // Stock firmwares — checked last so non-stock take priority
+    #[cfg(feature = "goldshell")]
+    registry.push(Arc::new(
+        asic_rs_firmwares_goldshell::firmware::GoldshellFirmware,
+    ));
+
     #[cfg(feature = "futurebit")]
     registry.push(Arc::new(
         asic_rs_firmwares_futurebit::firmware::ApolloFirmware::default(),

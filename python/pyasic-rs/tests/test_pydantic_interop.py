@@ -589,6 +589,7 @@ def test_hashrate_json_schema_exposes_unit_enum() -> None:
         (HashAlgorithm.Scrypt, "Scrypt"),
         (HashAlgorithm.X11, "X11"),
         (HashAlgorithm.Blake2S256, "Blake2S256"),
+        (HashAlgorithm.Blake2b, "Blake2b"),
         (HashAlgorithm.Kadena, "Kadena"),
         (HashAlgorithm.KHeavyHash, "KHeavyHash"),
         (HashAlgorithm.Eaglesong, "Eaglesong"),

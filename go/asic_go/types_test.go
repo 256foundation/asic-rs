@@ -353,6 +353,7 @@ func TestRequiredCollectionsMatchRustFixtures(t *testing.T) {
 func TestAlgorithmDefaultsAndHardwareHelpers(t *testing.T) {
 	cases := map[HashAlgorithm]HashRateUnit{
 		HashAlgorithmSHA256:   HashRateUnitTeraHash,
+		HashAlgorithmBlake2b:  HashRateUnitTeraHash,
 		HashAlgorithmScrypt:   HashRateUnitGigaHash,
 		HashAlgorithmEtHash:   HashRateUnitMegaHash,
 		HashAlgorithmEquihash: HashRateUnitKiloHash,

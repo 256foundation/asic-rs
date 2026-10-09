@@ -22,6 +22,7 @@ Legend:
 | Braiins | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-list-todo: | :lucide-list-todo: | :lucide-check-check: |
 | Elphapex Stock | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | FutureBit Stock | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
+| Goldshell Stock | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | LuxOS | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: |
 | Marathon | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 | Nerdaxe Stock | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
@@ -201,6 +202,10 @@ Legend:
 		 - [x] `Apollo1`
 	??? note "APOLLO2 family (1 model)"
 		 - [x] `Apollo2`
+??? quote "Goldshell (1 model across 1 family)"
+
+	??? note "SC5 family (1 model)"
+		 - [x] `SC5PRO`
 ??? quote "Nerdaxe (4 models across 4 families)"
 
 	??? note "BM1366 family (1 model)"
