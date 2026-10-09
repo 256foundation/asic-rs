@@ -393,7 +393,11 @@ if err != nil {
 #### Authentication
 
 Backends use their built-in default credentials unless you override them.
-Set credentials before starting other operations on that miner.
+Some firmwares need the correct credentials during miner construction. In Rust
+and Python, set credentials on the factory before discovery using the registered
+firmware name, such as `AntMiner Stock` or `Braiins`. The constructed miner keeps
+those credentials for subsequent operations. Use `set_auth` to change credentials
+on an existing miner before starting other operations.
 
 <!-- asic-rs-example:auth rust -->
 
@@ -404,11 +408,12 @@ use std::{net::IpAddr, str::FromStr};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let factory = MinerFactory::new();
+    let factory = MinerFactory::new()
+        .with_firmware_discovery_auth_by_name("AntMiner Stock", MinerAuth::new("root", "secret"))?
+        .with_firmware_discovery_auth_by_name("Braiins", MinerAuth::new("root", "secret"))?;
     let ip = IpAddr::from_str("192.168.1.10")?;
 
-    if let Some(mut miner) = factory.get_miner(ip).await? {
-        miner.set_auth(MinerAuth::new("admin", "secret"));
+    if let Some(miner) = factory.get_miner(ip).await? {
         let data = miner.get_data().await;
         println!("{:?}", data.hashrate);
     }
@@ -420,9 +425,13 @@ async fn main() -> anyhow::Result<()> {
 <!-- asic-rs-example:auth python -->
 
 ```python
-miner = await MinerFactory().get_miner("192.168.1.10")
+factory = (
+    MinerFactory()
+    .with_firmware_discovery_auth("AntMiner Stock", "root", "secret")
+    .with_firmware_discovery_auth("Braiins", "root", "secret")
+)
+miner = await factory.get_miner("192.168.1.10")
 if miner is not None:
-    miner.set_auth("admin", "secret")
     data = await miner.get_data()
 ```
 
