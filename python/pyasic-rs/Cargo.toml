@@ -17,6 +17,7 @@ crate-type = ["cdylib"]
 default = [
     "antminer",
     "futurebit",
+    "goldshell",
     "auradine",
     "avalonminer",
     "bitaxe",
@@ -37,6 +38,7 @@ python = ["core"]
 core = ["asic-rs/core", "asic-rs/python"]
 antminer = ["core", "asic-rs/antminer"]
 futurebit = ["core", "asic-rs/futurebit"]
+goldshell = ["core", "asic-rs/goldshell"]
 auradine = ["core", "asic-rs/auradine"]
 avalonminer = ["core", "asic-rs/avalonminer"]
 bitaxe = ["core", "asic-rs/bitaxe"]

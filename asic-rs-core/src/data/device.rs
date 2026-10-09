@@ -132,6 +132,10 @@ pub enum HashAlgorithm {
     #[cfg_attr(feature = "python", pydantic(value = "Blake2S256"))]
     #[serde(rename = "Blake2S256")]
     Blake2S256,
+    /// Blake2b mining, as used by Sia.
+    #[cfg_attr(feature = "python", pydantic(value = "Blake2b"))]
+    #[serde(rename = "Blake2b")]
+    Blake2b,
     /// Kadena mining.
     #[cfg_attr(feature = "python", pydantic(value = "Kadena"))]
     #[serde(rename = "Kadena")]
@@ -181,6 +185,7 @@ impl HashAlgorithm {
             HashAlgorithm::Equihash => HashRateUnit::KiloHash,
             HashAlgorithm::SHA256
             | HashAlgorithm::Blake2S256
+            | HashAlgorithm::Blake2b
             | HashAlgorithm::Kadena
             | HashAlgorithm::KHeavyHash
             | HashAlgorithm::Eaglesong

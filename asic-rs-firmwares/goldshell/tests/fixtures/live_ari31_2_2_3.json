@@ -1,0 +1,90 @@
+{
+  "DEVDETAILS": [
+    {
+      "ID": 0,
+      "chips-nr": 128
+    },
+    {
+      "ID": 1,
+      "chips-nr": 128
+    },
+    {
+      "ID": 2,
+      "chips-nr": 128
+    },
+    {
+      "ID": 3,
+      "chips-nr": 128
+    }
+  ],
+  "DEVS": [
+    {
+      "ID": 0,
+      "MHS 20s": 4147795.627,
+      "Status": "Alive",
+      "clock": 525.0,
+      "fan0": 3300,
+      "fan1": 3360,
+      "fan2": 3360,
+      "fan3": 3360,
+      "tstemp-0": 86.0,
+      "tstemp-1": 86.0,
+      "tstemp-2": 74.06,
+      "voltage": 12600.0
+    },
+    {
+      "ID": 1,
+      "MHS 20s": 3750239.889,
+      "Status": "Alive",
+      "clock": 525.0,
+      "fan0": 3300,
+      "fan1": 3360,
+      "fan2": 3360,
+      "fan3": 3360,
+      "tstemp-0": 85.0,
+      "tstemp-1": 85.0,
+      "tstemp-2": 75.38,
+      "voltage": 12610.0
+    },
+    {
+      "ID": 2,
+      "MHS 20s": 3619739.799,
+      "Status": "Alive",
+      "clock": 525.0,
+      "fan0": 3300,
+      "fan1": 3360,
+      "fan2": 3360,
+      "fan3": 3360,
+      "tstemp-0": 87.0,
+      "tstemp-1": 87.0,
+      "tstemp-2": 78.88,
+      "voltage": 12610.0
+    },
+    {
+      "ID": 3,
+      "MHS 20s": 3884920.666,
+      "Status": "Alive",
+      "clock": 525.0,
+      "fan0": 3300,
+      "fan1": 3360,
+      "fan2": 3360,
+      "fan3": 3360,
+      "tstemp-0": 83.0,
+      "tstemp-1": 83.0,
+      "tstemp-2": 74.94,
+      "voltage": 12610.0
+    }
+  ],
+  "SUMMARY": [
+    {
+      "Elapsed": 66615,
+      "MHS 20s": 15365084.29
+    }
+  ],
+  "status": {
+    "firmware": "2.2.3",
+    "hardware": "30.50.SA",
+    "mcbversion": "MCB_V3_3",
+    "model": "Goldshell-ARI31"
+  }
+}

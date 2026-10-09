@@ -7,6 +7,7 @@ const HASH_ALGORITHM_VARIANTS: &[&str] = &[
     "Scrypt",
     "X11",
     "Blake2S256",
+    "Blake2b",
     "Kadena",
     "KHeavyHash",
     "Eaglesong",

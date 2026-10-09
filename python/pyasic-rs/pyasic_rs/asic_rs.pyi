@@ -266,6 +266,7 @@ class FirmwareUpdate:
 class HashAlgorithm:
     Blake256R14: Final[HashAlgorithm]
     Blake2S256: Final[HashAlgorithm]
+    Blake2b: Final[HashAlgorithm]
     Eaglesong: Final[HashAlgorithm]
     Equihash: Final[HashAlgorithm]
     EtHash: Final[HashAlgorithm]
