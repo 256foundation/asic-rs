@@ -1,8 +1,13 @@
 import asyncio
 import hashlib
 import json
+import os
+import subprocess
+import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from threading import Thread
+from urllib.parse import urlsplit
 from urllib.request import parse_http_list, parse_keqv_list
 
 import pytest
@@ -23,10 +28,12 @@ def test_invalid_discovery_auth_preserves_factory() -> None:
     assert factory.with_firmware_discovery_auth("AntMiner Stock", "root", "custom-password") is factory
 
 
-def test_stock_custom_credentials_discover_and_read_protected_telemetry(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("NO_PROXY", "127.0.0.2")
+def test_stock_custom_credentials_discover_and_read_protected_telemetry() -> None:
+    # The SDK caches its HTTP client, including proxy configuration.
+    subprocess.run([sys.executable, str(Path(__file__).resolve())], check=True, timeout=20)
+
+
+def check_stock_custom_credentials() -> None:
     username, password = "operator", "custom&password=+"
     realm, nonce = "antMiner Configuration", "factory-auth-regression"
     authenticated_paths: list[str] = []
@@ -38,6 +45,11 @@ def test_stock_custom_credentials_discover_and_read_protected_telemetry(
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
+            target = urlsplit(self.path)
+            if target.scheme != "http" or target.hostname != "127.0.0.2" or target.port not in (None, 80):
+                self.send_error(400)
+                return
+            path = target.path or "/"
             authorization = self.headers.get("Authorization", "")
             fields = (
                 parse_keqv_list(parse_http_list(authorization[7:]))
@@ -45,7 +57,7 @@ def test_stock_custom_credentials_discover_and_read_protected_telemetry(
                 else {}
             )
             ha1 = hashlib.md5(f"{username}:{realm}:{password}".encode()).hexdigest()
-            ha2 = hashlib.md5(f"GET:{self.path}".encode()).hexdigest()
+            ha2 = hashlib.md5(f"GET:{path}".encode()).hexdigest()
             expected = hashlib.md5(
                 f"{ha1}:{nonce}:{fields.get('nc')}:{fields.get('cnonce')}:auth:{ha2}".encode()
             ).hexdigest()
@@ -53,11 +65,11 @@ def test_stock_custom_credentials_discover_and_read_protected_telemetry(
                 fields.get("username") == username
                 and fields.get("realm") == realm
                 and fields.get("nonce") == nonce
-                and fields.get("uri") == self.path
+                and fields.get("uri") == path
                 and fields.get("qop") == "auth"
                 and fields.get("response") == expected
             )
-            if self.path == "/" or not authorized:
+            if path == "/" or not authorized:
                 self.send_response(401)
                 self.send_header(
                     "WWW-Authenticate",
@@ -67,8 +79,8 @@ def test_stock_custom_credentials_discover_and_read_protected_telemetry(
                 self.end_headers()
                 return
 
-            authenticated_paths.append(self.path)
-            body = json.dumps(payloads.get(self.path, {})).encode()
+            authenticated_paths.append(path)
+            body = json.dumps(payloads.get(path, {})).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
@@ -78,9 +90,13 @@ def test_stock_custom_credentials_discover_and_read_protected_telemetry(
         def log_message(self, format: str, *args: object) -> None:
             pass
 
-    # Discovery and the stock backend use HTTP port 80; isolate it from other tests.
-    server = ThreadingHTTPServer(("127.0.0.2", 80), Handler)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     server.daemon_threads = True
+    proxy = f"http://127.0.0.1:{server.server_port}"
+    for name in ("HTTP_PROXY", "http_proxy"):
+        os.environ[name] = proxy
+    for name in ("NO_PROXY", "no_proxy"):
+        os.environ[name] = ""
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
@@ -113,3 +129,7 @@ def test_stock_custom_credentials_discover_and_read_protected_telemetry(
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+if __name__ == "__main__":
+    check_stock_custom_credentials()
