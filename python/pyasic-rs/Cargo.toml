@@ -20,6 +20,7 @@ default = [
     "auradine",
     "avalonminer",
     "bitaxe",
+    "forgeaxe",
     "braiins",
     "elphapex",
     "epic",
@@ -40,6 +41,7 @@ futurebit = ["core", "asic-rs/futurebit"]
 auradine = ["core", "asic-rs/auradine"]
 avalonminer = ["core", "asic-rs/avalonminer"]
 bitaxe = ["core", "asic-rs/bitaxe"]
+forgeaxe = ["core", "asic-rs/forgeaxe"]
 braiins = ["core", "asic-rs/braiins"]
 elphapex = ["core", "asic-rs/elphapex"]
 epic = ["core", "asic-rs/epic"]

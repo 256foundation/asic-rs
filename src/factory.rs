@@ -240,6 +240,7 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
             feature = "auradine",
             feature = "avalonminer",
             feature = "bitaxe",
+            feature = "forgeaxe",
             feature = "braiins",
             feature = "elphapex",
             feature = "epic",
@@ -321,6 +322,11 @@ pub fn default_firmware_registry() -> Vec<Arc<dyn FirmwareEntry>> {
     #[cfg(feature = "auradine")]
     registry.push(Arc::new(
         asic_rs_firmwares_auradine::firmware::AuradineFirmware::default(),
+    ));
+
+    #[cfg(feature = "forgeaxe")]
+    registry.push(Arc::new(
+        asic_rs_firmwares_forgeaxe::firmware::ForgeaxeFirmware::default(),
     ));
 
     // NerdAxe before Bitaxe — both check web root but NerdAxe is more specific
@@ -1381,5 +1387,23 @@ mod tests {
         };
         assert!(BitaxeFirmware::default().identify_web(&response));
         assert!(!NerdAxeFirmware::default().identify_web(&response));
+    }
+    #[test]
+    #[cfg(all(feature = "forgeaxe"))]
+    fn default_registry_discovers_forgeos() {
+        let response = WebResponse {
+            body: "<html><title>ForgeOS</title></html>",
+            auth_header: "",
+            algo_header: "",
+            redirect_header: "",
+            status: 200,
+        };
+        let registry = default_firmware_registry();
+        let firmware = registry.iter().find(|fw| fw.identify_web(&response));
+        assert_eq!(
+            firmware.map(|fw| fw.to_string()).as_deref(),
+            Some("ForgeOS Stock")
+        );
+        assert!(firmware.is_some_and(|fw| fw.is_stock()));
     }
 }

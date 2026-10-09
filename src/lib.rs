@@ -18,6 +18,8 @@ pub use asic_rs_firmwares_braiins as braiins;
 pub use asic_rs_firmwares_elphapex as elphapex;
 #[cfg(feature = "epic")]
 pub use asic_rs_firmwares_epic as epic;
+#[cfg(feature = "forgeaxe")]
+pub use asic_rs_firmwares_forgeaxe as forgeaxe;
 #[cfg(feature = "futurebit")]
 pub use asic_rs_firmwares_futurebit as futurebit;
 #[cfg(feature = "luxminer")]
