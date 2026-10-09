@@ -53,16 +53,13 @@ the correct miner implementation.
 ```rust
 use asic_rs::MinerFactory;
 use std::{net::IpAddr, str::FromStr};
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let factory = MinerFactory::new();
     let ip = IpAddr::from_str("192.168.1.10")?;
-
     if let Some(miner) = factory.get_miner(ip).await? {
         println!("Found {} {} at {}", miner.get_device_info().make, miner.get_device_info().model, ip);
     }
-
     Ok(())
 }
 ```
@@ -130,14 +127,12 @@ the factory and scan it. Large scans automatically use bounded concurrency.
 
 ```rust
 use asic_rs::MinerFactory;
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let miners = MinerFactory::from_subnet("192.168.1.0/24")?
         .with_concurrent_limit(2500)
         .scan()
         .await?;
-
     println!("Found {} miner(s)", miners.len());
     Ok(())
 }
@@ -189,6 +184,7 @@ Other range constructors are available in Rust, Python, and Go:
 <!-- asic-rs-example:ranges rust -->
 
 ```rust
+
 let by_octets = MinerFactory::from_octets("192", "168", "1", "1-255")?;
 let by_range = MinerFactory::from_range("192.168.1.1-255")?;
 ```
@@ -219,15 +215,12 @@ instead of waiting for the whole scan to finish.
 ```rust
 use asic_rs::MinerFactory;
 use futures::StreamExt;
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let mut stream = MinerFactory::from_subnet("192.168.1.0/24")?.scan_stream();
-
     while let Some(miner) = stream.next().await {
         println!("{} {}", miner.get_device_info().make, miner.get_device_info().model);
     }
-
     Ok(())
 }
 ```
@@ -261,20 +254,16 @@ available when only one field is needed.
 ```rust
 use asic_rs::MinerFactory;
 use std::{net::IpAddr, str::FromStr};
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let factory = MinerFactory::new();
     let ip = IpAddr::from_str("192.168.1.10")?;
-
     if let Some(miner) = factory.get_miner(ip).await? {
         let data = miner.get_data().await;
         let mac = miner.get_mac().await;
-
         println!("{} is mining: {}", data.ip, data.is_mining);
         println!("MAC: {mac:?}");
     }
-
     Ok(())
 }
 ```
@@ -367,6 +356,7 @@ To reduce collection work, exclude fields from a full data snapshot.
 <!-- asic-rs-example:data-exclude rust -->
 
 ```rust
+
 use asic_rs::core::data::collector::DataField;
 let data = miner
     .get_data_filtered(vec![DataField::Hashboards, DataField::Chips])
@@ -393,7 +383,11 @@ if err != nil {
 #### Authentication
 
 Backends use their built-in default credentials unless you override them.
-Set credentials before starting other operations on that miner.
+Some firmwares need the correct credentials during miner construction. In Rust
+and Python, set credentials on the factory before discovery using the registered
+firmware name, such as `AntMiner Stock` or `Braiins`. The constructed miner keeps
+those credentials for subsequent operations. Use `set_auth` to change credentials
+on an existing miner before starting other operations.
 
 <!-- asic-rs-example:auth rust -->
 
@@ -401,18 +395,16 @@ Set credentials before starting other operations on that miner.
 use asic_rs::MinerFactory;
 use asic_rs::core::traits::auth::MinerAuth;
 use std::{net::IpAddr, str::FromStr};
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let factory = MinerFactory::new();
+    let factory = MinerFactory::new()
+        .with_firmware_discovery_auth_by_name("AntMiner Stock", MinerAuth::new("root", "secret"))?
+        .with_firmware_discovery_auth_by_name("Braiins", MinerAuth::new("root", "secret"))?;
     let ip = IpAddr::from_str("192.168.1.10")?;
-
-    if let Some(mut miner) = factory.get_miner(ip).await? {
-        miner.set_auth(MinerAuth::new("admin", "secret"));
+    if let Some(miner) = factory.get_miner(ip).await? {
         let data = miner.get_data().await;
         println!("{:?}", data.hashrate);
     }
-
     Ok(())
 }
 ```
@@ -420,9 +412,13 @@ async fn main() -> anyhow::Result<()> {
 <!-- asic-rs-example:auth python -->
 
 ```python
-miner = await MinerFactory().get_miner("192.168.1.10")
+factory = (
+    MinerFactory()
+    .with_firmware_discovery_auth("AntMiner Stock", "root", "secret")
+    .with_firmware_discovery_auth("Braiins", "root", "secret")
+)
+miner = await factory.get_miner("192.168.1.10")
 if miner is not None:
-    miner.set_auth("admin", "secret")
     data = await miner.get_data()
 ```
 
@@ -446,6 +442,7 @@ Control support depends on the miner and firmware. Check the matching
 <!-- asic-rs-example:control rust -->
 
 ```rust
+
 if miner.supports_restart() {
     let restarted = miner.restart().await?;
     println!("Restart accepted: {restarted}");
@@ -485,6 +482,7 @@ in your own Pydantic models.
 <!-- asic-rs-example:config rust -->
 
 ```rust
+
 use asic_rs::core::config::{
     fan::FanConfig,
     pools::{PoolConfig, PoolGroupConfig},
@@ -503,11 +501,9 @@ if miner.supports_pools_config() {
     };
     miner.set_pools_config(vec![group]).await?;
 }
-
 if miner.supports_fan_config() {
     miner.set_fan_config(FanConfig::manual(80)).await?;
 }
-
 if miner.supports_tuning_config() {
     let config = TuningConfig::new(TuningTarget::from_watts(3200.0));
     miner.set_tuning_config(config, None).await?;

@@ -572,6 +572,27 @@ impl MinerFactory {
         self
     }
 
+    /// Set construction credentials by the registered firmware's Display name.
+    pub fn with_firmware_discovery_auth_by_name(
+        mut self,
+        firmware_name: &str,
+        auth: MinerAuth,
+    ) -> Result<Self> {
+        let registry = self
+            .search_firmwares
+            .clone()
+            .unwrap_or_else(default_firmware_registry);
+        let firmware = registry
+            .iter()
+            .find(|firmware| firmware.to_string() == firmware_name)
+            .ok_or_else(|| {
+                anyhow::anyhow!("Firmware is not registered for discovery authentication")
+            })?;
+        self.discovery_auth_by_firmware
+            .insert(firmware.to_string(), auth);
+        Ok(self)
+    }
+
     /// Set the maximum number of addresses scanned at the same time.
     ///
     /// This also caps active TCP connectivity probes across the scan. If unset,
