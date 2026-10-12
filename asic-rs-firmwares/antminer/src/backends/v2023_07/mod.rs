@@ -181,6 +181,22 @@ fn miner_conf_write_accepted(response: &Value) -> bool {
     }
 }
 
+fn is_sleep_status(value: &Value) -> bool {
+    matches!(
+        value.as_str().map(str::to_ascii_lowercase).as_deref(),
+        Some("stopped" | "idle" | "sleep")
+    ) || matches!(u64_from_value(value), Some(1 | 5))
+}
+
+fn miner_conf_has_mode(miner_conf: &Value, mode: MinerMode) -> bool {
+    let value = miner_mode_config_key(miner_conf).and_then(|key| miner_conf.get(key));
+    if mode == MinerMode::Sleep {
+        value.is_some_and(is_sleep_status)
+    } else {
+        value.and_then(u64_from_value) == Some(u64::from(mode.as_web_value()))
+    }
+}
+
 fn miner_mode_from_value(mode: &Value) -> Option<MiningMode> {
     let mode = mode
         .as_str()
@@ -261,12 +277,10 @@ impl AntMinerV202307 {
     }
 
     async fn miner_conf_reports_mode(&self, mode: MinerMode) -> bool {
-        self.web.get_miner_conf().await.is_ok_and(|conf| {
-            miner_mode_config_key(&conf)
-                .and_then(|key| conf.get(key))
-                .and_then(u64_from_value)
-                == Some(u64::from(mode.as_web_value()))
-        })
+        self.web
+            .get_miner_conf()
+            .await
+            .is_ok_and(|conf| miner_conf_has_mode(&conf, mode))
     }
 
     /// Read a numeric field that some firmware generations emit as a JSON
@@ -861,16 +875,7 @@ impl GetDevFeeConnected for AntMinerV202307 {}
 
 impl GetIsMining for AntMinerV202307 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract::<String>(DataField::IsMining)
-            .map(|status| {
-                let status_lower = status.to_lowercase();
-                status_lower != "stopped"
-                    && status_lower != "idle"
-                    && status_lower != "sleep"
-                    && status_lower != "1"
-                    && status_lower != "5"
-            })
-            .unwrap_or(true)
+        !data.get(&DataField::IsMining).is_some_and(is_sleep_status)
     }
 }
 
@@ -1523,6 +1528,20 @@ mod tests {
         assert!(miner_conf_write_accepted(&json!({
             "stats": "success", "code": "M000", "msg": "OK!"
         })));
+    }
+
+    #[test]
+    fn sleep_confirmation_accepts_both_stopped_modes() {
+        for mode in [json!(1), json!("1"), json!(5), json!("5")] {
+            assert!(miner_conf_has_mode(
+                &json!({"bitmain-work-mode": mode}),
+                MinerMode::Sleep
+            ));
+        }
+        assert!(!miner_conf_has_mode(
+            &json!({"bitmain-work-mode": 0}),
+            MinerMode::Sleep
+        ));
     }
 
     /// Captured from live L9 and L11 hardware on stock firmware. Both are
