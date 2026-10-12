@@ -158,6 +158,12 @@ fn pools_payload(config: Vec<PoolGroupConfig>) -> anyhow::Result<Vec<Value>> {
     Ok(pools)
 }
 
+fn miner_conf_with_pools(miner_conf: &Value, pools: Vec<Value>) -> Value {
+    let mut payload = browser_miner_conf_payload(miner_conf);
+    payload.insert("pools".to_string(), Value::Array(pools));
+    Value::Object(payload)
+}
+
 fn miner_conf_with_miner_mode(miner_conf: &Value, mode: MinerMode) -> Option<Value> {
     miner_mode_config_key(miner_conf)?;
     let mut payload = browser_miner_conf_payload(miner_conf);
@@ -1093,13 +1099,15 @@ impl SupportsPoolsConfig for AntMinerV202307 {
 
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         let pools = pools_payload(config)?;
-        let mut conf = self.web.get_miner_conf().await?;
-        let Some(conf_object) = conf.as_object_mut() else {
+        let conf = self.web.get_miner_conf().await?;
+        if !conf.is_object() {
             anyhow::bail!("stock miner config is not a JSON object");
-        };
-        conf_object.insert("pools".to_string(), Value::Array(pools));
+        }
 
-        let response = self.web.set_miner_conf(conf).await?;
+        let response = self
+            .web
+            .set_miner_conf(miner_conf_with_pools(&conf, pools))
+            .await?;
         if response.get("code").and_then(Value::as_str) != Some("M000") {
             let code = response
                 .get("code")
@@ -1453,6 +1461,30 @@ mod tests {
         }];
 
         assert!(pools_payload(config).is_err());
+    }
+
+    #[test]
+    fn pool_update_normalizes_read_config_for_cgi_write() {
+        let read_config = json!({
+            "pools": [{"url": "old.example:3333", "user": "old", "pass": "x"}],
+            "bitmain-fan-ctrl": true,
+            "bitmain-fan-pwm": "70",
+            "bitmain-work-mode": "2",
+            "bitmain-freq-level": "85",
+            "api-listen": true
+        });
+        let pools = vec![json!({"url": "new.example:3333", "user": "new", "pass": "x"})];
+
+        assert_eq!(
+            miner_conf_with_pools(&read_config, pools),
+            json!({
+                "pools": [{"url": "new.example:3333", "user": "new", "pass": "x"}],
+                "bitmain-fan-ctrl": true,
+                "bitmain-fan-pwm": "70",
+                "bitmain-work-mode": "2",
+                "freq-level": "85"
+            })
+        );
     }
 
     #[test]
