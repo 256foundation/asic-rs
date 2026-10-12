@@ -173,15 +173,6 @@ fn miner_conf_with_read_shape_mode(miner_conf: &Value, mode: MinerMode) -> Optio
     Some(payload)
 }
 
-fn miner_conf_reports_mode(miner_conf: &Value, mode: MinerMode) -> bool {
-    miner_mode_config_key(miner_conf)
-        .and_then(|key| miner_conf.get(key))
-        .is_some_and(|value| {
-            value.as_u64() == Some(u64::from(mode.as_web_value()))
-                || value.as_str() == Some(mode.to_string().as_str())
-        })
-}
-
 fn miner_conf_write_accepted(response: &Value) -> bool {
     match response.get("code").and_then(Value::as_str) {
         Some("M000") => true,
@@ -248,16 +239,9 @@ impl AntMinerV202307 {
         };
 
         let response = self.web.set_miner_conf(normalized).await?;
-        let accepted = miner_conf_write_accepted(&response);
-        let confirmed = if accepted && mode == MinerMode::Sleep {
-            self.web
-                .get_miner_conf()
-                .await
-                .is_ok_and(|conf| miner_conf_reports_mode(&conf, mode))
-        } else {
-            accepted
-        };
-        if confirmed {
+        if miner_conf_write_accepted(&response)
+            && (mode != MinerMode::Sleep || self.miner_conf_reports_mode(mode).await)
+        {
             return Ok(true);
         }
 
@@ -272,13 +256,17 @@ impl AntMinerV202307 {
             return Ok(false);
         }
 
-        // Resume can restart cminer before an immediate read. Pause leaves
-        // get_miner_conf available on the S21Plus and must be confirmed.
-        if mode == MinerMode::Sleep {
-            let post = self.web.get_miner_conf().await?;
-            return Ok(miner_conf_reports_mode(&post, mode));
-        }
-        Ok(true)
+        // Resume can restart cminer before an immediate read.
+        Ok(mode != MinerMode::Sleep || self.miner_conf_reports_mode(mode).await)
+    }
+
+    async fn miner_conf_reports_mode(&self, mode: MinerMode) -> bool {
+        self.web.get_miner_conf().await.is_ok_and(|conf| {
+            miner_mode_config_key(&conf)
+                .and_then(|key| conf.get(key))
+                .and_then(u64_from_value)
+                == Some(u64::from(mode.as_web_value()))
+        })
     }
 
     /// Read a numeric field that some firmware generations emit as a JSON
@@ -1525,11 +1513,6 @@ mod tests {
             miner_conf_with_read_shape_mode(&pre, MinerMode::Sleep),
             Some(expected)
         );
-        assert!(!miner_conf_reports_mode(&pre, MinerMode::Sleep));
-        assert!(miner_conf_reports_mode(
-            &miner_conf_with_read_shape_mode(&pre, MinerMode::Sleep).unwrap(),
-            MinerMode::Sleep
-        ));
     }
 
     #[test]
