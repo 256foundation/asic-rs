@@ -164,6 +164,14 @@ fn miner_conf_with_pools(miner_conf: &Value, pools: Vec<Value>) -> Value {
     Value::Object(payload)
 }
 
+fn miner_conf_with_read_shape_pools(miner_conf: &Value, pools: Vec<Value>) -> Option<Value> {
+    let mut payload = miner_conf.clone();
+    payload
+        .as_object_mut()?
+        .insert("pools".to_string(), Value::Array(pools));
+    Some(payload)
+}
+
 fn miner_conf_with_miner_mode(miner_conf: &Value, mode: MinerMode) -> Option<Value> {
     miner_mode_config_key(miner_conf)?;
     let mut payload = browser_miner_conf_payload(miner_conf);
@@ -1106,16 +1114,25 @@ impl SupportsPoolsConfig for AntMinerV202307 {
 
         let response = self
             .web
-            .set_miner_conf(miner_conf_with_pools(&conf, pools))
+            .set_miner_conf(miner_conf_with_pools(&conf, pools.clone()))
             .await?;
-        if response.get("code").and_then(Value::as_str) != Some("M000") {
-            let code = response
-                .get("code")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown");
-            anyhow::bail!("stock miner rejected pool configuration (CGI code {code})");
+        if response.get("code").and_then(Value::as_str) == Some("M000") {
+            return Ok(true);
         }
-        Ok(true)
+
+        // The S21Plus cminer proxy rejects the browser-shaped payload with
+        // M001. Retry its own read-side shape, changing only the pool list.
+        let read_shape = miner_conf_with_read_shape_pools(&conf, pools)
+            .expect("stock miner config was checked to be a JSON object");
+        let response = self.web.set_miner_conf(read_shape).await?;
+        if response.get("code").and_then(Value::as_str) == Some("M000") {
+            return Ok(true);
+        }
+        let code = response
+            .get("code")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        anyhow::bail!("stock miner rejected pool configuration (CGI code {code})")
     }
 
     fn supports_pools_config(&self) -> bool {
@@ -1484,6 +1501,28 @@ mod tests {
                 "bitmain-work-mode": "2",
                 "freq-level": "85"
             })
+        );
+    }
+
+    #[test]
+    fn pool_update_can_preserve_read_shape_for_s21plus_cminer() {
+        let read_config = json!({
+            "pools": [{"url": "old.example:3333", "user": "old", "pass": "x"}],
+            "bitmain-fan-ctrl": false,
+            "bitmain-fan-pwm": 100,
+            "bitmain-freq": "550",
+            "bitmain-freq-level": 100,
+            "bitmain-user-ip-cat": "",
+            "bitmain-voltage": "1400",
+            "bitmain-work-mode": 0
+        });
+        let pools = vec![json!({"url": "new.example:3333", "user": "new", "pass": "x"})];
+        let mut expected = read_config.clone();
+        expected["pools"] = Value::Array(pools.clone());
+
+        assert_eq!(
+            miner_conf_with_read_shape_pools(&read_config, pools),
+            Some(expected)
         );
     }
 
