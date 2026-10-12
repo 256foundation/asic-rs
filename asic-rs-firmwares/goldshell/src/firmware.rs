@@ -26,14 +26,7 @@ impl Display for GoldshellFirmware {
 }
 impl DiscoveryCommands for GoldshellFirmware {
     fn get_discovery_commands(&self) -> Vec<DiscoveryCommand> {
-        vec![
-            HTTP_WEB_ROOT,
-            RPC_VERSION,
-            DiscoveryCommand::Web {
-                command: "/mcb/status",
-                port: 80,
-            },
-        ]
+        vec![HTTP_WEB_ROOT, RPC_VERSION]
     }
 }
 pub(crate) fn model_from_status(status: &Value) -> Result<GoldshellModel, ModelSelectionError> {
