@@ -48,6 +48,7 @@ pub struct AntMinerV202307 {
 }
 
 #[allow(dead_code)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum MinerMode {
     Sleep,
     Low,
@@ -158,6 +159,37 @@ fn miner_conf_with_miner_mode(miner_conf: &Value, mode: MinerMode) -> Option<Val
     Some(Value::Object(payload))
 }
 
+fn miner_conf_with_read_shape_mode(miner_conf: &Value, mode: MinerMode) -> Option<Value> {
+    let mode_key = miner_mode_config_key(miner_conf)?;
+    let mut payload = miner_conf.clone();
+    let object = payload.as_object_mut()?;
+    let current = object.get(mode_key)?;
+    let mode_value = if current.is_string() {
+        Value::String(mode.to_string())
+    } else {
+        Value::from(mode.as_web_value())
+    };
+    object.insert(mode_key.to_string(), mode_value);
+    Some(payload)
+}
+
+fn miner_conf_reports_mode(miner_conf: &Value, mode: MinerMode) -> bool {
+    miner_mode_config_key(miner_conf)
+        .and_then(|key| miner_conf.get(key))
+        .is_some_and(|value| {
+            value.as_u64() == Some(u64::from(mode.as_web_value()))
+                || value.as_str() == Some(mode.to_string().as_str())
+        })
+}
+
+fn miner_conf_write_accepted(response: &Value) -> bool {
+    match response.get("code").and_then(Value::as_str) {
+        Some("M000") => true,
+        Some(_) => false,
+        None => response.get("stats").and_then(Value::as_str) == Some("success"),
+    }
+}
+
 fn miner_mode_from_value(mode: &Value) -> Option<MiningMode> {
     let mode = mode
         .as_str()
@@ -207,6 +239,46 @@ impl AntMinerV202307 {
             web: AntMinerWebAPI::new(ip, auth),
             device_info: DeviceInfo::new(model, AntMinerStockFirmware::default(), algo),
         }
+    }
+
+    async fn set_miner_mode(&self, mode: MinerMode) -> anyhow::Result<bool> {
+        let pre = self.web.get_miner_conf().await?;
+        let Some(normalized) = miner_conf_with_miner_mode(&pre, mode) else {
+            return Ok(false);
+        };
+
+        let response = self.web.set_miner_conf(normalized).await?;
+        let accepted = miner_conf_write_accepted(&response);
+        let confirmed = if accepted && mode == MinerMode::Sleep {
+            self.web
+                .get_miner_conf()
+                .await
+                .is_ok_and(|conf| miner_conf_reports_mode(&conf, mode))
+        } else {
+            accepted
+        };
+        if confirmed {
+            return Ok(true);
+        }
+
+        // Some S21Plus firmware rejects the browser-shaped payload with M001.
+        // Its cminer proxy accepts the full read-side configuration with only
+        // the existing mode field changed.
+        let Some(read_shape) = miner_conf_with_read_shape_mode(&pre, mode) else {
+            return Ok(false);
+        };
+        let response = self.web.set_miner_conf(read_shape).await?;
+        if !miner_conf_write_accepted(&response) {
+            return Ok(false);
+        }
+
+        // Resume can restart cminer before an immediate read. Pause leaves
+        // get_miner_conf available on the S21Plus and must be confirmed.
+        if mode == MinerMode::Sleep {
+            let post = self.web.get_miner_conf().await?;
+            return Ok(miner_conf_reports_mode(&post, mode));
+        }
+        Ok(true)
     }
 
     /// Read a numeric field that some firmware generations emit as a JSON
@@ -1114,17 +1186,7 @@ impl Pause for AntMinerV202307 {
     }
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        let pre = self.web.get_miner_conf().await?;
-        let Some(miner_conf) = miner_conf_with_miner_mode(&pre, MinerMode::Sleep) else {
-            return Ok(false);
-        };
-
-        let response = self.web.set_miner_conf(miner_conf).await?;
-        if response.get("stats").and_then(Value::as_str) != Some("success") {
-            return Ok(false);
-        }
-
-        Ok(true)
+        self.set_miner_mode(MinerMode::Sleep).await
     }
 }
 
@@ -1135,20 +1197,7 @@ impl Resume for AntMinerV202307 {
     }
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        let pre = self.web.get_miner_conf().await?;
-        let Some(miner_conf) = miner_conf_with_miner_mode(&pre, MinerMode::Normal) else {
-            return Ok(false);
-        };
-
-        let response = self.web.set_miner_conf(miner_conf).await?;
-        if response.get("stats").and_then(Value::as_str) != Some("success") {
-            return Ok(false);
-        }
-
-        // set_miner_conf.cgi writes the config before starting a miner
-        // reload/restart in the background; an immediate follow-up read can
-        // race the device becoming temporarily unavailable.
-        Ok(true)
+        self.set_miner_mode(MinerMode::Normal).await
     }
 }
 
@@ -1455,6 +1504,42 @@ mod tests {
             miner_conf_with_miner_mode(&pre, MinerMode::Normal).unwrap()["miner-mode"],
             json!(0)
         );
+    }
+
+    #[test]
+    fn read_shape_mode_payload_preserves_s21plus_config_fields() {
+        let pre = json!({
+            "pools": [{"url": "pool.example:3333", "user": "worker", "pass": "x"}],
+            "bitmain-fan-ctrl": false,
+            "bitmain-fan-pwm": 100,
+            "bitmain-freq": "550",
+            "bitmain-freq-level": 100,
+            "bitmain-user-ip-cat": "",
+            "bitmain-voltage": "1400",
+            "bitmain-work-mode": 0
+        });
+        let mut expected = pre.clone();
+        expected["bitmain-work-mode"] = json!(1);
+
+        assert_eq!(
+            miner_conf_with_read_shape_mode(&pre, MinerMode::Sleep),
+            Some(expected)
+        );
+        assert!(!miner_conf_reports_mode(&pre, MinerMode::Sleep));
+        assert!(miner_conf_reports_mode(
+            &miner_conf_with_read_shape_mode(&pre, MinerMode::Sleep).unwrap(),
+            MinerMode::Sleep
+        ));
+    }
+
+    #[test]
+    fn cgi_failure_code_overrides_success_stats() {
+        assert!(!miner_conf_write_accepted(&json!({
+            "stats": "success", "code": "M001", "msg": "FAIL!"
+        })));
+        assert!(miner_conf_write_accepted(&json!({
+            "stats": "success", "code": "M000", "msg": "OK!"
+        })));
     }
 
     /// Captured from live L9 and L11 hardware on stock firmware. Both are
