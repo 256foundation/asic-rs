@@ -20,6 +20,7 @@ SUPPORT_COLUMNS = [
     ("SetFaultLight", "supports_set_fault_light", "Light"),
     ("SetPowerLimit", "supports_set_power_limit", "Power Limit"),
     ("Restart", "supports_restart", "Restart"),
+    ("RestartMining", "supports_restart_mining", "Restart Mining"),
     ("Resume", "supports_resume", "Pause/Resume"),
     ("UpgradeFirmware", "supports_upgrade_firmware", "Upgrade FW"),
     ("ChangePassword", "supports_change_password", "Change PWD"),

@@ -867,6 +867,7 @@ impl FactoryReset for ProtoV1 {
     }
 }
 
+impl RestartMining for ProtoV1 {}
 impl RestoreStockOs for ProtoV1 {}
 
 #[async_trait]

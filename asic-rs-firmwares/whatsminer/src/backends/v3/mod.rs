@@ -788,6 +788,7 @@ impl FactoryReset for WhatsMinerV3 {
     }
 }
 
+impl RestartMining for WhatsMinerV3 {}
 impl RestoreStockOs for WhatsMinerV3 {}
 
 #[async_trait]

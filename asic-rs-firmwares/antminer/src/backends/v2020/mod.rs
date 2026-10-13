@@ -1253,6 +1253,11 @@ impl FactoryReset for AntMinerV2020 {
     }
 }
 
+impl RestartMining for AntMinerV2020 {}
+
+#[cfg(test)]
+mod restart_mining_tests;
+
 impl RestoreStockOs for AntMinerV2020 {}
 
 #[async_trait]
