@@ -1078,11 +1078,10 @@ impl SupportsPoolsConfig for VnishV130 {
             })
             .collect();
 
-        Ok(self
-            .web
+        self.web
             .set_settings(json!({ "miner": { "pools": pools } }))
-            .await
-            .is_ok())
+            .await?;
+        Ok(true)
     }
 
     fn supports_pools_config(&self) -> bool {
@@ -1093,7 +1092,8 @@ impl SupportsPoolsConfig for VnishV130 {
 #[async_trait]
 impl Restart for VnishV130 {
     async fn restart(&self) -> anyhow::Result<bool> {
-        Ok(self.web.restart().await.is_ok())
+        self.web.restart().await?;
+        Ok(true)
     }
 
     fn supports_restart(&self) -> bool {
@@ -1105,7 +1105,8 @@ impl Restart for VnishV130 {
 impl Pause for VnishV130 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self.web.stop().await.is_ok())
+        self.web.stop().await?;
+        Ok(true)
     }
 
     fn supports_pause(&self) -> bool {
@@ -1117,7 +1118,8 @@ impl Pause for VnishV130 {
 impl Resume for VnishV130 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self.web.start().await.is_ok())
+        self.web.start().await?;
+        Ok(true)
     }
 
     fn supports_resume(&self) -> bool {
@@ -1566,5 +1568,80 @@ mod tests {
         assert_eq!(config.available.first(), Some(&Tz::Etc__GMTPlus12));
         assert!(config.available.contains(&Tz::Etc__GMT));
         assert_eq!(config.available.last(), Some(&Tz::Etc__GMTMinus14));
+    }
+
+    #[tokio::test]
+    async fn control_calls_report_why_the_miner_refused() -> anyhow::Result<()> {
+        let refusal = r#"{"err":"miner is not running"}"#;
+
+        let MockHttpServer { port, task } = mock_http_server(400, "Bad Request", refusal).await?;
+        let error = miner_with_mock_web(port).pause(None).await.unwrap_err();
+        assert!(
+            task.await??
+                .starts_with("POST /api/v1/mining/stop HTTP/1.1\r\n")
+        );
+        assert!(error.to_string().contains("400"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        let MockHttpServer { port, task } = mock_http_server(400, "Bad Request", refusal).await?;
+        let error = miner_with_mock_web(port).resume(None).await.unwrap_err();
+        assert!(
+            task.await??
+                .starts_with("POST /api/v1/mining/start HTTP/1.1\r\n")
+        );
+        assert!(error.to_string().contains("400"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        let MockHttpServer { port, task } = mock_http_server(400, "Bad Request", refusal).await?;
+        let error = miner_with_mock_web(port).restart().await.unwrap_err();
+        assert!(
+            task.await??
+                .starts_with("POST /api/v1/mining/restart HTTP/1.1\r\n")
+        );
+        assert!(error.to_string().contains("400"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        let MockHttpServer { port, task } = mock_http_server(400, "Bad Request", refusal).await?;
+        let error = miner_with_mock_web(port)
+            .set_pools_config(vec![])
+            .await
+            .unwrap_err();
+        assert!(
+            task.await??
+                .starts_with("POST /api/v1/settings HTTP/1.1\r\n")
+        );
+        assert!(error.to_string().contains("400"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn accepted_control_calls_still_return_true() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } =
+            mock_http_server(200, "OK", r#"{"success":true}"#).await?;
+        assert!(miner_with_mock_web(port).pause(None).await?);
+        task.await??;
+
+        let MockHttpServer { port, task } =
+            mock_http_server(200, "OK", r#"{"success":true}"#).await?;
+        assert!(miner_with_mock_web(port).resume(None).await?);
+        task.await??;
+
+        let MockHttpServer { port, task } =
+            mock_http_server(200, "OK", r#"{"success":true}"#).await?;
+        assert!(miner_with_mock_web(port).restart().await?);
+        task.await??;
+
+        Ok(())
+    }
+
+    #[test]
+    fn http_error_without_a_body_reads_as_before() {
+        let error = web::VnishError::HttpError {
+            status: 500,
+            body: " ".to_string(),
+        };
+        assert_eq!(error.to_string(), "HTTP error: 500");
     }
 }
