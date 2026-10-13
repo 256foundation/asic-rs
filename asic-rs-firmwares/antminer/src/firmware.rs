@@ -94,6 +94,18 @@ fn parse_model_response(
 ) -> Result<AntMinerCompatibleModel, ModelSelectionError> {
     let model = json_data[model_key].as_str().unwrap_or("").to_uppercase();
 
+    // When stock firmware cannot name the product it reports the hashboard
+    // part name as the model (for example "Antminer BHB68701"). Some builds
+    // still carry the real product in `product_type`, so prefer it only when
+    // the model field itself is not a known model.
+    if !AntMinerMake::parse_model(model.clone()).is_ok_and(|m| m.is_known())
+        && let Some(product) = json_data["product_type"].as_str()
+        && let Ok(product_model) = AntMinerMake::parse_model(product.to_uppercase())
+        && product_model.is_known()
+    {
+        return Ok(AntMinerCompatibleModel::AntMiner(product_model));
+    }
+
     if model == "ANTMINER BHB42XXX" {
         Ok(AntMinerCompatibleModel::Unknown(UnknownMinerModel {
             name: model,
@@ -286,6 +298,69 @@ mod tests {
             .hash_algorithm(),
             HashAlgorithm::Unknown
         );
+    }
+
+    /// Response captured from a T21 on factory firmware: the model field holds
+    /// the hashboard part name and only `product_type` names the product.
+    #[test]
+    fn board_name_model_falls_back_to_product_type() {
+        let response = serde_json::json!({
+            "miner_type": "Antminer BHB68701",
+            "subtype": "AMLCtrl_BHB6870X",
+            "fw_version": "Thu Mar 28 17:39:26 CST 2024",
+            "product_type": "Antminer T21"
+        });
+
+        let model = parse_model_response(response, "miner_type").unwrap();
+
+        assert!(matches!(
+            model,
+            AntMinerCompatibleModel::AntMiner(AntMinerModel::T21)
+        ));
+        let hardware = MinerHardware::from(model);
+        assert_eq!(hardware.fans, Some(4));
+        assert_eq!(hardware.boards, Some(vec![Some(108); 3]));
+    }
+
+    #[test]
+    fn known_model_ignores_product_type() {
+        let response = serde_json::json!({
+            "miner_type": "Antminer S21",
+            "product_type": "Antminer T21"
+        });
+
+        let model = parse_model_response(response, "miner_type").unwrap();
+
+        assert!(matches!(
+            model,
+            AntMinerCompatibleModel::AntMiner(AntMinerModel::S21)
+        ));
+    }
+
+    /// Without a usable `product_type` a board name stays unrecognised.
+    #[test]
+    fn board_name_model_without_product_type_stays_unknown() {
+        for response in [
+            serde_json::json!({
+                "miner_type": "Antminer H6HB70701",
+                "subtype": "zynq7007_H6HB70701",
+                "fw_version": "Mon Jan  6 15:35:28 CST 2025"
+            }),
+            serde_json::json!({
+                "miner_type": "Antminer HHB68XXX",
+                "subtype": "zynq7007_HHB68XXX",
+                "product_type": "Antminer HHB68XXX"
+            }),
+            serde_json::json!({
+                "miner_type": "Antminer BHB42XXX",
+                "subtype": "AMLCtrl_BHB42XXX"
+            }),
+        ] {
+            let model = parse_model_response(response, "miner_type").unwrap();
+
+            assert!(!model.is_known(), "{model}");
+            assert_eq!(MinerHardware::from(model).boards, None);
+        }
     }
 
     #[tokio::test]
