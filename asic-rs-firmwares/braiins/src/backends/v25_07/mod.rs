@@ -837,11 +837,10 @@ impl GetMessages for BraiinsV2507 {
 #[async_trait]
 impl SetFaultLight for BraiinsV2507 {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
-        Ok(self
-            .web
+        self.web
             .send_command("actions/locate", true, Some(json!(fault)), Method::PUT)
-            .await
-            .is_ok())
+            .await?;
+        Ok(true)
     }
     fn supports_set_fault_light(&self) -> bool {
         true
@@ -931,11 +930,10 @@ impl Restart for BraiinsV2507 {
 impl Pause for BraiinsV2507 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self
-            .web
+        self.web
             .send_command("actions/pause", true, None, Method::PUT)
-            .await
-            .is_ok())
+            .await?;
+        Ok(true)
     }
     fn supports_pause(&self) -> bool {
         true
@@ -946,11 +944,10 @@ impl Pause for BraiinsV2507 {
 impl Resume for BraiinsV2507 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self
-            .web
+        self.web
             .send_command("actions/resume", true, None, Method::PUT)
-            .await
-            .is_ok())
+            .await?;
+        Ok(true)
     }
     fn supports_resume(&self) -> bool {
         true
@@ -1355,5 +1352,128 @@ mod tests {
                 algo: HashAlgorithm::SHA256,
             }))
         );
+    }
+
+    /// Answers the login this backend always makes first, then the control
+    /// request with `(status, reason, body)`, and hands back that request.
+    async fn mock_miner(
+        status: u16,
+        reason: &'static str,
+        body: &'static str,
+    ) -> anyhow::Result<(
+        BraiinsV2507,
+        tokio::task::JoinHandle<anyhow::Result<String>>,
+    )> {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let ip = IpAddr::from([127, 0, 0, 1]);
+        let mut miner = BraiinsV2507::new(ip, AntMinerModel::S19XP);
+        miner.web = BraiinsWebAPI::new_with_port(
+            ip,
+            listener.local_addr()?.port(),
+            MinerAuth::new("root", "root"),
+        );
+
+        let task = tokio::spawn(async move {
+            let mut last_request = String::new();
+            for (status, reason, body) in [
+                (200, "OK", r#"{"token":"test-token"}"#),
+                (status, reason, body),
+            ] {
+                let (mut socket, _) =
+                    tokio::time::timeout(Duration::from_secs(2), listener.accept()).await??;
+
+                let mut request = Vec::new();
+                let mut chunk = [0_u8; 1024];
+                loop {
+                    if let Some(header_end) = request
+                        .windows(4)
+                        .position(|window| window == b"\r\n\r\n")
+                        .map(|position| position + 4)
+                    {
+                        let headers = std::str::from_utf8(&request[..header_end])?;
+                        let content_length = headers
+                            .lines()
+                            .filter_map(|line| line.split_once(':'))
+                            .find_map(|(name, value)| {
+                                name.eq_ignore_ascii_case("content-length")
+                                    .then(|| value.trim().parse::<usize>().ok())
+                                    .flatten()
+                            })
+                            .unwrap_or_default();
+                        if request.len() >= header_end + content_length {
+                            break;
+                        }
+                    }
+                    let bytes_read = socket.read(&mut chunk).await?;
+                    if bytes_read == 0 {
+                        break;
+                    }
+                    request.extend_from_slice(&chunk[..bytes_read]);
+                }
+                last_request = String::from_utf8(request)?;
+
+                let response = format!(
+                    "HTTP/1.1 {status} {reason}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                socket.write_all(response.as_bytes()).await?;
+            }
+            Ok(last_request)
+        });
+
+        Ok((miner, task))
+    }
+
+    #[tokio::test]
+    async fn control_calls_report_why_the_miner_refused() -> anyhow::Result<()> {
+        let refusal = r#"{"message":"BOSminer is not running"}"#;
+
+        let (miner, task) = mock_miner(412, "Precondition Failed", refusal).await?;
+        let error = miner.pause(None).await.unwrap_err();
+        assert!(
+            task.await??
+                .starts_with("PUT /api/v1/actions/pause HTTP/1.1\r\n")
+        );
+        assert!(error.to_string().contains("412"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        let (miner, task) = mock_miner(412, "Precondition Failed", refusal).await?;
+        let error = miner.resume(None).await.unwrap_err();
+        assert!(
+            task.await??
+                .starts_with("PUT /api/v1/actions/resume HTTP/1.1\r\n")
+        );
+        assert!(error.to_string().contains("412"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        let (miner, task) = mock_miner(412, "Precondition Failed", refusal).await?;
+        let error = miner.set_fault_light(true).await.unwrap_err();
+        assert!(
+            task.await??
+                .starts_with("PUT /api/v1/actions/locate HTTP/1.1\r\n")
+        );
+        assert!(error.to_string().contains("412"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn accepted_control_calls_still_return_true() -> anyhow::Result<()> {
+        let (miner, task) = mock_miner(200, "OK", r#"{"already_paused":false}"#).await?;
+        assert!(miner.pause(None).await?);
+        task.await??;
+
+        let (miner, task) = mock_miner(200, "OK", r#"{"already_running":false}"#).await?;
+        assert!(miner.resume(None).await?);
+        task.await??;
+
+        let (miner, task) = mock_miner(200, "OK", "true").await?;
+        assert!(miner.set_fault_light(true).await?);
+        task.await??;
+
+        Ok(())
     }
 }

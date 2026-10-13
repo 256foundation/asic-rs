@@ -837,11 +837,10 @@ impl GetMessages for BraiinsV2604 {
 #[async_trait]
 impl SetFaultLight for BraiinsV2604 {
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
-        Ok(self
-            .web
+        self.web
             .send_command("actions/locate", true, Some(json!(fault)), Method::PUT)
-            .await
-            .is_ok())
+            .await?;
+        Ok(true)
     }
     fn supports_set_fault_light(&self) -> bool {
         true
@@ -931,11 +930,10 @@ impl Restart for BraiinsV2604 {
 impl Pause for BraiinsV2604 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self
-            .web
+        self.web
             .send_command("actions/pause", true, None, Method::PUT)
-            .await
-            .is_ok())
+            .await?;
+        Ok(true)
     }
     fn supports_pause(&self) -> bool {
         true
@@ -946,11 +944,10 @@ impl Pause for BraiinsV2604 {
 impl Resume for BraiinsV2604 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self
-            .web
+        self.web
             .send_command("actions/resume", true, None, Method::PUT)
-            .await
-            .is_ok())
+            .await?;
+        Ok(true)
     }
     fn supports_resume(&self) -> bool {
         true
@@ -960,22 +957,18 @@ impl Resume for BraiinsV2604 {
 #[async_trait]
 impl ChangePassword for BraiinsV2604 {
     async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
-        let success = self
-            .web
+        self.web
             .send_command(
                 "auth/password",
                 true,
                 Some(json!({ "password": password })),
                 Method::PUT,
             )
-            .await
-            .is_ok();
+            .await?;
 
-        if success {
-            let username = self.web.username().to_string();
-            self.set_auth(MinerAuth::new(username, password));
-        }
-        Ok(success)
+        let username = self.web.username().to_string();
+        self.set_auth(MinerAuth::new(username, password));
+        Ok(true)
     }
 
     fn supports_change_password(&self) -> bool {
@@ -997,11 +990,10 @@ impl ReadLogs for BraiinsV2604 {
 #[async_trait]
 impl FactoryReset for BraiinsV2604 {
     async fn factory_reset(&self) -> anyhow::Result<bool> {
-        Ok(self
-            .web
+        self.web
             .send_command("actions/factory-reset", true, None, Method::PUT)
-            .await
-            .is_ok())
+            .await?;
+        Ok(true)
     }
 
     fn supports_factory_reset(&self) -> bool {
@@ -1458,5 +1450,95 @@ mod tests {
                 algo: HashAlgorithm::SHA256,
             }))
         );
+    }
+
+    #[tokio::test]
+    async fn control_calls_report_why_the_miner_refused() -> anyhow::Result<()> {
+        let refusal = r#"{"message":"BOSminer is not running"}"#;
+
+        let MockHttpServer { port, task } =
+            mock_http_server(412, "Precondition Failed", refusal).await?;
+        let error = miner_with_mock_web(port).pause(None).await.unwrap_err();
+        assert!(
+            task.await??
+                .starts_with("PUT /api/v1/actions/pause HTTP/1.1\r\n")
+        );
+        assert!(error.to_string().contains("412"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        let MockHttpServer { port, task } =
+            mock_http_server(412, "Precondition Failed", refusal).await?;
+        let error = miner_with_mock_web(port).resume(None).await.unwrap_err();
+        assert!(
+            task.await??
+                .starts_with("PUT /api/v1/actions/resume HTTP/1.1\r\n")
+        );
+        assert!(error.to_string().contains("412"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        let MockHttpServer { port, task } =
+            mock_http_server(412, "Precondition Failed", refusal).await?;
+        let error = miner_with_mock_web(port)
+            .set_fault_light(true)
+            .await
+            .unwrap_err();
+        assert!(
+            task.await??
+                .starts_with("PUT /api/v1/actions/locate HTTP/1.1\r\n")
+        );
+        assert!(error.to_string().contains("412"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn accepted_control_calls_still_return_true() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } =
+            mock_http_server(200, "OK", r#"{"already_paused":false}"#).await?;
+        assert!(miner_with_mock_web(port).pause(None).await?);
+        task.await??;
+
+        let MockHttpServer { port, task } =
+            mock_http_server(200, "OK", r#"{"already_running":false}"#).await?;
+        assert!(miner_with_mock_web(port).resume(None).await?);
+        task.await??;
+
+        let MockHttpServer { port, task } = mock_http_server(200, "OK", "true").await?;
+        assert!(miner_with_mock_web(port).set_fault_light(true).await?);
+        task.await??;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn factory_reset_reports_why_the_miner_refused() -> anyhow::Result<()> {
+        let refusal = "another system task is already in progress";
+        let MockHttpServer { port, task } = mock_http_server(409, "Conflict", refusal).await?;
+
+        let error = miner_with_mock_web(port).factory_reset().await.unwrap_err();
+
+        let request = task.await??;
+        assert!(request.starts_with("PUT /api/v1/actions/factory-reset HTTP/1.1\r\n"));
+        assert!(error.to_string().contains("409"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn change_password_reports_why_the_miner_refused() -> anyhow::Result<()> {
+        let refusal = r#"{"message":"password is too short"}"#;
+        let MockHttpServer { port, task } = mock_http_server(400, "Bad Request", refusal).await?;
+        let mut miner = miner_with_mock_web(port);
+
+        let error = miner.change_password("x").await.unwrap_err();
+
+        let request = task.await??;
+        assert!(request.starts_with("PUT /api/v1/auth/password HTTP/1.1\r\n"));
+        assert!(error.to_string().contains("400"), "{error}");
+        assert!(error.to_string().contains(refusal), "{error}");
+
+        Ok(())
     }
 }
