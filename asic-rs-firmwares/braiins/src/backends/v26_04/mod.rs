@@ -916,11 +916,12 @@ impl SupportsPoolsConfig for BraiinsV2604 {
 #[async_trait]
 impl Restart for BraiinsV2604 {
     async fn restart(&self) -> anyhow::Result<bool> {
-        Ok(self
-            .web
+        // The reboot endpoint answers `204 No Content`. Anything else is the
+        // firmware refusing, and its reason is worth more than `false`.
+        self.web
             .send_command("actions/reboot", true, None, Method::PUT)
-            .await
-            .is_ok())
+            .await?;
+        Ok(true)
     }
     fn supports_restart(&self) -> bool {
         true
@@ -1236,6 +1237,39 @@ mod tests {
 
         let request = task.await??;
         assert!(request.starts_with("PUT /api/v1/actions/factory-reset HTTP/1.1\r\n"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_accepts_empty_204_response() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } = mock_http_server(204, "No Content", "").await?;
+        let miner = miner_with_mock_web(port);
+
+        assert!(miner.restart().await?);
+
+        let request = task.await??;
+        assert!(request.starts_with("PUT /api/v1/actions/reboot HTTP/1.1\r\n"));
+        assert!(
+            request
+                .lines()
+                .any(|line| line.eq_ignore_ascii_case("authorization: test-token"))
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_reports_why_the_firmware_refused() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } =
+            mock_http_server(500, "Internal Server Error", "reboot is not possible").await?;
+        let miner = miner_with_mock_web(port);
+
+        let error = miner.restart().await.unwrap_err().to_string();
+
+        task.await??;
+        assert!(error.contains("500"), "{error}");
+        assert!(error.contains("reboot is not possible"), "{error}");
 
         Ok(())
     }

@@ -916,11 +916,12 @@ impl SupportsPoolsConfig for BraiinsV2507 {
 #[async_trait]
 impl Restart for BraiinsV2507 {
     async fn restart(&self) -> anyhow::Result<bool> {
-        Ok(self
-            .web
+        // The reboot endpoint answers `204 No Content`. Anything else is the
+        // firmware refusing, and its reason is worth more than `false`.
+        self.web
             .send_command("actions/reboot", true, None, Method::PUT)
-            .await
-            .is_ok())
+            .await?;
+        Ok(true)
     }
     fn supports_restart(&self) -> bool {
         true
@@ -1069,6 +1070,87 @@ mod tests {
         WEB_NETWORK_COMMAND as V11_NETWORK, WEB_PERFORMANCE_TUNER_STATE_COMMAND as V11_TUNER,
         WEB_POOLS_COMMAND as V11_POOLS, WEB_VERSION_COMMAND as V11_VERSION,
     };
+
+    /// Answer the login, then answer one more request with `response` and
+    /// hand that request back.
+    async fn mock_web_server(
+        response: &'static str,
+    ) -> anyhow::Result<(u16, tokio::task::JoinHandle<anyhow::Result<String>>)> {
+        use anyhow::Context;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        const LOGIN: &str = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 22\r\nConnection: close\r\n\r\n{\"token\":\"test-token\"}";
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+        let task = tokio::spawn(async move {
+            let mut request = Vec::new();
+            for response in [LOGIN, response] {
+                let (mut socket, _) =
+                    tokio::time::timeout(Duration::from_secs(2), listener.accept())
+                        .await
+                        .context("timed out waiting for HTTP request")??;
+                request.clear();
+                let mut chunk = [0_u8; 1024];
+                // The login carries a body; one read past the headers is
+                // enough for a request this small.
+                while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                    let bytes_read = socket.read(&mut chunk).await?;
+                    if bytes_read == 0 {
+                        break;
+                    }
+                    request.extend_from_slice(&chunk[..bytes_read]);
+                }
+                socket.write_all(response.as_bytes()).await?;
+            }
+            Ok(String::from_utf8(request)?)
+        });
+
+        Ok((port, task))
+    }
+
+    fn miner_with_mock_web(port: u16) -> BraiinsV2507 {
+        let ip = IpAddr::from([127, 0, 0, 1]);
+        let mut miner = BraiinsV2507::new(ip, AntMinerModel::S21Pro);
+        miner.web = BraiinsWebAPI::new_with_port(ip, port, MinerAuth::new("root", "root"));
+        miner
+    }
+
+    #[tokio::test]
+    async fn restart_accepts_empty_204_response() -> anyhow::Result<()> {
+        let (port, task) =
+            mock_web_server("HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n").await?;
+        let miner = miner_with_mock_web(port);
+
+        assert!(miner.restart().await?);
+
+        let request = task.await??;
+        assert!(request.starts_with("PUT /api/v1/actions/reboot HTTP/1.1\r\n"));
+        assert!(
+            request
+                .lines()
+                .any(|line| line.eq_ignore_ascii_case("authorization: test-token"))
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_reports_why_the_firmware_refused() -> anyhow::Result<()> {
+        let (port, task) = mock_web_server(
+            "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 22\r\nConnection: close\r\n\r\nreboot is not possible",
+        )
+        .await?;
+        let miner = miner_with_mock_web(port);
+
+        let error = miner.restart().await.unwrap_err().to_string();
+
+        task.await??;
+        assert!(error.contains("500"), "{error}");
+        assert!(error.contains("reboot is not possible"), "{error}");
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_braiins_v25_07() {
