@@ -106,6 +106,13 @@ impl AntMinerWebAPI {
         }
     }
 
+    #[cfg(test)]
+    pub(super) fn new_with_port(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
+        let mut client = Self::new(ip, auth);
+        client.port = port;
+        client
+    }
+
     pub fn set_auth(&mut self, auth: MinerAuth) {
         self.auth = auth;
     }
@@ -166,7 +173,13 @@ impl AntMinerWebAPI {
             let json_data = response.json().await.map_err(|e| anyhow!(e.to_string()))?;
             Ok(json_data)
         } else {
-            bail!("HTTP request failed with status code {}", status);
+            // Keep whatever the miner said about why it refused the request.
+            let body = response.text().await.unwrap_or_default();
+            let body = Self::truncated_firmware_upgrade_response_body(body.trim());
+            if body.is_empty() {
+                bail!("HTTP request failed with status code {}", status);
+            }
+            bail!("HTTP request failed with status code {}: {}", status, body);
         }
     }
 
