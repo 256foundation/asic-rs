@@ -1072,7 +1072,8 @@ impl SetFaultLight for LuxMinerV1 {
             true => "blink",
             false => "auto",
         };
-        Ok(self.rpc.ledset("red", mode).await.is_ok())
+        self.rpc.ledset("red", mode).await?;
+        Ok(true)
     }
     fn supports_set_fault_light(&self) -> bool {
         true
@@ -1164,7 +1165,8 @@ impl Restart for LuxMinerV1 {
 #[async_trait]
 impl Pause for LuxMinerV1 {
     async fn pause(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self.rpc.sleep().await.is_ok())
+        self.rpc.sleep().await?;
+        Ok(true)
     }
     fn supports_pause(&self) -> bool {
         true
@@ -1174,7 +1176,8 @@ impl Pause for LuxMinerV1 {
 #[async_trait]
 impl Resume for LuxMinerV1 {
     async fn resume(&self, _at_time: Option<Duration>) -> anyhow::Result<bool> {
-        Ok(self.rpc.wakeup().await.is_ok())
+        self.rpc.wakeup().await?;
+        Ok(true)
     }
     fn supports_resume(&self) -> bool {
         true
@@ -1282,6 +1285,16 @@ mod tests {
         uninstall_status: &'static str,
         uninstall_message: &'static str,
     ) -> anyhow::Result<MockRestoreServer> {
+        mock_privileged_server("uninstallluxos", uninstall_status, uninstall_message).await
+    }
+
+    /// Answers `session`, then the one privileged `command` with the given
+    /// status and message.
+    async fn mock_privileged_server(
+        privileged_command: &'static str,
+        uninstall_status: &'static str,
+        uninstall_message: &'static str,
+    ) -> anyhow::Result<MockRestoreServer> {
         let requests = Arc::new(Mutex::new(Vec::new()));
         let server_requests = Arc::clone(&requests);
         let listener = TcpListener::bind("127.0.0.1:0").await?;
@@ -1312,7 +1325,7 @@ mod tests {
                         "SESSION": [{ "SessionID": "test-session-id" }],
                         "STATUS": [{ "STATUS": "S", "Msg": "Session found" }]
                     }),
-                    "uninstallluxos" => json!({
+                    command if command == privileged_command => json!({
                         "STATUS": [{
                             "STATUS": uninstall_status,
                             "Msg": uninstall_message
@@ -1781,6 +1794,76 @@ mod tests {
                 })
             ]
         );
+
+        Ok(())
+    }
+
+    fn miner_with_mock_rpc(port: u16) -> LuxMinerV1 {
+        let mut miner = LuxMinerV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19KPro);
+        miner.rpc = LUXMinerRPCAPI::new_with_port(miner.ip, port);
+        miner
+    }
+
+    #[tokio::test]
+    async fn pause_and_resume_report_why_the_miner_refused() -> anyhow::Result<()> {
+        let MockRestoreServer { port, task, .. } =
+            mock_privileged_server("curtail", "E", "Miner is already in sleep mode").await?;
+        let error = miner_with_mock_rpc(port).pause(None).await.unwrap_err();
+        task.await??;
+        assert!(
+            error.to_string().contains("Miner is already in sleep mode"),
+            "{error}"
+        );
+
+        let MockRestoreServer {
+            port,
+            requests,
+            task,
+        } = mock_privileged_server("curtail", "E", "Miner is already active").await?;
+        let error = miner_with_mock_rpc(port).resume(None).await.unwrap_err();
+        task.await??;
+        assert!(
+            error.to_string().contains("Miner is already active"),
+            "{error}"
+        );
+        assert_eq!(
+            requests.lock().unwrap()[1],
+            json!({ "command": "curtail", "parameter": "test-session-id,wakeup" })
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn set_fault_light_reports_why_the_miner_refused() -> anyhow::Result<()> {
+        let MockRestoreServer {
+            port,
+            requests,
+            task,
+        } = mock_privileged_server("ledset", "E", "Invalid LED state").await?;
+
+        let error = miner_with_mock_rpc(port)
+            .set_fault_light(true)
+            .await
+            .unwrap_err();
+
+        task.await??;
+        assert!(error.to_string().contains("Invalid LED state"), "{error}");
+        assert_eq!(
+            requests.lock().unwrap()[1],
+            json!({ "command": "ledset", "parameter": "test-session-id,red,blink" })
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn accepted_pause_still_returns_true() -> anyhow::Result<()> {
+        let MockRestoreServer { port, task, .. } =
+            mock_privileged_server("curtail", "S", "Curtail sleep").await?;
+
+        assert!(miner_with_mock_rpc(port).pause(None).await?);
+        task.await??;
 
         Ok(())
     }
