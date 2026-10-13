@@ -903,6 +903,17 @@ impl FactoryReset for BraiinsV2109 {
     }
 }
 
+#[async_trait]
+impl RestartMining for BraiinsV2109 {
+    async fn restart_mining(&self) -> anyhow::Result<bool> {
+        self.graphql.restart_bosminer().await
+    }
+
+    fn supports_restart_mining(&self) -> bool {
+        true
+    }
+}
+
 impl RestoreStockOs for BraiinsV2109 {}
 
 #[async_trait]

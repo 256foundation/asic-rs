@@ -201,6 +201,11 @@ impl Miner {
     fn supports_restart(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_restart())
     }
+    /// Whether this miner can restart its mining program without rebooting.
+    #[getter]
+    fn supports_restart_mining(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_restart_mining())
+    }
     /// Whether this miner supports pause commands.
     #[getter]
     fn supports_pause(&self, py: Python<'_>) -> bool {
@@ -674,6 +679,18 @@ impl Miner {
             let inner = inner.read().await;
             inner
                 .restart()
+                .await
+                .map_err(|e| PyRuntimeError::new_err(e.to_string()))
+        })
+    }
+    /// Restart the mining program without rebooting the miner.
+    ///
+    pub fn restart_mining<'a>(&self, py: Python<'a>) -> PyResult<PyAwaitable<bool>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            inner
+                .restart_mining()
                 .await
                 .map_err(|e| PyRuntimeError::new_err(e.to_string()))
         })

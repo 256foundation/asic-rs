@@ -1204,6 +1204,21 @@ impl FactoryReset for LuxMinerV1 {
 }
 
 #[async_trait]
+impl RestartMining for LuxMinerV1 {
+    async fn restart_mining(&self) -> anyhow::Result<bool> {
+        self.rpc.reset_miner().await?;
+        Ok(true)
+    }
+
+    fn supports_restart_mining(&self) -> bool {
+        true
+    }
+}
+
+#[cfg(test)]
+mod restart_mining_tests;
+
+#[async_trait]
 impl RestoreStockOs for LuxMinerV1 {
     async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
         self.rpc.uninstall_luxos().await?;

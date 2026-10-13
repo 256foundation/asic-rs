@@ -908,6 +908,7 @@ impl FactoryReset for ElphapexV1 {
     }
 }
 
+impl RestartMining for ElphapexV1 {}
 impl RestoreStockOs for ElphapexV1 {}
 
 #[async_trait]

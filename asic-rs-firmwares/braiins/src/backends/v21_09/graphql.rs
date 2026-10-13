@@ -30,6 +30,13 @@ impl BraiinsGraphQLAPI {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn new_with_port(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
+        let mut api = Self::new(ip, auth);
+        api.port = port;
+        api
+    }
+
     pub fn set_auth(&mut self, auth: MinerAuth) {
         self.auth = auth;
         *self.session_id.get_mut() = None;
@@ -208,6 +215,32 @@ impl BraiinsGraphQLAPI {
             && result.pointer("/bos/factoryReset").is_some())
     }
 
+    /// Restart BOSminer without rebooting the operating system.
+    pub async fn restart_bosminer(&self) -> anyhow::Result<bool> {
+        let mutation = r#"mutation {
+            bosminer {
+                restart {
+                    ... on BosminerError {
+                        message
+                    }
+                }
+            }
+        }"#;
+
+        let result = self.send_graphql_command(mutation, true, None).await?;
+
+        // There is only a message field if there is an error
+        if let Some(message) = result.pointer("/bosminer/restart/message") {
+            let message = message
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or_else(|| message.to_string());
+            anyhow::bail!("BOSminer restart request failed: {message}");
+        }
+
+        Ok(true)
+    }
+
     pub async fn read_logs(&self) -> anyhow::Result<String> {
         let log_query = r#"query ($target: LogTarget!) {
             bos {
@@ -332,5 +365,103 @@ impl APIClient for BraiinsGraphQLAPI {
                 "Unsupported command type for GraphQL client"
             )),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use asic_rs_makes_antminer::models::AntMinerModel;
+
+    use super::*;
+    use crate::{
+        backends::{v21_09::BraiinsV2109, v25_03::BraiinsV2503, v25_05::BraiinsV2505},
+        test::http::{MockResponse, MockSequenceServer, mock_sequence_server, request_body},
+    };
+
+    const LOGIN_OK: MockResponse = MockResponse {
+        status: "200 OK",
+        headers: &["Set-Cookie: session_id=test-session; Path=/"],
+        body: r#"{"data":{"auth":{"login":{"void":null}}}}"#,
+    };
+
+    fn localhost() -> IpAddr {
+        IpAddr::from([127, 0, 0, 1])
+    }
+
+    fn mock_graphql(port: u16) -> BraiinsGraphQLAPI {
+        BraiinsGraphQLAPI::new_with_port(localhost(), port, MinerAuth::new("root", "root"))
+    }
+
+    #[tokio::test]
+    async fn restart_mining_sends_authenticated_bosminer_restart() -> anyhow::Result<()> {
+        let MockSequenceServer { port, task } = mock_sequence_server(vec![
+            LOGIN_OK,
+            MockResponse::ok(r#"{"data":{"bosminer":{"restart":{}}}}"#),
+        ])
+        .await?;
+        let mut miner = BraiinsV2109::new(localhost(), AntMinerModel::S9);
+        miner.graphql = mock_graphql(port);
+
+        assert!(miner.supports_restart_mining());
+        assert!(miner.restart_mining().await?);
+
+        let requests = task.await??;
+        assert!(requests[1].starts_with("POST /graphql HTTP/1.1\r\n"));
+        assert!(
+            requests[1]
+                .lines()
+                .any(|line| line.eq_ignore_ascii_case("cookie: session_id=test-session"))
+        );
+        let query = request_body(&requests[1])?["query"]
+            .as_str()
+            .unwrap_or_default()
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(query.starts_with("mutation { bosminer { restart {"));
+        assert!(!query.contains("reboot"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_mining_surfaces_bosminer_error_message() -> anyhow::Result<()> {
+        let MockSequenceServer { port, task } = mock_sequence_server(vec![
+            LOGIN_OK,
+            MockResponse::ok(
+                r#"{"data":{"bosminer":{"restart":{"message":"bosminer is not running"}}}}"#,
+            ),
+        ])
+        .await?;
+
+        let error = mock_graphql(port).restart_bosminer().await.unwrap_err();
+
+        task.await??;
+        assert!(error.to_string().contains("bosminer is not running"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_mining_surfaces_graphql_errors() -> anyhow::Result<()> {
+        let MockSequenceServer { port, task } = mock_sequence_server(vec![
+            LOGIN_OK,
+            MockResponse::ok(r#"{"data":null,"errors":[{"message":"Unauthorized"}]}"#),
+        ])
+        .await?;
+
+        let error = mock_graphql(port).restart_bosminer().await.unwrap_err();
+
+        task.await??;
+        assert!(error.to_string().contains("Unauthorized"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn graphql_backends_support_restart_mining() {
+        assert!(BraiinsV2109::new(localhost(), AntMinerModel::S9).supports_restart_mining());
+        assert!(BraiinsV2503::new(localhost(), AntMinerModel::S19XP).supports_restart_mining());
+        assert!(BraiinsV2505::new(localhost(), AntMinerModel::S19XP).supports_restart_mining());
     }
 }

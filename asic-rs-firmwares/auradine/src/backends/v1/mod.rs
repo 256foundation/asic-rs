@@ -1396,6 +1396,22 @@ impl FactoryReset for AuradineV1 {
     }
 }
 
+#[async_trait]
+impl RestartMining for AuradineV1 {
+    async fn restart_mining(&self) -> anyhow::Result<bool> {
+        // `restart` with no parameter reboots the miner; the `gcminer`
+        // parameter restarts only the mining program.
+        self.web
+            .send_command("restart", true, Some(json!("gcminer")), Method::POST)
+            .await?;
+        Ok(true)
+    }
+
+    fn supports_restart_mining(&self) -> bool {
+        true
+    }
+}
+
 impl RestoreStockOs for AuradineV1 {}
 
 #[async_trait]
@@ -1470,6 +1486,121 @@ mod tests {
             VERSION, VOLTAGE,
         },
     };
+
+    struct MockJsonSequenceServer {
+        port: u16,
+        task: tokio::task::JoinHandle<anyhow::Result<Vec<Value>>>,
+    }
+
+    /// Answer consecutive POST requests with the given JSON bodies and return
+    /// the JSON bodies that were received.
+    async fn mock_json_sequence_server(
+        responses: Vec<Value>,
+    ) -> anyhow::Result<MockJsonSequenceServer> {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+        let task = tokio::spawn(async move {
+            let mut requests = Vec::with_capacity(responses.len());
+            for response in responses {
+                let (mut socket, _) =
+                    tokio::time::timeout(Duration::from_secs(2), listener.accept())
+                        .await
+                        .context("timed out waiting for HTTP request")??;
+
+                let mut request = Vec::new();
+                let mut chunk = [0_u8; 1024];
+                let body = loop {
+                    let text = String::from_utf8_lossy(&request).into_owned();
+                    if let Some((headers, body)) = text.split_once("\r\n\r\n") {
+                        let content_length = headers
+                            .lines()
+                            .filter_map(|line| line.split_once(':'))
+                            .find_map(|(name, value)| {
+                                name.eq_ignore_ascii_case("content-length")
+                                    .then(|| value.trim().parse::<usize>().ok())
+                                    .flatten()
+                            })
+                            .unwrap_or_default();
+                        if body.len() >= content_length {
+                            break body.to_string();
+                        }
+                    }
+                    let bytes_read = socket.read(&mut chunk).await?;
+                    if bytes_read == 0 {
+                        anyhow::bail!("connection closed before the request was complete");
+                    }
+                    request.extend_from_slice(&chunk[..bytes_read]);
+                };
+                requests.push(serde_json::from_str(&body)?);
+
+                let body = response.to_string();
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    body.len(),
+                    body
+                );
+                socket.write_all(response.as_bytes()).await?;
+            }
+            Ok(requests)
+        });
+
+        Ok(MockJsonSequenceServer { port, task })
+    }
+
+    fn token_response() -> Value {
+        json!({
+            "STATUS": [{ "STATUS": "S", "Msg": "Token" }],
+            "Token": [{ "Token": "test-token" }]
+        })
+    }
+
+    fn miner_with_mock_web(port: u16) -> AuradineV1 {
+        let ip = IpAddr::from([127, 0, 0, 1]);
+        let mut miner = AuradineV1::new(ip, AuradineModel::AT1500);
+        miner.web = AuradineWebAPI::new_with_port(ip, port, AuradineV1::default_auth());
+        miner
+    }
+
+    #[tokio::test]
+    async fn restart_mining_restarts_gcminer_instead_of_rebooting() -> anyhow::Result<()> {
+        let MockJsonSequenceServer { port, task } = mock_json_sequence_server(vec![
+            token_response(),
+            json!({ "STATUS": [{ "STATUS": "S", "Msg": "Restarting gcminer" }] }),
+        ])
+        .await?;
+        let miner = miner_with_mock_web(port);
+
+        assert!(miner.supports_restart_mining());
+        assert!(miner.restart_mining().await?);
+
+        let requests = task.await??;
+        assert_eq!(requests[0]["command"], "token");
+        assert_eq!(
+            requests[1],
+            json!({ "command": "restart", "parameter": "gcminer" })
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_mining_surfaces_firmware_rejection() -> anyhow::Result<()> {
+        let MockJsonSequenceServer { port, task } = mock_json_sequence_server(vec![
+            token_response(),
+            json!({ "STATUS": [{ "STATUS": "E", "Msg": "gcminer restart refused" }] }),
+        ])
+        .await?;
+        let miner = miner_with_mock_web(port);
+
+        let error = miner.restart_mining().await.unwrap_err();
+
+        task.await??;
+        assert!(error.to_string().contains("gcminer restart refused"));
+
+        Ok(())
+    }
 
     #[tokio::test]
     async fn parse_data_test_auradine_at1500() -> anyhow::Result<()> {

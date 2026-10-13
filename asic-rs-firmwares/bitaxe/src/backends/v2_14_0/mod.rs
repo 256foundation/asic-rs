@@ -621,6 +621,7 @@ impl FactoryReset for Bitaxe2140 {
     }
 }
 
+impl RestartMining for Bitaxe2140 {}
 impl RestoreStockOs for Bitaxe2140 {}
 
 #[async_trait]

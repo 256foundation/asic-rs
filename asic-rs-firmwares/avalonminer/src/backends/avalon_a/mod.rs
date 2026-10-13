@@ -185,6 +185,7 @@ impl FactoryReset for AvalonAMiner {
     }
 }
 
+impl RestartMining for AvalonAMiner {}
 impl RestoreStockOs for AvalonAMiner {}
 
 #[async_trait]

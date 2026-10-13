@@ -536,6 +536,12 @@ int32_t asic_rs_miner_set_tuning_percent(const struct AsicMiner *miner, uint8_t 
 // `miner` must be a live handle.
 int32_t asic_rs_miner_restart(const struct AsicMiner *miner);
 
+// Restart the mining program without rebooting the miner. Returns 1/0/-1.
+//
+// # Safety
+// `miner` must be a live handle.
+int32_t asic_rs_miner_restart_mining(const struct AsicMiner *miner);
+
 // Pause mining. `at_time_secs` < 0 means immediately. Returns 1/0/-1.
 //
 // # Safety

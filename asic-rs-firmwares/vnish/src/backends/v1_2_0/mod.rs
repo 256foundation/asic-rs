@@ -1200,6 +1200,18 @@ impl FactoryReset for VnishV120 {
 }
 
 #[async_trait]
+impl RestartMining for VnishV120 {
+    async fn restart_mining(&self) -> anyhow::Result<bool> {
+        self.web.restart_mining().await?;
+        Ok(true)
+    }
+
+    fn supports_restart_mining(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
 impl RestoreStockOs for VnishV120 {
     async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
         let reboot_after_seconds = self.web.restore_stock_os().await?;
@@ -1379,6 +1391,43 @@ mod tests {
                 .any(|line| { line.eq_ignore_ascii_case("authorization: Bearer test-token") })
         );
         assert!(body.is_empty(), "VNish 1.2.x request body was {body:?}");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_mining_accepts_bodyless_mining_restart_response() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } = mock_http_server(200, "OK", "").await?;
+        let miner = miner_with_mock_web(port);
+
+        assert!(miner.supports_restart_mining());
+        assert!(miner.restart_mining().await?);
+
+        let request = task.await??;
+        assert!(request.starts_with("POST /api/v1/mining/restart HTTP/1.1\r\n"));
+        assert!(
+            request
+                .lines()
+                .any(|line| { line.eq_ignore_ascii_case("authorization: Bearer test-token") })
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_mining_surfaces_firmware_rejection() -> anyhow::Result<()> {
+        for (status, reason, body) in [
+            (500, "Internal Server Error", r#"{"err":"miner is busy"}"#),
+            (200, "OK", r#"{"success":false,"err":"miner is busy"}"#),
+        ] {
+            let MockHttpServer { port, task } = mock_http_server(status, reason, body).await?;
+            let miner = miner_with_mock_web(port);
+
+            let error = miner.restart_mining().await.unwrap_err();
+
+            task.await??;
+            assert!(error.to_string().contains("miner is busy"));
+        }
 
         Ok(())
     }

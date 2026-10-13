@@ -248,6 +248,7 @@ pub unsafe extern "C" fn asic_rs_miner_supports_json(miner: *const AsicMiner) ->
                 "set_tuning_percent": m.supports_set_tuning_percent(),
                 "presets": m.supports_presets(),
                 "restart": m.supports_restart(),
+                "restart_mining": m.supports_restart_mining(),
                 "pause": m.supports_pause(),
                 "resume": m.supports_resume(),
                 "change_password": m.supports_change_password(),
@@ -1063,6 +1064,17 @@ pub unsafe extern "C" fn asic_rs_miner_restart(miner: *const AsicMiner) -> i32 {
     })
 }
 
+/// Restart the mining program without rebooting the miner. Returns 1/0/-1.
+///
+/// # Safety
+/// `miner` must be a live handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn asic_rs_miner_restart_mining(miner: *const AsicMiner) -> i32 {
+    ffi_guard(-1, || {
+        miner_control(miner, |m| result_bool(block_on(m.restart_mining())?))
+    })
+}
+
 /// Pause mining. `at_time_secs` < 0 means immediately. Returns 1/0/-1.
 ///
 /// # Safety
@@ -1243,6 +1255,21 @@ mod tests {
                     .to_str()
                     .unwrap()
                     .contains("backend restart panic")
+            );
+            asic_rs_miner_free(miner);
+        }
+    }
+
+    #[test]
+    fn unsupported_restart_mining_reports_an_error() {
+        let miner = Box::into_raw(Box::new(AsicMiner::new(Box::new(TestMiner))));
+        unsafe {
+            assert_eq!(asic_rs_miner_restart_mining(miner), -1);
+            assert!(
+                CStr::from_ptr(asic_rs_last_error())
+                    .to_str()
+                    .unwrap()
+                    .contains("Restarting the mining program is not supported")
             );
             asic_rs_miner_free(miner);
         }

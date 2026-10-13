@@ -1147,6 +1147,7 @@ impl FactoryReset for MaraV1 {
     }
 }
 
+impl RestartMining for MaraV1 {}
 impl RestoreStockOs for MaraV1 {}
 
 #[async_trait]

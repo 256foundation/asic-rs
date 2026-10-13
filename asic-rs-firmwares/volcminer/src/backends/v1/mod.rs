@@ -834,6 +834,7 @@ impl FactoryReset for VolcMinerV1 {
     }
 }
 
+impl RestartMining for VolcMinerV1 {}
 impl RestoreStockOs for VolcMinerV1 {}
 
 #[async_trait]

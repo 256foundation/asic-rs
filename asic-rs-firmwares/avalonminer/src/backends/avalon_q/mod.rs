@@ -180,6 +180,7 @@ impl FactoryReset for AvalonQMiner {
     }
 }
 
+impl RestartMining for AvalonQMiner {}
 impl RestoreStockOs for AvalonQMiner {}
 
 #[async_trait]

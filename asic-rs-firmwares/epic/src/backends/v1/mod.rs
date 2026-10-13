@@ -1987,6 +1987,18 @@ impl FactoryReset for PowerPlayV1 {
 }
 
 #[async_trait]
+impl RestartMining for PowerPlayV1 {
+    async fn restart_mining(&self) -> anyhow::Result<bool> {
+        self.web.soft_reboot().await?;
+        Ok(true)
+    }
+
+    fn supports_restart_mining(&self) -> bool {
+        true
+    }
+}
+
+#[async_trait]
 impl RestoreStockOs for PowerPlayV1 {
     async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
         if !self.restore_stock_os_support().await? {
@@ -2262,6 +2274,43 @@ mod tests {
             assert!(request.starts_with("POST /uninstall HTTP/1.1\r\n"));
             assert!(error.to_string().contains(error_message));
         }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_mining_posts_authenticated_soft_reboot() -> anyhow::Result<()> {
+        let MockJsonServer { port, task } =
+            mock_json_server(json!({ "result": true, "error": null })).await?;
+        let mut miner =
+            PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
+        miner.set_auth(MinerAuth::new("", "test-password"));
+
+        assert!(miner.supports_restart_mining());
+        assert!(miner.restart_mining().await?);
+
+        let request = task.await??;
+        assert!(request.starts_with("POST /softreboot HTTP/1.1\r\n"));
+        assert_eq!(
+            json_request_body(&request)?,
+            json!({ "param": null, "password": "test-password" })
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_mining_surfaces_soft_reboot_errors() -> anyhow::Result<()> {
+        let MockJsonServer { port, task } =
+            mock_json_server(json!({ "result": false, "error": "Wrong password" })).await?;
+        let miner =
+            PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
+
+        let error = miner.restart_mining().await.unwrap_err();
+
+        let request = task.await??;
+        assert!(request.starts_with("POST /softreboot HTTP/1.1\r\n"));
+        assert!(error.to_string().contains("Wrong password"));
 
         Ok(())
     }

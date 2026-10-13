@@ -811,6 +811,7 @@ impl FactoryReset for ApolloV2 {
     }
 }
 
+impl RestartMining for ApolloV2 {}
 impl RestoreStockOs for ApolloV2 {}
 
 #[async_trait]

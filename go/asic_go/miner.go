@@ -599,6 +599,13 @@ func (m *Miner) Restart() (bool, error) {
 	})
 }
 
+// RestartMining restarts the mining program without rebooting the miner.
+func (m *Miner) RestartMining() (bool, error) {
+	return m.control(func(ptr *C.AsicMiner) C.int32_t {
+		return C.asic_rs_miner_restart_mining(ptr)
+	})
+}
+
 // Pause pauses mining. A nil atTime means immediately.
 func (m *Miner) Pause(atTime *time.Duration) (bool, error) {
 	secs := -1.0

@@ -772,6 +772,7 @@ type Supports struct {
 	SetTuningPercent    bool `json:"set_tuning_percent"`
 	Presets             bool `json:"presets"`
 	Restart             bool `json:"restart"`
+	RestartMining       bool `json:"restart_mining"`
 	Pause               bool `json:"pause"`
 	Resume              bool `json:"resume"`
 	ChangePassword      bool `json:"change_password"`

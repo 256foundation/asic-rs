@@ -154,6 +154,7 @@ Python exposes matching `supports_*` properties; Go returns them from
 | Capability | Control |
 | --- | --- |
 | `supports_restart` | `restart()` |
+| `supports_restart_mining` | `restart_mining()` |
 | `supports_pause` | `pause()` |
 | `supports_resume` | `resume()` |
 | `supports_set_fault_light` | `set_fault_light(...)` |

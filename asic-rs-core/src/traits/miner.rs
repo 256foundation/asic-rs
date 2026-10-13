@@ -87,6 +87,7 @@ pub trait HasMinerControl:
     + SetHashboardsEnabled
     + SetTuningPercent
     + Restart
+    + RestartMining
     + Resume
     + Pause
     + ChangePassword
@@ -101,6 +102,7 @@ impl<
         + SetHashboardsEnabled
         + SetTuningPercent
         + Restart
+        + RestartMining
         + Resume
         + Pause
         + ChangePassword
@@ -1054,6 +1056,23 @@ pub trait Restart {
         anyhow::bail!("Restarting is not supported on this platform");
     }
     fn supports_restart(&self) -> bool;
+}
+
+/// Restart the mining program without rebooting the operating system.
+///
+/// This is distinct from [`Restart`], which reboots the whole device. A
+/// successful request only confirms that the firmware accepted the restart;
+/// hashing stops while the mining program comes back up.
+#[async_trait]
+pub trait RestartMining {
+    async fn restart_mining(&self) -> anyhow::Result<bool> {
+        anyhow::bail!("Restarting the mining program is not supported on this platform");
+    }
+    /// Defaults to `false`; backends that can restart the mining program
+    /// without a reboot override this.
+    fn supports_restart_mining(&self) -> bool {
+        false
+    }
 }
 
 #[async_trait]

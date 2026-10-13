@@ -988,6 +988,24 @@ impl FactoryReset for BraiinsV2507 {
     }
 }
 
+#[async_trait]
+impl RestartMining for BraiinsV2507 {
+    async fn restart_mining(&self) -> anyhow::Result<bool> {
+        // `actions/restart` restarts BOSminer only; `actions/reboot` reboots the OS.
+        self.web
+            .send_command("actions/restart", true, None, Method::PUT)
+            .await?;
+        Ok(true)
+    }
+
+    fn supports_restart_mining(&self) -> bool {
+        true
+    }
+}
+
+#[cfg(test)]
+mod restart_mining_tests;
+
 impl RestoreStockOs for BraiinsV2507 {}
 
 #[async_trait]

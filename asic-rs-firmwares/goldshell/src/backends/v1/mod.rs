@@ -495,6 +495,7 @@ impl UpgradeFirmware for GoldshellV1 {
         false
     }
 }
+impl RestartMining for GoldshellV1 {}
 impl RestoreStockOs for GoldshellV1 {}
 impl SetHashboardsEnabled for GoldshellV1 {}
 impl SetTuningPercent for GoldshellV1 {}

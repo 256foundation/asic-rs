@@ -37,6 +37,13 @@ impl AuradineWebAPI {
         }
     }
 
+    #[cfg(test)]
+    pub(super) fn new_with_port(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
+        let mut api = Self::new(ip, auth);
+        api.port = port;
+        api
+    }
+
     pub fn set_auth(&mut self, auth: MinerAuth) {
         self.auth = auth;
         *self.token.get_mut() = None;

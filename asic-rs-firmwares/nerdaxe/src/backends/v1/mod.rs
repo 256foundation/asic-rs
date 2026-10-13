@@ -582,6 +582,7 @@ impl FactoryReset for NerdAxeV1 {
     }
 }
 
+impl RestartMining for NerdAxeV1 {}
 impl RestoreStockOs for NerdAxeV1 {}
 
 #[async_trait]
