@@ -288,9 +288,33 @@ impl AntMinerWebAPI {
             .await
     }
 
-    pub async fn reboot(&self) -> Result<Value> {
-        self.send_web_command("reboot", false, None, Method::POST)
+    /// Reboot the miner.
+    ///
+    /// The firmware's own web UI issues a plain `GET` with a 30 second timeout
+    /// and accepts any successful status, so the response is not read as JSON.
+    pub async fn reboot(&self) -> Result<()> {
+        let url = format!("http://{}:{}/cgi-bin/reboot.cgi", self.ip, self.port);
+        let response = self
+            .execute_web_request(
+                &url,
+                &Method::GET,
+                None,
+                self.timeout.max(Duration::from_secs(30)),
+            )
             .await
+            .context("reboot request failed")?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            bail!(
+                "reboot failed with status code {}: {}",
+                status,
+                Self::truncated_firmware_upgrade_response_body(body.trim())
+            );
+        }
+
+        Ok(())
     }
 
     pub async fn read_logs(&self) -> Result<String> {

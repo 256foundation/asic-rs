@@ -1152,7 +1152,8 @@ impl Restart for AntMinerV2020 {
         true
     }
     async fn restart(&self) -> anyhow::Result<bool> {
-        Ok(self.web.reboot().await.is_ok())
+        self.web.reboot().await?;
+        Ok(true)
     }
 }
 
@@ -1435,6 +1436,78 @@ mod tests {
     use crate::test::json::v2020::{
         AM_DEVS, AM_POOLS, AM_STATS, AM_SUMMARY, AM_SYSTEM_INFO, AM_VERSION,
     };
+
+    /// Answer one HTTP request with `response` and hand back what was asked.
+    async fn mock_reboot_server(
+        response: &'static str,
+    ) -> anyhow::Result<(u16, tokio::task::JoinHandle<anyhow::Result<String>>)> {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+        let task = tokio::spawn(async move {
+            let (mut socket, _) = tokio::time::timeout(Duration::from_secs(2), listener.accept())
+                .await
+                .context("timed out waiting for HTTP request")??;
+            let mut request = Vec::new();
+            let mut chunk = [0_u8; 1024];
+            while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                let bytes_read = socket.read(&mut chunk).await?;
+                if bytes_read == 0 {
+                    break;
+                }
+                request.extend_from_slice(&chunk[..bytes_read]);
+            }
+            socket.write_all(response.as_bytes()).await?;
+            Ok(String::from_utf8(request)?)
+        });
+
+        Ok((port, task))
+    }
+
+    #[tokio::test]
+    async fn restart_sends_get_and_accepts_a_response_that_is_not_json() -> anyhow::Result<()> {
+        let (port, task) =
+            mock_reboot_server("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                .await?;
+        let miner = miner_with_mock_web(port);
+
+        assert!(miner.restart().await?);
+
+        let request = task.await??;
+        assert!(request.starts_with("GET /cgi-bin/reboot.cgi HTTP/1.1\r\n"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_reports_why_the_firmware_refused() -> anyhow::Result<()> {
+        let (port, task) = mock_reboot_server(
+            "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 13\r\nConnection: close\r\n\r\nreboot failed",
+        )
+        .await?;
+        let miner = miner_with_mock_web(port);
+
+        let error = miner.restart().await.unwrap_err().to_string();
+
+        task.await??;
+        assert!(error.contains("500"), "{error}");
+        assert!(error.contains("reboot failed"), "{error}");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_reports_an_unreachable_miner() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let miner = miner_with_mock_web(port);
+
+        let error = miner.restart().await.unwrap_err();
+
+        assert!(format!("{error:#}").contains("reboot request failed"));
+    }
 
     #[tokio::test]
     async fn control_board_falls_back_to_kernel_and_prefers_subtype() {
