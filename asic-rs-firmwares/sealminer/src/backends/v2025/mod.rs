@@ -23,6 +23,7 @@ use asic_rs_core::{
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerComponent, MinerMessage},
         miner::{MiningMode, TuningTarget},
+        operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
@@ -279,6 +280,14 @@ impl GetDataLocations for SealMinerV2025 {
                 ),
             ],
             DataField::TuningTarget => vec![(
+                RPC_STATS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/STATS/0"),
+                    tag: None,
+                },
+            )],
+            DataField::OperatingState => vec![(
                 RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
@@ -650,7 +659,41 @@ impl GetUptime for SealMinerV2025 {
 impl GetBestShare for SealMinerV2025 {}
 impl GetSessionBestShare for SealMinerV2025 {}
 
-impl GetOperatingState for SealMinerV2025 {}
+impl GetOperatingState for SealMinerV2025 {
+    fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
+        let stats = data.get(&DataField::OperatingState)?;
+        let process_state = stats
+            .get("PM State")?
+            .as_str()
+            .filter(|label| !label.trim().is_empty())?;
+
+        Some(match process_state {
+            "Idle" => OperatingState::Idling {},
+            "Initializing" => OperatingState::Initializing {},
+            "Resuming" => OperatingState::Starting {},
+            "Resume Failed" | "Suspend Failed" => OperatingState::Error {},
+            "Suspended" => OperatingState::Suspended {},
+            "Suspending" => OperatingState::Stopping {},
+            "Running" => match stats
+                .get("Tune Status")
+                .and_then(Value::as_str)
+                .filter(|label| !label.trim().is_empty())
+            {
+                // Completing the coarse phase does not finish the full tuning cycle.
+                Some("Coarse Tuning" | "Coarse Tuning Done" | "Fine Tuning") => {
+                    OperatingState::Tuning {}
+                }
+                Some("Tuning Idle" | "Fine Tuning Done") | None => OperatingState::Mining {},
+                Some(label) => OperatingState::Unknown {
+                    raw: label.to_owned(),
+                },
+            },
+            label => OperatingState::Unknown {
+                raw: label.to_owned(),
+            },
+        })
+    }
+}
 
 impl GetDevFeeConnected for SealMinerV2025 {}
 
@@ -1038,6 +1081,7 @@ mod tests {
             miner_data.tuning_target,
             Some(TuningTarget::MiningMode(MiningMode::Normal))
         );
+        assert_eq!(miner_data.operating_state, Some(OperatingState::Mining {}));
         assert_eq!(miner_data.light_flashing, Some(true));
         assert_eq!(miner_data.pools.len(), 1);
         assert_eq!(miner_data.pools[0].len(), 1);
@@ -1045,6 +1089,94 @@ mod tests {
             miner_data.pools[0].pools[0].last_share_time,
             Some(1_773_869_544)
         );
+    }
+
+    #[test]
+    fn test_operating_state_running_tuning_phases() {
+        let miner = SealMinerV2025::new(IpAddr::from([127, 0, 0, 1]), SealMinerModel::A3ProHyd);
+        for (phase, expected) in [
+            ("Coarse Tuning", OperatingState::Tuning {}),
+            ("Coarse Tuning Done", OperatingState::Tuning {}),
+            ("Fine Tuning", OperatingState::Tuning {}),
+            ("Fine Tuning Done", OperatingState::Mining {}),
+            ("Tuning Idle", OperatingState::Mining {}),
+            (
+                "Thermal Calibration",
+                OperatingState::Unknown {
+                    raw: "Thermal Calibration".to_owned(),
+                },
+            ),
+        ] {
+            let data = HashMap::from([(
+                DataField::OperatingState,
+                serde_json::json!({"PM State": "Running", "Tune Status": phase}),
+            )]);
+            assert_eq!(
+                miner.parse_operating_state(&data),
+                Some(expected),
+                "{phase}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_operating_state_process_precedence() {
+        let miner = SealMinerV2025::new(IpAddr::from([127, 0, 0, 1]), SealMinerModel::A3ProHyd);
+        for (process, expected) in [
+            ("Idle", OperatingState::Idling {}),
+            ("Initializing", OperatingState::Initializing {}),
+            ("Resuming", OperatingState::Starting {}),
+            ("Resume Failed", OperatingState::Error {}),
+            ("Suspended", OperatingState::Suspended {}),
+            ("Suspending", OperatingState::Stopping {}),
+            ("Suspend Failed", OperatingState::Error {}),
+            (
+                "Factory Calibration",
+                OperatingState::Unknown {
+                    raw: "Factory Calibration".to_owned(),
+                },
+            ),
+        ] {
+            let data = HashMap::from([(
+                DataField::OperatingState,
+                serde_json::json!({"PM State": process, "Tune Status": "Fine Tuning"}),
+            )]);
+            assert_eq!(
+                miner.parse_operating_state(&data),
+                Some(expected),
+                "{process}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_operating_state_unavailable_and_missing_tune_status() {
+        let miner = SealMinerV2025::new(IpAddr::from([127, 0, 0, 1]), SealMinerModel::A3ProHyd);
+        assert_eq!(miner.parse_operating_state(&HashMap::new()), None);
+        for stats in [
+            serde_json::json!({}),
+            serde_json::json!({"Tune Status": "Fine Tuning"}),
+            serde_json::json!({"PM State": null, "Tune Status": "Fine Tuning Done"}),
+            serde_json::json!({"PM State": true}),
+            serde_json::json!({"PM State": 4}),
+            serde_json::json!({"PM State": "  "}),
+        ] {
+            let data = HashMap::from([(DataField::OperatingState, stats)]);
+            assert_eq!(miner.parse_operating_state(&data), None);
+        }
+        for stats in [
+            serde_json::json!({"PM State": "Running"}),
+            serde_json::json!({"PM State": "Running", "Tune Status": null}),
+            serde_json::json!({"PM State": "Running", "Tune Status": ""}),
+            serde_json::json!({"PM State": "Running", "Tune Status": "  "}),
+            serde_json::json!({"PM State": "Running", "Tune Status": 4}),
+        ] {
+            let data = HashMap::from([(DataField::OperatingState, stats)]);
+            assert_eq!(
+                miner.parse_operating_state(&data),
+                Some(OperatingState::Mining {})
+            );
+        }
     }
 
     #[tokio::test]
