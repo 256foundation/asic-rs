@@ -1,12 +1,16 @@
 use std::net::IpAddr;
 
 use asic_rs_core::{
-    data::command::{MinerCommand, RPCCommandStatus},
+    data::{
+        command::{MinerCommand, RPCCommandStatus},
+        miner::MiningMode,
+    },
     errors::RPCError,
     traits::miner::*,
     util::{DEFAULT_RPC_TIMEOUT, connect_tcp_stream, read_stream_response, write_all_with_timeout},
 };
 use async_trait::async_trait;
+use measurements::Power;
 use serde_json::{Value, json};
 
 #[derive(Debug)]
@@ -19,6 +23,11 @@ pub struct SealMinerRPCAPI {
 impl SealMinerRPCAPI {
     pub fn new(ip: IpAddr) -> Self {
         Self { ip, port: 4028 }
+    }
+
+    #[cfg(test)]
+    pub(super) fn new_with_port(ip: IpAddr, port: u16) -> Self {
+        Self { ip, port }
     }
 
     async fn send_rpc_command(
@@ -101,6 +110,48 @@ impl SealMinerRPCAPI {
             Some(serde_json::Value::String(parameter.to_string())),
         )
         .await
+    }
+
+    pub async fn set_power_limit(&self, watts: Power) -> anyhow::Result<Value> {
+        let parameter = format!(
+            "0,powerlimit,{}",
+            json!({"value": (watts.as_watts() as u32).to_string()})
+        );
+        let response = self.ascset(&parameter).await?;
+        anyhow::ensure!(
+            response
+                .get("STATUS")
+                .and_then(Value::as_array)
+                .and_then(|statuses| statuses.first())
+                .is_some_and(|status| {
+                    status.get("STATUS").and_then(Value::as_str) == Some("S")
+                        && status.get("Code").and_then(Value::as_u64) == Some(119)
+                }),
+            "Sealminer powerlimit did not return a successful ASC set (STATUS S, Code 119): {response}"
+        );
+        Ok(response)
+    }
+
+    pub async fn set_mining_mode(&self, mode: MiningMode) -> anyhow::Result<Value> {
+        let mode = match mode {
+            MiningMode::Low => "low_power",
+            MiningMode::Normal => "normal",
+            MiningMode::High => "high_performance",
+        };
+        let parameter = format!("0,workmode,{}", json!({"mode": mode}));
+        let response = self.ascset(&parameter).await?;
+        anyhow::ensure!(
+            response
+                .get("STATUS")
+                .and_then(Value::as_array)
+                .and_then(|statuses| statuses.first())
+                .is_some_and(|status| {
+                    status.get("STATUS").and_then(Value::as_str) == Some("S")
+                        && status.get("Code").and_then(Value::as_u64) == Some(119)
+                }),
+            "Sealminer workmode did not return a successful ASC set (STATUS S, Code 119): {response}"
+        );
+        Ok(response)
     }
 
     pub async fn restart(&self) -> anyhow::Result<Value> {

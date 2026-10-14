@@ -220,10 +220,12 @@ Legend:
 
 	??? note "RIG family (1 model)"
 		 - [x] `RIG`
-??? quote "SealMiner (1 model across 1 family)"
+??? quote "SealMiner (2 models across 2 families)"
 
 	??? note "A2 family (1 model)"
 		 - [x] `A2`
+	??? note "A3 family (1 model)"
+		 - [x] `A3 Pro Hydro`
 ??? quote "VolcMiner (1 model across 1 family)"
 
 	??? note "D1 family (1 model)"
