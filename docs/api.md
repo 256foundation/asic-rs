@@ -286,6 +286,9 @@ Changing the cap is not a request to select a third mining mode.
 Use `TuningTarget::MiningMode(MiningMode::Normal)` or
 `TuningTarget::MiningMode(MiningMode::High)` to select a mode. Use
 `TuningTarget::Power(...)` or `set_power_limit(...)` to change the independent cap.
+Power caps must be finite, whole, non-negative watts representable as a `u32`;
+invalid values are rejected before sending a command. This encoding bound is not
+a claim about a model's supported hardware power range.
 Both commands automatically restart `bdminer` on V0.5 firmware; the backend does
 not issue an additional controller reboot. A successful write acknowledges
 configuration acceptance, not completion of startup or autotuning.
@@ -312,7 +315,10 @@ configuration acceptance, not completion of startup or autotuning.
 `stats` (`Mining Mode`), not the saved power cap merely because `Power Limit` is
 present. Firmware responses without a mode can still report a power target.
 Unrecognized modes, including Smartboost and Custom, remain unknown rather than
-being mislabeled as power-limit tuning. To confirm the separate cap in Rust:
+being mislabeled as power-limit tuning.
+Malformed present mode fields also remain unknown; only missing or empty mode
+fields allow the power-target compatibility fallback.
+To confirm the separate cap in Rust:
 
 ```rust
 use asic_rs::core::data::command::MinerCommand;
@@ -330,6 +336,21 @@ bounds remain unknown: V0.5 does not specify a universal power range. Sleep is a
 device-state control, not one of the shared `MiningMode` variants. Manual tuning,
 hashrate targets, preheat controls, and fast-frequency-raise controls are not
 implemented by this tuning interface.
+
+An ignored live verification test is available for operators. It **changes
+configuration, restarts mining, and leaves the requested settings in place,
+including on failure**. Set `MINER_IP` to the intended device and choose exactly
+one of `SEALMINER_LIVE_MODE=normal|high_performance|low_power` or
+`SEALMINER_LIVE_POWER_WATTS`. Low-power mode is only supported on A2.
+
+```sh
+SEALMINER_LIVE_TUNING_ACK=1 SEALMINER_LIVE_MODE=normal \
+  cargo test -p asic-rs-firmwares-sealminer set_tuning_config_live_test -- --ignored --nocapture
+```
+
+The test waits up to ten minutes to observe the requested setting, preservation
+of the independent setting, and `PM State` equal to `Running`. It does not prove
+completion of a restart cycle, autotuning, or hashrate recovery.
 
 ## Python Pydantic Interop
 

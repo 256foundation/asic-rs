@@ -546,7 +546,11 @@ impl GetWattage for SealMinerV2025 {
 }
 
 fn parse_stock_tuning(stats: &Value) -> Option<TuningTarget> {
-    match stats.get("Mining Mode").and_then(Value::as_str) {
+    let mode = match stats.get("Mining Mode") {
+        Some(mode) => Some(mode.as_str()?),
+        None => None,
+    };
+    match mode {
         Some("Normal") => Some(TuningTarget::MiningMode(MiningMode::Normal)),
         Some("High Performance") => Some(TuningTarget::MiningMode(MiningMode::High)),
         Some("Low Power") => Some(TuningTarget::MiningMode(MiningMode::Low)),
@@ -1117,6 +1121,7 @@ mod tests {
             serde_json::json!({"Mining Mode": "Smartboost", "Power Limit": 10000}),
             serde_json::json!({"Mining Mode": "Sleep", "Power Limit": 10000}),
             serde_json::json!({"Mining Mode": "Custom", "Power Limit": 10000}),
+            serde_json::json!({"Mining Mode": null, "Power Limit": 10000}),
             serde_json::json!({}),
         ] {
             assert_eq!(parse_stock_tuning(&stats), None);
@@ -1206,5 +1211,97 @@ mod tests {
             );
             server.await.unwrap();
         }
+    }
+
+    #[tokio::test]
+    async fn test_invalid_power_values_are_rejected_before_networking() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let api = SealMinerRPCAPI::new_with_port(IpAddr::from([127, 0, 0, 1]), port);
+        for watts in [-1.0, f64::NAN, 0.5, f64::from(u32::MAX) + 1.0] {
+            let error = api
+                .set_power_limit(Power::from_watts(watts))
+                .await
+                .unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains("finite, whole, non-negative watts")
+            );
+        }
+        let listener = listener.into_std().unwrap();
+        assert_eq!(
+            listener.accept().unwrap_err().kind(),
+            std::io::ErrorKind::WouldBlock
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "LIVE WRITE: changes tuning, restarts mining, and leaves the requested settings in place; requires MINER_IP and SEALMINER_LIVE_TUNING_ACK=1"]
+    async fn set_tuning_config_live_test() -> anyhow::Result<()> {
+        use asic_rs_core::traits::entry::FirmwareEntry;
+
+        anyhow::ensure!(
+            std::env::var("SEALMINER_LIVE_TUNING_ACK").as_deref() == Ok("1"),
+            "Set SEALMINER_LIVE_TUNING_ACK=1 to acknowledge live configuration changes"
+        );
+        let ip: IpAddr = std::env::var("MINER_IP")?.parse()?;
+        let mode = std::env::var("SEALMINER_LIVE_MODE").ok();
+        let power = std::env::var("SEALMINER_LIVE_POWER_WATTS").ok();
+        let target = match (mode.as_deref(), power.as_deref()) {
+            (Some("normal"), None) => TuningTarget::MiningMode(MiningMode::Normal),
+            (Some("high_performance"), None) => TuningTarget::MiningMode(MiningMode::High),
+            (Some("low_power"), None) => TuningTarget::MiningMode(MiningMode::Low),
+            (None, Some(watts)) => TuningTarget::Power(Power::from_watts(watts.parse()?)),
+            _ => anyhow::bail!(
+                "Set exactly one of SEALMINER_LIVE_MODE=normal|high_performance|low_power or SEALMINER_LIVE_POWER_WATTS"
+            ),
+        };
+        let miner = SealMinerStockFirmware::default()
+            .build_miner(ip, None)
+            .await?;
+        let command = MinerCommand::RPC {
+            command: "stats",
+            parameters: None,
+        };
+        let original = miner.get_api_result(&command).await?;
+        let stats = &original["STATS"][0];
+        let expected_mode = match &target {
+            TuningTarget::MiningMode(MiningMode::Normal) => "Normal",
+            TuningTarget::MiningMode(MiningMode::High) => "High Performance",
+            TuningTarget::MiningMode(MiningMode::Low) => "Low Power",
+            _ => stats["Mining Mode"]
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("Missing original Mining Mode"))?,
+        };
+        let expected_power = match &target {
+            TuningTarget::Power(watts) => watts.as_watts(),
+            _ => stats["Power Limit"]
+                .as_f64()
+                .ok_or_else(|| anyhow::anyhow!("Missing original Power Limit"))?,
+        };
+        anyhow::ensure!(
+            miner
+                .set_tuning_config(TuningConfig::new(target), None)
+                .await?,
+            "Firmware refused the tuning write"
+        );
+        tokio::time::timeout(Duration::from_secs(600), async {
+            loop {
+                if let Ok(response) = miner.get_api_result(&command).await {
+                    let stats = &response["STATS"][0];
+                    if stats["Mining Mode"].as_str() == Some(expected_mode)
+                        && stats["Power Limit"].as_f64() == Some(expected_power)
+                        && stats["PM State"].as_str() == Some("Running")
+                    {
+                        return;
+                    }
+                }
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
+        })
+        .await
+        .map_err(|_| anyhow::anyhow!("Timed out confirming the requested mode and power cap"))?;
+        Ok(())
     }
 }

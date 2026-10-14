@@ -112,11 +112,8 @@ impl SealMinerRPCAPI {
         .await
     }
 
-    pub async fn set_power_limit(&self, watts: Power) -> anyhow::Result<Value> {
-        let parameter = format!(
-            "0,powerlimit,{}",
-            json!({"value": (watts.as_watts() as u32).to_string()})
-        );
+    async fn set_tuning_option(&self, option: &str, settings: Value) -> anyhow::Result<Value> {
+        let parameter = format!("0,{option},{settings}");
         let response = self.ascset(&parameter).await?;
         anyhow::ensure!(
             response
@@ -127,9 +124,21 @@ impl SealMinerRPCAPI {
                     status.get("STATUS").and_then(Value::as_str) == Some("S")
                         && status.get("Code").and_then(Value::as_u64) == Some(119)
                 }),
-            "Sealminer powerlimit did not return a successful ASC set (STATUS S, Code 119): {response}"
+            "Sealminer {option} did not return a successful ASC set (STATUS S, Code 119): {response}"
         );
         Ok(response)
+    }
+
+    pub async fn set_power_limit(&self, watts: Power) -> anyhow::Result<Value> {
+        let watts = watts.as_watts();
+        anyhow::ensure!(
+            watts.is_finite()
+                && (0.0..=f64::from(u32::MAX)).contains(&watts)
+                && watts.fract() == 0.0,
+            "Sealminer power limit must be finite, whole, non-negative watts representable as u32"
+        );
+        self.set_tuning_option("powerlimit", json!({"value": (watts as u32).to_string()}))
+            .await
     }
 
     pub async fn set_mining_mode(&self, mode: MiningMode) -> anyhow::Result<Value> {
@@ -138,20 +147,8 @@ impl SealMinerRPCAPI {
             MiningMode::Normal => "normal",
             MiningMode::High => "high_performance",
         };
-        let parameter = format!("0,workmode,{}", json!({"mode": mode}));
-        let response = self.ascset(&parameter).await?;
-        anyhow::ensure!(
-            response
-                .get("STATUS")
-                .and_then(Value::as_array)
-                .and_then(|statuses| statuses.first())
-                .is_some_and(|status| {
-                    status.get("STATUS").and_then(Value::as_str) == Some("S")
-                        && status.get("Code").and_then(Value::as_u64) == Some(119)
-                }),
-            "Sealminer workmode did not return a successful ASC set (STATUS S, Code 119): {response}"
-        );
-        Ok(response)
+        self.set_tuning_option("workmode", json!({"mode": mode}))
+            .await
     }
 
     pub async fn restart(&self) -> anyhow::Result<Value> {
