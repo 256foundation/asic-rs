@@ -777,6 +777,7 @@ impl FactoryReset for SealMinerV2025 {
     }
 }
 
+impl RestartMining for SealMinerV2025 {}
 impl RestoreStockOs for SealMinerV2025 {}
 
 #[async_trait]

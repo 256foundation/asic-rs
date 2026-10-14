@@ -279,6 +279,43 @@ impl VnishWebAPI {
             .await
     }
 
+    /// Restart the mining program without rebooting the miner.
+    ///
+    /// The request is sent directly rather than through `send_command` so an
+    /// empty success body is accepted and a rejection keeps the firmware's text.
+    pub async fn restart_mining(&self) -> anyhow::Result<()> {
+        self.ensure_authenticated().await?;
+
+        let url = format!("http://{}:{}/api/v1/mining/restart", self.ip, self.port);
+        let mut response = self.execute_request(&url, &Method::POST, None).await?;
+
+        if response.status().as_u16() == 401 {
+            *self.bearer_token.write().await = None;
+            self.ensure_authenticated().await?;
+            response = self.execute_request(&url, &Method::POST, None).await?;
+        }
+
+        let status = response.status();
+        let body = response
+            .text()
+            .await
+            .map_err(|e| VnishError::ParseError(e.to_string()))?;
+
+        if !status.is_success() {
+            anyhow::bail!("VNish mining restart request failed with status code {status}: {body}");
+        }
+
+        // The documented 200 response has no body; older builds answer with a
+        // JSON object carrying a `success` flag.
+        if let Ok(json) = serde_json::from_str::<Value>(&body)
+            && json.get("success").and_then(Value::as_bool) == Some(false)
+        {
+            anyhow::bail!("VNish mining restart request failed: {body}");
+        }
+
+        Ok(())
+    }
+
     pub async fn change_password(&self, password: &str) -> anyhow::Result<bool> {
         let settings = json!({
             "password": {

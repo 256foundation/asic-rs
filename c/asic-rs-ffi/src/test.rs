@@ -91,6 +91,9 @@ impl Restart for TestMiner {
         panic!("backend restart panic")
     }
 }
+
+impl RestartMining for TestMiner {}
+
 #[async_trait]
 impl RestoreStockOs for TestMiner {
     fn supports_restore_stock_os(&self) -> bool {
