@@ -335,16 +335,11 @@ restriction, stopping, restart, cooldown, degraded mining, and errors.
 `Mining` alone does not promise that tuning is complete: `Stable` is only used
 when the firmware explicitly reports it.
 
-ePIC/UMC, VNish, Braiins REST (25.07+), MARA, Proto, and SealMiner populate this
-field from responses already used by the data collector. For example, ePIC’s
+ePIC/UMC, VNish, Braiins REST (25.07+), MARA, and Proto populate this field from
+responses already used by the data collector. For example, ePIC’s
 `AdjustingClockVoltage` becomes `OperatingState::AdjustingClockVoltage {}` in
 Rust and `OperatingState.AdjustingClockVoltage()` in Python. VNish’s
 `auto-tuning` becomes `Tuning`; Braiins status `3` becomes `Paused`.
-
-SealMiner combines RPC `PM State` with `Tune Status`. While running, coarse/fine
-tuning (including `Coarse Tuning Done`) maps to `Tuning`; `Fine Tuning Done` and
-`Tuning Idle` map to `Mining`. Initialization, suspension, and process failures
-take precedence over tuning labels. Board `tuned`/`active` behavior is unchanged.
 
 The enum serializes identically in Rust and Python/Pydantic as a tagged object:
 `{"type": "Mining"}` or `{"type": "Unknown", "raw": "FutureFirmwareState"}`.
