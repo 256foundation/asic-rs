@@ -5,11 +5,11 @@ use asic_rs_core::errors::ModelSelectionError;
 use asic_rs_core::traits::model::MinerModel;
 use asic_rs_macros::ModelAlgorithm;
 use serde::{Deserialize, Serialize};
-use strum::Display;
+use strum::{AsRefStr, Display};
 use ts_rs::TS;
 
 #[derive(
-    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display, ModelAlgorithm, TS,
+    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Display, AsRefStr, ModelAlgorithm, TS,
 )]
 pub enum SealMinerModel {
     #[algorithm(HashAlgorithm::SHA256)]

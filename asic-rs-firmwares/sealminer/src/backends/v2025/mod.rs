@@ -27,6 +27,7 @@ use asic_rs_core::{
     },
     traits::{miner::*, model::MinerModel},
 };
+use asic_rs_makes_sealminer::models::SealMinerModel;
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
@@ -575,7 +576,7 @@ impl GetTuningCapabilities for SealMinerV2025 {
         _data: &HashMap<DataField, Value>,
     ) -> Option<TuningCapabilities> {
         let mut presets = Vec::with_capacity(3);
-        if self.device_info.model == "A2" {
+        if self.device_info.model == SealMinerModel::A2.as_ref() {
             presets.push(TuningTarget::MiningMode(MiningMode::Low));
         }
         presets.push(TuningTarget::MiningMode(MiningMode::Normal));
@@ -854,7 +855,8 @@ impl SupportsTuningConfig for SealMinerV2025 {
                 )
             }
             TuningTarget::MiningMode(mode) => {
-                if mode == MiningMode::Low && self.device_info.model != "A2" {
+                if mode == MiningMode::Low && self.device_info.model != SealMinerModel::A2.as_ref()
+                {
                     anyhow::bail!("Low-power mining mode is only supported on SealMiner A2");
                 }
                 Ok(self.rpc.set_mining_mode(mode).await.is_ok())
