@@ -36,7 +36,7 @@ Legend:
 
 ## Exact Supported Models
 
-??? quote "AntMiner (61 models across 24 families)"
+??? quote "AntMiner (63 models across 25 families)"
 
 	??? note "D3 family (1 model)"
 		 - [x] `ANTMINER D3`
@@ -120,9 +120,12 @@ Legend:
 		 - [x] `ANTMINER T19`
 	??? note "T21 family (1 model)"
 		 - [x] `ANTMINER T21`
-	??? note "Z15 family (2 models)"
+	??? note "Z11 family (1 model)"
+		 - [x] `ANTMINER Z11J`
+	??? note "Z15 family (3 models)"
 		 - [x] `ANTMINER Z15`
 		 - [x] `ANTMINER Z15 PRO`
+		 - [x] `ANTMINER Z15J`
 ??? quote "Auradine (5 models across 5 families)"
 
 	??? note "AH3880 family (1 model)"

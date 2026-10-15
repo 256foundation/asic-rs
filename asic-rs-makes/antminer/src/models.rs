@@ -72,9 +72,15 @@ pub enum AntMinerModel {
     #[serde(alias = "ANTMINER L11")]
     #[algorithm(HashAlgorithm::Scrypt)]
     L11,
+    #[serde(alias = "ANTMINER Z11J")]
+    #[algorithm(HashAlgorithm::Equihash)]
+    Z11j,
     #[serde(alias = "ANTMINER Z15")]
     #[algorithm(HashAlgorithm::Equihash)]
     Z15,
+    #[serde(alias = "ANTMINER Z15J")]
+    #[algorithm(HashAlgorithm::Equihash)]
+    Z15j,
     #[serde(alias = "ANTMINER Z15 PRO")]
     #[algorithm(HashAlgorithm::Equihash)]
     Z15Pro,
@@ -245,6 +251,23 @@ mod tests {
         let result = AntMinerModel::from_str("ANTMINER S21").unwrap();
 
         assert_eq!(result, AntMinerModel::S21);
+    }
+
+    #[test]
+    fn z11j_and_z15j_parse_as_equihash_models() {
+        for (name, expected) in [
+            ("ANTMINER Z11J", AntMinerModel::Z11j),
+            ("ANTMINER Z15J", AntMinerModel::Z15j),
+        ] {
+            let model = AntMinerModel::from_str(name).unwrap();
+
+            assert_eq!(model, expected);
+            assert_eq!(model.hash_algorithm(), HashAlgorithm::Equihash);
+            assert_eq!(model.make_name(), "Antminer");
+            let hardware: asic_rs_core::data::device::MinerHardware = model.into();
+            assert_eq!(hardware.fans, Some(2));
+            assert_eq!(hardware.boards, Some(vec![Some(3); 3]));
+        }
     }
 
     #[test]
