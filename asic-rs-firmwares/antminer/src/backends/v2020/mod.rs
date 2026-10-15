@@ -1302,7 +1302,7 @@ impl Validate for AntMinerV2020 {
     type Firmware = AntMinerStockFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v < Version::new(2023, 7, 0))
+        version.is_some_and(|v| *v >= Version::new(2021, 1, 1) && *v < Version::new(2023, 7, 0))
     }
 }
 
