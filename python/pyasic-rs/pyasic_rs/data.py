@@ -15,7 +15,7 @@ from pyasic_rs.asic_rs import (
 from pyasic_rs.asic_rs import DeviceInfo, MinerHardware
 from pyasic_rs.asic_rs import FanData
 from pyasic_rs.asic_rs import HashRate, HashRateUnit
-from pyasic_rs.asic_rs import CheckedMinerData, MinerComponent, MinerControlBoard, MinerData, MinerMessage
+from pyasic_rs.asic_rs import CheckedMinerData, FieldCollectionStatus, MinerComponent, MinerControlBoard, MinerData, MinerMessage
 from pyasic_rs.asic_rs import MessageSeverity
 from pyasic_rs.asic_rs import MiningMode
 from pyasic_rs.asic_rs import OperatingState
@@ -27,6 +27,7 @@ __all__ = [
     "BoardData",
     "ChipData",
     "CheckedMinerData",
+    "FieldCollectionStatus",
     "DeviceInfo",
     "HashRateTuningCapabilities",
     "PowerTuningCapabilities",

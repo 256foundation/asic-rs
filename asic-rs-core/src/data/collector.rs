@@ -139,21 +139,27 @@ pub type DataLocation = (MinerCommand, DataExtractor);
 /// What happened while collecting one requested field. `Extracted` means a
 /// response supplied raw data; it does not certify that a backend parsed the
 /// value into a valid measurement.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString)]
 pub enum FieldCollectionStatus {
     /// At least one response supplied a value for this field.
+    #[cfg_attr(feature = "python", pydantic(value = "Extracted"))]
     Extracted,
     /// A response arrived, but none of the field's extractors found a value.
+    #[cfg_attr(feature = "python", pydantic(value = "Missing"))]
     Missing,
     /// No value was extracted and at least one required command failed.
+    #[cfg_attr(feature = "python", pydantic(value = "Failed"))]
     Failed,
     /// The backend has no raw API location for this field. Some snapshot
     /// fields, such as the timestamp, are constructed locally instead.
+    #[cfg_attr(feature = "python", pydantic(value = "Unsupported"))]
     Unsupported,
 }
 
 /// Bounded, credential-free diagnostics for one telemetry collection.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CollectionDiagnostics {
     pub field_status: HashMap<DataField, FieldCollectionStatus>,
     pub successful_commands: usize,

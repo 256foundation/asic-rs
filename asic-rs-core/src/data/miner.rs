@@ -7,6 +7,8 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+#[cfg(feature = "python")]
+use super::collector::{DataField, FieldCollectionStatus};
 use super::{
     board::{BoardData, MinerControlBoard},
     capabilities::TuningCapabilities,
@@ -242,10 +244,35 @@ pub struct MinerData {
 
 /// A telemetry snapshot accompanied by the outcome of its raw API reads.
 /// Applications must still validate parsed values for their own use case.
-#[derive(Debug)]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
+#[derive(Debug, Clone)]
 pub struct CheckedMinerData {
     pub data: MinerData,
     pub diagnostics: CollectionDiagnostics,
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl CheckedMinerData {
+    #[getter]
+    fn data(&self) -> MinerData {
+        self.data.clone()
+    }
+
+    #[getter]
+    fn field_status(&self) -> HashMap<DataField, FieldCollectionStatus> {
+        self.diagnostics.field_status.clone()
+    }
+
+    #[getter]
+    fn successful_commands(&self) -> usize {
+        self.diagnostics.successful_commands
+    }
+
+    #[getter]
+    fn failed_commands(&self) -> usize {
+        self.diagnostics.failed_commands
+    }
 }
 
 /// No requested telemetry field could be extracted from the miner responses.

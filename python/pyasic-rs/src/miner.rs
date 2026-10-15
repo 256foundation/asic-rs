@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::IpAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::{net::IpAddr, path::PathBuf, sync::Arc, time::Duration};
 
 use super::typing::{PyAwaitable, future_into_py};
 use asic_rs_core::data::collector::DataField;
@@ -15,7 +15,7 @@ use asic_rs_core::{
         firmware::{FirmwareImage, FirmwareStats, RestoreStockOsResult},
         hashrate::HashRate,
         message::MinerMessage,
-        miner::{CheckedMinerData as CoreCheckedMinerData, MinerData, TuningTarget},
+        miner::{CheckedMinerData, MinerData, TuningTarget},
         operating_state::OperatingState,
         pool::PoolGroupData,
     },
@@ -37,42 +37,6 @@ use tokio::sync::RwLock;
 #[pyclass(module = "asic_rs")]
 pub(crate) struct Miner {
     inner: Arc<RwLock<Box<dyn MinerTrait>>>,
-}
-
-/// A snapshot plus the status of the raw reads that produced it.
-#[pyclass(name = "CheckedMinerData", module = "asic_rs")]
-pub(crate) struct CheckedMinerData {
-    inner: CoreCheckedMinerData,
-}
-
-#[pymethods]
-impl CheckedMinerData {
-    #[getter]
-    fn data(&self) -> MinerData {
-        self.inner.data.clone()
-    }
-
-    /// Field names map to Extracted, Missing, Failed, or Unsupported. An
-    /// extracted raw value still needs application-level validation.
-    #[getter]
-    fn field_status(&self) -> HashMap<String, String> {
-        self.inner
-            .diagnostics
-            .field_status
-            .iter()
-            .map(|(field, status)| (field.to_string(), format!("{status:?}")))
-            .collect()
-    }
-
-    #[getter]
-    fn successful_commands(&self) -> usize {
-        self.inner.diagnostics.successful_commands
-    }
-
-    #[getter]
-    fn failed_commands(&self) -> usize {
-        self.inner.diagnostics.failed_commands
-    }
 }
 
 impl Miner {
@@ -365,7 +329,6 @@ impl Miner {
             inner
                 .get_data_checked_filtered(exclude.unwrap_or_default())
                 .await
-                .map(|inner| CheckedMinerData { inner })
                 .map_err(|error| PyRuntimeError::new_err(error.to_string()))
         })
     }

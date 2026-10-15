@@ -13,7 +13,7 @@ from urllib.request import parse_http_list, parse_keqv_list
 import pytest
 
 from pyasic_rs import MinerFactory
-from pyasic_rs.data import DataField
+from pyasic_rs.data import DataField, FieldCollectionStatus
 
 
 def test_braiins_custom_discovery_auth_is_chainable() -> None:
@@ -121,6 +121,11 @@ def check_stock_custom_credentials() -> None:
         ]
         data = await asyncio.wait_for(miner.get_data(exclude), 5)
         assert str(data.mac) == "00:11:22:33:44:55"
+        checked = await asyncio.wait_for(miner.get_data_checked(exclude), 5)
+        assert str(checked.data.mac) == "00:11:22:33:44:55"
+        assert checked.field_status[DataField.Mac] == FieldCollectionStatus.Extracted
+        assert checked.successful_commands == 1
+        assert checked.failed_commands == 0
         assert set(authenticated_paths) == set(payloads)
 
     try:

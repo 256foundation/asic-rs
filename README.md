@@ -341,7 +341,7 @@ snapshot. The existing `get_data()` behavior is unchanged.
 
 Rust can inspect `checked.diagnostics.field_status[&DataField::Hashrate]` after
 `miner.get_data_checked().await?`. Python can inspect
-`checked.field_status["Hashrate"]` after `await miner.get_data_checked()`.
+`checked.field_status[DataField.Hashrate]` after `await miner.get_data_checked()`.
 Both checked methods accept the same exclusion choices as `get_data_filtered`
 or Python `get_data(exclude=...)`. Go currently retains its existing snapshot API.
 
