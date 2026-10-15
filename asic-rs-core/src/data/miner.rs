@@ -10,6 +10,7 @@ use ts_rs::TS;
 use super::{
     board::{BoardData, MinerControlBoard},
     capabilities::TuningCapabilities,
+    collector::CollectionDiagnostics,
     device::DeviceInfo,
     fan::FanData,
     hashrate::HashRate,
@@ -238,6 +239,32 @@ pub struct MinerData {
     /// when the firmware distinguishes session from all-time.
     pub session_best_share: Option<f64>,
 }
+
+/// A telemetry snapshot accompanied by the outcome of its raw API reads.
+/// Applications must still validate parsed values for their own use case.
+#[derive(Debug)]
+pub struct CheckedMinerData {
+    pub data: MinerData,
+    pub diagnostics: CollectionDiagnostics,
+}
+
+/// No requested telemetry field could be extracted from the miner responses.
+#[derive(Debug)]
+pub struct NoTelemetryError {
+    pub diagnostics: CollectionDiagnostics,
+}
+
+impl std::fmt::Display for NoTelemetryError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "no miner telemetry fields collected ({} commands succeeded, {} failed)",
+            self.diagnostics.successful_commands, self.diagnostics.failed_commands
+        )
+    }
+}
+
+impl std::error::Error for NoTelemetryError {}
 
 #[cfg(feature = "python")]
 pub use python_tuning_target::PyTuningTarget;

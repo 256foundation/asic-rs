@@ -323,6 +323,23 @@ if mac != nil {
 }
 ```
 
+For monitoring that must distinguish a reported zero from a failed or missing
+read, use `get_data_checked()` in Rust or Python. It returns the same parsed
+`MinerData` plus per-field `Extracted`, `Missing`, `Failed`, or `Unsupported`
+status and counts of successful and failed API commands. If no requested field
+can be extracted, it returns an error (`RuntimeError` in Python) instead of a
+newly timestamped snapshot of defaults. `Extracted` describes the raw response,
+not the validity of the parsed measurement; callers must still check the fields
+their decisions require. `Unsupported` means there is no raw API location;
+locally constructed fields such as the timestamp can still be present in the
+snapshot. The existing `get_data()` behavior is unchanged.
+
+Rust can inspect `checked.diagnostics.field_status[&DataField::Hashrate]` after
+`miner.get_data_checked().await?`. Python can inspect
+`checked.field_status["Hashrate"]` after `await miner.get_data_checked()`.
+Both checked methods accept the same exclusion choices as `get_data_filtered`
+or Python `get_data(exclude=...)`. Go currently retains its existing snapshot API.
+
 `data.operating_state` is an optional `OperatingState` enum for firmware that
 reports a detailed runtime state. It distinguishes mining, stable operation,
 startup, tuning, frequency/voltage adjustment, idling, pause, suspension,

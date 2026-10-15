@@ -136,6 +136,37 @@ pub struct DataExtractor {
 /// Alias for a tuple describing the API command and the extractor used to parse its result.
 pub type DataLocation = (MinerCommand, DataExtractor);
 
+/// What happened while collecting one requested field. `Extracted` means a
+/// response supplied raw data; it does not certify that a backend parsed the
+/// value into a valid measurement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FieldCollectionStatus {
+    /// At least one response supplied a value for this field.
+    Extracted,
+    /// A response arrived, but none of the field's extractors found a value.
+    Missing,
+    /// No value was extracted and at least one required command failed.
+    Failed,
+    /// The backend has no raw API location for this field. Some snapshot
+    /// fields, such as the timestamp, are constructed locally instead.
+    Unsupported,
+}
+
+/// Bounded, credential-free diagnostics for one telemetry collection.
+#[derive(Debug)]
+pub struct CollectionDiagnostics {
+    pub field_status: HashMap<DataField, FieldCollectionStatus>,
+    pub successful_commands: usize,
+    pub failed_commands: usize,
+}
+
+/// Raw collected values and their collection diagnostics.
+#[derive(Debug)]
+pub struct DataCollectionReport {
+    pub values: HashMap<DataField, Value>,
+    pub diagnostics: CollectionDiagnostics,
+}
+
 /// Extracts a value from a JSON object using a key (flat lookup).
 ///
 /// Returns `None` if the key is `None` or not found in the object.
@@ -335,7 +366,15 @@ impl<'a> DataCollector<'a> {
     ///
     /// This method sends only the minimum required set of API commands.
     pub async fn collect(&mut self, fields: &[DataField]) -> HashMap<DataField, Value> {
+        self.collect_report(fields).await.values
+    }
+
+    /// Collects fields while retaining transport failures and missing values.
+    /// Command payloads and errors are deliberately absent from the report;
+    /// they may contain miner credentials or private network details.
+    pub async fn collect_report(&mut self, fields: &[DataField]) -> DataCollectionReport {
         let mut results = HashMap::new();
+        let mut field_status = HashMap::new();
         let required_commands: Vec<MinerCommand> =
             self.get_required_commands(fields).into_iter().collect();
 
@@ -347,20 +386,47 @@ impl<'a> DataCollector<'a> {
         )
         .await;
 
+        let mut failed = HashSet::new();
+        let mut successful_commands = 0;
         for (command, response) in required_commands.into_iter().zip(responses) {
-            if let Ok(value) = response {
-                self.cache.insert(command, value);
+            match response {
+                Ok(value) => {
+                    successful_commands += 1;
+                    self.cache.insert(command, value);
+                }
+                Err(_) => {
+                    self.cache.remove(&command);
+                    failed.insert(command);
+                }
             }
         }
 
         // Extract the data for each field using the cached responses.
         for &field in fields {
+            let locations = self.miner.get_locations(field);
             if let Some(value) = self.extract_field(field) {
                 results.insert(field, value);
+                field_status.insert(field, FieldCollectionStatus::Extracted);
+            } else if locations.is_empty() {
+                field_status.insert(field, FieldCollectionStatus::Unsupported);
+            } else if locations
+                .iter()
+                .any(|(command, _)| failed.contains(command))
+            {
+                field_status.insert(field, FieldCollectionStatus::Failed);
+            } else {
+                field_status.insert(field, FieldCollectionStatus::Missing);
             }
         }
 
-        results
+        DataCollectionReport {
+            values: results,
+            diagnostics: CollectionDiagnostics {
+                field_status,
+                successful_commands,
+                failed_commands: failed.len(),
+            },
+        }
     }
 
     fn merge(&self, a: &mut Value, b: Value) {
@@ -425,5 +491,136 @@ impl<'a> DataCollector<'a> {
             }
             Some(response)
         }
+    }
+}
+
+#[cfg(test)]
+mod collection_report_tests {
+    use async_trait::async_trait;
+    use serde_json::json;
+
+    use super::*;
+    use crate::test::api::MockAPIClient;
+    use crate::traits::miner::GetDataLocations;
+
+    #[derive(Debug)]
+    struct TestMiner;
+
+    impl TestMiner {
+        fn rate_command() -> MinerCommand {
+            MinerCommand::RPC {
+                command: "rate",
+                parameters: None,
+            }
+        }
+
+        fn identity_command() -> MinerCommand {
+            MinerCommand::RPC {
+                command: "identity",
+                parameters: None,
+            }
+        }
+    }
+
+    impl GetDataLocations for TestMiner {
+        fn get_locations(&self, field: DataField) -> Vec<DataLocation> {
+            let (command, key) = match field {
+                DataField::Hashrate => (Self::rate_command(), "rate"),
+                DataField::IsMining => (Self::rate_command(), "mining"),
+                DataField::Mac => (Self::identity_command(), "mac"),
+                _ => return Vec::new(),
+            };
+            vec![(
+                command,
+                DataExtractor {
+                    func: get_by_key,
+                    key: Some(key),
+                    tag: None,
+                },
+            )]
+        }
+    }
+
+    #[async_trait]
+    impl APIClient for TestMiner {
+        async fn get_api_result(&self, _command: &MinerCommand) -> anyhow::Result<Value> {
+            anyhow::bail!("test client should be supplied separately")
+        }
+    }
+
+    #[tokio::test]
+    async fn reported_zero_is_extracted_while_a_failed_identity_read_is_not() {
+        let miner = TestMiner;
+        let client = MockAPIClient::new(HashMap::from([(
+            TestMiner::rate_command(),
+            json!({ "rate": 0, "mining": false }),
+        )]));
+        let mut collector = DataCollector::new_with_client(&miner, &client);
+        let report = collector
+            .collect_report(&[
+                DataField::Hashrate,
+                DataField::IsMining,
+                DataField::Mac,
+                DataField::Wattage,
+            ])
+            .await;
+
+        assert_eq!(report.values.get(&DataField::Hashrate), Some(&json!(0)));
+        assert_eq!(report.values.get(&DataField::IsMining), Some(&json!(false)));
+        assert_eq!(report.diagnostics.successful_commands, 1);
+        assert_eq!(report.diagnostics.failed_commands, 1);
+        assert_eq!(
+            report.diagnostics.field_status[&DataField::Hashrate],
+            FieldCollectionStatus::Extracted
+        );
+        assert_eq!(
+            report.diagnostics.field_status[&DataField::Mac],
+            FieldCollectionStatus::Failed
+        );
+        assert_eq!(
+            report.diagnostics.field_status[&DataField::Wattage],
+            FieldCollectionStatus::Unsupported
+        );
+    }
+
+    #[tokio::test]
+    async fn successful_but_missing_field_is_distinct_from_transport_failure() {
+        let miner = TestMiner;
+        let client = MockAPIClient::new(HashMap::from([(TestMiner::rate_command(), json!({}))]));
+        let mut collector = DataCollector::new_with_client(&miner, &client);
+        let report = collector
+            .collect_report(&[DataField::Hashrate, DataField::Mac])
+            .await;
+
+        assert!(report.values.is_empty());
+        assert_eq!(
+            report.diagnostics.field_status[&DataField::Hashrate],
+            FieldCollectionStatus::Missing
+        );
+        assert_eq!(
+            report.diagnostics.field_status[&DataField::Mac],
+            FieldCollectionStatus::Failed
+        );
+    }
+
+    #[tokio::test]
+    async fn all_failed_commands_do_not_produce_telemetry() {
+        let miner = TestMiner;
+        let client = MockAPIClient::new(HashMap::new());
+        let mut collector = DataCollector::new_with_client(&miner, &client);
+        let report = collector
+            .collect_report(&[DataField::Hashrate, DataField::Mac])
+            .await;
+
+        assert!(report.values.is_empty());
+        assert_eq!(report.diagnostics.successful_commands, 0);
+        assert_eq!(report.diagnostics.failed_commands, 2);
+        assert!(
+            report
+                .diagnostics
+                .field_status
+                .values()
+                .all(|status| *status == FieldCollectionStatus::Failed)
+        );
     }
 }

@@ -29,7 +29,7 @@ mod asic_rs {
     #[pymodule_export]
     use super::listener::MinerListener;
     #[pymodule_export]
-    use super::miner::Miner;
+    use super::miner::{CheckedMinerData, Miner};
     #[pymodule_export]
     use asic_rs_core::config::{
         fan::{FanConfig, FanMode},

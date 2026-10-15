@@ -1,4 +1,4 @@
-use std::{net::IpAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::{collections::HashMap, net::IpAddr, path::PathBuf, sync::Arc, time::Duration};
 
 use super::typing::{PyAwaitable, future_into_py};
 use asic_rs_core::data::collector::DataField;
@@ -15,7 +15,7 @@ use asic_rs_core::{
         firmware::{FirmwareImage, FirmwareStats, RestoreStockOsResult},
         hashrate::HashRate,
         message::MinerMessage,
-        miner::{MinerData, TuningTarget},
+        miner::{CheckedMinerData as CoreCheckedMinerData, MinerData, TuningTarget},
         operating_state::OperatingState,
         pool::PoolGroupData,
     },
@@ -37,6 +37,42 @@ use tokio::sync::RwLock;
 #[pyclass(module = "asic_rs")]
 pub(crate) struct Miner {
     inner: Arc<RwLock<Box<dyn MinerTrait>>>,
+}
+
+/// A snapshot plus the status of the raw reads that produced it.
+#[pyclass(name = "CheckedMinerData", module = "asic_rs")]
+pub(crate) struct CheckedMinerData {
+    inner: CoreCheckedMinerData,
+}
+
+#[pymethods]
+impl CheckedMinerData {
+    #[getter]
+    fn data(&self) -> MinerData {
+        self.inner.data.clone()
+    }
+
+    /// Field names map to Extracted, Missing, Failed, or Unsupported. An
+    /// extracted raw value still needs application-level validation.
+    #[getter]
+    fn field_status(&self) -> HashMap<String, String> {
+        self.inner
+            .diagnostics
+            .field_status
+            .iter()
+            .map(|(field, status)| (field.to_string(), format!("{status:?}")))
+            .collect()
+    }
+
+    #[getter]
+    fn successful_commands(&self) -> usize {
+        self.inner.diagnostics.successful_commands
+    }
+
+    #[getter]
+    fn failed_commands(&self) -> usize {
+        self.inner.diagnostics.failed_commands
+    }
 }
 
 impl Miner {
@@ -312,6 +348,25 @@ impl Miner {
                 None => Ok(inner.get_data().await),
                 Some(excl) => Ok(inner.get_data_filtered(excl).await),
             }
+        })
+    }
+
+    /// Await telemetry and collection diagnostics. Raises `RuntimeError`
+    /// when no requested field could be extracted from miner responses.
+    #[pyo3(signature = (exclude: "list[DataField] | None" = None))]
+    pub fn get_data_checked<'a>(
+        &self,
+        py: Python<'a>,
+        exclude: Option<Vec<DataField>>,
+    ) -> PyResult<PyAwaitable<CheckedMinerData>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            inner
+                .get_data_checked_filtered(exclude.unwrap_or_default())
+                .await
+                .map(|inner| CheckedMinerData { inner })
+                .map_err(|error| PyRuntimeError::new_err(error.to_string()))
         })
     }
     /// Check for an available firmware update (on-demand; queries the vendor's

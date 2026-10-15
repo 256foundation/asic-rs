@@ -30,7 +30,7 @@ use crate::{
         firmware::{FirmwareImage, FirmwareStats, RestoreStockOsResult},
         hashrate::{HashRate, HashRateUnit},
         message::MinerMessage,
-        miner::{MinerData, TuningTarget},
+        miner::{CheckedMinerData, MinerData, NoTelemetryError, TuningTarget},
         operating_state::OperatingState,
         pool::PoolGroupData,
     },
@@ -193,6 +193,14 @@ pub trait GetMinerData:
     /// returning it as a `MinerData` struct.  Removes and data fields
     /// that are added to the exclude list to save data.
     async fn get_data_filtered(&self, exclude: Vec<DataField>) -> MinerData;
+    /// Collect telemetry with per-field read status. An empty collection is an
+    /// error instead of a newly timestamped snapshot of defaults.
+    async fn get_data_checked(&self) -> Result<CheckedMinerData, NoTelemetryError>;
+    /// Checked telemetry read, excluding selected fields to limit API calls.
+    async fn get_data_checked_filtered(
+        &self,
+        exclude: Vec<DataField>,
+    ) -> Result<CheckedMinerData, NoTelemetryError>;
     fn parse_data(&self, data: HashMap<DataField, Value>) -> MinerData;
 }
 
@@ -261,6 +269,29 @@ impl<
         all_fields.retain(|x| !exclude.contains(x));
         let data = collector.collect(all_fields.as_slice()).await;
         self.parse_data(data)
+    }
+
+    async fn get_data_checked(&self) -> Result<CheckedMinerData, NoTelemetryError> {
+        self.get_data_checked_filtered(Vec::new()).await
+    }
+
+    async fn get_data_checked_filtered(
+        &self,
+        exclude: Vec<DataField>,
+    ) -> Result<CheckedMinerData, NoTelemetryError> {
+        let mut collector = self.get_collector();
+        let mut fields = DataField::iter().collect::<Vec<_>>();
+        fields.retain(|field| !exclude.contains(field));
+        let report = collector.collect_report(&fields).await;
+        if report.values.is_empty() {
+            return Err(NoTelemetryError {
+                diagnostics: report.diagnostics,
+            });
+        }
+        Ok(CheckedMinerData {
+            data: self.parse_data(report.values),
+            diagnostics: report.diagnostics,
+        })
     }
 
     fn parse_data(&self, data: HashMap<DataField, Value>) -> MinerData {
