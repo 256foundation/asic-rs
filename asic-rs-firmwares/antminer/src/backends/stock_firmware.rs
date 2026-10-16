@@ -5,7 +5,7 @@ use asic_rs_core::data::firmware::FirmwareImage;
 use crc32fast::Hasher;
 use serde_json::Value;
 
-use super::AntMinerV2020;
+use super::v2020::web::AntMinerWebAPI;
 
 const BMU_MAGIC: u32 = 0xABABABAB;
 const BMU_HEADER_SIZE: usize = 36;
@@ -276,27 +276,25 @@ pub(super) async fn resolve_firmware_image(
     bail!("BMU nesting depth exceeded")
 }
 
-impl AntMinerV2020 {
-    pub(super) async fn get_miner_type_info(&self) -> anyhow::Result<MinerTypeInfo> {
-        let info = self.web.miner_type().await?;
-        let model = info
-            .get("miner_type")
-            .and_then(|v| v.as_str())
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .context("Missing miner_type in miner_type.cgi response")?;
+pub(super) async fn get_miner_type_info(web: &AntMinerWebAPI) -> anyhow::Result<MinerTypeInfo> {
+    let info = web.miner_type().await?;
+    let model = info
+        .get("miner_type")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .context("Missing miner_type in miner_type.cgi response")?;
 
-        let subtype = info
-            .get("subtype")
-            .and_then(|v| v.as_str())
-            .map(str::trim)
-            .unwrap_or_default();
+    let subtype = info
+        .get("subtype")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .unwrap_or_default();
 
-        Ok(MinerTypeInfo {
-            model: model.to_string(),
-            subtype: subtype.to_string(),
-        })
-    }
+    Ok(MinerTypeInfo {
+        model: model.to_string(),
+        subtype: subtype.to_string(),
+    })
 }
 
 #[cfg(test)]

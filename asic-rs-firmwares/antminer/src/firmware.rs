@@ -251,10 +251,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn legacy_system_info_date_selects_legacy_backend() {
+    fn legacy_system_info_date_selects_v2018_backend() {
         let version = parse_version_date("Fri Jul 3 11:39:06 CST 2020").unwrap();
         assert_eq!(version, semver::Version::new(2020, 7, 3));
-        assert!(crate::backends::v2020::AntMinerV2020::validate(Some(
+        assert!(crate::backends::v2018::AntMinerV2018::validate(Some(
             &version
         )));
 
