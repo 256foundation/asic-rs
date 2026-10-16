@@ -1708,11 +1708,14 @@ mod tests {
         ]);
 
         let actual = miner.parse_hashrate(&data).unwrap();
-        assert_eq!(actual.unit, HashRateUnit::KiloHash);
+        assert_eq!(actual.unit, HashAlgorithm::Equihash.default_hashrate_unit());
         assert_eq!(actual.value, 838.86);
 
         let expected = miner.parse_expected_hashrate(&data).unwrap();
-        assert_eq!(expected.unit, HashRateUnit::KiloHash);
+        assert_eq!(
+            expected.unit,
+            HashAlgorithm::Equihash.default_hashrate_unit()
+        );
         assert_eq!(expected.value, 846.8);
     }
 
