@@ -182,7 +182,7 @@ impl HashAlgorithm {
         match self {
             HashAlgorithm::Scrypt | HashAlgorithm::X11 => HashRateUnit::GigaHash,
             HashAlgorithm::EtHash => HashRateUnit::MegaHash,
-            HashAlgorithm::Equihash => HashRateUnit::KiloHash,
+            HashAlgorithm::Equihash => HashRateUnit::KiloSol,
             HashAlgorithm::SHA256
             | HashAlgorithm::Blake2S256
             | HashAlgorithm::Blake2b

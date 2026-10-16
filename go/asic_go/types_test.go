@@ -2,6 +2,7 @@ package asic_go
 
 import (
 	"encoding/json"
+	"math"
 	"os"
 	"reflect"
 	"strings"
@@ -278,6 +279,23 @@ func TestHashRateUnitValidation(t *testing.T) {
 	}
 }
 
+func TestEquihashSolutionUnits(t *testing.T) {
+	for _, input := range []string{"KiloSol", "KSol/s", " ksol_s "} {
+		unit, err := ParseHashRateUnit(input)
+		if err != nil || unit != HashRateUnitKiloSol {
+			t.Fatalf("%s: %s, %v", input, unit, err)
+		}
+	}
+	hr, err := (HashRate{Value: 150725.63, Unit: HashRateUnitSol, Algo: HashAlgorithmEquihash}).IntoDefaultUnit()
+	if err != nil || hr.Unit != HashRateUnitKiloSol || math.Abs(hr.Value-150.72563) > 1e-9 {
+		t.Fatalf("unexpected Equihash rate: %+v, %v", hr, err)
+	}
+	encoded, err := json.Marshal(hr)
+	if err != nil || !strings.Contains(string(encoded), `"unit":"KiloSol"`) {
+		t.Fatalf("unexpected JSON: %s, %v", encoded, err)
+	}
+}
+
 func TestPoolURLIPv6RoundTrip(t *testing.T) {
 	for _, raw := range []string{"stratum+tcp://[2001:db8::1]:3333", "stratum2+tcp://[2001:db8::1]:3333/pubkey"} {
 		u, err := ParsePoolURL(raw)
@@ -356,7 +374,7 @@ func TestAlgorithmDefaultsAndHardwareHelpers(t *testing.T) {
 		HashAlgorithmBlake2b:  HashRateUnitTeraHash,
 		HashAlgorithmScrypt:   HashRateUnitGigaHash,
 		HashAlgorithmEtHash:   HashRateUnitMegaHash,
-		HashAlgorithmEquihash: HashRateUnitKiloHash,
+		HashAlgorithmEquihash: HashRateUnitKiloSol,
 		HashAlgorithmUnknown:  HashRateUnitHash,
 	}
 	for algo, want := range cases {

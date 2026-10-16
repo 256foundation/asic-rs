@@ -55,7 +55,7 @@ type HashRate struct {
 	Algo  HashAlgorithm `json:"algo"`
 }
 
-// HashRateUnit is the scale of a HashRate.Value.
+// HashRateUnit is the quantity and scale of a HashRate.Value.
 type HashRateUnit string
 
 const (
@@ -68,6 +68,8 @@ const (
 	HashRateUnitExaHash   HashRateUnit = "ExaHash"
 	HashRateUnitZettaHash HashRateUnit = "ZettaHash"
 	HashRateUnitYottaHash HashRateUnit = "YottaHash"
+	HashRateUnitSol       HashRateUnit = "Sol"
+	HashRateUnitKiloSol   HashRateUnit = "KiloSol"
 )
 
 // ParseHashRateUnit accepts Rust variant names and the unit aliases accepted by Rust/Python.
@@ -82,6 +84,12 @@ func ParseHashRateUnit(value string) (HashRateUnit, error) {
 		if normalized == strings.ToUpper(string(name)) || normalized == short || normalized == short+"S" || normalized == short+"/S" {
 			return name, nil
 		}
+	}
+	switch normalized {
+	case "SOL", "SOLS", "SOL/S":
+		return HashRateUnitSol, nil
+	case "KILOSOL", "KILOSOLS", "KILOSOL/S", "KSOL", "KSOLS", "KSOL/S":
+		return HashRateUnitKiloSol, nil
 	}
 	return "", fmt.Errorf("unknown hash rate unit: %q", value)
 }
@@ -109,16 +117,16 @@ func (u HashRateUnit) MarshalJSON() ([]byte, error) {
 	return json.Marshal(string(unit))
 }
 
-// Multiplier returns the factor to convert this unit to H/s, rejecting invalid units.
+// Multiplier returns the factor to convert this unit to base counts/s, rejecting invalid units.
 func (u HashRateUnit) Multiplier() (float64, error) {
 	unit, err := ParseHashRateUnit(string(u))
 	if err != nil {
 		return 0, err
 	}
 	switch unit {
-	case HashRateUnitHash:
+	case HashRateUnitHash, HashRateUnitSol:
 		return 1, nil
-	case HashRateUnitKiloHash:
+	case HashRateUnitKiloHash, HashRateUnitKiloSol:
 		return 1e3, nil
 	case HashRateUnitMegaHash:
 		return 1e6, nil

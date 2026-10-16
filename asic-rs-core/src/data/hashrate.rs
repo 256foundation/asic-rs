@@ -51,6 +51,12 @@ pub enum HashRateUnit {
     /// Yottahashes per second.
     #[cfg_attr(feature = "python", pydantic(value = "YH/s"))]
     YottaHash,
+    /// Equihash solutions per second.
+    #[cfg_attr(feature = "python", pydantic(value = "Sol/s"))]
+    Sol,
+    /// Thousands of Equihash solutions per second.
+    #[cfg_attr(feature = "python", pydantic(value = "KSol/s"))]
+    KiloSol,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,8 +75,8 @@ impl std::error::Error for HashRateUnitParseError {}
 impl HashRateUnit {
     fn to_multiplier(self) -> u128 {
         match self {
-            HashRateUnit::Hash => 1,
-            HashRateUnit::KiloHash => 1_000,
+            HashRateUnit::Hash | HashRateUnit::Sol => 1,
+            HashRateUnit::KiloHash | HashRateUnit::KiloSol => 1_000,
             HashRateUnit::MegaHash => 1_000_000,
             HashRateUnit::GigaHash => 1_000_000_000,
             HashRateUnit::TeraHash => 1_000_000_000_000,
@@ -91,6 +97,10 @@ impl FromStr for HashRateUnit {
         match normalized.as_str() {
             "HASH" | "H" | "HS" | "H/S" => Ok(HashRateUnit::Hash),
             "KILOHASH" | "KH" | "KHS" | "KH/S" => Ok(HashRateUnit::KiloHash),
+            "SOL" | "SOLS" | "SOL/S" => Ok(HashRateUnit::Sol),
+            "KILOSOL" | "KILOSOLS" | "KILOSOL/S" | "KSOL" | "KSOLS" | "KSOL/S" => {
+                Ok(HashRateUnit::KiloSol)
+            }
             "MEGAHASH" | "MH" | "MHS" | "MH/S" => Ok(HashRateUnit::MegaHash),
             "GIGAHASH" | "GH" | "GHS" | "GH/S" => Ok(HashRateUnit::GigaHash),
             "TERAHASH" | "TH" | "THS" | "TH/S" => Ok(HashRateUnit::TeraHash),
@@ -110,6 +120,8 @@ impl Display for HashRateUnit {
         match self {
             HashRateUnit::Hash => write!(f, "H/s"),
             HashRateUnit::KiloHash => write!(f, "KH/s"),
+            HashRateUnit::Sol => write!(f, "Sol/s"),
+            HashRateUnit::KiloSol => write!(f, "KSol/s"),
             HashRateUnit::MegaHash => write!(f, "MH/s"),
             HashRateUnit::GigaHash => write!(f, "GH/s"),
             HashRateUnit::TeraHash => write!(f, "TH/s"),
@@ -154,6 +166,12 @@ impl HashRateUnit {
 
     #[classattr]
     const KH: Self = Self::KiloHash;
+
+    #[classattr]
+    const SOL: Self = Self::Sol;
+
+    #[classattr]
+    const KSOL: Self = Self::KiloSol;
 
     #[classattr]
     const MH: Self = Self::MegaHash;
@@ -358,5 +376,29 @@ mod tests {
         assert_eq!(hashrate.unit, HashRateUnit::GigaHash);
         assert_eq!(hashrate.value, 16.2);
         assert_eq!(hashrate.to_string(), "16.2 GH/s");
+    }
+
+    #[test]
+    fn equihash_uses_solution_units() {
+        let hashrate = HashRate {
+            value: 150_725.63,
+            unit: HashRateUnit::Hash,
+            algo: HashAlgorithm::Equihash,
+        }
+        .as_default_unit();
+
+        assert_eq!(hashrate.unit, HashRateUnit::KiloSol);
+        assert!((hashrate.value - 150.72563).abs() < 1e-9);
+        assert_eq!(hashrate.to_string(), "150.72563 KSol/s");
+        assert_eq!(
+            hashrate.clone().as_unit(HashRateUnit::Sol).value,
+            150_725.63
+        );
+        assert_eq!(HashRateUnit::from_str("ksol/s"), Ok(HashRateUnit::KiloSol));
+        assert_eq!(HashRateUnit::from_str("Sol/s"), Ok(HashRateUnit::Sol));
+        assert_eq!(
+            serde_json::to_string(&hashrate.unit).unwrap(),
+            "\"KiloSol\""
+        );
     }
 }

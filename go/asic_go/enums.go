@@ -32,7 +32,7 @@ func (a HashAlgorithm) DefaultHashrateUnit() (HashRateUnit, error) {
 	case HashAlgorithmEtHash:
 		return HashRateUnitMegaHash, nil
 	case HashAlgorithmEquihash:
-		return HashRateUnitKiloHash, nil
+		return HashRateUnitKiloSol, nil
 	case HashAlgorithmSHA256, HashAlgorithmBlake2S256, HashAlgorithmBlake2b, HashAlgorithmKadena,
 		HashAlgorithmKHeavyHash, HashAlgorithmEaglesong, HashAlgorithmHandshake, HashAlgorithmBlake256R14:
 		return HashRateUnitTeraHash, nil

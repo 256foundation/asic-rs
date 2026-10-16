@@ -81,6 +81,8 @@ class MinerMessageModel(BaseModel):
 HASHRATE_UNIT_CASES = [
     ("H", "Hash", "H/s", 1),
     ("KH", "KiloHash", "KH/s", 1_000),
+    ("SOL", "Sol", "Sol/s", 1),
+    ("KSOL", "KiloSol", "KSol/s", 1_000),
     ("MH", "MegaHash", "MH/s", 1_000_000),
     ("GH", "GigaHash", "GH/s", 1_000_000_000),
     ("TH", "TeraHash", "TH/s", 1_000_000_000_000),
@@ -506,6 +508,15 @@ def test_hashrate_unit_default_aliases_tera_hash() -> None:
     assert HashRateUnit.default == HashRateUnit.TeraHash
 
 
+def test_equihash_defaults_to_kilosolutions() -> None:
+    rate = HashRate(150_000, HashRateUnit.SOL, HashAlgorithm.Equihash)
+    converted = rate.into_default_unit()
+
+    assert converted.unit == HashRateUnit.KSOL
+    assert converted.value == 150
+    assert str(converted) == "150 KSol/s"
+
+
 @pytest.mark.parametrize(
     ("unit_input", "unit_text"),
     [
@@ -579,6 +590,8 @@ def test_hashrate_json_schema_exposes_unit_enum() -> None:
         "EH/s",
         "ZH/s",
         "YH/s",
+        "Sol/s",
+        "KSol/s",
     ]
 
 
