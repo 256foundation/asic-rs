@@ -16,7 +16,7 @@ use asic_rs_core::{
             DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
         },
         command::MinerCommand,
-        device::DeviceInfo,
+        device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
         firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
@@ -257,6 +257,21 @@ fn u64_from_value(value: &Value) -> Option<u64> {
     value
         .as_u64()
         .or_else(|| value.as_str().and_then(|s| s.parse::<u64>().ok()))
+}
+
+fn equihash_display_unit(value: &Value) -> Option<HashRateUnit> {
+    let unit = value
+        .as_str()?
+        .split_whitespace()
+        .last()?
+        .to_ascii_lowercase();
+    match unit.as_str() {
+        "sol/s" => Some(HashRateUnit::Hash),
+        "ksol/s" => Some(HashRateUnit::KiloHash),
+        "msol/s" => Some(HashRateUnit::MegaHash),
+        "gsol/s" => Some(HashRateUnit::GigaHash),
+        _ => None,
+    }
 }
 
 impl AntMinerV202307 {
@@ -818,6 +833,18 @@ impl GetHashrate for AntMinerV202307 {
             })
         })?;
 
+        // Equihash firmware may label the numeric field `GHS` while its
+        // human-readable rate states the actual Sol/s scale.
+        let unit = if self.device_info.algo == HashAlgorithm::Equihash {
+            summary
+                .get("RT HASHRATE")
+                .or_else(|| summary.get("AV HASHRATE"))
+                .and_then(equihash_display_unit)
+                .unwrap_or(unit)
+        } else {
+            unit
+        };
+
         Some(
             HashRate {
                 value,
@@ -835,15 +862,29 @@ impl GetExpectedHashrate for AntMinerV202307 {
         let value = field?
             .pointer("/hashrate")
             .and_then(Self::parse_f64_field)?;
+        let displayed_unit = if self.device_info.algo == HashAlgorithm::Equihash {
+            data.get(&DataField::Hashrate)
+                .and_then(|summary| {
+                    summary
+                        .get("AV HASHRATE")
+                        .or_else(|| summary.get("RT HASHRATE"))
+                })
+                .and_then(equihash_display_unit)
+        } else {
+            None
+        };
         Some(
             HashRate {
                 value,
                 // `total_rateideal` does not name its own scale, so take it
                 // from STATS' `rate_unit` (`"GH"` / `"MH"`).
-                unit: field
-                    .and_then(|v| v.pointer("/unit"))
-                    .and_then(|v| v.as_str())
-                    .and_then(|s| HashRateUnit::from_str(s).ok())
+                unit: displayed_unit
+                    .or_else(|| {
+                        field
+                            .and_then(|v| v.pointer("/unit"))
+                            .and_then(|v| v.as_str())
+                            .and_then(|s| HashRateUnit::from_str(s).ok())
+                    })
                     .unwrap_or(HashRateUnit::GigaHash),
                 algo: self.device_info.algo,
             }
@@ -1649,6 +1690,30 @@ mod tests {
             &json!({"bitmain-work-mode": 0}),
             MinerMode::Sleep
         ));
+    }
+
+    #[test]
+    fn z15_pro_uses_displayed_ksol_unit() {
+        let miner = AntMinerV202307::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::Z15Pro);
+        let data = HashMap::from([
+            (
+                DataField::Hashrate,
+                json!({
+                    "GHS 5s": 838.86,
+                    "RT HASHRATE": "838.86 Ksol/s",
+                    "AV HASHRATE": "841.92 Ksol/s"
+                }),
+            ),
+            (DataField::ExpectedHashrate, json!({"hashrate": 846.8})),
+        ]);
+
+        let actual = miner.parse_hashrate(&data).unwrap();
+        assert_eq!(actual.unit, HashRateUnit::KiloHash);
+        assert_eq!(actual.value, 838.86);
+
+        let expected = miner.parse_expected_hashrate(&data).unwrap();
+        assert_eq!(expected.unit, HashRateUnit::KiloHash);
+        assert_eq!(expected.value, 846.8);
     }
 
     /// Captured from live L9 and L11 hardware on stock firmware. Both are
