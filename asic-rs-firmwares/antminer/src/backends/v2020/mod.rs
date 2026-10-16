@@ -1524,8 +1524,6 @@ impl<const LEGACY: bool> SetTuningPercent for AntMinerStock<LEGACY> {}
 impl<const LEGACY: bool> SupportsPresets for AntMinerStock<LEGACY> {}
 
 #[cfg(test)]
-mod legacy_tests;
-#[cfg(test)]
 mod tests {
     use asic_rs_core::data::device::HashAlgorithm;
     use std::sync::Arc;
