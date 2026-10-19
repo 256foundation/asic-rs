@@ -1,3 +1,4 @@
+pub mod api_access;
 pub mod collector;
 pub mod fan;
 pub mod pools;

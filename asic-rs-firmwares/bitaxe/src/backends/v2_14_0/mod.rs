@@ -662,6 +662,8 @@ impl SupportsFanConfig for Bitaxe2140 {
     }
 }
 
+impl SupportsApiAccessConfig for Bitaxe2140 {}
+
 impl SupportsTemperatureConfig for Bitaxe2140 {}
 impl GetTuningPercent for Bitaxe2140 {}
 impl SetHashboardsEnabled for Bitaxe2140 {}

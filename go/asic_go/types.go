@@ -765,6 +765,8 @@ type Supports struct {
 	PrepareFirmware     bool `json:"prepare_firmware"`
 	CheckFirmwareUpdate bool `json:"check_firmware_update"`
 	TimezoneConfig      bool `json:"timezone_config"`
+	ApiAccessConfig     bool `json:"api_access_config"`
+	SetApiAccessConfig  bool `json:"set_api_access_config"`
 	ScalingConfig       bool `json:"scaling_config"`
 	TemperatureConfig   bool `json:"temperature_config"`
 	TuningConfig        bool `json:"tuning_config"`

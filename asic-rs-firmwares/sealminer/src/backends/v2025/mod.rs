@@ -948,6 +948,8 @@ impl Validate for SealMinerV2025 {
     type Firmware = SealMinerStockFirmware;
 }
 
+impl SupportsApiAccessConfig for SealMinerV2025 {}
+
 impl SupportsTemperatureConfig for SealMinerV2025 {}
 impl GetTuningPercent for SealMinerV2025 {}
 impl SetHashboardsEnabled for SealMinerV2025 {}

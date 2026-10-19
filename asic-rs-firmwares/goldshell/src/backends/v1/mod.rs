@@ -508,6 +508,8 @@ impl SupportsScalingConfig for GoldshellV1 {
         false
     }
 }
+impl SupportsApiAccessConfig for GoldshellV1 {}
+
 impl SupportsTemperatureConfig for GoldshellV1 {}
 impl SupportsTimezoneConfig for GoldshellV1 {}
 impl SupportsTuningConfig for GoldshellV1 {}

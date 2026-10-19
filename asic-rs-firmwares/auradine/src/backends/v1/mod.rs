@@ -1441,6 +1441,8 @@ impl SupportsFanConfig for AuradineV1 {
     }
 }
 
+impl SupportsApiAccessConfig for AuradineV1 {}
+
 impl SupportsTemperatureConfig for AuradineV1 {}
 impl GetTuningPercent for AuradineV1 {}
 impl SetHashboardsEnabled for AuradineV1 {}

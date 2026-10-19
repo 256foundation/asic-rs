@@ -155,6 +155,8 @@ Python exposes matching `supports_*` properties; Go returns them from
 | `supports_restore_stock_os` | `restore_stock_os()` |
 | `supports_prepare_firmware` | `prepare_firmware(...)` |
 | `supports_upgrade_firmware` | `upgrade_firmware(...)` |
+| `supports_api_access_config` | `get_api_access_config()` (Rust) |
+| `supports_set_api_access_config` | `set_api_access_config(...)` (Rust) |
 
 All miner handles also expose `revalidate()`, which re-runs that backend's
 firmware discovery checks against the same IP and returns whether the device is

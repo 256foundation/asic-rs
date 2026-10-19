@@ -1114,6 +1114,8 @@ impl SupportsFanConfig for BraiinsV2505 {
     }
 }
 
+impl SupportsApiAccessConfig for BraiinsV2505 {}
+
 impl SupportsTemperatureConfig for BraiinsV2505 {}
 impl GetTuningPercent for BraiinsV2505 {}
 impl SetTuningPercent for BraiinsV2505 {}

@@ -1043,6 +1043,8 @@ impl Validate for ProtoV1 {
     type Firmware = ProtoFirmware;
 }
 
+impl SupportsApiAccessConfig for ProtoV1 {}
+
 impl SupportsTemperatureConfig for ProtoV1 {}
 impl GetTuningPercent for ProtoV1 {}
 impl SetHashboardsEnabled for ProtoV1 {}

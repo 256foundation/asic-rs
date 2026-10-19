@@ -1016,6 +1016,8 @@ impl SupportsScalingConfig for ElphapexV1 {
 }
 impl SupportsTuningConfig for ElphapexV1 {}
 impl SupportsFanConfig for ElphapexV1 {}
+impl SupportsApiAccessConfig for ElphapexV1 {}
+
 impl SupportsTemperatureConfig for ElphapexV1 {}
 impl SupportsPresets for ElphapexV1 {}
 impl SupportsTimezoneConfig for ElphapexV1 {}

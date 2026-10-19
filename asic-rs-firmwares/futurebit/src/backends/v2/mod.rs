@@ -848,6 +848,8 @@ impl Validate for ApolloV2 {
     type Firmware = ApolloFirmware;
 }
 
+impl SupportsApiAccessConfig for ApolloV2 {}
+
 impl SupportsTemperatureConfig for ApolloV2 {}
 impl GetTuningPercent for ApolloV2 {}
 impl SetHashboardsEnabled for ApolloV2 {}
