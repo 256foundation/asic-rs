@@ -8,11 +8,19 @@ use asic_rs_core::traits::{
     miner::{Miner, MinerConstructor, Validate},
     model::MinerModel,
 };
+use serde_json::Value;
 use v2018::AntMinerV2018;
 use v2020::AntMinerV2020;
 use v2023_07::AntMinerV202307;
 
 pub struct AntMiner;
+
+fn blink_response_matches(response: &Value, fault: bool) -> bool {
+    matches!(
+        (fault, response.get("code").and_then(Value::as_str)),
+        (true, Some("B000")) | (false, Some("B100"))
+    )
+}
 
 fn use_legacy_backend(model: &impl MinerModel, version: Option<&semver::Version>) -> bool {
     AntMinerV2018::validate(version)
@@ -45,7 +53,10 @@ mod tests {
 
     use asic_rs_makes_antminer::models::AntMinerModel;
 
-    use super::{AntMiner, AntMinerV2018, AntMinerV2020, use_legacy_backend};
+    use super::{
+        AntMiner, AntMinerV2018, AntMinerV2020, blink_response_matches, use_legacy_backend,
+    };
+    use serde_json::json;
 
     #[test]
     fn routes_build_dates_before_2021_to_v2018() {
@@ -93,5 +104,14 @@ mod tests {
                 MinerCommand::RPC { .. }
             ));
         }
+    }
+
+    #[test]
+    fn blink_response_must_match_requested_state() {
+        assert!(blink_response_matches(&json!({"code": "B000"}), true));
+        assert!(blink_response_matches(&json!({"code": "B100"}), false));
+        assert!(!blink_response_matches(&json!({"code": "B100"}), true));
+        assert!(!blink_response_matches(&json!({"code": "B000"}), false));
+        assert!(!blink_response_matches(&json!({}), true));
     }
 }

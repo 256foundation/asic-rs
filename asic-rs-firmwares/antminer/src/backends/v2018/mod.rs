@@ -1040,10 +1040,11 @@ impl SetFaultLight for AntMinerV2018 {
         true
     }
 
-    #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
-        self.web.blink(fault).await?;
-        Ok(true)
+        Ok(super::blink_response_matches(
+            &self.web.blink(fault).await?,
+            fault,
+        ))
     }
 }
 
@@ -1973,6 +1974,17 @@ mod tests {
         let request = requests.last().unwrap();
         assert!(request.starts_with("POST /cgi-bin/blink.cgi HTTP/1.1\r\n"));
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn set_fault_light_reports_false_when_blink_state_does_not_match() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } =
+            mock_http_server(vec![(200, "OK", r#"{"code":"B100"}"#)]).await?;
+        let miner = miner_with_mock_web(port);
+
+        assert!(!miner.set_fault_light(true).await?);
+        task.await??;
         Ok(())
     }
 

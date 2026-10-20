@@ -1065,10 +1065,11 @@ impl SetFaultLight for AntMinerV2020 {
         true
     }
 
-    #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
-        self.web.blink(fault).await?;
-        Ok(true)
+        Ok(super::blink_response_matches(
+            &self.web.blink(fault).await?,
+            fault,
+        ))
     }
 }
 
