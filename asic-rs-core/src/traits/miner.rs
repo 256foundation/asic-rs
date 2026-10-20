@@ -12,7 +12,7 @@ use tracing;
 use crate::{
     config::{
         collector::{ConfigCollector, ConfigField, ConfigLocation},
-        fan::FanConfig,
+        fan::{FanConfig, FanPause},
         pools::PoolGroupConfig,
         preset::PresetInfo,
         scaling::ScalingConfig,
@@ -1313,6 +1313,17 @@ pub trait SupportsFanConfig: CollectConfigs {
     }
 
     fn supports_fan_config(&self) -> bool {
+        false
+    }
+
+    /// Set how the fans behave while the miner is paused, leaving every other
+    /// cooling setting unchanged.
+    #[allow(unused_variables)]
+    async fn set_fan_pause(&self, pause: FanPause) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting the pause fan mode is not supported on this platform");
+    }
+
+    fn supports_fan_pause(&self) -> bool {
         false
     }
 }

@@ -1502,7 +1502,7 @@ impl SupportsFanConfig for AntMinerV202307 {
     async fn set_fan_config(&self, config: FanConfig) -> anyhow::Result<bool> {
         let payload = match config {
             FanConfig::Auto { .. } => json!({"bitmain-fan-ctrl": false}),
-            FanConfig::Manual { fan_speed } => json!({
+            FanConfig::Manual { fan_speed, .. } => json!({
                 "bitmain-fan-ctrl": true,
                 "bitmain-fan-pwm": fan_speed.min(100).to_string(),
             }),
