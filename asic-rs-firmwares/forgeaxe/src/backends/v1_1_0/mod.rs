@@ -660,6 +660,8 @@ impl SupportsFanConfig for Forgeaxe110 {
     }
 }
 
+impl SupportsApiAccessConfig for Forgeaxe110 {}
+
 impl SupportsTemperatureConfig for Forgeaxe110 {}
 impl GetTuningPercent for Forgeaxe110 {}
 impl SetHashboardsEnabled for Forgeaxe110 {}

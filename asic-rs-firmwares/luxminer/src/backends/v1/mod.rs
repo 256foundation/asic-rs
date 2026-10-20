@@ -1250,6 +1250,8 @@ impl SupportsFanConfig for LuxMinerV1 {
     }
 }
 
+impl SupportsApiAccessConfig for LuxMinerV1 {}
+
 impl SupportsTemperatureConfig for LuxMinerV1 {}
 impl GetTuningPercent for LuxMinerV1 {}
 impl SetHashboardsEnabled for LuxMinerV1 {}

@@ -1025,6 +1025,8 @@ impl SupportsFanConfig for AvalonAMiner {
     }
 }
 
+impl SupportsApiAccessConfig for AvalonAMiner {}
+
 impl SupportsTemperatureConfig for AvalonAMiner {}
 impl GetTuningPercent for AvalonAMiner {}
 impl SetHashboardsEnabled for AvalonAMiner {}

@@ -11,6 +11,7 @@ use tracing;
 
 use crate::{
     config::{
+        api_access::ApiAccessConfig,
         collector::{ConfigCollector, ConfigField, ConfigLocation},
         fan::FanConfig,
         pools::PoolGroupConfig,
@@ -118,6 +119,7 @@ pub trait SupportsConfigs:
     + SupportsTuningConfig
     + SupportsFanConfig
     + SupportsTimezoneConfig
+    + SupportsApiAccessConfig
 {
 }
 
@@ -128,7 +130,8 @@ impl<
         + SupportsTemperatureConfig
         + SupportsTuningConfig
         + SupportsFanConfig
-        + SupportsTimezoneConfig,
+        + SupportsTimezoneConfig
+        + SupportsApiAccessConfig,
 > SupportsConfigs for T
 {
 }
@@ -1313,6 +1316,46 @@ pub trait SupportsFanConfig: CollectConfigs {
     }
 
     fn supports_fan_config(&self) -> bool {
+        false
+    }
+}
+
+/// RPC API access control (`api-listen`, `api-network`, `api-groups` and the
+/// `api-allow` list) on cgminer-family firmware.
+///
+/// Reading and writing are reported separately: some firmware exposes these
+/// settings in its configuration but offers no way to change them remotely.
+#[async_trait]
+pub trait SupportsApiAccessConfig: CollectConfigs {
+    /// Replace the miner's RPC API access settings.
+    ///
+    /// Fields that are `None` are left as they are. Applying the change
+    /// usually restarts the mining process.
+    #[allow(unused_variables)]
+    async fn set_api_access_config(&self, config: ApiAccessConfig) -> anyhow::Result<bool> {
+        anyhow::bail!("Setting API access config is not supported on this platform");
+    }
+    #[tracing::instrument(level = "debug")]
+    async fn get_api_access_config(&self) -> anyhow::Result<ApiAccessConfig> {
+        let mut collector = self.get_config_collector();
+        let data = collector.collect(&[ConfigField::ApiAccess]).await;
+        self.parse_api_access_config(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_api_access_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<ApiAccessConfig> {
+        anyhow::bail!("Getting API access config is not supported on this platform");
+    }
+
+    /// Whether [`Self::get_api_access_config`] is supported. Defaults to `false`.
+    fn supports_api_access_config(&self) -> bool {
+        false
+    }
+
+    /// Whether [`Self::set_api_access_config`] is supported. Defaults to `false`.
+    fn supports_set_api_access_config(&self) -> bool {
         false
     }
 }

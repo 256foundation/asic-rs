@@ -867,6 +867,8 @@ impl SupportsTuningConfig for VolcMinerV1 {}
 #[async_trait]
 impl SupportsFanConfig for VolcMinerV1 {}
 
+impl SupportsApiAccessConfig for VolcMinerV1 {}
+
 impl SupportsTemperatureConfig for VolcMinerV1 {}
 impl SupportsPresets for VolcMinerV1 {}
 impl SupportsTimezoneConfig for VolcMinerV1 {}

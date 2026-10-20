@@ -135,6 +135,7 @@ default_traits!(
     SupportsPresets,
     SupportsTemperatureConfig,
     SupportsTimezoneConfig,
+    SupportsApiAccessConfig,
     SupportsTuningConfig,
     SupportsFanConfig
 );

@@ -259,6 +259,8 @@ pub unsafe extern "C" fn asic_rs_miner_supports_json(miner: *const AsicMiner) ->
                 "prepare_firmware": m.supports_prepare_firmware(),
                 "check_firmware_update": m.supports_check_firmware_update(),
                 "timezone_config": m.supports_timezone_config(),
+                "api_access_config": m.supports_api_access_config(),
+                "set_api_access_config": m.supports_set_api_access_config(),
                 "scaling_config": m.supports_scaling_config(),
                 "temperature_config": m.supports_temperature_config(),
                 "tuning_config": m.supports_tuning_config(),

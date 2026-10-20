@@ -1185,6 +1185,8 @@ impl SupportsScalingConfig for VnishV130 {
     }
 }
 
+impl SupportsApiAccessConfig for VnishV130 {}
+
 #[async_trait]
 impl SupportsTemperatureConfig for VnishV130 {
     fn supports_temperature_config(&self) -> bool {

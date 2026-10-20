@@ -2035,6 +2035,8 @@ impl Validate for PowerPlayV1 {
     type Firmware = EPicFirmware;
 }
 
+impl SupportsApiAccessConfig for PowerPlayV1 {}
+
 impl SupportsTemperatureConfig for PowerPlayV1 {}
 impl GetTuningPercent for PowerPlayV1 {}
 impl SetTuningPercent for PowerPlayV1 {}

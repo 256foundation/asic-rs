@@ -5,6 +5,7 @@ use crate::firmware::AntMinerStockFirmware;
 use anyhow;
 use asic_rs_core::{
     config::{
+        api_access::ApiAccessConfig,
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
         fan::FanConfig,
         pools::{PoolConfig, PoolGroupConfig},
@@ -34,6 +35,8 @@ use rpc::AntMinerRPCAPI;
 use semver::Version;
 use serde_json::{Value, json};
 use web::AntMinerWebAPI;
+
+use crate::backends::api_access::{api_access_from_miner_conf, set_api_access_unsupported};
 
 mod firmware;
 mod rpc;
@@ -431,7 +434,7 @@ impl GetConfigsLocations for AntMinerV202307 {
                     tag: None,
                 },
             )],
-            ConfigField::Tuning | ConfigField::Fan => vec![(
+            ConfigField::Tuning | ConfigField::Fan | ConfigField::ApiAccess => vec![(
                 WEB_GET_MINER_CONF,
                 ConfigExtractor {
                     func: get_by_pointer,
@@ -1462,6 +1465,34 @@ impl SupportsFanConfig for AntMinerV202307 {
     }
 }
 
+#[async_trait]
+impl SupportsApiAccessConfig for AntMinerV202307 {
+    /// Always an error (see the `backends::api_access` module). No request is sent,
+    /// because a `set_miner_conf.cgi` write would reset the allow list rather
+    /// than change it.
+    async fn set_api_access_config(&self, _config: ApiAccessConfig) -> anyhow::Result<bool> {
+        Err(set_api_access_unsupported())
+    }
+
+    fn parse_api_access_config(
+        &self,
+        data: &HashMap<ConfigField, Value>,
+    ) -> anyhow::Result<ApiAccessConfig> {
+        let miner_conf = data
+            .get(&ConfigField::ApiAccess)
+            .ok_or_else(|| anyhow::anyhow!("No API access config data"))?;
+        api_access_from_miner_conf(miner_conf)
+    }
+
+    fn supports_api_access_config(&self) -> bool {
+        true
+    }
+
+    fn supports_set_api_access_config(&self) -> bool {
+        false
+    }
+}
+
 impl SupportsTemperatureConfig for AntMinerV202307 {}
 impl GetTuningPercent for AntMinerV202307 {}
 impl SetHashboardsEnabled for AntMinerV202307 {}
@@ -1941,5 +1972,100 @@ mod tests {
         assert!(request.starts_with("POST /cgi-bin/blink.cgi HTTP/1.1\r\n"));
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn get_api_access_config_reads_get_miner_conf() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } = mock_http_server(vec![(
+            200,
+            "OK",
+            r#"{"pools":[],"api-listen":true,"api-network":true,"api-groups":"A:stats:pools:devs:summary:version","api-allow":"A:0/0,W:*","bitmain-fan-ctrl":false}"#,
+        )])
+        .await?;
+        let miner = miner_with_mock_web(port);
+
+        let access = miner.get_api_access_config().await?;
+
+        let request = task.await??;
+        assert!(request.starts_with("GET /cgi-bin/get_miner_conf.cgi HTTP/1.1\r\n"));
+        assert_eq!(access.listen, Some(true));
+        assert_eq!(access.network, Some(true));
+        assert_eq!(
+            access.allow.as_ref().map(ToString::to_string).as_deref(),
+            Some("A:0/0,W:*")
+        );
+        assert!(!access.allows_write(IpAddr::from([192, 0, 2, 10])));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn get_api_access_config_reports_why_the_miner_refused() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } = mock_http_server(vec![(
+            500,
+            "Internal Server Error",
+            "get_miner_conf.cgi: busy",
+        )])
+        .await?;
+        let miner = miner_with_mock_web(port);
+
+        let error = miner.get_api_access_config().await.unwrap_err();
+
+        task.await??;
+        assert!(
+            error.to_string().contains("No API access config data"),
+            "{error}"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn set_api_access_config_is_refused_without_a_request() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } = mock_http_server(vec![]).await?;
+        let miner = miner_with_mock_web(port);
+
+        assert!(miner.supports_api_access_config());
+        assert!(!miner.supports_set_api_access_config());
+
+        let mut allow = asic_rs_core::config::api_access::ApiAllowList::default();
+        allow.grant_write(IpAddr::from([192, 0, 2, 10]));
+        let error = miner
+            .set_api_access_config(ApiAccessConfig {
+                allow: Some(allow),
+                ..Default::default()
+            })
+            .await
+            .unwrap_err();
+
+        // The mock answered nothing and saw nothing.
+        assert_eq!(task.await??, "");
+        assert!(error.to_string().contains("set_miner_conf.cgi"), "{error}");
+
+        Ok(())
+    }
+
+    /// The browser payload that pools, fan and mode writes send never carries
+    /// the `api-*` keys; the CGI regenerates them itself.
+    #[test]
+    fn set_miner_conf_payload_never_carries_api_access_keys() {
+        let pre = json!({
+            "pools": [],
+            "api-listen": true,
+            "api-network": true,
+            "api-groups": "A:stats:pools:devs:summary:version",
+            "api-allow": "W:192.0.2.10,A:0/0",
+            "bitmain-fan-ctrl": false,
+            "bitmain-fan-pwm": "100",
+            "bitmain-work-mode": "0"
+        });
+        for payload in [
+            miner_conf_with_pools(&pre, vec![]),
+            miner_conf_with_miner_mode(&pre, MinerMode::Sleep).unwrap_or_default(),
+        ] {
+            for key in ["api-listen", "api-network", "api-groups", "api-allow"] {
+                assert!(payload.get(key).is_none(), "{key} leaked into {payload}");
+            }
+        }
     }
 }
