@@ -677,7 +677,11 @@ impl GetMessages for SealMinerV2025 {
         if let Some(raw) = stats["PSU Error"].as_str().map(str::trim)
             && !raw.is_empty()
         {
-            let code = u64::from_str_radix(raw.trim_start_matches("0x"), 16).ok();
+            let digits = raw
+                .strip_prefix("0x")
+                .or_else(|| raw.strip_prefix("0X"))
+                .unwrap_or(raw);
+            let code = u64::from_str_radix(digits, 16).ok();
             if code != Some(0) {
                 messages.push(MinerMessage {
                     timestamp,
@@ -1539,6 +1543,9 @@ mod tests {
         assert_eq!(faulted[0].message, "PSU Error: 0x00000104");
         assert_eq!(faulted[0].severity, MessageSeverity::Error);
         assert_eq!(faulted[0].component, Some(MinerComponent::power_supply(0)));
+
+        assert!(messages("0X00000000").is_empty());
+        assert_eq!(messages("0X00000104")[0].code, 0x104);
 
         // Unparseable text still reaches the operator, without a code.
         let garbled = messages("fault");
