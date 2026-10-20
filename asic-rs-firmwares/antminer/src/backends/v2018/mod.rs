@@ -213,23 +213,6 @@ fn u64_from_value(value: &Value) -> Option<u64> {
         .or_else(|| value.as_str().and_then(|s| s.parse::<u64>().ok()))
 }
 
-fn miner_conf_with_fan_config(miner_conf: &Value, config: FanConfig) -> Value {
-    let mut payload = browser_miner_conf_payload(miner_conf);
-    match config {
-        FanConfig::Auto { .. } => {
-            payload.insert("bitmain-fan-ctrl".to_string(), Value::Bool(false));
-        }
-        FanConfig::Manual { fan_speed } => {
-            payload.insert("bitmain-fan-ctrl".to_string(), Value::Bool(true));
-            payload.insert(
-                "bitmain-fan-pwm".to_string(),
-                Value::String(fan_speed.min(100).to_string()),
-            );
-        }
-    }
-    Value::Object(payload)
-}
-
 impl AntMinerV2018 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
@@ -1390,14 +1373,6 @@ impl SupportsTuningConfig for AntMinerV2018 {
 
 #[async_trait]
 impl SupportsFanConfig for AntMinerV2018 {
-    async fn set_fan_config(&self, config: FanConfig) -> anyhow::Result<bool> {
-        let pre = self.web.get_miner_conf().await?;
-        self.web
-            .set_miner_conf(miner_conf_with_fan_config(&pre, config))
-            .await?;
-        Ok(true)
-    }
-
     fn parse_fan_config(&self, data: &HashMap<ConfigField, Value>) -> anyhow::Result<FanConfig> {
         let fan = data
             .get(&ConfigField::Fan)
@@ -1420,7 +1395,7 @@ impl SupportsFanConfig for AntMinerV2018 {
     }
 
     fn supports_fan_config(&self) -> bool {
-        true
+        false
     }
 }
 
