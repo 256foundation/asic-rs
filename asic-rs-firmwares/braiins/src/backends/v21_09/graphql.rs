@@ -373,7 +373,10 @@ impl BraiinsGraphQLAPI {
         let data = self
             .send_graphql_command(mutation, true, Some(json!({ "hash": hash })))
             .await?;
-        match data.pointer("/bos/upgrade/__typename").and_then(Value::as_str) {
+        match data
+            .pointer("/bos/upgrade/__typename")
+            .and_then(Value::as_str)
+        {
             Some("VoidResult") => Ok(()),
             Some("BosError") => anyhow::bail!(
                 "Braiins rejected the firmware upgrade: {}",
@@ -391,7 +394,9 @@ fn parse_upload_response(text: &str) -> anyhow::Result<String> {
     let body: Value = serde_json::from_str(text)
         .map_err(|e| anyhow::anyhow!("invalid firmware upload response ({e}): {text}"))?;
     if let Some(error) = body.get("error") {
-        let reason = error.as_str().map_or_else(|| error.to_string(), String::from);
+        let reason = error
+            .as_str()
+            .map_or_else(|| error.to_string(), String::from);
         anyhow::bail!("Braiins rejected the firmware image: {reason}");
     }
     body.get("sha256")
@@ -526,7 +531,10 @@ mod tests {
 
     #[test]
     fn parse_upload_response_variants() {
-        assert_eq!(parse_upload_response(r#"{"sha256":"ff00"}"#).unwrap(), "ff00");
+        assert_eq!(
+            parse_upload_response(r#"{"sha256":"ff00"}"#).unwrap(),
+            "ff00"
+        );
         let err = parse_upload_response(r#"{"error":"invalid image"}"#).unwrap_err();
         assert!(err.to_string().contains("invalid image"));
         assert!(parse_upload_response(r#"{"sha256":""}"#).is_err());
