@@ -2,9 +2,12 @@ use std::{net::IpAddr, time::Duration};
 
 use once_cell::sync::OnceCell;
 
-use asic_rs_core::{data::command::MinerCommand, traits::miner::*};
+use asic_rs_core::{
+    data::{command::MinerCommand, firmware::FirmwareImage},
+    traits::miner::*,
+};
 use async_trait::async_trait;
-use reqwest::Client;
+use reqwest::{Client, multipart};
 use serde_json::{Value, json};
 use tokio::sync::RwLock;
 
@@ -27,6 +30,15 @@ impl BraiinsGraphQLAPI {
             timeout: Duration::from_secs(5),
             session_id: RwLock::new(None),
             auth,
+        }
+    }
+
+    #[cfg(test)]
+    fn with_session(ip: IpAddr, port: u16, session: &str) -> Self {
+        Self {
+            port,
+            session_id: RwLock::new(Some(session.to_string())),
+            ..Self::new(ip, MinerAuth::new("root", "root"))
         }
     }
 
@@ -306,6 +318,91 @@ impl BraiinsGraphQLAPI {
 
         Ok(true)
     }
+
+    /// Upload a firmware image the way the BOS web UI does: `POST
+    /// /system/upgrade/upload` with the image in the multipart field `image`,
+    /// authenticated by the GraphQL session cookie. Returns the SHA-256 the
+    /// miner computed for the stored image, which [`Self::start_upgrade`] takes.
+    pub async fn upload_firmware(&self, image: FirmwareImage) -> anyhow::Result<String> {
+        // Always log in afresh: a cached session may have expired, and a
+        // multipart body cannot be replayed after a 401. Upgrades are rare.
+        let session = self.authenticate().await?;
+        *self.session_id.write().await = Some(session.clone());
+
+        let url = format!("http://{}:{}/system/upgrade/upload", self.ip, self.port);
+        let FirmwareImage { filename, bytes } = image;
+        let part = multipart::Part::bytes(bytes)
+            .file_name(filename)
+            .mime_str("application/octet-stream")
+            .map_err(|e| anyhow::anyhow!("failed to set firmware part mime type: {e}"))?;
+        let form = multipart::Form::new().part("image", part);
+
+        // Firmware images are ~100 MB; the client default (10 s) is far too short.
+        let response = self
+            .client()?
+            .post(&url)
+            .multipart(form)
+            .header("Cookie", format!("session_id={session}"))
+            .timeout(Duration::from_secs(600))
+            .send()
+            .await
+            .map_err(|e| anyhow::anyhow!("firmware upload request failed: {e}"))?;
+        let status = response.status();
+        let text = response
+            .text()
+            .await
+            .map_err(|e| anyhow::anyhow!("firmware upload response unreadable: {e}"))?;
+        if !status.is_success() {
+            anyhow::bail!("firmware upload HTTP error: {status}: {text}");
+        }
+        parse_upload_response(&text)
+    }
+
+    /// Install a previously uploaded image (`bos.upgrade(hash)`). On success the
+    /// miner reboots into the new firmware and is unreachable for a while.
+    pub async fn start_upgrade(&self, hash: &str) -> anyhow::Result<()> {
+        let mutation = r#"mutation ($hash: String!) {
+            bos {
+                upgrade(hash: $hash) {
+                    __typename
+                    ... on BosError { message }
+                }
+            }
+        }"#;
+        let data = self
+            .send_graphql_command(mutation, true, Some(json!({ "hash": hash })))
+            .await?;
+        match data
+            .pointer("/bos/upgrade/__typename")
+            .and_then(Value::as_str)
+        {
+            Some("VoidResult") => Ok(()),
+            Some("BosError") => anyhow::bail!(
+                "Braiins rejected the firmware upgrade: {}",
+                data.pointer("/bos/upgrade/message")
+                    .and_then(Value::as_str)
+                    .unwrap_or("no message")
+            ),
+            _ => anyhow::bail!("Invalid Braiins upgrade response: {data}"),
+        }
+    }
+}
+
+/// `{"sha256": "<hex>"}` on success, `{"error": "<reason>"}` when BOS rejects the image.
+fn parse_upload_response(text: &str) -> anyhow::Result<String> {
+    let body: Value = serde_json::from_str(text)
+        .map_err(|e| anyhow::anyhow!("invalid firmware upload response ({e}): {text}"))?;
+    if let Some(error) = body.get("error") {
+        let reason = error
+            .as_str()
+            .map_or_else(|| error.to_string(), String::from);
+        anyhow::bail!("Braiins rejected the firmware image: {reason}");
+    }
+    body.get("sha256")
+        .and_then(Value::as_str)
+        .filter(|hash| !hash.is_empty())
+        .map(String::from)
+        .ok_or_else(|| anyhow::anyhow!("firmware upload response has no sha256: {text}"))
 }
 
 #[async_trait]
@@ -332,5 +429,142 @@ impl APIClient for BraiinsGraphQLAPI {
                 "Unsupported command type for GraphQL client"
             )),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Context;
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::TcpListener,
+    };
+
+    use super::*;
+
+    /// Serve one HTTP request per entry of `responses` (extra headers, body),
+    /// in order, and return the raw requests received.
+    async fn serve(
+        responses: Vec<(&'static str, &'static str)>,
+    ) -> anyhow::Result<(u16, tokio::task::JoinHandle<anyhow::Result<Vec<String>>>)> {
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+        let task = tokio::spawn(async move {
+            let mut requests = Vec::new();
+            for (headers, body) in responses {
+                let (mut socket, _) =
+                    tokio::time::timeout(Duration::from_secs(2), listener.accept())
+                        .await
+                        .context("timed out waiting for HTTP request")??;
+                let mut request = Vec::new();
+                let mut chunk = [0_u8; 4096];
+                loop {
+                    if let Some(end) = request.windows(4).position(|w| w == b"\r\n\r\n") {
+                        let head = String::from_utf8_lossy(&request[..end]).to_lowercase();
+                        let length = head
+                            .lines()
+                            .find_map(|l| l.strip_prefix("content-length:"))
+                            .and_then(|v| v.trim().parse::<usize>().ok())
+                            .context("request without content-length")?;
+                        if request.len() >= end + 4 + length {
+                            break;
+                        }
+                    }
+                    let read = socket.read(&mut chunk).await?;
+                    anyhow::ensure!(read > 0, "connection closed mid-request");
+                    request.extend_from_slice(&chunk[..read]);
+                }
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                socket.write_all(response.as_bytes()).await?;
+                requests.push(String::from_utf8_lossy(&request).into_owned());
+            }
+            Ok(requests)
+        });
+        Ok((port, task))
+    }
+
+    async fn within<T>(fut: impl std::future::Future<Output = T>) -> anyhow::Result<T> {
+        tokio::time::timeout(Duration::from_secs(10), fut)
+            .await
+            .context("test timed out")
+    }
+
+    fn api(port: u16) -> BraiinsGraphQLAPI {
+        BraiinsGraphQLAPI::with_session(IpAddr::from([127, 0, 0, 1]), port, "sess-1")
+    }
+
+    #[tokio::test]
+    async fn upload_firmware_logs_in_afresh_and_returns_hash() -> anyhow::Result<()> {
+        let (port, task) = serve(vec![
+            (
+                "Set-Cookie: session_id=fresh-1; Path=/; HttpOnly\r\n",
+                r#"{"data":{"auth":{"login":{"void":null}}}}"#,
+            ),
+            ("", r#"{"sha256":"abc123"}"#),
+        ])
+        .await?;
+        let image = FirmwareImage::new("fw.tar".to_string(), b"FIRMWARE".to_vec());
+
+        // The cached session "sess-1" must not be used for the upload.
+        let api = api(port);
+        assert_eq!(within(api.upload_firmware(image)).await??, "abc123");
+
+        let requests = within(task).await???;
+        assert!(requests[0].starts_with("POST /graphql HTTP/1.1\r\n"));
+        assert!(requests[0].contains("login("));
+        let upload = &requests[1];
+        assert!(upload.starts_with("POST /system/upgrade/upload HTTP/1.1\r\n"));
+        assert!(upload.contains("cookie: session_id=fresh-1"));
+        assert!(upload.contains("name=\"image\"; filename=\"fw.tar\""));
+        assert!(upload.contains("FIRMWARE"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn start_upgrade_sends_hash_and_accepts_void_result() -> anyhow::Result<()> {
+        let (port, task) = serve(vec![(
+            "",
+            r#"{"data":{"bos":{"upgrade":{"__typename":"VoidResult"}}}}"#,
+        )])
+        .await?;
+
+        let api = api(port);
+        within(api.start_upgrade("abc123")).await??;
+
+        let request = within(task).await???.remove(0);
+        assert!(request.starts_with("POST /graphql HTTP/1.1\r\n"));
+        assert!(request.contains("upgrade(hash: $hash)"));
+        assert!(request.contains(r#""hash":"abc123""#));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn start_upgrade_surfaces_bos_error() -> anyhow::Result<()> {
+        let (port, task) = serve(vec![(
+            "",
+            r#"{"data":{"bos":{"upgrade":{"__typename":"BosError","message":"image not found"}}}}"#,
+        )])
+        .await?;
+
+        let api = api(port);
+        let err = within(api.start_upgrade("abc123")).await?.unwrap_err();
+        assert!(err.to_string().contains("image not found"));
+        within(task).await???;
+        Ok(())
+    }
+
+    #[test]
+    fn parse_upload_response_variants() {
+        assert_eq!(
+            parse_upload_response(r#"{"sha256":"ff00"}"#).unwrap(),
+            "ff00"
+        );
+        let err = parse_upload_response(r#"{"error":"invalid image"}"#).unwrap_err();
+        assert!(err.to_string().contains("invalid image"));
+        assert!(parse_upload_response(r#"{"sha256":""}"#).is_err());
+        assert!(parse_upload_response("not json").is_err());
     }
 }
