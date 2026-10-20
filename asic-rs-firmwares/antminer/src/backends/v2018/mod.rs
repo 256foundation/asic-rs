@@ -18,7 +18,6 @@ use asic_rs_core::{
         fan::FanData,
         firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
-        message::{MessageSeverity, MinerMessage},
         miner::{MiningMode, TuningTarget},
         pool::{PoolData, PoolGroupData, PoolURL},
     },
@@ -431,11 +430,6 @@ impl GetDataLocations for AntMinerV2018 {
             parameters: None,
         };
 
-        const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
-            command: "summary",
-            parameters: None,
-        };
-
         const WEB_MINER_TYPE: MinerCommand = MinerCommand::WebAPI {
             command: "miner_type",
             parameters: None,
@@ -615,14 +609,6 @@ impl GetDataLocations for AntMinerV2018 {
                     },
                 ),
             ],
-            DataField::Messages => vec![(
-                WEB_SUMMARY,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/SUMMARY/0/status"),
-                    tag: None,
-                },
-            )],
             DataField::TuningTarget => vec![(
                 WEB_MINER_CONF,
                 DataExtractor {
@@ -1069,38 +1055,7 @@ impl GetPsus for AntMinerV2018 {}
 impl GetTuningCapabilities for AntMinerV2018 {}
 impl SupportsTimezoneConfig for AntMinerV2018 {}
 
-impl GetMessages for AntMinerV2018 {
-    fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
-        let mut messages = Vec::new();
-
-        if let Some(status_data) = data.get(&DataField::Messages)
-            && let Some(status_array) = status_data.as_array()
-        {
-            for (idx, item) in status_array.iter().enumerate() {
-                if let Some(status) = item.get("status").and_then(|v| v.as_str())
-                    && status != "s"
-                {
-                    // 's' means success/ok
-                    let message_text = item
-                        .get("msg")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Unknown error")
-                        .to_string();
-
-                    let severity = match status.to_lowercase().as_str() {
-                        "e" => MessageSeverity::Error,
-                        "w" => MessageSeverity::Warning,
-                        _ => MessageSeverity::Info,
-                    };
-
-                    messages.push(MinerMessage::new(0, idx as u64, message_text, severity));
-                }
-            }
-        }
-
-        messages
-    }
-}
+impl GetMessages for AntMinerV2018 {}
 
 #[async_trait]
 impl SetFaultLight for AntMinerV2018 {
