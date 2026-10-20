@@ -133,7 +133,7 @@ fn browser_miner_conf_payload(miner_conf: &Value) -> serde_json::Map<String, Val
 /// `set_miner_conf.cgi` only overwrites the pool slots it is sent, so a list
 /// shorter than the miner's three slots leaves the old trailing pools in
 /// place. Blank the unused slots so they are removed.
-fn pools_payload(config: Vec<PoolGroupConfig>) -> Vec<Value> {
+fn pools_payload(config: Vec<PoolGroupConfig>) -> anyhow::Result<Vec<Value>> {
     let mut pools: Vec<Value> = config
         .into_iter()
         .flat_map(|group| group.pools.into_iter())
@@ -146,8 +146,11 @@ fn pools_payload(config: Vec<PoolGroupConfig>) -> Vec<Value> {
         })
         .collect();
 
+    if pools.len() > 3 {
+        anyhow::bail!("stock Antminer supports at most three pools");
+    }
     pools.resize(3, json!({ "url": "", "user": "", "pass": "" }));
-    pools
+    Ok(pools)
 }
 
 fn miner_conf_with_pools(miner_conf: &Value, pools: Vec<Value>) -> Value {
@@ -1129,7 +1132,7 @@ impl SupportsPoolsConfig for AntMinerV2020 {
     }
 
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
-        let pools = pools_payload(config);
+        let pools = pools_payload(config)?;
         let miner_conf = self.web.get_miner_conf().await?;
         let miner_conf = miner_conf_with_pools(&miner_conf, pools);
 
@@ -1489,12 +1492,35 @@ mod tests {
                 name: String::new(),
                 quota: 1,
                 pools: vec![pool(1), pool(2)],
-            }]),
+            }])
+            .unwrap(),
             vec![
                 json!({"url": "stratum+tcp://pool1.example:3333", "user": "worker.1", "pass": "x"}),
                 json!({"url": "stratum+tcp://pool2.example:3333", "user": "worker.2", "pass": "x"}),
                 json!({"url": "", "user": "", "pass": ""}),
             ]
+        );
+    }
+
+    #[test]
+    fn pools_payload_rejects_more_than_three_pools_across_groups() {
+        let pool = || PoolConfig {
+            url: PoolURL::from("stratum+tcp://pool.example:3333".to_string()),
+            username: "worker".to_string(),
+            password: "x".to_string(),
+        };
+        let groups = (0..2)
+            .map(|_| PoolGroupConfig {
+                name: String::new(),
+                quota: 1,
+                pools: vec![pool(), pool()],
+            })
+            .collect();
+        assert!(
+            pools_payload(groups)
+                .unwrap_err()
+                .to_string()
+                .contains("at most three pools")
         );
     }
 
