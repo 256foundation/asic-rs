@@ -525,9 +525,11 @@ mod tests {
 
     #[tokio::test]
     async fn start_upgrade_sends_hash_and_accepts_void_result() -> anyhow::Result<()> {
-        let (port, task) =
-            serve(vec![("", r#"{"data":{"bos":{"upgrade":{"__typename":"VoidResult"}}}}"#)])
-                .await?;
+        let (port, task) = serve(vec![(
+            "",
+            r#"{"data":{"bos":{"upgrade":{"__typename":"VoidResult"}}}}"#,
+        )])
+        .await?;
 
         let api = api(port);
         within(api.start_upgrade("abc123")).await??;
