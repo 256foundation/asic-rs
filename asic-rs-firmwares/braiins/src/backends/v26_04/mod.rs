@@ -16,7 +16,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
-        firmware::{FirmwareStats, FirmwareUpdate, RestoreStockOsResult},
+        firmware::{FirmwareImage, FirmwareStats, FirmwareUpdate, RestoreStockOsResult},
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
@@ -1022,8 +1022,16 @@ impl SupportsScalingConfig for BraiinsV2604 {
 
 #[async_trait]
 impl UpgradeFirmware for BraiinsV2604 {
+    /// Same two steps as the BOS web UI: upload the image, then install it by
+    /// the hash the miner reports. The miner reboots afterwards.
+    async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
+        let hash = self.graphql.upload_firmware(image).await?;
+        self.graphql.start_upgrade(&hash).await?;
+        Ok(true)
+    }
+
     fn supports_upgrade_firmware(&self) -> bool {
-        false
+        true
     }
 
     fn supports_check_firmware_update(&self) -> bool {
@@ -1201,6 +1209,12 @@ mod tests {
         let mut miner = BraiinsV2604::new(ip, AntMinerModel::S21Pro);
         miner.web = BraiinsWebAPI::new_with_port(ip, port, MinerAuth::from_token("test-token"));
         miner
+    }
+
+    #[test]
+    fn supports_firmware_upgrade() {
+        let miner = miner_with_mock_web(1);
+        assert!(miner.supports_upgrade_firmware());
     }
 
     #[tokio::test]
