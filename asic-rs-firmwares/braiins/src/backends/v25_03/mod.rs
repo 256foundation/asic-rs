@@ -649,6 +649,7 @@ impl GetFans for BraiinsV2503 {
 }
 
 impl GetPsuFans for BraiinsV2503 {}
+impl GetPsus for BraiinsV2503 {}
 
 impl GetFluidTemperature for BraiinsV2503 {}
 

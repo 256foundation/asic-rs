@@ -1019,6 +1019,7 @@ impl GetFluidTemperature for AntMinerV2020 {
 }
 
 impl GetPsuFans for AntMinerV2020 {}
+impl GetPsus for AntMinerV2020 {}
 impl GetTuningCapabilities for AntMinerV2020 {}
 impl SupportsTimezoneConfig for AntMinerV2020 {}
 

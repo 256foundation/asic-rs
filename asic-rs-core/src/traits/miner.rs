@@ -33,6 +33,7 @@ use crate::{
         miner::{CheckedMinerData, MinerData, NoTelemetryError, TuningTarget},
         operating_state::OperatingState,
         pool::PoolGroupData,
+        psu::PsuData,
     },
     traits::firmware::MinerFirmware,
     traits::model::MinerModel,
@@ -170,6 +171,7 @@ pub trait GetMinerData:
     + GetExpectedHashrate
     + GetFans
     + GetPsuFans
+    + GetPsus
     + GetFluidTemperature
     + GetWattage
     + GetTuningPercent
@@ -242,6 +244,7 @@ impl<
         + GetExpectedHashrate
         + GetFans
         + GetPsuFans
+        + GetPsus
         + GetFluidTemperature
         + GetWattage
         + GetTuningPercent
@@ -317,6 +320,7 @@ impl<
         let outlet_fluid_temperature = self.parse_outlet_fluid_temperature(&data);
         let fans = self.parse_fans(&data);
         let psu_fans = self.parse_psu_fans(&data);
+        let psus = self.parse_psus(&data);
         let hashboards = self.parse_hashboards(&data);
         let light_flashing = self.parse_light_flashing(&data);
         let is_mining = self.parse_is_mining(&data);
@@ -399,6 +403,7 @@ impl<
             expected_fans: device_info.hardware.fans,
             fans,
             psu_fans,
+            psus,
             average_temperature,
             fluid_temperature,
             outlet_fluid_temperature,
@@ -712,6 +717,21 @@ pub trait GetPsuFans: CollectData {
     #[allow(unused_variables)]
     fn parse_psu_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         vec![]
+    }
+}
+
+// PSUs
+#[async_trait]
+pub trait GetPsus: CollectData {
+    #[tracing::instrument(level = "debug")]
+    async fn get_psus(&self) -> Option<Vec<PsuData>> {
+        let mut collector = self.get_collector();
+        let data = collector.collect(&[DataField::Psus]).await;
+        self.parse_psus(&data)
+    }
+    #[allow(unused_variables)]
+    fn parse_psus(&self, data: &HashMap<DataField, Value>) -> Option<Vec<PsuData>> {
+        None
     }
 }
 

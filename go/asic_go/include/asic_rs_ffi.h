@@ -324,6 +324,12 @@ char *asic_rs_miner_get_fans_json(const struct AsicMiner *miner);
 // `miner` must be a live handle.
 char *asic_rs_miner_get_psu_fans_json(const struct AsicMiner *miner);
 
+// PSU telemetry as JSON (`null` when the firmware does not report it).
+//
+// # Safety
+// `miner` must be a live handle.
+char *asic_rs_miner_get_psus_json(const struct AsicMiner *miner);
+
 // Fluid/ambient temperature in °C as JSON.
 //
 // # Safety

@@ -25,13 +25,14 @@ use asic_rs_core::{
         miner::{MiningMode, TuningTarget},
         operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
+        psu::PsuData,
     },
     traits::{miner::*, model::MinerModel},
 };
 use asic_rs_makes_sealminer::models::SealMinerModel;
 use async_trait::async_trait;
 use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature};
+use measurements::{AngularVelocity, Current, Frequency, Power, Temperature, Voltage};
 use rpc::SealMinerRPCAPI;
 use serde_json::Value;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -253,6 +254,14 @@ impl GetDataLocations for SealMinerV2025 {
                     tag: None,
                 },
             )],
+            DataField::Psus => vec![(
+                RPC_STATS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/STATS/0"),
+                    tag: None,
+                },
+            )],
             DataField::AverageTemperature => vec![(
                 RPC_STATS,
                 DataExtractor {
@@ -399,6 +408,11 @@ impl GetHashboards for SealMinerV2025 {
         };
 
         let board_count = stats["Board Count"].as_u64().unwrap_or(0) as usize;
+        // Boards share one PSU rail; stats has no per-board voltage.
+        let voltage = stats["PSU Output Voltage"]
+            .as_f64()
+            .filter(|&v| v > 0.0)
+            .map(Voltage::from_volts);
 
         (0..board_count)
             .map(|i| {
@@ -480,7 +494,7 @@ impl GetHashboards for SealMinerV2025 {
                     working_chips,
                     serial_number: serial,
                     chips: vec![],
-                    voltage: None,
+                    voltage,
                     frequency: freq,
                     tuned,
                     active: Some(online),
@@ -544,6 +558,36 @@ impl GetPsuFans for SealMinerV2025 {
             }]
         })
         .unwrap_or_default()
+    }
+}
+
+impl GetPsus for SealMinerV2025 {
+    fn parse_psus(&self, data: &HashMap<DataField, Value>) -> Option<Vec<PsuData>> {
+        let stats = data.get(&DataField::Psus)?;
+        let text = |key: &str| -> Option<String> {
+            match stats.get(key)? {
+                Value::String(s) => Some(s.trim().to_owned()).filter(|s| !s.is_empty()),
+                Value::Number(n) => Some(n.to_string()),
+                _ => None,
+            }
+        };
+        let number = |key: &str| stats.get(key).and_then(Value::as_f64);
+
+        // Stats carries a single PSU; no keys means the firmware didn't report it.
+        let psu = PsuData {
+            position: 0,
+            model: text("PSU Model"),
+            serial_number: text("PSU SN"),
+            firmware_version: text("PSU Firmware"),
+            input_voltage: number("PSU Input Voltage").map(Voltage::from_volts),
+            output_voltage: number("PSU Output Voltage").map(Voltage::from_volts),
+            output_current: number("PSU Output Current").map(Current::from_amperes),
+            input_power: number("PSU Input Power").map(Power::from_watts),
+            output_power: number("PSU Output Power").map(Power::from_watts),
+            efficiency: number("PSU Efficiency"),
+            temperature: number("PSU Temp AMB").map(Temperature::from_celsius),
+        };
+        (psu != PsuData::default()).then(|| vec![psu])
     }
 }
 
@@ -627,6 +671,26 @@ impl GetMessages for SealMinerV2025 {
                 severity: MessageSeverity::Error,
                 component: None,
             });
+        }
+
+        // Hex fault bitmask; "0x00000000" means healthy.
+        if let Some(raw) = stats["PSU Error"].as_str().map(str::trim)
+            && !raw.is_empty()
+        {
+            let digits = raw
+                .strip_prefix("0x")
+                .or_else(|| raw.strip_prefix("0X"))
+                .unwrap_or(raw);
+            let code = u64::from_str_radix(digits, 16).ok();
+            if code != Some(0) {
+                messages.push(MinerMessage {
+                    timestamp,
+                    code: code.unwrap_or(0),
+                    message: format!("PSU Error: {raw}"),
+                    severity: MessageSeverity::Error,
+                    component: Some(MinerComponent::power_supply(0)),
+                });
+            }
         }
 
         let board_count = stats["Board Count"].as_u64().unwrap_or(0) as usize;
@@ -1059,6 +1123,28 @@ mod tests {
             Some("S124600252004637".to_string())
         );
         assert_eq!(miner_data.hashboards[0].working_chips, Some(153));
+        assert!(
+            miner_data
+                .hashboards
+                .iter()
+                .all(|b| b.voltage == Some(Voltage::from_volts(15.671)))
+        );
+        assert_eq!(
+            miner_data.psus,
+            Some(vec![PsuData {
+                position: 0,
+                model: Some("BTPSU04KSA-03.00".to_string()),
+                serial_number: Some("3C251501801".to_string()),
+                firmware_version: Some("222121".to_string()),
+                input_voltage: Some(Voltage::from_volts(246.0)),
+                output_voltage: Some(Voltage::from_volts(15.671)),
+                output_current: Some(Current::from_amperes(206.0)),
+                input_power: Some(Power::from_watts(3504.0)),
+                output_power: Some(Power::from_watts(3232.0)),
+                efficiency: Some(0.922374),
+                temperature: Some(Temperature::from_celsius(26.0)),
+            }])
+        );
         assert_eq!(
             miner_data.hashrate,
             Some(HashRate {
@@ -1437,5 +1523,52 @@ mod tests {
         .await
         .map_err(|_| anyhow::anyhow!("Timed out confirming the requested mode and power cap"))?;
         Ok(())
+    }
+
+    #[test]
+    fn psu_error_bitmask_becomes_power_supply_message() {
+        let miner = SealMinerV2025::new(IpAddr::from([127, 0, 0, 1]), SealMinerModel::A2);
+        let messages = |psu_error: &str| {
+            miner.parse_messages(&HashMap::from([(
+                DataField::Messages,
+                serde_json::json!({ "PSU Error": psu_error }),
+            )]))
+        };
+
+        assert!(messages("0x00000000").is_empty());
+
+        let faulted = messages("0x00000104");
+        assert_eq!(faulted.len(), 1);
+        assert_eq!(faulted[0].code, 0x104);
+        assert_eq!(faulted[0].message, "PSU Error: 0x00000104");
+        assert_eq!(faulted[0].severity, MessageSeverity::Error);
+        assert_eq!(faulted[0].component, Some(MinerComponent::power_supply(0)));
+
+        assert!(messages("0X00000000").is_empty());
+        assert_eq!(messages("0X00000104")[0].code, 0x104);
+
+        // Unparseable text still reaches the operator, without a code.
+        let garbled = messages("fault");
+        assert_eq!(garbled.len(), 1);
+        assert_eq!(garbled[0].code, 0);
+    }
+
+    #[test]
+    fn psus_are_none_without_psu_telemetry() {
+        let miner = SealMinerV2025::new(IpAddr::from([127, 0, 0, 1]), SealMinerModel::A2);
+        let psus = |stats: Value| miner.parse_psus(&HashMap::from([(DataField::Psus, stats)]));
+
+        assert_eq!(miner.parse_psus(&HashMap::new()), None);
+        assert_eq!(psus(serde_json::json!({ "Board Count": 3 })), None);
+
+        // A numeric firmware field and a single reading still yield a PSU.
+        let partial = psus(serde_json::json!({ "PSU Firmware": 2045, "PSU Model": " " }));
+        assert_eq!(
+            partial,
+            Some(vec![PsuData {
+                firmware_version: Some("2045".to_string()),
+                ..Default::default()
+            }])
+        );
     }
 }

@@ -684,6 +684,7 @@ impl GetFans for VnishV130 {
 }
 
 impl GetPsuFans for VnishV130 {}
+impl GetPsus for VnishV130 {}
 
 impl GetFluidTemperature for VnishV130 {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {

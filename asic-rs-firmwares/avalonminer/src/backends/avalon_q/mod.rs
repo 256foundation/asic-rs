@@ -763,6 +763,7 @@ impl GetFans for AvalonQMiner {
 }
 
 impl GetPsuFans for AvalonQMiner {}
+impl GetPsus for AvalonQMiner {}
 
 impl GetWattage for AvalonQMiner {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {

@@ -1165,6 +1165,7 @@ impl GetFans for PowerPlayV1 {
 }
 
 impl GetPsuFans for PowerPlayV1 {}
+impl GetPsus for PowerPlayV1 {}
 impl GetTuningCapabilities for PowerPlayV1 {}
 
 impl GetFluidTemperature for PowerPlayV1 {}

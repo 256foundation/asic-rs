@@ -62,6 +62,9 @@ pub enum DataField {
     /// PSU fan speed or configuration.
     #[cfg_attr(feature = "python", pydantic(value = "PsuFans"))]
     PsuFans,
+    /// Power supply telemetry (voltages, current, power, model, serial).
+    #[cfg_attr(feature = "python", pydantic(value = "Psus"))]
+    Psus,
     /// Average temperature reported by the miner.
     #[cfg_attr(feature = "python", pydantic(value = "AverageTemperature"))]
     AverageTemperature,

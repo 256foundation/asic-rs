@@ -1395,7 +1395,7 @@ mod tests {
         assert!(!NerdAxeFirmware::default().identify_web(&response));
     }
     #[test]
-    #[cfg(all(feature = "forgeaxe"))]
+    #[cfg(feature = "forgeaxe")]
     fn default_registry_discovers_forgeos() {
         let response = WebResponse {
             body: "<html><title>ForgeOS</title></html>",

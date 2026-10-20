@@ -1065,6 +1065,7 @@ impl GetFluidTemperature for AntMinerV2018 {
 }
 
 impl GetPsuFans for AntMinerV2018 {}
+impl GetPsus for AntMinerV2018 {}
 impl GetTuningCapabilities for AntMinerV2018 {}
 impl SupportsTimezoneConfig for AntMinerV2018 {}
 

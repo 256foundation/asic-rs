@@ -372,6 +372,15 @@ default when a response is missing. It is not derived from `operating_state`.
 Use `miner.get_operating_state()` to fetch just this field, or exclude
 `DataField.OperatingState` (`DataField::OperatingState` in Rust) from a snapshot.
 
+`data.psus` is an optional list of `PsuData` entries with the PSU’s model,
+serial number, firmware version, input/output voltage, output current,
+input/output power, efficiency (0–1 ratio), and temperature. It is `None` for
+firmware that does not report PSU details; individual readings stay `None`
+when absent. PSU fan speed remains in `data.psu_fans` and PSU faults appear in
+`data.messages` with a `PowerSupply` component. SealMiner Stock fills it from
+RPC `stats`. Use `miner.get_psus()` (Go: `GetPSUs()`) or exclude
+`DataField.Psus` from a snapshot.
+
 `data.devfee_connected` reports developer-fee connection health when firmware
 exposes it: `True`/`Some(true)` is connected, `False`/`Some(false)` is
 disconnected, and `None` means no usable status is exposed. ePIC/UMC derives it

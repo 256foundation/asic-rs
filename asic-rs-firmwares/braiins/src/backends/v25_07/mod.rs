@@ -800,6 +800,7 @@ impl SupportsTimezoneConfig for BraiinsV2507 {
 }
 
 impl GetPsuFans for BraiinsV2507 {}
+impl GetPsus for BraiinsV2507 {}
 
 impl GetMessages for BraiinsV2507 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {

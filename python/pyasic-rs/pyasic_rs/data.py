@@ -20,6 +20,7 @@ from pyasic_rs.asic_rs import MessageSeverity
 from pyasic_rs.asic_rs import MiningMode
 from pyasic_rs.asic_rs import OperatingState
 from pyasic_rs.asic_rs import PoolData, PoolGroupData, PoolScheme, PoolURL
+from pyasic_rs.asic_rs import PsuData
 from pyasic_rs.asic_rs import TuningTarget
 from pyasic_rs.asic_rs import DataField
 
@@ -48,6 +49,7 @@ __all__ = [
     "PoolGroupData",
     "PoolScheme",
     "PoolURL",
+    "PsuData",
     "TuningTarget",
     "DataField",
 ]

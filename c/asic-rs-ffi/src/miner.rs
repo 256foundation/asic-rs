@@ -528,6 +528,17 @@ pub unsafe extern "C" fn asic_rs_miner_get_psu_fans_json(miner: *const AsicMiner
     })
 }
 
+/// PSU telemetry as JSON (`null` when the firmware does not report it).
+///
+/// # Safety
+/// `miner` must be a live handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn asic_rs_miner_get_psus_json(miner: *const AsicMiner) -> *mut c_char {
+    ffi_guard(ptr::null_mut(), || {
+        miner_json(miner, |m| block_on(m.get_psus()))
+    })
+}
+
 /// Fluid/ambient temperature in °C as JSON.
 ///
 /// # Safety

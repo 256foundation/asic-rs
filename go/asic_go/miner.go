@@ -319,6 +319,13 @@ func (m *Miner) GetPSUFans() ([]FanData, error) {
 	return v, err
 }
 
+// GetPSUs returns power supply telemetry; nil when the firmware does not report it.
+func (m *Miner) GetPSUs() ([]PSUData, error) {
+	var v []PSUData
+	err := m.getJSON(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_get_psus_json(ptr) }, &v)
+	return v, err
+}
+
 // GetFluidTemperature returns environment/fluid temperature in °C, if available.
 func (m *Miner) GetFluidTemperature() (*float64, error) {
 	var v *float64
