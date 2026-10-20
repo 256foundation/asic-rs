@@ -15,7 +15,7 @@ use reqwest::{
 };
 use serde_json::{Value, json};
 
-use super::super::stock_firmware::AntMinerFirmwareUpgradeResponseExt;
+use super::firmware::AntMinerFirmwareUpgradeResponseExt;
 
 /// `set_miner_conf.cgi` restarts mining before it answers, which takes about
 /// a minute on stock firmware. Giving up sooner reports a failure for a write
@@ -112,7 +112,7 @@ impl AntMinerWebAPI {
     }
 
     #[cfg(test)]
-    pub(crate) fn new_with_port(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
+    pub(super) fn new_with_port(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
         let mut client = Self::new(ip, auth);
         client.port = port;
         client
@@ -261,51 +261,6 @@ impl AntMinerWebAPI {
     pub async fn get_miner_conf(&self) -> Result<Value> {
         self.send_web_command("get_miner_conf", false, None, Method::GET)
             .await
-    }
-
-    /// Older stock firmware accepts pool changes as browser form fields.
-    pub(in crate::backends) async fn set_pools_form(&self, pools: &[Value]) -> Result<()> {
-        let mut fields = Vec::with_capacity(9);
-        for (index, pool) in pools.iter().enumerate() {
-            let slot = index + 1;
-            for (field, key) in [("url", "url"), ("user", "user"), ("pw", "pass")] {
-                let value = pool
-                    .get(key)
-                    .and_then(Value::as_str)
-                    .context("pool form payload is missing a string field")?;
-                fields.push((format!("_ant_pool{slot}{field}"), value.to_owned()));
-            }
-        }
-
-        let url = format!(
-            "http://{}:{}/cgi-bin/set_miner_conf.cgi",
-            self.ip, self.port
-        );
-        let response = self
-            .client()?
-            .post(url)
-            .form(&fields)
-            .timeout(self.set_miner_conf_timeout())
-            .send_digest_auth((self.auth.username(), self.auth.password()))
-            .await
-            .context("legacy stock pool form request failed")?;
-        let status = response.status();
-        let body = response.text().await?;
-        if !status.is_success() {
-            bail!(
-                "legacy stock pool form returned HTTP {}: {}",
-                status,
-                Self::truncated_firmware_upgrade_response_body(body.trim())
-            );
-        }
-        // Some older CGI builds answer with HTML after saving. The caller
-        // verifies the persisted config; only explicit JSON failure is decisive.
-        if let Ok(result) = serde_json::from_str::<Value>(&body)
-            && result.get("stats").and_then(Value::as_str) == Some("fail")
-        {
-            bail!("legacy stock pool form rejected the request");
-        }
-        Ok(())
     }
 
     fn set_miner_conf_timeout(&self) -> Duration {

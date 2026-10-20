@@ -1,7 +1,5 @@
 use std::{collections::HashMap, fmt::Display, net::IpAddr, str::FromStr, time::Duration};
 
-use super::stock_firmware::{get_miner_type_info, resolve_firmware_image};
-use crate::firmware::AntMinerStockFirmware;
 use anyhow;
 use asic_rs_core::{
     config::{
@@ -16,7 +14,7 @@ use asic_rs_core::{
             DataCollector, DataExtensions, DataExtractor, DataField, DataLocation, get_by_pointer,
         },
         command::MinerCommand,
-        device::{DeviceInfo, HashAlgorithm},
+        device::DeviceInfo,
         fan::FanData,
         firmware::FirmwareImage,
         hashrate::{HashRate, HashRateUnit},
@@ -35,16 +33,15 @@ use semver::Version;
 use serde_json::{Value, json};
 use web::AntMinerWebAPI;
 
-pub(super) mod rpc;
+use self::firmware::resolve_firmware_image;
+use crate::firmware::AntMinerStockFirmware;
+
+mod firmware;
+mod rpc;
 pub(crate) mod web;
 
-/// Pre-2021 stock firmware reads stats over HTTP and writes pools as form fields.
-pub type AntMinerV2018 = AntMinerStock<true>;
-/// Later stock firmware reads stats over RPC and writes pools as JSON.
-pub type AntMinerV2020 = AntMinerStock<false>;
-
 #[derive(Debug)]
-pub struct AntMinerStock<const LEGACY: bool> {
+pub struct AntMinerV2020 {
     pub ip: IpAddr,
     pub rpc: AntMinerRPCAPI,
     pub web: AntMinerWebAPI,
@@ -159,18 +156,6 @@ fn miner_conf_with_pools(miner_conf: &Value, pools: Vec<Value>) -> Value {
     Value::Object(payload)
 }
 
-fn pool_slots_match(expected: &[Value], actual_config: &Value) -> bool {
-    let Some(actual) = actual_config["pools"].as_array() else {
-        return false;
-    };
-    expected.len() <= actual.len()
-        && expected.iter().enumerate().all(|(index, pool)| {
-            ["url", "user", "pass"]
-                .into_iter()
-                .all(|key| pool[key].as_str() == actual[index][key].as_str())
-        })
-}
-
 fn miner_conf_with_miner_mode(miner_conf: &Value, mode: MinerMode) -> Option<Value> {
     miner_mode_config_key(miner_conf)?;
     let mut payload = browser_miner_conf_payload(miner_conf);
@@ -236,11 +221,11 @@ fn miner_conf_with_fan_config(miner_conf: &Value, config: FanConfig) -> Value {
     Value::Object(payload)
 }
 
-impl<const LEGACY: bool> AntMinerStock<LEGACY> {
+impl AntMinerV2020 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
         let algo = model.hash_algorithm();
-        Self {
+        AntMinerV2020 {
             ip,
             rpc: AntMinerRPCAPI::new(ip),
             web: AntMinerWebAPI::new(ip, auth),
@@ -345,7 +330,7 @@ impl<const LEGACY: bool> AntMinerStock<LEGACY> {
 }
 
 #[async_trait]
-impl<const LEGACY: bool> APIClient for AntMinerStock<LEGACY> {
+impl APIClient for AntMinerV2020 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::RPC { .. } => self.rpc.get_api_result(command).await,
@@ -358,7 +343,7 @@ impl<const LEGACY: bool> APIClient for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetConfigsLocations for AntMinerStock<LEGACY> {
+impl GetConfigsLocations for AntMinerV2020 {
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         const WEB_GET_MINER_CONF: MinerCommand = MinerCommand::WebAPI {
             command: "get_miner_conf",
@@ -386,21 +371,16 @@ impl<const LEGACY: bool> GetConfigsLocations for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> CollectConfigs for AntMinerStock<LEGACY> {
+impl CollectConfigs for AntMinerV2020 {
     fn get_config_collector(&self) -> ConfigCollector<'_> {
         ConfigCollector::new(self)
     }
 }
 
-impl<const LEGACY: bool> GetDataLocations for AntMinerStock<LEGACY> {
+impl GetDataLocations for AntMinerV2020 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const RPC_VERSION: MinerCommand = MinerCommand::RPC {
             command: "version",
-            parameters: None,
-        };
-
-        const WEB_MINER_STATS: MinerCommand = MinerCommand::WebAPI {
-            command: "miner_stats",
             parameters: None,
         };
 
@@ -408,8 +388,6 @@ impl<const LEGACY: bool> GetDataLocations for AntMinerStock<LEGACY> {
             command: "stats",
             parameters: None,
         };
-
-        let stats_command = if LEGACY { WEB_MINER_STATS } else { RPC_STATS };
 
         const RPC_SUMMARY: MinerCommand = MinerCommand::RPC {
             command: "summary",
@@ -512,7 +490,7 @@ impl<const LEGACY: bool> GetDataLocations for AntMinerStock<LEGACY> {
             // scale, so carry STATS' `rate_unit` alongside it.
             DataField::ExpectedHashrate => vec![
                 (
-                    stats_command.clone(),
+                    RPC_STATS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/STATS/1/total_rateideal"),
@@ -520,7 +498,7 @@ impl<const LEGACY: bool> GetDataLocations for AntMinerStock<LEGACY> {
                     },
                 ),
                 (
-                    stats_command.clone(),
+                    RPC_STATS,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/STATS/1/rate_unit"),
@@ -529,7 +507,7 @@ impl<const LEGACY: bool> GetDataLocations for AntMinerStock<LEGACY> {
                 ),
             ],
             DataField::Fans => vec![(
-                stats_command.clone(),
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1"),
@@ -537,7 +515,7 @@ impl<const LEGACY: bool> GetDataLocations for AntMinerStock<LEGACY> {
                 },
             )],
             DataField::Hashboards => vec![(
-                stats_command.clone(),
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1"),
@@ -561,7 +539,7 @@ impl<const LEGACY: bool> GetDataLocations for AntMinerStock<LEGACY> {
                 },
             )],
             DataField::Uptime => vec![(
-                stats_command.clone(),
+                RPC_STATS,
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/1/Elapsed"),
@@ -585,7 +563,7 @@ impl<const LEGACY: bool> GetDataLocations for AntMinerStock<LEGACY> {
 
                 vec![
                     (
-                        stats_command.clone(),
+                        RPC_STATS,
                         DataExtractor {
                             func: get_by_pointer,
                             key: Some("/STATS/1"),
@@ -641,50 +619,50 @@ impl<const LEGACY: bool> GetDataLocations for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetIP for AntMinerStock<LEGACY> {
+impl GetIP for AntMinerV2020 {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
 
-impl<const LEGACY: bool> GetDeviceInfo for AntMinerStock<LEGACY> {
+impl GetDeviceInfo for AntMinerV2020 {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info.clone()
     }
 }
 
-impl<const LEGACY: bool> CollectData for AntMinerStock<LEGACY> {
+impl CollectData for AntMinerV2020 {
     fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self)
     }
 }
 
-impl<const LEGACY: bool> GetMAC for AntMinerStock<LEGACY> {
+impl GetMAC for AntMinerV2020 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         data.extract::<String>(DataField::Mac)
             .and_then(|s| MacAddr::from_str(&s).ok())
     }
 }
 
-impl<const LEGACY: bool> GetHostname for AntMinerStock<LEGACY> {
+impl GetHostname for AntMinerV2020 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
     }
 }
 
-impl<const LEGACY: bool> GetApiVersion for AntMinerStock<LEGACY> {
+impl GetApiVersion for AntMinerV2020 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
     }
 }
 
-impl<const LEGACY: bool> GetFirmwareVersion for AntMinerStock<LEGACY> {
+impl GetFirmwareVersion for AntMinerV2020 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
 
-impl<const LEGACY: bool> GetHashboards for AntMinerStock<LEGACY> {
+impl GetHashboards for AntMinerV2020 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let mut hashboards: Vec<BoardData> =
             (0..self.device_info.hardware.board_count().unwrap_or(0))
@@ -697,18 +675,12 @@ impl<const LEGACY: bool> GetHashboards for AntMinerStock<LEGACY> {
             return hashboards;
         };
 
+        let unit = stats_data
+            .get("rate_unit")
+            .and_then(|v| v.as_str())
+            .and_then(|s| HashRateUnit::from_str(s).ok())
+            .unwrap_or(HashRateUnit::GigaHash);
         let algo = self.device_info.algo;
-        // These Equihash builds report chain rates in KSol/s without a
-        // rate_unit field, even though their summary calls Sol/s "GHS".
-        let unit = if LEGACY && algo == HashAlgorithm::Equihash {
-            HashRateUnit::KiloHash
-        } else {
-            stats_data
-                .get("rate_unit")
-                .and_then(|v| v.as_str())
-                .and_then(|s| HashRateUnit::from_str(s).ok())
-                .unwrap_or(HashRateUnit::GigaHash)
-        };
 
         for board in hashboards.iter_mut() {
             let idx = board.position + 1;
@@ -737,26 +709,7 @@ impl<const LEGACY: bool> GetHashboards for AntMinerStock<LEGACY> {
                         .and_then(Self::parse_f64_field)
                         .filter(|&t| t > 0.0)
                         .map(Temperature::from_celsius)
-                })
-                .or_else(|| {
-                    if LEGACY {
-                        stats_data
-                            .get(&format!("temp{idx}"))
-                            .and_then(Self::parse_f64_field)
-                            .filter(|&t| t > 0.0)
-                            .map(Temperature::from_celsius)
-                    } else {
-                        None
-                    }
                 });
-
-            if LEGACY {
-                board.outlet_chip_temperature = stats_data
-                    .get(&format!("temp2_{idx}"))
-                    .and_then(Self::parse_f64_field)
-                    .filter(|&t| t > 0.0)
-                    .map(Temperature::from_celsius);
-            }
 
             board.working_chips = stats_data
                 .get(&format!("chain_acn{idx}"))
@@ -782,14 +735,14 @@ impl<const LEGACY: bool> GetHashboards for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetHashrate for AntMinerStock<LEGACY> {
+impl GetHashrate for AntMinerV2020 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         let summary = data.get(&DataField::Hashrate)?.as_object()?;
 
         // cgminer names its rate keys `<unit> <window>` — `GHS 5s` on SHA-256
         // models, `MHS 5s` on Scrypt ones — so the key states its own unit.
         // Prefer the 5-second window and fall back to the average.
-        let (value, mut unit) = ["5s", "av"].into_iter().find_map(|window| {
+        let (value, unit) = ["5s", "av"].into_iter().find_map(|window| {
             summary.iter().find_map(|(key, raw)| {
                 let (unit, key_window) = key.split_once(' ')?;
                 if key_window != window {
@@ -802,14 +755,6 @@ impl<const LEGACY: bool> GetHashrate for AntMinerStock<LEGACY> {
             })
         })?;
 
-        // On the observed Z11j/Z15/Z15j stock builds, "GHS" contains Sol/s.
-        if LEGACY
-            && self.device_info.algo == HashAlgorithm::Equihash
-            && unit == HashRateUnit::GigaHash
-        {
-            unit = HashRateUnit::Hash;
-        }
-
         Some(
             HashRate {
                 value,
@@ -821,7 +766,7 @@ impl<const LEGACY: bool> GetHashrate for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetExpectedHashrate for AntMinerStock<LEGACY> {
+impl GetExpectedHashrate for AntMinerV2020 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         let field = data.get(&DataField::ExpectedHashrate);
         let value = field?
@@ -832,15 +777,11 @@ impl<const LEGACY: bool> GetExpectedHashrate for AntMinerStock<LEGACY> {
                 value,
                 // `total_rateideal` does not name its own scale, so take it
                 // from STATS' `rate_unit` (`"GH"` / `"MH"`).
-                unit: if LEGACY && self.device_info.algo == HashAlgorithm::Equihash {
-                    HashRateUnit::Hash
-                } else {
-                    field
-                        .and_then(|v| v.pointer("/unit"))
-                        .and_then(|v| v.as_str())
-                        .and_then(|s| HashRateUnit::from_str(s).ok())
-                        .unwrap_or(HashRateUnit::GigaHash)
-                },
+                unit: field
+                    .and_then(|v| v.pointer("/unit"))
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| HashRateUnit::from_str(s).ok())
+                    .unwrap_or(HashRateUnit::GigaHash),
                 algo: self.device_info.algo,
             }
             .as_default_unit(),
@@ -848,47 +789,29 @@ impl<const LEGACY: bool> GetExpectedHashrate for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetFans for AntMinerStock<LEGACY> {
+impl GetFans for AntMinerV2020 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
-        if !LEGACY {
-            let mut fans = Vec::new();
-            if let Some(stats) = data.get(&DataField::Fans) {
-                for i in 1..=self.device_info.hardware.fans.unwrap_or(4) {
-                    if let Some(speed) = stats.get(format!("fan{i}")).and_then(Value::as_f64)
-                        && speed > 0.0
-                    {
-                        fans.push(FanData {
-                            position: (i - 1) as i16,
-                            rpm: Some(AngularVelocity::from_rpm(speed)),
-                        });
-                    }
+        let mut fans: Vec<FanData> = Vec::new();
+
+        if let Some(stats_data) = data.get(&DataField::Fans) {
+            for i in 1..=self.device_info.hardware.fans.unwrap_or(4) {
+                if let Some(fan_speed) =
+                    stats_data.get(format!("fan{}", i)).and_then(|v| v.as_f64())
+                    && fan_speed > 0.0
+                {
+                    fans.push(FanData {
+                        position: (i - 1) as i16,
+                        rpm: Some(AngularVelocity::from_rpm(fan_speed)),
+                    });
                 }
             }
-            return fans;
         }
 
-        let Some(stats_data) = data.get(&DataField::Fans).and_then(Value::as_object) else {
-            return Vec::new();
-        };
-        // The old control board can populate fan3/fan4 while fan1/fan2 are
-        // zero, even on models with two physical fans.
-        let mut fans: Vec<FanData> = stats_data
-            .iter()
-            .filter_map(|(key, value)| {
-                let index = key.strip_prefix("fan")?.parse::<i16>().ok()?;
-                let rpm = Self::parse_f64_field(value).filter(|&rpm| rpm > 0.0)?;
-                Some(FanData {
-                    position: index - 1,
-                    rpm: Some(AngularVelocity::from_rpm(rpm)),
-                })
-            })
-            .collect();
-        fans.sort_by_key(|fan| fan.position);
         fans
     }
 }
 
-impl<const LEGACY: bool> GetLightFlashing for AntMinerStock<LEGACY> {
+impl GetLightFlashing for AntMinerV2020 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing).or_else(|| {
             data.extract::<String>(DataField::LightFlashing)
@@ -897,20 +820,20 @@ impl<const LEGACY: bool> GetLightFlashing for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetUptime for AntMinerStock<LEGACY> {
+impl GetUptime for AntMinerV2020 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
-impl<const LEGACY: bool> GetBestShare for AntMinerStock<LEGACY> {}
-impl<const LEGACY: bool> GetSessionBestShare for AntMinerStock<LEGACY> {}
+impl GetBestShare for AntMinerV2020 {}
+impl GetSessionBestShare for AntMinerV2020 {}
 
-impl<const LEGACY: bool> GetOperatingState for AntMinerStock<LEGACY> {}
+impl GetOperatingState for AntMinerV2020 {}
 
-impl<const LEGACY: bool> GetDevFeeConnected for AntMinerStock<LEGACY> {}
+impl GetDevFeeConnected for AntMinerV2020 {}
 
-impl<const LEGACY: bool> GetIsMining for AntMinerStock<LEGACY> {
+impl GetIsMining for AntMinerV2020 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
             .map(|status| {
@@ -924,7 +847,7 @@ impl<const LEGACY: bool> GetIsMining for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetPools for AntMinerStock<LEGACY> {
+impl GetPools for AntMinerV2020 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let Some(pools_data) = data.get(&DataField::Pools) else {
             return vec![];
@@ -985,13 +908,13 @@ impl<const LEGACY: bool> GetPools for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetSerialNumber for AntMinerStock<LEGACY> {
+impl GetSerialNumber for AntMinerV2020 {
     fn parse_serial_number(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::SerialNumber)
     }
 }
 
-impl<const LEGACY: bool> GetControlBoardVersion for AntMinerStock<LEGACY> {
+impl GetControlBoardVersion for AntMinerV2020 {
     fn parse_control_board_version(
         &self,
         data: &HashMap<DataField, Value>,
@@ -1018,7 +941,7 @@ impl<const LEGACY: bool> GetControlBoardVersion for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetWattage for AntMinerStock<LEGACY> {
+impl GetWattage for AntMinerV2020 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         if let Some(stats_data) = data.get(&DataField::Wattage) {
             if let Some(chain_power) = stats_data.get("chain_power")
@@ -1047,7 +970,7 @@ impl<const LEGACY: bool> GetWattage for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetTuningTarget for AntMinerStock<LEGACY> {
+impl GetTuningTarget for AntMinerV2020 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.get(&DataField::TuningTarget)
             .and_then(miner_conf_mining_mode)
@@ -1055,13 +978,13 @@ impl<const LEGACY: bool> GetTuningTarget for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetScaledTuningTarget for AntMinerStock<LEGACY> {
+impl GetScaledTuningTarget for AntMinerV2020 {
     fn parse_scaled_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         self.parse_tuning_target(data)
     }
 }
 
-impl<const LEGACY: bool> GetFluidTemperature for AntMinerStock<LEGACY> {
+impl GetFluidTemperature for AntMinerV2020 {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
         // For S21+ Hyd models, use inlet/outlet temperature average
         if self.device_info.model.to_string().contains("S21+ Hyd")
@@ -1095,11 +1018,11 @@ impl<const LEGACY: bool> GetFluidTemperature for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> GetPsuFans for AntMinerStock<LEGACY> {}
-impl<const LEGACY: bool> GetTuningCapabilities for AntMinerStock<LEGACY> {}
-impl<const LEGACY: bool> SupportsTimezoneConfig for AntMinerStock<LEGACY> {}
+impl GetPsuFans for AntMinerV2020 {}
+impl GetTuningCapabilities for AntMinerV2020 {}
+impl SupportsTimezoneConfig for AntMinerV2020 {}
 
-impl<const LEGACY: bool> GetMessages for AntMinerStock<LEGACY> {
+impl GetMessages for AntMinerV2020 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let mut messages = Vec::new();
 
@@ -1133,7 +1056,7 @@ impl<const LEGACY: bool> GetMessages for AntMinerStock<LEGACY> {
 }
 
 #[async_trait]
-impl<const LEGACY: bool> SetFaultLight for AntMinerStock<LEGACY> {
+impl SetFaultLight for AntMinerV2020 {
     fn supports_set_fault_light(&self) -> bool {
         true
     }
@@ -1146,14 +1069,14 @@ impl<const LEGACY: bool> SetFaultLight for AntMinerStock<LEGACY> {
 }
 
 #[async_trait]
-impl<const LEGACY: bool> SetPowerLimit for AntMinerStock<LEGACY> {
+impl SetPowerLimit for AntMinerV2020 {
     fn supports_set_power_limit(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl<const LEGACY: bool> SupportsPoolsConfig for AntMinerStock<LEGACY> {
+impl SupportsPoolsConfig for AntMinerV2020 {
     fn parse_pools_config(
         &self,
         data: &HashMap<ConfigField, Value>,
@@ -1197,10 +1120,6 @@ impl<const LEGACY: bool> SupportsPoolsConfig for AntMinerStock<LEGACY> {
             });
         }
 
-        if LEGACY {
-            pools.truncate(3);
-        }
-
         Ok(vec![PoolGroupConfig {
             name: String::new(),
             quota: 1,
@@ -1209,31 +1128,12 @@ impl<const LEGACY: bool> SupportsPoolsConfig for AntMinerStock<LEGACY> {
     }
 
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
-        let mut pools = pools_payload(config);
-        if LEGACY {
-            pools.truncate(3);
-            self.web.set_pools_form(&pools).await?;
+        let pools = pools_payload(config);
+        let miner_conf = self.web.get_miner_conf().await?;
+        let miner_conf = miner_conf_with_pools(&miner_conf, pools);
 
-            // The setter can answer while mining is restarting. Confirm the
-            // persisted slots instead of treating an HTTP success as a good write.
-            for _ in 0..5 {
-                if let Ok(actual) = self.web.get_miner_conf().await
-                    && pool_slots_match(&pools, &actual)
-                {
-                    return Ok(true);
-                }
-                tokio::time::sleep(Duration::from_secs(2)).await;
-            }
-            anyhow::bail!(
-                "stock miner did not report the requested pool URLs, workers, and passwords"
-            )
-        } else {
-            let miner_conf = self.web.get_miner_conf().await?;
-            self.web
-                .set_miner_conf(miner_conf_with_pools(&miner_conf, pools))
-                .await?;
-            Ok(true)
-        }
+        self.web.set_miner_conf(miner_conf).await?;
+        Ok(true)
     }
 
     fn supports_pools_config(&self) -> bool {
@@ -1242,7 +1142,7 @@ impl<const LEGACY: bool> SupportsPoolsConfig for AntMinerStock<LEGACY> {
 }
 
 #[async_trait]
-impl<const LEGACY: bool> Restart for AntMinerStock<LEGACY> {
+impl Restart for AntMinerV2020 {
     fn supports_restart(&self) -> bool {
         true
     }
@@ -1252,7 +1152,7 @@ impl<const LEGACY: bool> Restart for AntMinerStock<LEGACY> {
 }
 
 #[async_trait]
-impl<const LEGACY: bool> Pause for AntMinerStock<LEGACY> {
+impl Pause for AntMinerV2020 {
     fn supports_pause(&self) -> bool {
         true
     }
@@ -1276,7 +1176,7 @@ impl<const LEGACY: bool> Pause for AntMinerStock<LEGACY> {
 }
 
 #[async_trait]
-impl<const LEGACY: bool> Resume for AntMinerStock<LEGACY> {
+impl Resume for AntMinerV2020 {
     fn supports_resume(&self) -> bool {
         true
     }
@@ -1297,7 +1197,7 @@ impl<const LEGACY: bool> Resume for AntMinerStock<LEGACY> {
 }
 
 #[async_trait]
-impl<const LEGACY: bool> ChangePassword for AntMinerStock<LEGACY> {
+impl ChangePassword for AntMinerV2020 {
     async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
         let original_auth = self.web.auth();
         let new_auth = MinerAuth::new(original_auth.username().to_string(), password);
@@ -1332,7 +1232,7 @@ impl<const LEGACY: bool> ChangePassword for AntMinerStock<LEGACY> {
 }
 
 #[async_trait]
-impl<const LEGACY: bool> ReadLogs for AntMinerStock<LEGACY> {
+impl ReadLogs for AntMinerV2020 {
     async fn read_logs(&self) -> anyhow::Result<String> {
         self.web.read_logs().await
     }
@@ -1343,7 +1243,7 @@ impl<const LEGACY: bool> ReadLogs for AntMinerStock<LEGACY> {
 }
 
 #[async_trait]
-impl<const LEGACY: bool> FactoryReset for AntMinerStock<LEGACY> {
+impl FactoryReset for AntMinerV2020 {
     async fn factory_reset(&self) -> anyhow::Result<bool> {
         self.web.factory_reset().await
     }
@@ -1353,19 +1253,19 @@ impl<const LEGACY: bool> FactoryReset for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> RestoreStockOs for AntMinerStock<LEGACY> {}
+impl RestoreStockOs for AntMinerV2020 {}
 
 #[async_trait]
-impl<const LEGACY: bool> SupportsScalingConfig for AntMinerStock<LEGACY> {
+impl SupportsScalingConfig for AntMinerV2020 {
     fn supports_scaling_config(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl<const LEGACY: bool> UpgradeFirmware for AntMinerStock<LEGACY> {
+impl UpgradeFirmware for AntMinerV2020 {
     async fn prepare_firmware(&self, image: FirmwareImage) -> anyhow::Result<FirmwareImage> {
-        let miner = get_miner_type_info(&self.web).await?;
+        let miner = self.get_miner_type_info().await?;
         resolve_firmware_image(image, &miner).await
     }
 
@@ -1384,34 +1284,28 @@ impl<const LEGACY: bool> UpgradeFirmware for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> HasDefaultAuth for AntMinerStock<LEGACY> {
+impl HasDefaultAuth for AntMinerV2020 {
     fn default_auth() -> MinerAuth {
         MinerAuth::new("root", "root")
     }
 }
 
-impl<const LEGACY: bool> HasAuth for AntMinerStock<LEGACY> {
+impl HasAuth for AntMinerV2020 {
     fn set_auth(&mut self, auth: MinerAuth) {
         self.web.set_auth(auth);
     }
 }
 
-impl<const LEGACY: bool> Validate for AntMinerStock<LEGACY> {
+impl Validate for AntMinerV2020 {
     type Firmware = AntMinerStockFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| {
-            if LEGACY {
-                *v < Version::new(2021, 1, 1)
-            } else {
-                *v >= Version::new(2021, 1, 1) && *v < Version::new(2023, 7, 0)
-            }
-        })
+        version.is_some_and(|v| *v >= Version::new(2021, 1, 1) && *v < Version::new(2023, 7, 0))
     }
 }
 
 #[async_trait]
-impl<const LEGACY: bool> SupportsTuningConfig for AntMinerStock<LEGACY> {
+impl SupportsTuningConfig for AntMinerV2020 {
     async fn set_tuning_config(
         &self,
         config: TuningConfig,
@@ -1480,7 +1374,7 @@ impl<const LEGACY: bool> SupportsTuningConfig for AntMinerStock<LEGACY> {
 }
 
 #[async_trait]
-impl<const LEGACY: bool> SupportsFanConfig for AntMinerStock<LEGACY> {
+impl SupportsFanConfig for AntMinerV2020 {
     async fn set_fan_config(&self, config: FanConfig) -> anyhow::Result<bool> {
         let pre = self.web.get_miner_conf().await?;
         self.web
@@ -1515,13 +1409,13 @@ impl<const LEGACY: bool> SupportsFanConfig for AntMinerStock<LEGACY> {
     }
 }
 
-impl<const LEGACY: bool> SupportsTemperatureConfig for AntMinerStock<LEGACY> {}
-impl<const LEGACY: bool> GetTuningPercent for AntMinerStock<LEGACY> {}
-impl<const LEGACY: bool> SetHashboardsEnabled for AntMinerStock<LEGACY> {}
+impl SupportsTemperatureConfig for AntMinerV2020 {}
+impl GetTuningPercent for AntMinerV2020 {}
+impl SetHashboardsEnabled for AntMinerV2020 {}
 
-impl<const LEGACY: bool> SetTuningPercent for AntMinerStock<LEGACY> {}
+impl SetTuningPercent for AntMinerV2020 {}
 
-impl<const LEGACY: bool> SupportsPresets for AntMinerStock<LEGACY> {}
+impl SupportsPresets for AntMinerV2020 {}
 
 #[cfg(test)]
 mod tests {
