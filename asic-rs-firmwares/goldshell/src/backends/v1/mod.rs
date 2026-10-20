@@ -437,6 +437,7 @@ impl GetHostname for GoldshellV1 {}
 impl GetControlBoardVersion for GoldshellV1 {}
 impl GetExpectedHashrate for GoldshellV1 {}
 impl GetPsuFans for GoldshellV1 {}
+impl GetPsus for GoldshellV1 {}
 impl GetFluidTemperature for GoldshellV1 {}
 impl GetWattage for GoldshellV1 {}
 impl GetTuningPercent for GoldshellV1 {}

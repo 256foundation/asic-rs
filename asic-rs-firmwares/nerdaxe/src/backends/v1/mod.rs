@@ -397,6 +397,7 @@ impl GetFans for NerdAxeV1 {
     }
 }
 impl GetPsuFans for NerdAxeV1 {}
+impl GetPsus for NerdAxeV1 {}
 impl GetFluidTemperature for NerdAxeV1 {}
 impl GetWattage for NerdAxeV1 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {

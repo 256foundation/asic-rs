@@ -879,6 +879,7 @@ impl GetFans for MaraV1 {
 }
 
 impl GetPsuFans for MaraV1 {}
+impl GetPsus for MaraV1 {}
 
 impl GetFluidTemperature for MaraV1 {}
 

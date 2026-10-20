@@ -2,7 +2,7 @@ use std::{fmt::Display, net::IpAddr, str::FromStr, time::Duration};
 
 use chrono_tz::Tz;
 use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
+use measurements::{AngularVelocity, Current, Frequency, Power, Temperature, Voltage};
 use pyo3::{
     PyTypeInfo,
     exceptions::PyValueError,
@@ -312,6 +312,7 @@ impl_pydantic_measurement!(Frequency, from_megahertz, as_megahertz);
 impl_pydantic_measurement!(Power, from_watts, as_watts);
 impl_pydantic_measurement!(Temperature, from_celsius, as_celsius);
 impl_pydantic_measurement!(Voltage, from_volts, as_volts);
+impl_pydantic_measurement!(Current, from_amperes, as_amperes);
 
 impl<T> PyPydanticType for Option<T>
 where

@@ -1059,6 +1059,7 @@ impl GetPsuFans for AuradineV1 {
         fans
     }
 }
+impl GetPsus for AuradineV1 {}
 
 impl GetFluidTemperature for AuradineV1 {}
 impl SupportsTimezoneConfig for AuradineV1 {}

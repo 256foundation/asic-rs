@@ -676,6 +676,7 @@ impl GetFans for VnishV120 {
 }
 
 impl GetPsuFans for VnishV120 {}
+impl GetPsus for VnishV120 {}
 #[async_trait]
 impl SupportsTimezoneConfig for VnishV120 {
     fn supports_timezone_config(&self) -> bool {

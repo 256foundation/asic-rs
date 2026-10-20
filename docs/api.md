@@ -129,12 +129,21 @@ Common telemetry methods:
 | Hashboards | `get_hashboards` |
 | Hashrate | `get_hashrate` |
 | Fans | `get_fans` |
+| Power supplies | `get_psus` |
 | Wattage | `get_wattage` |
 | Best share difficulty | `get_best_share` |
 | Session best share difficulty | `get_session_best_share` |
 | Messages | `get_messages` |
 | Pools | `get_pools` |
 | Mining state | `get_is_mining` |
+
+`MinerData.psus` is `Option<Vec<PsuData>>`: `None` when the firmware does not
+report PSU details, otherwise one entry per PSU with model, serial number,
+firmware version, input/output voltage (V), output current (A), input/output
+power (W), efficiency (0–1), and temperature (°C). Custom Rust backends
+implement `GetPsus`; an empty implementation reports `None`. SealMiner Stock
+reads these from RPC `stats` (`PSU Input Voltage`, `PSU Output Current`, …) and
+also reports its non-zero `PSU Error` bitmask as a `PowerSupply` message.
 
 ## Controls And Capability Checks
 

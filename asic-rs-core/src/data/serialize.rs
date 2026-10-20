@@ -1,5 +1,5 @@
 use macaddr::MacAddr;
-use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
+use measurements::{AngularVelocity, Current, Frequency, Power, Temperature, Voltage};
 
 pub(crate) fn serialize_angular_velocity<S>(
     v: &Option<AngularVelocity>,
@@ -55,6 +55,16 @@ where
 {
     match v {
         Some(voltage) => serializer.serialize_f64(voltage.as_volts()),
+        None => serializer.serialize_none(),
+    }
+}
+
+pub(crate) fn serialize_current<S>(c: &Option<Current>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match c {
+        Some(current) => serializer.serialize_f64(current.as_amperes()),
         None => serializer.serialize_none(),
     }
 }

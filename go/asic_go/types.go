@@ -29,6 +29,7 @@ const (
 	DataFieldExpectedHashrate       DataField = "ExpectedHashrate"
 	DataFieldFans                   DataField = "Fans"
 	DataFieldPSUFans                DataField = "PsuFans"
+	DataFieldPSUs                   DataField = "Psus"
 	DataFieldAverageTemperature     DataField = "AverageTemperature"
 	DataFieldFluidTemperature       DataField = "FluidTemperature"
 	DataFieldOutletFluidTemperature DataField = "OutletFluidTemperature"
@@ -231,6 +232,22 @@ type BoardData struct {
 type FanData struct {
 	Position int16    `json:"position"`
 	RPM      *float64 `json:"rpm"`
+}
+
+// PSUData is power supply telemetry. Units: volts, amperes, watts, °C;
+// efficiency is output/input power as a 0–1 ratio.
+type PSUData struct {
+	Position        uint16   `json:"position"`
+	Model           *string  `json:"model"`
+	SerialNumber    *string  `json:"serial_number"`
+	FirmwareVersion *string  `json:"firmware_version"`
+	InputVoltage    *float64 `json:"input_voltage"`
+	OutputVoltage   *float64 `json:"output_voltage"`
+	OutputCurrent   *float64 `json:"output_current"`
+	InputPower      *float64 `json:"input_power"`
+	OutputPower     *float64 `json:"output_power"`
+	Efficiency      *float64 `json:"efficiency"`
+	Temperature     *float64 `json:"temperature"`
 }
 
 // MessageSeverity is the severity of a miner message.
@@ -610,6 +627,7 @@ type MinerData struct {
 	ExpectedFans           *uint8              `json:"expected_fans"`
 	Fans                   []FanData           `json:"fans"`
 	PSUFans                []FanData           `json:"psu_fans"`
+	PSUs                   []PSUData           `json:"psus"` // nil when the firmware does not report PSUs
 	AverageTemperature     *float64            `json:"average_temperature"`
 	FluidTemperature       *float64            `json:"fluid_temperature"`
 	OutletFluidTemperature *float64            `json:"outlet_fluid_temperature"`

@@ -56,5 +56,6 @@ mod asic_rs {
         miner::{CheckedMinerData, MinerData, PyTuningTarget as TuningTarget},
         operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolScheme, PoolURL},
+        psu::PsuData,
     };
 }

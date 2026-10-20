@@ -19,6 +19,7 @@ use super::{
     message::MinerMessage,
     operating_state::OperatingState,
     pool::PoolGroupData,
+    psu::PsuData,
 };
 use crate::data::{
     deserialize::deserialize_macaddr,
@@ -179,6 +180,10 @@ pub struct MinerData {
     pub fans: Vec<FanData>,
     /// The current PDU fan information for the miner
     pub psu_fans: Vec<FanData>,
+    /// Power supply telemetry. `None` when the firmware does not report PSU details.
+    #[serde(default)]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub psus: Option<Vec<PsuData>>,
     /// The average temperature across all chips in the miner
     #[serde(serialize_with = "serialize_temperature")]
     #[ts(type = "number | null")]

@@ -412,6 +412,7 @@ impl GetFans for Forgeaxe110 {
 impl GetPsuFans for Forgeaxe110 {
     // N/A
 }
+impl GetPsus for Forgeaxe110 {}
 impl GetFluidTemperature for Forgeaxe110 {
     // N/A
 }

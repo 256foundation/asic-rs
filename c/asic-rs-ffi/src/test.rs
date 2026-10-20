@@ -115,6 +115,7 @@ default_traits!(
     GetExpectedHashrate,
     GetFans,
     GetPsuFans,
+    GetPsus,
     GetFluidTemperature,
     GetWattage,
     GetTuningPercent,

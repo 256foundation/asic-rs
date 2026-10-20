@@ -421,6 +421,7 @@ impl GetPsuFans for WhatsMinerV1 {
         psu_fans
     }
 }
+impl GetPsus for WhatsMinerV1 {}
 impl GetFluidTemperature for WhatsMinerV1 {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
         data.extract_map::<f64, _>(DataField::FluidTemperature, Temperature::from_celsius)

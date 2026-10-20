@@ -645,6 +645,7 @@ impl GetFans for ElphapexV1 {
 }
 
 impl GetPsuFans for ElphapexV1 {}
+impl GetPsus for ElphapexV1 {}
 impl GetFluidTemperature for ElphapexV1 {}
 impl GetWattage for ElphapexV1 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {

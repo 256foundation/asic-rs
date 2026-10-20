@@ -619,6 +619,7 @@ impl GetFans for ProtoV1 {
 }
 
 impl GetPsuFans for ProtoV1 {}
+impl GetPsus for ProtoV1 {}
 impl SupportsTimezoneConfig for ProtoV1 {}
 impl GetFluidTemperature for ProtoV1 {}
 
