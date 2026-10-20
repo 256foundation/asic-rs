@@ -1204,11 +1204,11 @@ impl ChangePassword for AntMinerV2018 {
 #[async_trait]
 impl ReadLogs for AntMinerV2018 {
     async fn read_logs(&self) -> anyhow::Result<String> {
-        self.web.read_logs().await
+        anyhow::bail!("legacy Antminer firmware does not expose log.cgi")
     }
 
     fn supports_read_logs(&self) -> bool {
-        true
+        false
     }
 }
 
@@ -1402,6 +1402,20 @@ mod tests {
         assert!(!miner.supports_pause());
         assert!(!miner.supports_resume());
         assert!(!miner.supports_tuning_config());
+    }
+
+    #[tokio::test]
+    async fn legacy_logs_are_not_advertised_or_requested() {
+        let miner = AntMinerV2018::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::Z15);
+        assert!(!miner.supports_read_logs());
+        assert!(
+            miner
+                .read_logs()
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("log.cgi")
+        );
     }
 
     #[tokio::test]
