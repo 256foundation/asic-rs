@@ -14,13 +14,20 @@ use v2023_07::AntMinerV202307;
 
 pub struct AntMiner;
 
+fn use_legacy_backend(model: &impl MinerModel, version: Option<&semver::Version>) -> bool {
+    AntMinerV2018::validate(version)
+        && matches!(model.to_string().as_str(), "Z11j" | "Z15" | "Z15j")
+}
+
 impl MinerConstructor for AntMiner {
     #[allow(clippy::new_ret_no_self)]
     #[allow(clippy::if_same_then_else)]
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner> {
-        if AntMinerV2018::validate(version.as_ref()) {
+        if use_legacy_backend(&model, version.as_ref()) {
             Box::new(AntMinerV2018::new(ip, model))
-        } else if AntMinerV2020::validate(version.as_ref()) {
+        } else if AntMinerV2020::validate(version.as_ref())
+            || AntMinerV2018::validate(version.as_ref())
+        {
             Box::new(AntMinerV2020::new(ip, model))
         } else if AntMinerV202307::validate(version.as_ref()) {
             Box::new(AntMinerV202307::new(ip, model))
@@ -32,10 +39,15 @@ impl MinerConstructor for AntMiner {
 
 #[cfg(test)]
 mod tests {
-    use asic_rs_core::traits::miner::Validate;
+    use asic_rs_core::{
+        data::{collector::DataField, command::MinerCommand},
+        traits::miner::{MinerConstructor, Validate},
+    };
     use semver::Version;
 
-    use super::{AntMinerV2018, AntMinerV2020};
+    use asic_rs_makes_antminer::models::AntMinerModel;
+
+    use super::{AntMiner, AntMinerV2018, AntMinerV2020, use_legacy_backend};
 
     #[test]
     fn routes_build_dates_before_2021_to_v2018() {
@@ -61,5 +73,26 @@ mod tests {
         assert!(AntMinerV2020::validate(Some(&Version::new(2023, 6, 30))));
         assert!(!AntMinerV2020::validate(Some(&Version::new(2023, 7, 1))));
         assert!(!AntMinerV2020::validate(None));
+    }
+
+    #[test]
+    fn only_verified_legacy_models_use_form_backend_on_2020_builds() {
+        let version = Version::new(2020, 7, 3);
+        for model in [AntMinerModel::Z11j, AntMinerModel::Z15, AntMinerModel::Z15j] {
+            assert!(use_legacy_backend(&model, Some(&version)), "{model}");
+            let miner = AntMiner::new([127, 0, 0, 1].into(), model, Some(version.clone()));
+            assert!(matches!(
+                miner.get_locations(DataField::Uptime)[0].0,
+                MinerCommand::WebAPI { .. }
+            ));
+        }
+        for model in [AntMinerModel::S19, AntMinerModel::S19Pro] {
+            assert!(!use_legacy_backend(&model, Some(&version)), "{model}");
+            let miner = AntMiner::new([127, 0, 0, 1].into(), model, Some(version.clone()));
+            assert!(matches!(
+                miner.get_locations(DataField::Uptime)[0].0,
+                MinerCommand::RPC { .. }
+            ));
+        }
     }
 }
