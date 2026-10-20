@@ -1124,7 +1124,7 @@ impl Restart for AntMinerV2018 {
 #[async_trait]
 impl Pause for AntMinerV2018 {
     fn supports_pause(&self) -> bool {
-        true
+        false
     }
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
@@ -1148,7 +1148,7 @@ impl Pause for AntMinerV2018 {
 #[async_trait]
 impl Resume for AntMinerV2018 {
     fn supports_resume(&self) -> bool {
-        true
+        false
     }
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
@@ -1342,7 +1342,7 @@ impl SupportsTuningConfig for AntMinerV2018 {
     }
 
     fn supports_tuning_config(&self) -> bool {
-        true
+        false
     }
 }
 
@@ -1395,6 +1395,14 @@ mod tests {
     use crate::test::json::v2020::{
         AM_DEVS, AM_POOLS, AM_STATS, AM_SUMMARY, AM_SYSTEM_INFO, AM_VERSION,
     };
+
+    #[test]
+    fn legacy_mode_controls_are_not_advertised() {
+        let miner = AntMinerV2018::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::Z15);
+        assert!(!miner.supports_pause());
+        assert!(!miner.supports_resume());
+        assert!(!miner.supports_tuning_config());
+    }
 
     #[tokio::test]
     async fn control_board_uses_system_info_without_querying_miner_type() {
