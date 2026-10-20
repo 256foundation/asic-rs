@@ -274,6 +274,13 @@ fn equihash_display_unit(value: &Value) -> Option<HashRateUnit> {
     }
 }
 
+fn equihash_summary_unit(summary: &Value) -> Option<HashRateUnit> {
+    summary
+        .get("AV HASHRATE")
+        .or_else(|| summary.get("RT HASHRATE"))
+        .and_then(equihash_display_unit)
+}
+
 impl AntMinerV202307 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
@@ -566,24 +573,37 @@ impl GetDataLocations for AntMinerV202307 {
             )],
             // `total_rateideal`, by contrast, says nothing about its own
             // scale, so carry STATS' `rate_unit` alongside it.
-            DataField::ExpectedHashrate => vec![
-                (
-                    RPC_STATS,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some("/STATS/1/total_rateideal"),
-                        tag: Some("hashrate"),
-                    },
-                ),
-                (
-                    RPC_STATS,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some("/STATS/1/rate_unit"),
-                        tag: Some("unit"),
-                    },
-                ),
-            ],
+            DataField::ExpectedHashrate => {
+                let mut locations = vec![
+                    (
+                        RPC_STATS,
+                        DataExtractor {
+                            func: get_by_pointer,
+                            key: Some("/STATS/1/total_rateideal"),
+                            tag: Some("hashrate"),
+                        },
+                    ),
+                    (
+                        RPC_STATS,
+                        DataExtractor {
+                            func: get_by_pointer,
+                            key: Some("/STATS/1/rate_unit"),
+                            tag: Some("unit"),
+                        },
+                    ),
+                ];
+                if self.device_info.algo == HashAlgorithm::Equihash {
+                    locations.push((
+                        RPC_SUMMARY,
+                        DataExtractor {
+                            func: get_by_pointer,
+                            key: Some("/SUMMARY/0"),
+                            tag: Some("summary"),
+                        },
+                    ));
+                }
+                locations
+            }
             DataField::Fans => vec![(
                 RPC_STATS,
                 DataExtractor {
@@ -592,14 +612,27 @@ impl GetDataLocations for AntMinerV202307 {
                     tag: None,
                 },
             )],
-            DataField::Hashboards => vec![(
-                RPC_STATS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/STATS/1"),
-                    tag: None,
-                },
-            )],
+            DataField::Hashboards => {
+                let mut locations = vec![(
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/1"),
+                        tag: None,
+                    },
+                )];
+                if self.device_info.algo == HashAlgorithm::Equihash {
+                    locations.push((
+                        RPC_SUMMARY,
+                        DataExtractor {
+                            func: get_by_pointer,
+                            key: Some("/SUMMARY/0"),
+                            tag: Some("summary"),
+                        },
+                    ));
+                }
+                locations
+            }
             DataField::LightFlashing => vec![(
                 WEB_BLINK_STATUS,
                 DataExtractor {
@@ -753,12 +786,19 @@ impl GetHashboards for AntMinerV202307 {
             return hashboards;
         };
 
-        let unit = stats_data
-            .get("rate_unit")
-            .and_then(|v| v.as_str())
-            .and_then(|s| HashRateUnit::from_str(s).ok())
-            .unwrap_or(HashRateUnit::GigaHash);
         let algo = self.device_info.algo;
+        let unit = if algo == HashAlgorithm::Equihash {
+            stats_data.get("summary").and_then(equihash_summary_unit)
+        } else {
+            None
+        }
+        .or_else(|| {
+            stats_data
+                .get("rate_unit")
+                .and_then(|v| v.as_str())
+                .and_then(|s| HashRateUnit::from_str(s).ok())
+        })
+        .unwrap_or(HashRateUnit::GigaHash);
 
         for board in hashboards.iter_mut() {
             let idx = board.position + 1;
@@ -815,7 +855,8 @@ impl GetHashboards for AntMinerV202307 {
 
 impl GetHashrate for AntMinerV202307 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
-        let summary = data.get(&DataField::Hashrate)?.as_object()?;
+        let summary_value = data.get(&DataField::Hashrate)?;
+        let summary = summary_value.as_object()?;
 
         // cgminer names its rate keys `<unit> <window>` — `GHS 5s` on SHA-256
         // models, `MHS 5s` on Scrypt ones — so the key states its own unit.
@@ -836,11 +877,7 @@ impl GetHashrate for AntMinerV202307 {
         // Equihash firmware may label the numeric field `GHS` while its
         // human-readable rate states the actual Sol/s scale.
         let unit = if self.device_info.algo == HashAlgorithm::Equihash {
-            summary
-                .get("RT HASHRATE")
-                .or_else(|| summary.get("AV HASHRATE"))
-                .and_then(equihash_display_unit)
-                .unwrap_or(unit)
+            equihash_summary_unit(summary_value).unwrap_or(unit)
         } else {
             unit
         };
@@ -863,13 +900,10 @@ impl GetExpectedHashrate for AntMinerV202307 {
             .pointer("/hashrate")
             .and_then(Self::parse_f64_field)?;
         let displayed_unit = if self.device_info.algo == HashAlgorithm::Equihash {
-            data.get(&DataField::Hashrate)
-                .and_then(|summary| {
-                    summary
-                        .get("AV HASHRATE")
-                        .or_else(|| summary.get("RT HASHRATE"))
-                })
-                .and_then(equihash_display_unit)
+            field
+                .and_then(|value| value.get("summary"))
+                .or_else(|| data.get(&DataField::Hashrate))
+                .and_then(equihash_summary_unit)
         } else {
             None
         };
@@ -1718,6 +1752,43 @@ mod tests {
             HashAlgorithm::Equihash.default_hashrate_unit()
         );
         assert_eq!(expected.value, 846.8);
+    }
+
+    #[tokio::test]
+    async fn z15_pro_standalone_board_and_expected_rates_use_display_unit() {
+        let miner = AntMinerV202307::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::Z15Pro);
+        let results = HashMap::from([
+            (
+                MinerCommand::RPC {
+                    command: "summary",
+                    parameters: None,
+                },
+                json!({"SUMMARY": [{"GHS 5s": 838.86, "RT HASHRATE": "838.86 Ksol/s", "AV HASHRATE": "841.92 Ksol/s"}]}),
+            ),
+            (
+                MinerCommand::RPC {
+                    command: "stats",
+                    parameters: None,
+                },
+                json!({"STATS": [{}, {"rate_unit": "GH", "total_rateideal": 846.8, "chain_rate1": 280.0}]}),
+            ),
+        ]);
+        let mock_api = MockAPIClient::new(results);
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+
+        let expected_data = collector.collect(&[DataField::ExpectedHashrate]).await;
+        let expected = miner.parse_expected_hashrate(&expected_data).unwrap();
+        assert_eq!(
+            expected.unit,
+            HashAlgorithm::Equihash.default_hashrate_unit()
+        );
+        assert_eq!(expected.value, 846.8);
+
+        let board_data = collector.collect(&[DataField::Hashboards]).await;
+        let board = miner.parse_hashboards(&board_data).remove(0);
+        let rate = board.hashrate.unwrap();
+        assert_eq!(rate.unit, HashAlgorithm::Equihash.default_hashrate_unit());
+        assert_eq!(rate.value, 280.0);
     }
 
     /// Captured from live L9 and L11 hardware on stock firmware. Both are
