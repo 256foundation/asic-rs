@@ -618,6 +618,8 @@ impl FactoryReset for Forgeaxe110 {
     }
 }
 
+impl RestartMining for Forgeaxe110 {}
+
 impl RestoreStockOs for Forgeaxe110 {}
 
 #[async_trait]
