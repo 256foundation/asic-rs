@@ -1277,6 +1277,9 @@ impl SupportsScalingConfig for AntMinerV2018 {
 #[async_trait]
 impl UpgradeFirmware for AntMinerV2018 {
     async fn prepare_firmware(&self, image: FirmwareImage) -> anyhow::Result<FirmwareImage> {
+        if !firmware::is_bmu(&image) {
+            return Ok(image);
+        }
         let miner = self.get_miner_type_info().await?;
         resolve_firmware_image(image, &miner).await
     }
@@ -1864,6 +1867,37 @@ mod tests {
         let mut miner = AntMinerV2018::new(ip, AntMinerModel::S19);
         miner.web = AntMinerWebAPI::new_with_port(ip, port, MinerAuth::new("root", "root"));
         miner
+    }
+
+    #[tokio::test]
+    async fn raw_firmware_preparation_does_not_query_the_miner() -> anyhow::Result<()> {
+        let miner = miner_with_mock_web(0);
+        let image = FirmwareImage::new("stock.bin".to_string(), vec![1, 2, 3, 4]);
+
+        assert_eq!(miner.prepare_firmware(image.clone()).await?, image);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn bmu_preparation_uses_system_info_when_miner_type_is_missing() -> anyhow::Result<()> {
+        let MockHttpServer { port, task } = mock_http_server(vec![
+            (404, "Not Found", ""),
+            (200, "OK", r#"{"minertype":"Antminer S19"}"#),
+        ])
+        .await?;
+        let miner = miner_with_mock_web(port);
+        let image = FirmwareImage::new(
+            "bundle.bmu".to_string(),
+            0xABABABAB_u32.to_le_bytes().to_vec(),
+        );
+
+        let error = miner.prepare_firmware(image).await.unwrap_err();
+        assert!(error.to_string().contains("BMU header is truncated"));
+
+        let requests = task.await??;
+        assert!(requests[0].starts_with("GET /cgi-bin/miner_type.cgi HTTP/1.1\r\n"));
+        assert!(requests[1].starts_with("GET /cgi-bin/get_system_info.cgi HTTP/1.1\r\n"));
+        Ok(())
     }
 
     #[tokio::test]

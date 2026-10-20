@@ -406,6 +406,30 @@ impl AntMinerWebAPI {
             .await
     }
 
+    pub(super) async fn miner_type_with_fallback(&self) -> Result<(Value, &'static str)> {
+        let url = format!("http://{}:{}/cgi-bin/miner_type.cgi", self.ip, self.port);
+        let response = self
+            .execute_web_request(&url, &Method::GET, None, self.timeout)
+            .await?;
+
+        if response.status() == StatusCode::NOT_FOUND {
+            return Ok((self.get_system_info().await?, "minertype"));
+        }
+
+        let status = response.status();
+        if !status.is_success() {
+            bail!("miner_type.cgi returned HTTP {status}");
+        }
+
+        Ok((
+            response
+                .json()
+                .await
+                .context("invalid miner_type.cgi response")?,
+            "miner_type",
+        ))
+    }
+
     pub async fn get_network_info(&self) -> Result<Value> {
         self.send_web_command("get_network_info", false, None, Method::GET)
             .await

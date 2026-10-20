@@ -11,6 +11,10 @@ const BMU_MAGIC: u32 = 0xABABABAB;
 const BMU_HEADER_SIZE: usize = 36;
 const BMU_ITEM_FIXED_SIZE: usize = 172;
 
+pub(super) fn is_bmu(image: &FirmwareImage) -> bool {
+    image.bytes.starts_with(&BMU_MAGIC.to_le_bytes())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct MinerTypeInfo {
     pub(super) model: String,
@@ -278,13 +282,13 @@ pub(super) async fn resolve_firmware_image(
 
 impl AntMinerV2018 {
     pub(super) async fn get_miner_type_info(&self) -> anyhow::Result<MinerTypeInfo> {
-        let info = self.web.miner_type().await?;
+        let (info, model_key) = self.web.miner_type_with_fallback().await?;
         let model = info
-            .get("miner_type")
+            .get(model_key)
             .and_then(|v| v.as_str())
             .map(str::trim)
             .filter(|s| !s.is_empty())
-            .context("Missing miner_type in miner_type.cgi response")?;
+            .with_context(|| format!("Missing {model_key} in miner model response"))?;
 
         let subtype = info
             .get("subtype")
