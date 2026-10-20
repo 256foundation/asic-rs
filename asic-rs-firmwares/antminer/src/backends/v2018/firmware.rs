@@ -265,13 +265,26 @@ pub(super) async fn resolve_firmware_image(
             return Ok(FirmwareImage::new(filename, bytes));
         };
 
-        let best = entries
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, entry)| candidate_score(entry, miner).map(|score| (score, idx)))
-            .max_by_key(|(score, _)| *score)
-            .map(|(_, idx)| entries[idx].clone())
-            .context("No matching firmware image found in BMU bundle")?;
+        let mut best = None;
+        let mut ambiguous = false;
+        for (idx, entry) in entries.iter().enumerate() {
+            let Some(score) = candidate_score(entry, miner) else {
+                continue;
+            };
+            match best {
+                Some((best_score, _)) if score < best_score => {}
+                Some((best_score, _)) if score == best_score => ambiguous = true,
+                _ => {
+                    best = Some((score, idx));
+                    ambiguous = false;
+                }
+            }
+        }
+        let (_, best_idx) = best.context("No matching firmware image found in BMU bundle")?;
+        if ambiguous {
+            bail!("Ambiguous firmware images in BMU bundle for this miner");
+        }
+        let best = entries[best_idx].clone();
 
         let firmware = copy_firmware_range(&bytes, best.data).await?;
         image = FirmwareImage::new(best.filename, firmware);
@@ -417,6 +430,30 @@ mod tests {
 
         assert_eq!(resolved.filename, "s21-hyd.bin");
         assert_eq!(resolved.bytes, b"right");
+    }
+
+    #[tokio::test]
+    async fn bmu_rejects_multiple_model_matches_without_subtype() {
+        let bmu = build_bmu(&[
+            ("s19-zynq.bin", "Zynq7007", "Ctrl_Zynq", "S19", b"zynq"),
+            (
+                "s19-amlogic.bin",
+                "AMLogic",
+                "Ctrl_AMLogic",
+                "S19",
+                b"amlogic",
+            ),
+        ]);
+        let miner = MinerTypeInfo {
+            model: "S19".to_string(),
+            subtype: String::new(),
+        };
+
+        let error =
+            resolve_firmware_image(FirmwareImage::new("bundle.bmu".to_string(), bmu), &miner)
+                .await
+                .unwrap_err();
+        assert!(error.to_string().contains("Ambiguous firmware images"));
     }
 
     #[tokio::test]
