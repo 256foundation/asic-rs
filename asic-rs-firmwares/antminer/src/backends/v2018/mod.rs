@@ -533,32 +533,14 @@ impl GetDataLocations for AntMinerV2018 {
                     tag: None,
                 },
             )],
-            DataField::Wattage => {
-                // Not a `const` because `json!` is not const-evaluable.
-                let rpc_new_stats = MinerCommand::RPC {
-                    command: "stats",
-                    parameters: Some(json!({ "new_api": true })),
-                };
-
-                vec![
-                    (
-                        WEB_MINER_STATS,
-                        DataExtractor {
-                            func: get_by_pointer,
-                            key: Some("/STATS/1"),
-                            tag: None,
-                        },
-                    ),
-                    (
-                        rpc_new_stats,
-                        DataExtractor {
-                            func: get_by_pointer,
-                            key: Some("/STATS/0"),
-                            tag: None,
-                        },
-                    ),
-                ]
-            }
+            DataField::Wattage => vec![(
+                WEB_MINER_STATS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/STATS/1"),
+                    tag: None,
+                },
+            )],
             DataField::SerialNumber => vec![
                 (
                     WEB_SYSTEM_INFO,
@@ -1505,6 +1487,29 @@ mod tests {
             assert_eq!(board.as_ref().map(|board| board.name.as_str()), expected);
             assert_eq!(report.diagnostics.failed_commands, 0);
         }
+    }
+
+    #[tokio::test]
+    async fn legacy_wattage_uses_http_stats_without_tcp_stats_request() {
+        let miner = AntMinerV2018::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::Z15);
+        let results = HashMap::from([(
+            MinerCommand::WebAPI {
+                command: "miner_stats",
+                parameters: None,
+            },
+            json!({"STATS": [{}, {"chain_power": "3250 W"}]}),
+        )]);
+        let mock_api = MockAPIClient::new(results);
+        let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+        let report = collector.collect_report(&[DataField::Wattage]).await;
+
+        assert_eq!(report.diagnostics.failed_commands, 0);
+        assert_eq!(
+            miner
+                .parse_wattage(&report.values)
+                .map(|power| power.as_watts()),
+            Some(3250.0)
+        );
     }
 
     #[tokio::test]
