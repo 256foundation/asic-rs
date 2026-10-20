@@ -405,11 +405,6 @@ impl GetDataLocations for AntMinerV2018 {
             parameters: None,
         };
 
-        const WEB_BLINK_STATUS: MinerCommand = MinerCommand::WebAPI {
-            command: "get_blink_status",
-            parameters: None,
-        };
-
         const WEB_MINER_CONF: MinerCommand = MinerCommand::WebAPI {
             command: "get_miner_conf",
             parameters: None,
@@ -503,14 +498,7 @@ impl GetDataLocations for AntMinerV2018 {
                     tag: None,
                 },
             )],
-            DataField::LightFlashing => vec![(
-                WEB_BLINK_STATUS,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/blink"),
-                    tag: None,
-                },
-            )],
+            DataField::LightFlashing => vec![],
             DataField::IsMining => vec![(
                 WEB_MINER_CONF,
                 DataExtractor {
@@ -1416,6 +1404,12 @@ mod tests {
                 .to_string()
                 .contains("log.cgi")
         );
+    }
+
+    #[test]
+    fn legacy_polls_skip_missing_blink_status_endpoint() {
+        let miner = AntMinerV2018::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::Z15);
+        assert!(miner.get_locations(DataField::LightFlashing).is_empty());
     }
 
     #[tokio::test]
