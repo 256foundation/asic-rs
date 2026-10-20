@@ -372,7 +372,7 @@ default when a response is missing. It is not derived from `operating_state`.
 Use `miner.get_operating_state()` to fetch just this field, or exclude
 `DataField.OperatingState` (`DataField::OperatingState` in Rust) from a snapshot.
 
-`data.psus` is an optional list of `PsuData` entries with the PSU's model,
+`data.psus` is an optional list of `PsuData` entries with the PSU’s model,
 serial number, firmware version, input/output voltage, output current,
 input/output power, efficiency (0–1 ratio), and temperature. It is `None` for
 firmware that does not report PSU details; individual readings stay `None`
