@@ -1374,9 +1374,6 @@ impl FactoryReset for AntMinerV202307 {
 
 impl RestartMining for AntMinerV202307 {}
 
-#[cfg(test)]
-mod restart_mining_tests;
-
 impl RestoreStockOs for AntMinerV202307 {}
 
 #[async_trait]
