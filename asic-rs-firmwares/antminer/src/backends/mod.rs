@@ -25,9 +25,7 @@ impl MinerConstructor for AntMiner {
     fn new(ip: IpAddr, model: impl MinerModel, version: Option<semver::Version>) -> Box<dyn Miner> {
         if use_legacy_backend(&model, version.as_ref()) {
             Box::new(AntMinerV2018::new(ip, model))
-        } else if AntMinerV2020::validate(version.as_ref())
-            || AntMinerV2018::validate(version.as_ref())
-        {
+        } else if AntMinerV2020::validate(version.as_ref()) {
             Box::new(AntMinerV2020::new(ip, model))
         } else if AntMinerV202307::validate(version.as_ref()) {
             Box::new(AntMinerV202307::new(ip, model))
@@ -67,8 +65,9 @@ mod tests {
     }
 
     #[test]
-    fn routes_2021_through_june_2023_to_v2020() {
-        assert!(!AntMinerV2020::validate(Some(&Version::new(2020, 12, 31))));
+    fn json_backend_accepts_all_routed_build_dates_through_june_2023() {
+        assert!(AntMinerV2020::validate(Some(&Version::new(2020, 7, 3))));
+        assert!(AntMinerV2020::validate(Some(&Version::new(2020, 12, 31))));
         assert!(AntMinerV2020::validate(Some(&Version::new(2021, 1, 1))));
         assert!(AntMinerV2020::validate(Some(&Version::new(2023, 6, 30))));
         assert!(!AntMinerV2020::validate(Some(&Version::new(2023, 7, 1))));
