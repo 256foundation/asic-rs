@@ -499,14 +499,24 @@ impl GetDataLocations for AntMinerV2018 {
                 },
             )],
             DataField::LightFlashing => vec![],
-            DataField::IsMining => vec![(
-                WEB_MINER_CONF,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some("/bitmain-work-mode"),
-                    tag: None,
-                },
-            )],
+            DataField::IsMining => vec![
+                (
+                    WEB_MINER_CONF,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/bitmain-work-mode"),
+                        tag: Some("mode"),
+                    },
+                ),
+                (
+                    RPC_SUMMARY,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/SUMMARY/0"),
+                        tag: Some("summary"),
+                    },
+                ),
+            ],
             DataField::Uptime => vec![(
                 WEB_MINER_STATS,
                 DataExtractor {
@@ -825,15 +835,36 @@ impl GetDevFeeConnected for AntMinerV2018 {}
 
 impl GetIsMining for AntMinerV2018 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
-        data.extract::<String>(DataField::IsMining)
-            .map(|status| {
-                let status_lower = status.to_lowercase();
-                status_lower != "stopped"
-                    && status_lower != "idle"
-                    && status_lower != "sleep"
-                    && status_lower != "1"
+        let Some(status) = data.get(&DataField::IsMining) else {
+            return false;
+        };
+        let mode = status
+            .get("mode")
+            .and_then(|value| {
+                value
+                    .as_str()
+                    .map(str::to_owned)
+                    .or_else(|| value.as_i64().map(|value| value.to_string()))
             })
-            .unwrap_or(true)
+            .map(|value| value.to_ascii_lowercase());
+        if matches!(mode.as_deref(), Some("stopped" | "idle" | "sleep" | "1")) {
+            return false;
+        }
+
+        status
+            .get("summary")
+            .and_then(Value::as_object)
+            .and_then(|summary| {
+                summary.iter().find_map(|(key, value)| {
+                    let (unit, window) = key.split_once(' ')?;
+                    if window == "5s" && HashRateUnit::from_str(unit).is_ok() {
+                        Self::parse_f64_field(value)
+                    } else {
+                        None
+                    }
+                })
+            })
+            .is_some_and(|rate| rate > 0.0)
     }
 }
 
@@ -1410,6 +1441,38 @@ mod tests {
     fn legacy_polls_skip_missing_blink_status_endpoint() {
         let miner = AntMinerV2018::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::Z15);
         assert!(miner.get_locations(DataField::LightFlashing).is_empty());
+    }
+
+    #[tokio::test]
+    async fn legacy_mining_status_uses_current_rate_when_mode_is_missing() {
+        let miner = AntMinerV2018::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::Z15);
+        for (rate, config, expected) in [
+            (100.0, json!({"pools": []}), true),
+            (0.0, json!({"pools": []}), false),
+            (100.0, json!({"bitmain-work-mode": "sleep"}), false),
+        ] {
+            let results = HashMap::from([
+                (
+                    MinerCommand::WebAPI {
+                        command: "get_miner_conf",
+                        parameters: None,
+                    },
+                    config,
+                ),
+                (
+                    MinerCommand::RPC {
+                        command: "summary",
+                        parameters: None,
+                    },
+                    json!({"SUMMARY": [{"GHS 5s": rate, "GHS av": 100.0}]}),
+                ),
+            ]);
+            let mock_api = MockAPIClient::new(results);
+            let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+            let data = collector.collect(&[DataField::IsMining]).await;
+            assert_eq!(miner.parse_is_mining(&data), expected, "rate: {rate}");
+        }
+        assert!(!miner.parse_is_mining(&HashMap::new()));
     }
 
     #[tokio::test]
