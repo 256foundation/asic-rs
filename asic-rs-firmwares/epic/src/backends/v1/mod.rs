@@ -18,7 +18,7 @@ use asic_rs_core::{
         command::MinerCommand,
         device::{DeviceInfo, HashAlgorithm},
         fan::FanData,
-        firmware::{FirmwareImage, RestoreStockOsResult},
+        firmware::{FirmwareImage, FirmwareStats, RestoreStockOsResult},
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
         miner::TuningTarget,
@@ -41,6 +41,7 @@ use web::PowerPlayWebAPI;
 
 use crate::firmware::EPicFirmware;
 
+mod releases;
 mod web;
 
 #[derive(Debug)]
@@ -2022,6 +2023,25 @@ impl RestoreStockOs for PowerPlayV1 {
 
 #[async_trait]
 impl UpgradeFirmware for PowerPlayV1 {
+    fn supports_check_firmware_update(&self) -> bool {
+        true
+    }
+
+    async fn check_firmware_update(&self) -> anyhow::Result<FirmwareStats> {
+        let data = self
+            .get_collector()
+            .collect(&[DataField::ControlBoardVersion, DataField::FirmwareVersion])
+            .await;
+        let platform = data.extract_nested::<String>(DataField::ControlBoardVersion, "platform");
+        let cpu = data.extract_nested::<String>(DataField::ControlBoardVersion, "cpu");
+        let repository = releases::repository(platform.as_deref(), cpu.as_deref())?;
+        let current_version = self
+            .parse_firmware_version(&data)
+            .as_deref()
+            .and_then(releases::parse_version);
+        releases::check(repository, current_version).await
+    }
+
     async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
         self.web.upgrade_firmware(image).await
     }
