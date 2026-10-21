@@ -4,6 +4,7 @@ use anyhow::{Context, bail};
 use asic_rs_core::data::firmware::FirmwareStats;
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use asic_rs_makes_epic::hardware::EPicControlBoard;
+use asic_rs_makes_volcminer::make::VolcMinerMake;
 use semver::Version;
 use serde_json::Value;
 use tokio::{sync::Mutex, time::Instant};
@@ -71,6 +72,7 @@ impl ReleaseCache {
 pub(super) fn repository(
     platform: Option<&str>,
     cpu: Option<&str>,
+    make: &str,
 ) -> anyhow::Result<&'static str> {
     if let Some(platform) = platform.filter(|s| !s.trim().is_empty()) {
         if EPicControlBoard::parse(platform).is_some() {
@@ -85,6 +87,11 @@ pub(super) fn repository(
     // Older firmware reports only cpuHardware. Do not use the telemetry
     // parser's default-to-UMC fallback when selecting a release family.
     let cpu = cpu.unwrap_or_default().to_ascii_uppercase();
+    // Legacy VolcMiner firmware omits platform and shares the Xilinx CPU label
+    // with AntMiner boards, but cannot use the AntMiner release family.
+    if cpu.contains("XILINX") && make == VolcMinerMake::default().to_string() {
+        bail!("No ePIC release repository for legacy VolcMiner Xilinx control boards");
+    }
     if cpu.contains("STM32") {
         Ok(UMC)
     } else if cpu.contains("AMLOGIC")
@@ -287,10 +294,10 @@ mod tests {
     #[test]
     fn selects_release_family() {
         for platform in ["ePIC UMC", "UMC"] {
-            assert_eq!(repository(Some(platform), None).unwrap(), UMC);
+            assert_eq!(repository(Some(platform), None, "AntMiner").unwrap(), UMC);
         }
         for platform in ["AMLogic", "Xilinx", "BeagleBoneBlack", "CVITek"] {
-            assert_eq!(repository(Some(platform), None).unwrap(), STOCK);
+            assert_eq!(repository(Some(platform), None, "AntMiner").unwrap(), STOCK);
         }
         for (cpu, expected) in [
             ("STM32 (Device Tree Support)", UMC),
@@ -298,11 +305,23 @@ mod tests {
             ("Xilinx Zynq", STOCK),
             ("Generic AM33XX", STOCK),
         ] {
-            assert_eq!(repository(None, Some(cpu)).unwrap(), expected);
+            assert_eq!(repository(None, Some(cpu), "AntMiner").unwrap(), expected);
         }
-        assert!(repository(None, None).is_err());
-        assert!(repository(None, Some("unknown")).is_err());
-        assert!(repository(Some("TVXilinx"), Some("STM32")).is_err());
+        assert!(repository(None, None, "AntMiner").is_err());
+        assert!(repository(None, Some("unknown"), "AntMiner").is_err());
+        assert!(repository(Some("TVXilinx"), Some("STM32"), "AntMiner").is_err());
+    }
+
+    #[test]
+    fn rejects_legacy_volcminer_xilinx_boards() {
+        let make = VolcMinerMake::default().to_string();
+        for platform in [None, Some(""), Some(" "), Some("TVXilinx")] {
+            assert!(repository(platform, Some("Xilinx Zynq"), &make).is_err());
+        }
+        assert_eq!(
+            repository(None, Some("Xilinx Zynq"), "AntMiner").unwrap(),
+            STOCK
+        );
     }
 
     #[test]

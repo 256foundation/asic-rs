@@ -181,7 +181,8 @@ and latest versions and, when resolved, a firmware download source. Braiins
 v26.04 queries the miner's update service. ePIC queries GitHub's latest release
 API, using `epicblockchain/powerplay-antminer` for STM32 UMC boards and
 `epicblockchain/umcos-antminer` for recognized stock control boards. Unknown
-ePIC board identities return an error. ePIC currently reports versions only;
+ePIC board identities and legacy VolcMiner Xilinx boards return an error.
+ePIC currently reports versions only;
 the download source is absent because board/model asset selection is not yet
 implemented. GitHub checks require internet access and are subject to its public
 API rate limits. An unknown installed version makes `update_available()` return

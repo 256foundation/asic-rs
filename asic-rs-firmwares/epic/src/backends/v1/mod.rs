@@ -2034,7 +2034,8 @@ impl UpgradeFirmware for PowerPlayV1 {
             .await;
         let platform = data.extract_nested::<String>(DataField::ControlBoardVersion, "platform");
         let cpu = data.extract_nested::<String>(DataField::ControlBoardVersion, "cpu");
-        let repository = releases::repository(platform.as_deref(), cpu.as_deref())?;
+        let repository =
+            releases::repository(platform.as_deref(), cpu.as_deref(), &self.device_info.make)?;
         let current_version = self
             .parse_firmware_version(&data)
             .as_deref()
