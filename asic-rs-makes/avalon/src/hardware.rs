@@ -68,6 +68,10 @@ impl From<AvalonMinerModel> for MinerHardware {
                 boards: Some(vec![Some(160), Some(160), Some(160)]),
                 fans: Some(2),
             },
+            AvalonMinerModel::Avalon15Xp => Self {
+                boards: Some(vec![Some(160), Some(160), Some(160)]),
+                fans: Some(2),
+            },
             AvalonMinerModel::Avalon1566 => Self {
                 boards: Some(vec![Some(160), Some(160), Some(160)]),
                 fans: Some(2),
