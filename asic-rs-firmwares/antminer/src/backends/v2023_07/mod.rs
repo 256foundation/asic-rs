@@ -336,6 +336,55 @@ impl AntMinerV202307 {
             .or_else(|| value.as_str().and_then(|s| s.trim().parse::<f64>().ok()))
     }
 
+    fn parse_ks5_hashrate(&self, aggregate: &Value) -> Option<HashRate> {
+        let mut fields = Vec::new();
+        if let Some(raw) = aggregate.get("rate_5s") {
+            let unit = HashRateUnit::from_str(aggregate.get("rate_unit")?.as_str()?).ok()?;
+            if matches!(unit, HashRateUnit::Sol | HashRateUnit::KiloSol) {
+                return None;
+            }
+            fields.push((raw, unit));
+        }
+        for (key, unit) in [
+            ("THS 5s", HashRateUnit::TeraHash),
+            ("GHS 5s", HashRateUnit::GigaHash),
+            ("MHS 5s", HashRateUnit::MegaHash),
+            ("KHS 5s", HashRateUnit::KiloHash),
+            ("HS 5s", HashRateUnit::Hash),
+        ] {
+            if let Some(raw) = aggregate.get(key) {
+                fields.push((raw, unit));
+            }
+        }
+        let mut current: Option<HashRate> = None;
+        for (raw, unit) in fields {
+            let value = Self::parse_f64_field(raw)?;
+            if !value.is_finite() || value < 0.0 {
+                return None;
+            }
+            let rate = HashRate {
+                value,
+                unit,
+                algo: self.device_info.algo,
+            }
+            .as_default_unit();
+            if !rate.value.is_finite() {
+                return None;
+            }
+            if let Some(first) = &current {
+                let tolerance = 1e-6_f64.max(first.value.abs() * 1e-6);
+                if (first.value == 0.0) != (rate.value == 0.0)
+                    || (first.value - rate.value).abs() > tolerance
+                {
+                    return None;
+                }
+            } else {
+                current = Some(rate);
+            }
+        }
+        current
+    }
+
     fn parse_temp_string(temp_str: &str) -> Option<Temperature> {
         let temps: Vec<f64> = temp_str
             .split('-')
@@ -560,6 +609,29 @@ impl GetDataLocations for AntMinerV202307 {
                     tag: None,
                 },
             )],
+            DataField::Hashrate if matches!(self.device_info.model.as_str(), "KS5" | "KS5Pro") => {
+                vec![
+                    (
+                        RPC_SUMMARY,
+                        DataExtractor {
+                            func: get_by_pointer,
+                            key: Some("/SUMMARY"),
+                            tag: Some("summary"),
+                        },
+                    ),
+                    (
+                        MinerCommand::WebAPI {
+                            command: "stats",
+                            parameters: None,
+                        },
+                        DataExtractor {
+                            func: get_by_pointer,
+                            key: Some("/STATS"),
+                            tag: Some("stats"),
+                        },
+                    ),
+                ]
+            }
             // cgminer names its summary keys after the unit they are in —
             // `GHS 5s` on SHA-256 models, `MHS 5s` on Scrypt ones — so keep
             // the whole entry and let the parse pick the key that is present.
@@ -856,6 +928,21 @@ impl GetHashboards for AntMinerV202307 {
 impl GetHashrate for AntMinerV202307 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         let summary_value = data.get(&DataField::Hashrate)?;
+        if matches!(self.device_info.model.as_str(), "KS5" | "KS5Pro") {
+            if let Some([summary]) = summary_value
+                .get("summary")
+                .and_then(Value::as_array)
+                .map(Vec::as_slice)
+                && let Some(rate) = self.parse_ks5_hashrate(summary)
+            {
+                return Some(rate);
+            }
+            // KS5 RPC rate can be chart history; CGI stats supplies the current rate.
+            let [stats] = summary_value.get("stats")?.as_array()?.as_slice() else {
+                return None;
+            };
+            return self.parse_ks5_hashrate(stats);
+        }
         let summary = summary_value.as_object()?;
 
         // cgminer names its rate keys `<unit> <window>` — `GHS 5s` on SHA-256
@@ -1801,6 +1888,147 @@ mod tests {
             &json!({"bitmain-work-mode": 0}),
             MinerMode::Sleep
         ));
+    }
+
+    #[test]
+    fn ks5_current_hashrate_keeps_units_and_zero() {
+        for model in [AntMinerModel::KS5, AntMinerModel::KS5Pro] {
+            let miner = AntMinerV202307::new(IpAddr::from([127, 0, 0, 1]), model);
+            // Synthetic CGI aggregates, with deliberately stale averages.
+            for (stats, expected) in [
+                (
+                    json!({"rate_5s": 21083.13, "rate_unit": "GH/s", "rate_avg": 77000}),
+                    21.08313,
+                ),
+                (
+                    json!({"rate_5s": "21.08313", "rate_unit": "TH/s"}),
+                    21.08313,
+                ),
+                (
+                    json!({"rate_5s": 0, "rate_unit": "MH/s", "rate_avg": 77000}),
+                    0.0,
+                ),
+                (
+                    json!({"GHS 5s": 21083.13, "MHS 5s": 21083130, "GHS av": 77000}),
+                    21.08313,
+                ),
+                (
+                    json!({"rate_5s": 21083.13, "rate_unit": "GH/s", "THS 5s": 21.08313}),
+                    21.08313,
+                ),
+            ] {
+                let data = HashMap::from([(DataField::Hashrate, json!({"stats": [stats]}))]);
+                let rate = miner.parse_hashrate(&data).unwrap();
+                assert_eq!(rate.unit, HashRateUnit::TeraHash);
+                assert_eq!(rate.algo, HashAlgorithm::KHeavyHash);
+                assert!((rate.value - expected).abs() < 1e-9);
+            }
+        }
+    }
+
+    #[test]
+    fn ks5_missing_invalid_or_conflicting_current_rates_stay_unknown() {
+        let miner = AntMinerV202307::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::KS5Pro);
+        for stats in [
+            json!({"rate_avg": 77000, "rate_unit": "GH/s"}),
+            json!({"GHS av": 77000}),
+            json!({"chain": [{"rate_5s": 21000}], "rate_unit": "GH/s"}),
+            json!({"series": [{"name": "chain0", "data": [21000]}], "unit": "GH/s"}),
+            json!({"rate_5s": 21000}),
+            json!({"rate_5s": 21000, "rate_unit": "unknown"}),
+            json!({"rate_5s": 21000, "rate_unit": "Sol/s"}),
+            json!({"rate_5s": 0, "rate_unit": "GH/s", "GHS 5s": 21000}),
+            json!({"rate_5s": 0, "rate_unit": "GH/s", "GHS 5s": 0.0001}),
+            json!({"GHS 5s": 21000, "THS 5s": 22}),
+            json!({"rate_5s": 21, "rate_unit": "TH/s", "GHS 5s": 21000.015, "MHS 5s": 21000030}),
+        ] {
+            let data = HashMap::from([(DataField::Hashrate, json!({"stats": [stats]}))]);
+            assert!(miner.parse_hashrate(&data).is_none(), "{data:?}");
+        }
+        for invalid in [
+            json!(null),
+            json!(true),
+            json!(-1),
+            json!("broken"),
+            json!("NaN"),
+            json!("inf"),
+            json!("1e999"),
+        ] {
+            for stats in [
+                json!({"rate_5s": invalid, "rate_unit": "GH/s", "rate_avg": 77000, "GHS 5s": 21000}),
+                json!({"rate_5s": 21000, "rate_unit": "GH/s", "GHS 5s": invalid}),
+            ] {
+                let data = HashMap::from([(DataField::Hashrate, json!({"stats": [stats]}))]);
+                assert!(miner.parse_hashrate(&data).is_none(), "{data:?}");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn ks5_keeps_rpc_current_rate_and_falls_back_to_one_cgi_aggregate() {
+        for model in [AntMinerModel::KS5, AntMinerModel::KS5Pro] {
+            let miner = AntMinerV202307::new(IpAddr::from([127, 0, 0, 1]), model);
+            for (summary, stats, expected) in [
+                (
+                    json!([{"GHS 5s": 0, "GHS av": 77000}]),
+                    Some(json!([{"rate_5s": 21000, "rate_unit": "GH/s"}])),
+                    Some(0.0),
+                ),
+                (json!([{"GHS 5s": 21000}]), None, Some(21.0)),
+                (
+                    json!([{"GHS av": 77000}]),
+                    Some(json!([{"rate_5s": 0, "rate_unit": "GH/s", "rate_avg": 77000}])),
+                    Some(0.0),
+                ),
+                (
+                    json!([{"series": [{"name": "chain0", "data": [21000]}]}]),
+                    Some(json!([{"rate_5s": 21000, "rate_unit": "GH/s"}])),
+                    Some(21.0),
+                ),
+                (
+                    json!([{"GHS 5s": true, "GHS av": 77000}]),
+                    Some(json!([{"rate_5s": 21000, "rate_unit": "GH/s"}])),
+                    Some(21.0),
+                ),
+                (json!([{"GHS av": 77000}]), None, None),
+                (json!([{"GHS av": 77000}]), Some(json!([])), None),
+                (json!([{"GHS 5s": 0}, {"GHS 5s": 21000}]), None, None),
+                (
+                    json!([{"GHS av": 77000}]),
+                    Some(
+                        json!([{"rate_5s": 0, "rate_unit": "GH/s"}, {"rate_5s": 21000, "rate_unit": "GH/s"}]),
+                    ),
+                    None,
+                ),
+                (
+                    json!([{"GHS av": 77000}]),
+                    Some(json!([{"rate_avg": 77000, "rate_unit": "GH/s"}])),
+                    None,
+                ),
+            ] {
+                let mut results = HashMap::from([(
+                    MinerCommand::RPC {
+                        command: "summary",
+                        parameters: None,
+                    },
+                    json!({"SUMMARY": summary}),
+                )]);
+                if let Some(stats) = stats {
+                    results.insert(
+                        MinerCommand::WebAPI {
+                            command: "stats",
+                            parameters: None,
+                        },
+                        json!({"STATS": stats}),
+                    );
+                }
+                let mock_api = MockAPIClient::new(results);
+                let mut collector = DataCollector::new_with_client(&miner, &mock_api);
+                let data = collector.collect(&[DataField::Hashrate]).await;
+                let rate = miner.parse_hashrate(&data);
+                assert_eq!(rate.map(|rate| rate.value), expected, "{data:?}");
+            }
+        }
     }
 
     #[test]
