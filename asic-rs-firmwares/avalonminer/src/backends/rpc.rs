@@ -222,6 +222,85 @@ mod parse_rpc_result_nested_tests {
         AvalonMinerRPCAPI::new(IpAddr::V4(Ipv4Addr::LOCALHOST))
     }
 
+    #[tokio::test]
+    async fn avalon_15xp_hardware_and_telemetry() -> anyhow::Result<()> {
+        use crate::backends::avalon_a::AvalonAMiner;
+        use asic_rs_core::{
+            data::{
+                collector::{DataCollector, DataField},
+                miner::TuningTarget,
+            },
+            test::api::MockAPIClient,
+            traits::miner::*,
+        };
+        use asic_rs_makes_avalon::models::AvalonMinerModel;
+        use measurements::Power;
+
+        let stats =
+            test_rpc().parse_rpc_result(include_str!("../test/json/avalon_15xp_stats.json"))?;
+        let expected_watts = stats["STATS"][0]["MM ID0"]["WALLPOWER"].as_f64().unwrap();
+        let expected_target = stats["STATS"][0]["MM ID0"]["MPO"].as_f64().unwrap();
+        let miner = AvalonAMiner::new(
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+            AvalonMinerModel::Avalon15Xp,
+        );
+        let mock = MockAPIClient::new(HashMap::from([
+            (
+                MinerCommand::RPC {
+                    command: "stats",
+                    parameters: None,
+                },
+                stats,
+            ),
+            (
+                MinerCommand::RPC {
+                    command: "summary",
+                    parameters: None,
+                },
+                json!({"SUMMARY": [{"Best Share": 11075107045_u64}]}),
+            ),
+        ]));
+        let mut collector = DataCollector::new_with_client(&miner, &mock);
+        let data = collector
+            .collect(&[
+                DataField::Hashboards,
+                DataField::Chips,
+                DataField::Fans,
+                DataField::Wattage,
+                DataField::TuningTarget,
+                DataField::SessionBestShare,
+            ])
+            .await;
+        let boards = miner.parse_hashboards(&data);
+        assert_eq!(boards.len(), 3);
+        for board in &boards {
+            assert_eq!(board.expected_chips, Some(160));
+            assert_eq!(board.working_chips, Some(160));
+            assert_eq!(board.chips.len(), 160);
+            assert_eq!(board.active, Some(true));
+            assert!(board.hashrate.is_some());
+            assert!(board.voltage.is_some());
+            assert!(board.frequency.is_some());
+            assert!(
+                board
+                    .chips
+                    .iter()
+                    .all(|chip| chip.temperature.is_some() && chip.voltage.is_some())
+            );
+        }
+        assert_eq!(miner.parse_fans(&data).len(), 2);
+        assert_eq!(
+            miner.parse_wattage(&data),
+            Some(Power::from_watts(expected_watts))
+        );
+        assert_eq!(
+            miner.parse_tuning_target(&data),
+            Some(TuningTarget::Power(Power::from_watts(expected_target)))
+        );
+        assert_eq!(miner.parse_session_best_share(&data), Some(11075107045.0));
+        Ok(())
+    }
+
     #[test]
     fn parses_full_cgminer_response() {
         let val = test_rpc().parse_rpc_result(STATS_COMMAND).unwrap();

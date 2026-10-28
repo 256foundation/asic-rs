@@ -58,6 +58,9 @@ pub enum AvalonMinerModel {
     #[serde(alias = "15PRO")]
     #[algorithm(HashAlgorithm::SHA256)]
     Avalon15,
+    #[serde(alias = "15XP")]
+    #[algorithm(HashAlgorithm::SHA256)]
+    Avalon15Xp,
     #[serde(alias = "1566")]
     #[algorithm(HashAlgorithm::SHA256)]
     Avalon1566,
@@ -128,6 +131,10 @@ mod tests {
         assert_eq!(
             AvalonMinerModel::from_str("15PRO").unwrap(),
             AvalonMinerModel::Avalon15
+        );
+        assert_eq!(
+            AvalonMinerModel::from_str("15XP").unwrap(),
+            AvalonMinerModel::Avalon15Xp
         );
         assert_eq!(
             AvalonMinerModel::from_str("1566HA").unwrap(),

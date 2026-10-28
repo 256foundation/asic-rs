@@ -138,7 +138,7 @@ Legend:
 		 - [x] `AT1500`
 	??? note "AT2880 family (1 model)"
 		 - [x] `AT2880`
-??? quote "AvalonMiner (21 models across 11 families)"
+??? quote "AvalonMiner (22 models across 11 families)"
 
 	??? note "7xx family (3 models)"
 		 - [x] `721`
@@ -161,8 +161,9 @@ Legend:
 		 - [x] `1246`
 	??? note "14xx family (1 model)"
 		 - [x] `1466`
-	??? note "15 family (1 model)"
+	??? note "15 family (2 models)"
 		 - [x] `15` (also: `15PRO`)
+		 - [x] `15XP`
 	??? note "15xx family (3 models)"
 		 - [x] `1566`
 		 - [x] `1566HA`

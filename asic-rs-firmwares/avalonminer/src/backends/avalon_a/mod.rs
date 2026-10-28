@@ -416,6 +416,14 @@ impl GetDataLocations for AvalonAMiner {
                         tag: Some("ps"),
                     },
                 ),
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0/WALLPOWER"),
+                        tag: None,
+                    },
+                ),
             ],
             DataField::TuningTarget => vec![
                 (
@@ -431,6 +439,14 @@ impl GetDataLocations for AvalonAMiner {
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/STATS/0/MM ID0:Summary/STATS/MPO"),
+                        tag: None,
+                    },
+                ),
+                (
+                    RPC_STATS,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/STATS/0/MM ID0/MPO"),
                         tag: None,
                     },
                 ),
@@ -474,6 +490,17 @@ impl GetDataLocations for AvalonAMiner {
                 DataExtractor {
                     func: get_by_pointer,
                     key: Some("/STATS/0/MM ID0/Led"),
+                    tag: None,
+                },
+            )],
+            DataField::SessionBestShare => vec![(
+                MinerCommand::RPC {
+                    command: "summary",
+                    parameters: None,
+                },
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/SUMMARY/0/Best Share"),
                     tag: None,
                 },
             )],
@@ -933,7 +960,11 @@ impl GetUptime for AvalonAMiner {
 }
 
 impl GetBestShare for AvalonAMiner {}
-impl GetSessionBestShare for AvalonAMiner {}
+impl GetSessionBestShare for AvalonAMiner {
+    fn parse_session_best_share(&self, data: &HashMap<DataField, Value>) -> Option<f64> {
+        data.extract::<f64>(DataField::SessionBestShare)
+    }
+}
 
 impl GetFluidTemperature for AvalonAMiner {
     fn parse_fluid_temperature(&self, data: &HashMap<DataField, Value>) -> Option<Temperature> {
