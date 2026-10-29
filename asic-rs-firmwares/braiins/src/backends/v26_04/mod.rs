@@ -4,6 +4,7 @@ use anyhow;
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
+        fan::FanPause,
         pools::PoolGroupConfig,
         timezone::{TimezoneConfig, Tz},
     },
@@ -38,6 +39,7 @@ use web::BraiinsWebAPI;
 
 use crate::{
     backends::{
+        fan_pause::set_fan_pause,
         util::{
             parse_bos_version, parse_configured_tuning_target, parse_scaled_tuning_target,
             tuner_constraints_capabilities,
@@ -1123,6 +1125,14 @@ impl SupportsFanConfig for BraiinsV2604 {
     fn supports_fan_config(&self) -> bool {
         false
     }
+
+    async fn set_fan_pause(&self, pause: FanPause) -> anyhow::Result<bool> {
+        set_fan_pause(&self.web, pause).await
+    }
+
+    fn supports_fan_pause(&self) -> bool {
+        true
+    }
 }
 
 impl SupportsTemperatureConfig for BraiinsV2604 {}
@@ -1221,6 +1231,86 @@ mod tests {
         let mut miner = BraiinsV2604::new(ip, AntMinerModel::S21Pro);
         miner.web = BraiinsWebAPI::new_with_port(ip, port, MinerAuth::from_token("test-token"));
         miner
+    }
+
+    /// Serve one canned response per `(path, body)` route, in order, and return
+    /// the raw requests received.
+    async fn routed_mock_server(
+        routes: Vec<(&'static str, String)>,
+    ) -> anyhow::Result<MockHttpServer> {
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+        let task = tokio::spawn(async move {
+            let mut requests = Vec::new();
+            for (path, body) in routes {
+                let (mut socket, _) =
+                    tokio::time::timeout(Duration::from_secs(2), listener.accept())
+                        .await
+                        .context("timed out waiting for HTTP request")??;
+                let request = read_http_request(&mut socket).await?;
+                anyhow::ensure!(
+                    request.contains(&format!(" /api/v1/{path} ")),
+                    "expected a request for {path}, got: {request}"
+                );
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                socket.write_all(response.as_bytes()).await?;
+                requests.push(request);
+            }
+            Ok(requests.join("\n"))
+        });
+
+        Ok(MockHttpServer { port, task })
+    }
+
+    #[tokio::test]
+    async fn set_fan_pause_puts_pause_mode_over_http_keeping_other_cooling_fields()
+    -> anyhow::Result<()> {
+        let MockHttpServer { port, task } = routed_mock_server(vec![
+            (
+                "miner/details",
+                r#"{"bos_version":{"current":"2026-04-14-0-912d084c-26.04-plus"}}"#.to_string(),
+            ),
+            (
+                "configuration/miner",
+                r#"{"pool_groups":[],"temperature":{"mode":{"auto":{"target_temperature":{"degree_c":65.0},"hot_temperature":{"degree_c":80.0},"dangerous_temperature":{"degree_c":90.0},"min_fan_speed":20,"max_fan_speed":90}}}}"#.to_string(),
+            ),
+            ("cooling/mode", "{}".to_string()),
+        ])
+        .await?;
+        let miner = miner_with_mock_web(port);
+
+        let pause = asic_rs_core::config::fan::FanPause::manual(
+            0.35,
+            asic_rs_core::config::fan::FanPauseRuntime::Indefinite,
+        );
+        assert!(miner.set_fan_pause(pause).await?);
+
+        let requests = task.await??;
+        let put = requests
+            .lines()
+            .find(|line| line.starts_with("PUT "))
+            .context("no PUT request")?;
+        assert!(put.starts_with("PUT /api/v1/cooling/mode "));
+        let body: Value =
+            serde_json::from_str(requests.rsplit("\r\n\r\n").next().context("no PUT body")?)?;
+        assert_eq!(
+            body,
+            json!({ "auto": {
+                "target_temperature": { "degree_c": 65.0 },
+                "hot_temperature": { "degree_c": 80.0 },
+                "dangerous_temperature": { "degree_c": 90.0 },
+                "min_fan_speed": 20,
+                "max_fan_speed": 90,
+                "pause_mode": { "mode": { "manual": {
+                    "pause_cooldown_fan_speed_ratio": 0.35,
+                    "fan_pause_runtime": 2
+                } } }
+            } })
+        );
+        Ok(())
     }
 
     #[tokio::test]

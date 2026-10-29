@@ -1837,6 +1837,7 @@ impl SupportsFanConfig for PowerPlayV1 {
             FanConfig::Auto {
                 target_temp,
                 idle_speed,
+                ..
             } => {
                 let idle_speed = idle_speed.unwrap_or(20);
                 let target_temp = target_temp.round().max(0.0) as u64;
@@ -1850,7 +1851,7 @@ impl SupportsFanConfig for PowerPlayV1 {
                     }
                 })
             }
-            FanConfig::Manual { fan_speed } => json!({
+            FanConfig::Manual { fan_speed, .. } => json!({
                 "param": {
                     "Manual": fan_speed,
                 }
