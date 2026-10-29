@@ -107,11 +107,10 @@ impl DiscoveryCommands for EPicFirmware {
     }
 }
 
-#[async_trait]
-impl MinerFirmware for EPicFirmware {
-    type Model = EPicCompatibleModel;
-
-    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
+impl EPicFirmware {
+    async fn get_model_and_uninstall_support(
+        ip: IpAddr,
+    ) -> Result<(EPicCompatibleModel, bool), ModelSelectionError> {
         let url = format!("http://{}:4028/capabilities", ip);
         let response = build_discovery_client()?
             .get(&url)
@@ -124,6 +123,7 @@ impl MinerFirmware for EPicFirmware {
             .await
             .map_err(|_| ModelSelectionError::UnexpectedModelResponse)?;
 
+        let uninstall_supported = json_data["UninstallSupported"].as_bool().unwrap_or(false);
         let model_base = json_data["Model"]
             .as_str()
             .ok_or(ModelSelectionError::UnexpectedModelResponse)?;
@@ -135,11 +135,14 @@ impl MinerFirmware for EPicFirmware {
             .to_uppercase();
 
         if model_upper == "UNDEFINED" {
-            return Ok(EPicCompatibleModel::Unknown(UnknownMinerModel {
-                name: model_base.to_string(),
-            }));
+            return Ok((
+                EPicCompatibleModel::Unknown(UnknownMinerModel {
+                    name: model_base.to_string(),
+                }),
+                uninstall_supported,
+            ));
         }
-        if model_upper.starts_with("ANTMINER") {
+        let model = if model_upper.starts_with("ANTMINER") {
             AntMinerMake::parse_model(model_upper.clone())
                 .map(EPicCompatibleModel::AntMiner)
                 .or(Ok(EPicCompatibleModel::Unknown(UnknownMinerModel {
@@ -169,7 +172,19 @@ impl MinerFirmware for EPicFirmware {
                 .or(Ok(EPicCompatibleModel::Unknown(UnknownMinerModel {
                     name: model_base.to_string(),
                 })))
-        }
+        }?;
+        Ok((model, uninstall_supported))
+    }
+}
+
+#[async_trait]
+impl MinerFirmware for EPicFirmware {
+    type Model = EPicCompatibleModel;
+
+    async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
+        Self::get_model_and_uninstall_support(ip)
+            .await
+            .map(|(model, _)| model)
     }
 
     async fn get_version(ip: IpAddr) -> Option<semver::Version> {
@@ -196,13 +211,13 @@ impl FirmwareEntry for EPicFirmware {
         ip: IpAddr,
         auth: Option<&MinerAuth>,
     ) -> Result<Box<dyn Miner>, ModelSelectionError> {
-        let model = EPicFirmware::get_model(ip).await?;
+        let (model, uninstall_supported) = Self::get_model_and_uninstall_support(ip).await?;
         let version = EPicFirmware::get_version(ip).await;
         let mut miner = crate::backends::PowerPlay::build(ip, model, version);
         if let Some(auth) = auth {
             miner.set_auth(auth.clone());
         }
-        miner.detect_restore_stock_os_support().await;
+        miner.set_restore_stock_os_support(uninstall_supported);
         Ok(Box::new(miner))
     }
 }
