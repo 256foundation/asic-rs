@@ -108,23 +108,22 @@ impl DiscoveryCommands for EPicFirmware {
 }
 
 impl EPicFirmware {
-    async fn get_capabilities(
+    async fn get_model_and_uninstall_support(
         ip: IpAddr,
-        port: u16,
-    ) -> Result<serde_json::Value, ModelSelectionError> {
-        build_discovery_client()?
-            .get(format!("http://{ip}:{port}/capabilities"))
+    ) -> Result<(EPicCompatibleModel, bool), ModelSelectionError> {
+        let url = format!("http://{}:4028/capabilities", ip);
+        let response = build_discovery_client()?
+            .get(&url)
             .send()
             .await
-            .map_err(|_| ModelSelectionError::NoModelResponse)?
-            .json()
-            .await
-            .map_err(|_| ModelSelectionError::UnexpectedModelResponse)
-    }
+            .map_err(|_| ModelSelectionError::NoModelResponse)?;
 
-    fn model_from_capabilities(
-        json_data: &serde_json::Value,
-    ) -> Result<EPicCompatibleModel, ModelSelectionError> {
+        let json_data = response
+            .json::<serde_json::Value>()
+            .await
+            .map_err(|_| ModelSelectionError::UnexpectedModelResponse)?;
+
+        let uninstall_supported = json_data["UninstallSupported"].as_bool().unwrap_or(false);
         let model_base = json_data["Model"]
             .as_str()
             .ok_or(ModelSelectionError::UnexpectedModelResponse)?;
@@ -136,11 +135,14 @@ impl EPicFirmware {
             .to_uppercase();
 
         if model_upper == "UNDEFINED" {
-            return Ok(EPicCompatibleModel::Unknown(UnknownMinerModel {
-                name: model_base.to_string(),
-            }));
+            return Ok((
+                EPicCompatibleModel::Unknown(UnknownMinerModel {
+                    name: model_base.to_string(),
+                }),
+                uninstall_supported,
+            ));
         }
-        if model_upper.starts_with("ANTMINER") {
+        let model = if model_upper.starts_with("ANTMINER") {
             AntMinerMake::parse_model(model_upper.clone())
                 .map(EPicCompatibleModel::AntMiner)
                 .or(Ok(EPicCompatibleModel::Unknown(UnknownMinerModel {
@@ -170,38 +172,8 @@ impl EPicFirmware {
                 .or(Ok(EPicCompatibleModel::Unknown(UnknownMinerModel {
                     name: model_base.to_string(),
                 })))
-        }
-    }
-
-    async fn get_version_on_port(ip: IpAddr, port: u16) -> Option<semver::Version> {
-        let url = format!("http://{ip}:{port}/summary");
-        let response = build_discovery_client().ok()?.get(&url).send().await.ok()?;
-        let json_data = response.json::<serde_json::Value>().await.ok()?;
-
-        let fw_str = json_data["Software"].as_str()?;
-        let version_str = fw_str.split_whitespace().last()?.trim_start_matches('v');
-        semver::Version::parse(version_str).ok()
-    }
-
-    async fn build_miner_on_port(
-        ip: IpAddr,
-        port: u16,
-        auth: Option<&MinerAuth>,
-    ) -> Result<Box<dyn Miner>, ModelSelectionError> {
-        let capabilities = Self::get_capabilities(ip, port).await?;
-        let model = Self::model_from_capabilities(&capabilities)?;
-        let uninstall_supported = capabilities["UninstallSupported"]
-            .as_bool()
-            .unwrap_or(false);
-        let version = Self::get_version_on_port(ip, port).await;
-        let mut miner = crate::backends::PowerPlay::build(ip, model, version);
-        if let Some(auth) = auth {
-            miner.set_auth(auth.clone());
-        }
-        // Reuse the discovery response so constructing the miner does not
-        // initialize its persistent HTTP client or retain an idle connection.
-        miner.set_restore_stock_os_support(uninstall_supported);
-        Ok(Box::new(miner))
+        }?;
+        Ok((model, uninstall_supported))
     }
 }
 
@@ -210,11 +182,19 @@ impl MinerFirmware for EPicFirmware {
     type Model = EPicCompatibleModel;
 
     async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
-        Self::model_from_capabilities(&Self::get_capabilities(ip, 4028).await?)
+        Self::get_model_and_uninstall_support(ip)
+            .await
+            .map(|(model, _)| model)
     }
 
     async fn get_version(ip: IpAddr) -> Option<semver::Version> {
-        Self::get_version_on_port(ip, 4028).await
+        let url = format!("http://{}:4028/summary", ip);
+        let response = build_discovery_client().ok()?.get(&url).send().await.ok()?;
+        let json_data = response.json::<serde_json::Value>().await.ok()?;
+
+        let fw_str = json_data["Software"].as_str()?;
+        let version_str = fw_str.split_whitespace().last()?.trim_start_matches('v');
+        semver::Version::parse(version_str).ok()
     }
 }
 
@@ -231,86 +211,13 @@ impl FirmwareEntry for EPicFirmware {
         ip: IpAddr,
         auth: Option<&MinerAuth>,
     ) -> Result<Box<dyn Miner>, ModelSelectionError> {
-        Self::build_miner_on_port(ip, 4028, auth).await
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::time::Duration;
-
-    use serde_json::{Value, json};
-    use tokio::{
-        io::{AsyncReadExt, AsyncWriteExt},
-        net::TcpListener,
-        time::timeout,
-    };
-
-    use super::EPicFirmware;
-
-    #[tokio::test]
-    async fn discovery_reuses_capabilities_and_closes_connections() -> anyhow::Result<()> {
-        for (support, expected) in [
-            (Some(json!(true)), true),
-            (Some(json!(false)), false),
-            (None, false),
-            (Some(Value::Null), false),
-            (Some(json!("true")), false),
-        ] {
-            let listener = TcpListener::bind("127.0.0.1:0").await?;
-            let address = listener.local_addr()?;
-            let mut capabilities = json!({ "Model": "Antminer S19 XP" });
-            if let Some(support) = support {
-                capabilities["UninstallSupported"] = support;
-            }
-            let server = tokio::spawn(async move {
-                for (path, body) in [
-                    ("/capabilities", capabilities),
-                    ("/summary", json!({ "Software": "UMC OS v1.2.3" })),
-                ] {
-                    let (mut socket, _) =
-                        timeout(Duration::from_secs(2), listener.accept()).await??;
-                    let mut request = Vec::new();
-                    let mut chunk = [0_u8; 1024];
-                    while !request.windows(4).any(|window| window == b"\r\n\r\n") {
-                        let count =
-                            timeout(Duration::from_secs(2), socket.read(&mut chunk)).await??;
-                        anyhow::ensure!(count > 0, "connection closed before request headers");
-                        request.extend_from_slice(&chunk[..count]);
-                    }
-                    let request = String::from_utf8(request)?;
-                    assert!(request.starts_with(&format!("GET {path} HTTP/1.1\r\n")));
-                    assert!(request.lines().any(|line| {
-                        line.split_once(':').is_some_and(|(name, value)| {
-                            name.eq_ignore_ascii_case("connection")
-                                && value.trim().eq_ignore_ascii_case("close")
-                        })
-                    }));
-
-                    // Offer keep-alive to verify discovery closes its side even
-                    // when the server would allow the connection to be reused.
-                    let body = body.to_string();
-                    socket
-                        .write_all(
-                            format!(
-                                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: keep-alive\r\n\r\n{body}",
-                                body.len()
-                            )
-                            .as_bytes(),
-                        )
-                        .await?;
-                    let count = timeout(Duration::from_secs(2), socket.read(&mut chunk)).await??;
-                    assert_eq!(count, 0, "discovery retained the {path} connection");
-                }
-                anyhow::Ok(())
-            });
-
-            let miner =
-                EPicFirmware::build_miner_on_port(address.ip(), address.port(), None).await?;
-            assert_eq!(miner.get_device_info().model, "S19XP");
-            assert_eq!(miner.supports_restore_stock_os(), expected);
-            server.await??;
+        let (model, uninstall_supported) = Self::get_model_and_uninstall_support(ip).await?;
+        let version = EPicFirmware::get_version(ip).await;
+        let mut miner = crate::backends::PowerPlay::build(ip, model, version);
+        if let Some(auth) = auth {
+            miner.set_auth(auth.clone());
         }
-        Ok(())
+        miner.set_restore_stock_os_support(uninstall_supported);
+        Ok(Box::new(miner))
     }
 }

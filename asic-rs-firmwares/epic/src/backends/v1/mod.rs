@@ -2252,7 +2252,7 @@ mod tests {
             mock_json_server(json!({ "result": true, "error": null })).await?;
         let mut miner =
             PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
-        miner.set_restore_stock_os_support(true);
+        miner.restore_stock_os_supported.set(true)?;
         miner.set_auth(MinerAuth::new("", "test-password"));
 
         assert!(!miner.supports_factory_reset());
@@ -2338,9 +2338,9 @@ mod tests {
 
     #[tokio::test]
     async fn restore_stock_os_refuses_unadvertised_endpoint() {
-        let mut miner =
+        let miner =
             PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, 1);
-        miner.set_restore_stock_os_support(false);
+        miner.restore_stock_os_supported.set(false).unwrap();
 
         assert!(!miner.supports_restore_stock_os());
         let error = miner.restore_stock_os().await.unwrap_err();
