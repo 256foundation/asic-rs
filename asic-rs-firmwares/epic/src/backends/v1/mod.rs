@@ -71,8 +71,8 @@ impl PowerPlayV1 {
         miner
     }
 
-    pub(crate) async fn detect_restore_stock_os_support(&mut self) {
-        let _ = self.restore_stock_os_support().await;
+    pub(crate) fn set_restore_stock_os_support(&mut self, supported: bool) {
+        self.restore_stock_os_supported = OnceCell::new_with(Some(supported));
     }
 
     async fn restore_stock_os_support(&self) -> anyhow::Result<bool> {
@@ -2230,13 +2230,13 @@ mod tests {
 
         for (capabilities, expected) in cases {
             let MockJsonServer { port, task } = mock_json_server(capabilities).await?;
-            let mut miner = PowerPlayV1::new_with_port(
+            let miner = PowerPlayV1::new_with_port(
                 IpAddr::from([127, 0, 0, 1]),
                 AntMinerModel::S19XP,
                 port,
             );
 
-            miner.detect_restore_stock_os_support().await;
+            assert_eq!(miner.restore_stock_os_support().await?, expected);
 
             let request = task.await??;
             assert!(request.starts_with("GET /capabilities HTTP/1.1\r\n"));
@@ -2252,7 +2252,7 @@ mod tests {
             mock_json_server(json!({ "result": true, "error": null })).await?;
         let mut miner =
             PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
-        miner.restore_stock_os_supported.set(true)?;
+        miner.set_restore_stock_os_support(true);
         miner.set_auth(MinerAuth::new("", "test-password"));
 
         assert!(!miner.supports_factory_reset());
@@ -2338,9 +2338,9 @@ mod tests {
 
     #[tokio::test]
     async fn restore_stock_os_refuses_unadvertised_endpoint() {
-        let miner =
+        let mut miner =
             PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, 1);
-        miner.restore_stock_os_supported.set(false).unwrap();
+        miner.set_restore_stock_os_support(false);
 
         assert!(!miner.supports_restore_stock_os());
         let error = miner.restore_stock_os().await.unwrap_err();
@@ -2359,10 +2359,10 @@ mod tests {
             ("200 OK", json!({ "result": true, "error": null })),
         ])
         .await?;
-        let mut miner =
+        let miner =
             PowerPlayV1::new_with_port(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, port);
 
-        miner.detect_restore_stock_os_support().await;
+        assert!(miner.restore_stock_os_support().await.is_err());
         assert!(miner.supports_restore_stock_os());
         assert_eq!(
             miner.restore_stock_os().await?,
