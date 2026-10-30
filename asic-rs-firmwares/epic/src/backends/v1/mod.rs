@@ -705,14 +705,27 @@ impl GetDataLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
-            DataField::Messages => vec![(
-                WEB_SUMMARY,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some(""),
-                    tag: None,
-                },
-            )],
+            DataField::Messages => vec![
+                (
+                    WEB_SUMMARY,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: None,
+                    },
+                ),
+                (
+                    MinerCommand::WebAPI {
+                        command: "errors/history",
+                        parameters: None,
+                    },
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: Some("History"),
+                    },
+                ),
+            ],
             _ => vec![],
         }
     }
@@ -1358,23 +1371,24 @@ fn format_last_error(last_error: &Value) -> Option<String> {
 
 impl GetMessages for PowerPlayV1 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
-        let mut messages = Vec::new();
+        let Some(data) = data.get(&DataField::Messages) else {
+            return Vec::new();
+        };
         let timestamp = unix_timestamp_secs();
+        let errors: Vec<_> = if let Some(history) = data.get("History").and_then(Value::as_array) {
+            history.iter().filter_map(format_last_error).collect()
+        } else {
+            // Older firmware only exposes the last error in the summary.
+            data.pointer("/Status/Last Error")
+                .and_then(format_last_error)
+                .into_iter()
+                .collect()
+        };
 
-        if let Some(last_error) = data
-            .get(&DataField::Messages)
-            .and_then(|v| v.pointer("/Status/Last Error"))
-            .and_then(format_last_error)
-        {
-            messages.push(MinerMessage::new(
-                timestamp as u32,
-                0,
-                last_error,
-                MessageSeverity::Error,
-            ));
-        }
-
-        messages
+        errors
+            .into_iter()
+            .map(|error| MinerMessage::new(timestamp as u32, 0, error, MessageSeverity::Error))
+            .collect()
     }
 }
 
@@ -2702,6 +2716,57 @@ mod tests {
         assert!(request.starts_with("GET /summary HTTP/1.1\r\n"));
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn collect_messages_prefers_history_and_falls_back_for_older_firmware() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let history: Vec<_> = (0..10)
+            .map(|index| json!({ "NoSolutions": format!("report {}", index / 2) }))
+            .collect();
+        let expected: Vec<_> = (0..10)
+            .map(|index| format!("report {}", index / 2))
+            .collect();
+
+        for (history, expected) in [
+            (Some(json!(history)), expected),
+            (Some(json!([])), Vec::new()),
+            (None, vec!["legacy error".to_string()]),
+        ] {
+            let mut responses = HashMap::from([(
+                MinerCommand::WebAPI {
+                    command: "summary",
+                    parameters: None,
+                },
+                json!({ "Status": { "Last Error": "legacy error" } }),
+            )]);
+            if let Some(history) = history {
+                responses.insert(
+                    MinerCommand::WebAPI {
+                        command: "errors/history",
+                        parameters: None,
+                    },
+                    history,
+                );
+            }
+            let client = MockAPIClient::new(responses);
+            let mut collector = DataCollector::new_with_client(&miner, &client);
+            let data = collector.collect(&[DataField::Messages]).await;
+            let messages = miner.parse_messages(&data);
+
+            assert_eq!(
+                messages
+                    .iter()
+                    .map(|message| &message.message)
+                    .collect::<Vec<_>>(),
+                expected.iter().collect::<Vec<_>>()
+            );
+            assert!(
+                messages
+                    .iter()
+                    .all(|message| message.severity == MessageSeverity::Error)
+            );
+        }
     }
 
     #[test]
