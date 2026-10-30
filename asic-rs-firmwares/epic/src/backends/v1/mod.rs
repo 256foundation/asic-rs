@@ -432,6 +432,16 @@ impl CollectConfigs for PowerPlayV1 {
 }
 
 impl GetDataLocations for PowerPlayV1 {
+    fn is_optional_command(&self, command: &MinerCommand) -> bool {
+        matches!(
+            command,
+            MinerCommand::WebAPI {
+                command: "errors/history",
+                ..
+            }
+        )
+    }
+
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
             command: "summary",
@@ -2097,7 +2107,7 @@ mod tests {
 
     use anyhow::{self, Context};
     use asic_rs_core::{
-        data::operating_state::OperatingState,
+        data::{collector::FieldCollectionStatus, operating_state::OperatingState},
         test::{api::MockAPIClient, util::get_miner},
         traits::firmware::MinerFirmware,
     };
@@ -2751,8 +2761,14 @@ mod tests {
             }
             let client = MockAPIClient::new(responses);
             let mut collector = DataCollector::new_with_client(&miner, &client);
-            let data = collector.collect(&[DataField::Messages]).await;
-            let messages = miner.parse_messages(&data);
+            let report = collector.collect_report(&[DataField::Messages]).await;
+            let messages = miner.parse_messages(&report.values);
+
+            assert_eq!(report.diagnostics.failed_commands, 0);
+            assert_eq!(
+                report.diagnostics.field_status[&DataField::Messages],
+                FieldCollectionStatus::Extracted
+            );
 
             assert_eq!(
                 messages
@@ -2765,6 +2781,43 @@ mod tests {
                 messages
                     .iter()
                     .all(|message| message.severity == MessageSeverity::Error)
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn optional_history_does_not_hide_required_summary_failures() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+
+        for history_available in [false, true] {
+            let mut responses = HashMap::new();
+            if history_available {
+                responses.insert(
+                    MinerCommand::WebAPI {
+                        command: "errors/history",
+                        parameters: None,
+                    },
+                    json!([{ "NoSolutions": "no shares received" }]),
+                );
+            }
+            let client = MockAPIClient::new(responses);
+            let mut collector = DataCollector::new_with_client(&miner, &client);
+            let report = collector
+                .collect_report(&[DataField::Messages, DataField::OperatingState])
+                .await;
+
+            assert_eq!(report.diagnostics.failed_commands, 1);
+            assert_eq!(
+                report.diagnostics.field_status[&DataField::OperatingState],
+                FieldCollectionStatus::Failed
+            );
+            assert_eq!(
+                report.diagnostics.field_status[&DataField::Messages],
+                if history_available {
+                    FieldCollectionStatus::Extracted
+                } else {
+                    FieldCollectionStatus::Failed
+                }
             );
         }
     }

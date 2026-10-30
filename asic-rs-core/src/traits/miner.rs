@@ -226,6 +226,13 @@ pub trait GetDataLocations: Send + Sync + Debug {
     /// This associates API commands (routes) with `DataExtractor` structs,
     /// describing how to extract the data for a given `DataField`.
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation>;
+
+    /// Whether a command is a best-effort probe whose failure should be omitted
+    /// from `CollectionDiagnostics::failed_commands`. A field with no usable
+    /// response still reports a failed collection status.
+    fn is_optional_command(&self, _command: &MinerCommand) -> bool {
+        false
+    }
 }
 
 #[async_trait]

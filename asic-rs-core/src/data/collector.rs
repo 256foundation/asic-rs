@@ -152,7 +152,7 @@ pub enum FieldCollectionStatus {
     /// A response arrived, but none of the field's extractors found a value.
     #[cfg_attr(feature = "python", pydantic(value = "Missing"))]
     Missing,
-    /// No value was extracted and at least one required command failed.
+    /// No value was extracted and at least one mapped command failed.
     #[cfg_attr(feature = "python", pydantic(value = "Failed"))]
     Failed,
     /// The backend has no raw API location for this field. Some snapshot
@@ -166,6 +166,7 @@ pub enum FieldCollectionStatus {
 pub struct CollectionDiagnostics {
     pub field_status: HashMap<DataField, FieldCollectionStatus>,
     pub successful_commands: usize,
+    /// Failed commands, excluding probes the backend marks as optional.
     pub failed_commands: usize,
 }
 
@@ -433,7 +434,10 @@ impl<'a> DataCollector<'a> {
             diagnostics: CollectionDiagnostics {
                 field_status,
                 successful_commands,
-                failed_commands: failed.len(),
+                failed_commands: failed
+                    .iter()
+                    .filter(|command| !self.miner.is_optional_command(command))
+                    .count(),
             },
         }
     }
