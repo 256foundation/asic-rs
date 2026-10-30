@@ -432,6 +432,16 @@ impl CollectConfigs for PowerPlayV1 {
 }
 
 impl GetDataLocations for PowerPlayV1 {
+    fn is_optional_command(&self, command: &MinerCommand) -> bool {
+        matches!(
+            command,
+            MinerCommand::WebAPI {
+                command: "errors/history",
+                ..
+            }
+        )
+    }
+
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
             command: "summary",
@@ -705,14 +715,27 @@ impl GetDataLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
-            DataField::Messages => vec![(
-                WEB_SUMMARY,
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some(""),
-                    tag: None,
-                },
-            )],
+            DataField::Messages => vec![
+                (
+                    WEB_SUMMARY,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: None,
+                    },
+                ),
+                (
+                    MinerCommand::WebAPI {
+                        command: "errors/history",
+                        parameters: None,
+                    },
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some(""),
+                        tag: Some("History"),
+                    },
+                ),
+            ],
             _ => vec![],
         }
     }
@@ -1358,23 +1381,24 @@ fn format_last_error(last_error: &Value) -> Option<String> {
 
 impl GetMessages for PowerPlayV1 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
-        let mut messages = Vec::new();
+        let Some(data) = data.get(&DataField::Messages) else {
+            return Vec::new();
+        };
         let timestamp = unix_timestamp_secs();
+        let errors: Vec<_> = if let Some(history) = data.get("History").and_then(Value::as_array) {
+            history.iter().filter_map(format_last_error).collect()
+        } else {
+            // Older firmware only exposes the last error in the summary.
+            data.pointer("/Status/Last Error")
+                .and_then(format_last_error)
+                .into_iter()
+                .collect()
+        };
 
-        if let Some(last_error) = data
-            .get(&DataField::Messages)
-            .and_then(|v| v.pointer("/Status/Last Error"))
-            .and_then(format_last_error)
-        {
-            messages.push(MinerMessage::new(
-                timestamp as u32,
-                0,
-                last_error,
-                MessageSeverity::Error,
-            ));
-        }
-
-        messages
+        errors
+            .into_iter()
+            .map(|error| MinerMessage::new(timestamp as u32, 0, error, MessageSeverity::Error))
+            .collect()
     }
 }
 
@@ -2083,7 +2107,7 @@ mod tests {
 
     use anyhow::{self, Context};
     use asic_rs_core::{
-        data::operating_state::OperatingState,
+        data::{collector::FieldCollectionStatus, operating_state::OperatingState},
         test::{api::MockAPIClient, util::get_miner},
         traits::firmware::MinerFirmware,
     };
@@ -2702,6 +2726,100 @@ mod tests {
         assert!(request.starts_with("GET /summary HTTP/1.1\r\n"));
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn collect_messages_prefers_history_and_falls_back_for_older_firmware() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let history: Vec<_> = (0..10)
+            .map(|index| json!({ "NoSolutions": format!("report {}", index / 2) }))
+            .collect();
+        let expected: Vec<_> = (0..10)
+            .map(|index| format!("report {}", index / 2))
+            .collect();
+
+        for (history, expected) in [
+            (Some(json!(history)), expected),
+            (Some(json!([])), Vec::new()),
+            (None, vec!["legacy error".to_string()]),
+        ] {
+            let mut responses = HashMap::from([(
+                MinerCommand::WebAPI {
+                    command: "summary",
+                    parameters: None,
+                },
+                json!({ "Status": { "Last Error": "legacy error" } }),
+            )]);
+            if let Some(history) = history {
+                responses.insert(
+                    MinerCommand::WebAPI {
+                        command: "errors/history",
+                        parameters: None,
+                    },
+                    history,
+                );
+            }
+            let client = MockAPIClient::new(responses);
+            let mut collector = DataCollector::new_with_client(&miner, &client);
+            let report = collector.collect_report(&[DataField::Messages]).await;
+            let messages = miner.parse_messages(&report.values);
+
+            assert_eq!(report.diagnostics.failed_commands, 0);
+            assert_eq!(
+                report.diagnostics.field_status[&DataField::Messages],
+                FieldCollectionStatus::Extracted
+            );
+
+            assert_eq!(
+                messages
+                    .iter()
+                    .map(|message| &message.message)
+                    .collect::<Vec<_>>(),
+                expected.iter().collect::<Vec<_>>()
+            );
+            assert!(
+                messages
+                    .iter()
+                    .all(|message| message.severity == MessageSeverity::Error)
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn optional_history_does_not_hide_required_summary_failures() {
+        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+
+        for history_available in [false, true] {
+            let mut responses = HashMap::new();
+            if history_available {
+                responses.insert(
+                    MinerCommand::WebAPI {
+                        command: "errors/history",
+                        parameters: None,
+                    },
+                    json!([{ "NoSolutions": "no shares received" }]),
+                );
+            }
+            let client = MockAPIClient::new(responses);
+            let mut collector = DataCollector::new_with_client(&miner, &client);
+            let report = collector
+                .collect_report(&[DataField::Messages, DataField::OperatingState])
+                .await;
+
+            assert_eq!(report.diagnostics.failed_commands, 1);
+            assert_eq!(
+                report.diagnostics.field_status[&DataField::OperatingState],
+                FieldCollectionStatus::Failed
+            );
+            assert_eq!(
+                report.diagnostics.field_status[&DataField::Messages],
+                if history_available {
+                    FieldCollectionStatus::Extracted
+                } else {
+                    FieldCollectionStatus::Failed
+                }
+            );
+        }
     }
 
     #[test]
