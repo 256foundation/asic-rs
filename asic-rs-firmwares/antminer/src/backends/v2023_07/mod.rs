@@ -26,7 +26,7 @@ use asic_rs_core::{
     },
     traits::{miner::*, model::MinerModel},
 };
-use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
+use asic_rs_makes_antminer::{hardware::AntMinerControlBoard, models::AntMinerModel};
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
@@ -609,7 +609,10 @@ impl GetDataLocations for AntMinerV202307 {
                     tag: None,
                 },
             )],
-            DataField::Hashrate if matches!(self.device_info.model.as_str(), "KS5" | "KS5Pro") => {
+            DataField::Hashrate
+                if self.device_info.model == AntMinerModel::KS5.to_string()
+                    || self.device_info.model == AntMinerModel::KS5Pro.to_string() =>
+            {
                 vec![
                     (
                         RPC_SUMMARY,
@@ -928,7 +931,9 @@ impl GetHashboards for AntMinerV202307 {
 impl GetHashrate for AntMinerV202307 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         let summary_value = data.get(&DataField::Hashrate)?;
-        if matches!(self.device_info.model.as_str(), "KS5" | "KS5Pro") {
+        if self.device_info.model == AntMinerModel::KS5.to_string()
+            || self.device_info.model == AntMinerModel::KS5Pro.to_string()
+        {
             if let Some([summary]) = summary_value
                 .get("summary")
                 .and_then(Value::as_array)
@@ -1643,7 +1648,6 @@ mod tests {
 
     use anyhow::{self, Context};
     use asic_rs_core::test::{api::MockAPIClient, util::get_miner};
-    use asic_rs_makes_antminer::models::AntMinerModel;
 
     use super::*;
     use crate::test::json::v2020::{
