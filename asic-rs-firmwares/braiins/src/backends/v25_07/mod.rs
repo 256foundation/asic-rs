@@ -4,6 +4,7 @@ use anyhow;
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
+        fan::FanPause,
         pools::PoolGroupConfig,
         timezone::{TimezoneConfig, Tz},
     },
@@ -36,6 +37,7 @@ use web::BraiinsWebAPI;
 
 use crate::{
     backends::{
+        fan_pause::set_fan_pause,
         util::{
             parse_configured_tuning_target, parse_scaled_tuning_target,
             tuner_constraints_capabilities,
@@ -1055,6 +1057,14 @@ impl SupportsTuningConfig for BraiinsV2507 {
 impl SupportsFanConfig for BraiinsV2507 {
     fn supports_fan_config(&self) -> bool {
         false
+    }
+
+    async fn set_fan_pause(&self, pause: FanPause) -> anyhow::Result<bool> {
+        set_fan_pause(&self.web, pause).await
+    }
+
+    fn supports_fan_pause(&self) -> bool {
+        true
     }
 }
 

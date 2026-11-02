@@ -213,7 +213,7 @@ fn miner_conf_with_fan_config(miner_conf: &Value, config: FanConfig) -> Value {
         FanConfig::Auto { .. } => {
             payload.insert("bitmain-fan-ctrl".to_string(), Value::Bool(false));
         }
-        FanConfig::Manual { fan_speed } => {
+        FanConfig::Manual { fan_speed, .. } => {
             payload.insert("bitmain-fan-ctrl".to_string(), Value::Bool(true));
             payload.insert(
                 "bitmain-fan-pwm".to_string(),

@@ -706,10 +706,20 @@ type TuningConfig struct {
 
 // FanConfig is a tagged enum: Auto or Manual.
 type FanConfig struct {
-	Mode       FanMode  `json:"mode"`
-	TargetTemp *float64 `json:"target_temp,omitempty"`
-	IdleSpeed  *uint64  `json:"idle_speed,omitempty"`
-	FanSpeed   *uint64  `json:"fan_speed,omitempty"`
+	Mode       FanMode   `json:"mode"`
+	TargetTemp *float64  `json:"target_temp,omitempty"`
+	IdleSpeed  *uint64   `json:"idle_speed,omitempty"`
+	FanSpeed   *uint64   `json:"fan_speed,omitempty"`
+	Pause      *FanPause `json:"pause,omitempty"`
+}
+
+// FanPause is a tagged enum: Auto or Manual. For Manual, Runtime holds
+// "Indefinite" or {"Limited": {"secs": n, "nanos": n}} and FanSpeed is a
+// ratio between 0.0 and 1.0.
+type FanPause struct {
+	Mode     string          `json:"mode"`
+	FanSpeed *float64        `json:"fan_speed,omitempty"`
+	Runtime  json.RawMessage `json:"runtime,omitempty"`
 }
 
 // NewFanConfigAuto builds an automatic fan config.

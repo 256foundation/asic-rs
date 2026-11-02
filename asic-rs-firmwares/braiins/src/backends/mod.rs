@@ -1,3 +1,4 @@
+pub(crate) mod fan_pause;
 pub(crate) mod util;
 pub mod v21_09;
 pub mod v25_03;

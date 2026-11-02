@@ -988,7 +988,7 @@ impl SupportsFanConfig for ProtoV1 {
                 "mode": "Auto",
                 "target_temperature_c": target_temp,
             }),
-            FanConfig::Manual { fan_speed } => json!({
+            FanConfig::Manual { fan_speed, .. } => json!({
                 "mode": "Manual",
                 "speed_percentage": fan_speed,
             }),
