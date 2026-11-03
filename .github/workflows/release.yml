@@ -57,7 +57,7 @@ jobs:
 
           sed -i '/^\[workspace\.package\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' Cargo.toml
           sed -i '/^\[workspace\.dependencies\]/,/^\[/{s/version = "'"$CURRENT_VERSION"'"/version = "'"$VERSION"'"/g}' Cargo.toml
-          sed -i '/^\[project\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' python/pyasic-rs/pyproject.toml
+          sed -i '/^\[project\]/,/^\[/{s/^version = ".*"/version = "'"$VERSION"'"/}' pyproject.toml
 
           declare -A CARGO_MANIFESTS=()
           CARGO_MANIFESTS["./Cargo.toml"]=1
@@ -84,7 +84,7 @@ jobs:
             codeberg.org/msrd0/cargo-doc2readme:nightly \
             cargo doc2readme --expand-macros
 
-          git add Cargo.toml python/pyasic-rs/pyproject.toml README.md
+          git add Cargo.toml pyproject.toml README.md
 
           while IFS= read -r -d '' lockfile; do
             git add "$lockfile"
@@ -198,8 +198,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          working-directory: python/pyasic-rs
-          args: --release --out ../../dist --find-interpreter
+          args: --release --out dist --find-interpreter
           sccache: true
           manylinux: ${{ matrix.manylinux }}
 
@@ -218,12 +217,28 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.tag }}
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check workspace lockfile
+        run: cargo metadata --locked --format-version 1 > /dev/null
+
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
-          working-directory: python/pyasic-rs
           command: sdist
-          args: --out ../../dist
+          args: --out dist
+
+      - name: Validate the packaged workspace and lockfile
+        run: |
+          mkdir "$RUNNER_TEMP/pyasic-sdist" "$RUNNER_TEMP/cargo-offline"
+          tar -xzf dist/pyasic_rs-*.tar.gz -C "$RUNNER_TEMP/pyasic-sdist" --strip-components=1
+          cmp Cargo.toml "$RUNNER_TEMP/pyasic-sdist/Cargo.toml"
+          cmp Cargo.lock "$RUNNER_TEMP/pyasic-sdist/Cargo.lock"
+          cd "$RUNNER_TEMP/pyasic-sdist"
+          mkdir -p .cargo
+          cargo vendor --manifest-path Cargo.toml --locked VENDOR > .cargo/config.toml
+          CARGO_HOME="$RUNNER_TEMP/cargo-offline" cargo metadata --locked --offline --format-version 1 > /dev/null
 
       - name: Upload sdist
         uses: actions/upload-artifact@v6

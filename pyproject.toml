@@ -14,7 +14,7 @@ documentation = "https://256foundation.github.io/asic-rs"
 issues = "https://github.com/256foundation/asic-rs/issues"
 
 license = "Apache-2.0"
-readme = "../../docs-shared/guide.md"
+readme = "docs-shared/guide.md"
 
 requires-python = ">=3.11, <4.0"
 dependencies = [
@@ -57,12 +57,15 @@ test = [
 package-name = "pyasic_rs"
 module-name = "pyasic_rs.asic_rs"
 features = ["python"]
-python-source = "."
-manifest-path = "Cargo.toml"
+python-source = "python/pyasic-rs"
+manifest-path = "python/pyasic-rs/Cargo.toml"
+# Preserve the complete workspace and its shared Cargo.lock in source archives.
+sdist-generator = "git"
+locked = true
 
 [tool.mypy]
-files = ["$MYPY_CONFIG_FILE_DIR/pyasic_rs"]
-mypy_path = ["$MYPY_CONFIG_FILE_DIR"]
+files = ["$MYPY_CONFIG_FILE_DIR/python/pyasic-rs/pyasic_rs"]
+mypy_path = ["$MYPY_CONFIG_FILE_DIR/python/pyasic-rs"]
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 python_version = "3.11"
