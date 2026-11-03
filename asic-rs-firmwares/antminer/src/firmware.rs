@@ -15,7 +15,7 @@ use asic_rs_core::{
         miner::{HasDefaultAuth, Miner, MinerAuth, MinerConstructor},
         model::MinerModel,
     },
-    util::build_discovery_client,
+    util::{build_discovery_client, send_rpc_command},
 };
 use asic_rs_makes_antminer::make::AntMinerMake;
 use asic_rs_makes_antminer::models::AntMinerModel;
@@ -115,6 +115,38 @@ fn parse_model_response(
     }
 }
 
+fn parse_rpc_model(data: &Value) -> Result<AntMinerCompatibleModel, ModelSelectionError> {
+    let info = data["VERSION"]
+        .as_array()
+        .and_then(|rows| rows.first())
+        .ok_or(ModelSelectionError::UnexpectedModelResponse)?;
+    let model = info["Type"]
+        .as_str()
+        .filter(|name| !name.trim().is_empty())
+        .ok_or(ModelSelectionError::UnexpectedModelResponse)?;
+    parse_model_response(serde_json::json!({"miner_type": model}), "miner_type")
+}
+
+/// Fetch the model using unauthenticated RPC when web access fails.
+async fn get_model_with_rpc(ip: IpAddr) -> Result<AntMinerCompatibleModel, ModelSelectionError> {
+    let data = send_rpc_command(&ip, "version")
+        .await
+        .ok_or(ModelSelectionError::NoModelResponse)?;
+    parse_rpc_model(&data)
+}
+
+fn parse_rpc_version(data: &Value) -> Option<semver::Version> {
+    data["VERSION"][0]["CompileTime"]
+        .as_str()
+        .and_then(parse_version_date)
+}
+
+/// Fetch the firmware version using unauthenticated RPC when web access fails.
+async fn get_version_with_rpc(ip: IpAddr) -> Option<semver::Version> {
+    let data = send_rpc_command(&ip, "version").await?;
+    parse_rpc_version(&data)
+}
+
 /// Fetch the model from a miner using digest auth.
 async fn get_model_with_auth(
     ip: IpAddr,
@@ -204,16 +236,22 @@ async fn get_version_with_auth(ip: IpAddr, auth: &MinerAuth) -> Option<semver::V
 impl MinerFirmware for AntMinerStockFirmware {
     type Model = AntMinerCompatibleModel;
 
-    /// Uses default credentials. For custom credentials, use `build_miner`
-    /// which passes auth through to the underlying digest-auth requests.
+    /// Uses default web credentials, falling back to unauthenticated RPC.
+    /// For custom web credentials, use `build_miner`.
     async fn get_model(ip: IpAddr) -> Result<Self::Model, ModelSelectionError> {
         let default = crate::backends::v2020::AntMinerV2020::default_auth();
-        get_model_with_auth(ip, &default).await
+        match get_model_with_auth(ip, &default).await {
+            Ok(model) => Ok(model),
+            Err(_) => get_model_with_rpc(ip).await,
+        }
     }
 
     async fn get_version(ip: IpAddr) -> Option<semver::Version> {
         let default = crate::backends::v2020::AntMinerV2020::default_auth();
-        get_version_with_auth(ip, &default).await
+        match get_version_with_auth(ip, &default).await {
+            Some(version) => Some(version),
+            None => get_version_with_rpc(ip).await,
+        }
     }
 }
 
@@ -240,8 +278,15 @@ impl FirmwareEntry for AntMinerStockFirmware {
     ) -> Result<Box<dyn Miner>, ModelSelectionError> {
         let default = crate::backends::v2020::AntMinerV2020::default_auth();
         let resolved = auth.unwrap_or(&default);
-        let model = get_model_with_auth(ip, resolved).await?;
-        let version = get_version_with_auth(ip, resolved).await;
+        // Prefer web identity: some models need its product_type override.
+        let model = match get_model_with_auth(ip, resolved).await {
+            Ok(model) => model,
+            Err(_) => get_model_with_rpc(ip).await?,
+        };
+        let version = match get_version_with_auth(ip, resolved).await {
+            Some(version) => Some(version),
+            None => get_version_with_rpc(ip).await,
+        };
         let mut miner = crate::backends::AntMiner::new(ip, model, version);
         if let Some(auth) = auth {
             miner.set_auth(auth.clone());
