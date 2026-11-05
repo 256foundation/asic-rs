@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use super::shared::{format_last_error, releases, web::PowerPlayWebAPI};
+use super::shared::{format_error, releases, web::PowerPlayWebAPI};
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
@@ -1327,9 +1327,7 @@ impl GetMessages for PowerPlayV1 {
             return Vec::new();
         };
         let timestamp = unix_timestamp_secs();
-        let errors = data
-            .pointer("/Status/Last Error")
-            .and_then(format_last_error);
+        let errors = data.pointer("/Status/Last Error").and_then(format_error);
 
         errors
             .into_iter()

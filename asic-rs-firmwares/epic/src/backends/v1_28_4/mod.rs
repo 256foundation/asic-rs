@@ -3,7 +3,7 @@ pub(crate) const MIN_VERSION: semver::Version = semver::Version::new(1, 28, 4);
 
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use super::shared::{format_last_error, releases, web::PowerPlayWebAPI};
+use super::shared::{format_error, releases, web::PowerPlayWebAPI};
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
@@ -1330,7 +1330,7 @@ impl GetMessages for PowerPlayV1284 {
             .as_array()
             .into_iter()
             .flatten()
-            .filter_map(format_last_error);
+            .filter_map(format_error);
 
         errors
             .map(|error| MinerMessage::new(timestamp as u32, 0, error, MessageSeverity::Error))

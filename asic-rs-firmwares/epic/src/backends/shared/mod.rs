@@ -3,8 +3,9 @@ use serde_json::Value;
 pub(super) mod releases;
 pub(super) mod web;
 
-pub(super) fn format_last_error(last_error: &Value) -> Option<String> {
-    match last_error {
+/// Format a miner error from the summary or an error history entry.
+pub(super) fn format_error(error: &Value) -> Option<String> {
+    match error {
         Value::Null => None,
         Value::String(message) => {
             let message = message.trim();
@@ -18,7 +19,7 @@ pub(super) fn format_last_error(last_error: &Value) -> Option<String> {
             serde_json::from_str::<Value>(message)
                 .ok()
                 .filter(|value| value.is_object())
-                .and_then(|value| format_last_error(&value))
+                .and_then(|value| format_error(&value))
                 .or_else(|| Some(message.to_string()))
         }
         Value::Object(error) if error.is_empty() => None,
