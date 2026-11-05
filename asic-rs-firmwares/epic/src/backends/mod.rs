@@ -22,12 +22,16 @@ impl PowerPlay {
     ) -> Box<dyn Miner> {
         if PowerPlayV1284::validate(version.as_ref()) {
             let mut miner = PowerPlayV1284::new(ip, model);
+            #[cfg(test)]
+            println!("backend {}", std::any::type_name_of_val(&miner));
             if let Some(supported) = uninstall_supported {
                 miner.set_restore_stock_os_support(supported);
             }
             Box::new(miner)
         } else {
             let mut miner = PowerPlayV1::new(ip, model);
+            #[cfg(test)]
+            println!("backend {}", std::any::type_name_of_val(&miner));
             if let Some(supported) = uninstall_supported {
                 miner.set_restore_stock_os_support(supported);
             }
