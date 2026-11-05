@@ -35,6 +35,7 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use reqwest::Method;
+use semver::Version;
 use serde_json::{Value, json};
 use tokio::sync::OnceCell;
 
@@ -2025,8 +2026,8 @@ impl HasAuth for PowerPlayV1 {
 impl Validate for PowerPlayV1 {
     type Firmware = EPicFirmware;
 
-    fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_none_or(|version| version < &super::v1_28_4::MIN_VERSION)
+    fn validate(version: Option<&Version>) -> bool {
+        version.is_none_or(|v| *v < Version::new(1, 28, 4))
     }
 }
 

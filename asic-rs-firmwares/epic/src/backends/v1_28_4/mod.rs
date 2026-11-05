@@ -1,6 +1,3 @@
-/// First firmware version in summary's `Software` field supporting `/errors/history`.
-pub(crate) const MIN_VERSION: semver::Version = semver::Version::new(1, 28, 4);
-
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
 use super::shared::{format_error, releases, web::PowerPlayWebAPI};
@@ -38,6 +35,7 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use reqwest::Method;
+use semver::Version;
 use serde_json::{Value, json};
 use tokio::sync::OnceCell;
 
@@ -2027,8 +2025,8 @@ impl HasAuth for PowerPlayV1284 {
 impl Validate for PowerPlayV1284 {
     type Firmware = EPicFirmware;
 
-    fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|version| version >= &MIN_VERSION)
+    fn validate(version: Option<&Version>) -> bool {
+        version.is_some_and(|v| *v >= Version::new(1, 28, 4))
     }
 }
 
