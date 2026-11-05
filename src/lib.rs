@@ -1,6 +1,6 @@
 #![doc = include_str!("../docs-shared/guide.md")]
 
-pub use factory::MinerFactory;
+pub use factory::{MinerFactory, PortProbeResult};
 pub use listener::MinerListener;
 
 #[cfg(feature = "core")]
