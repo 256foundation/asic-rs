@@ -1,6 +1,5 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use anyhow;
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
@@ -44,19 +43,20 @@ use crate::firmware::EPicFirmware;
 mod releases;
 mod web;
 
+/// Shared implementation for the legacy and history-capable EPIC API versions.
 #[derive(Debug)]
-pub struct PowerPlayV1 {
+pub struct PowerPlayBackend<const ERROR_HISTORY: bool> {
     ip: IpAddr,
     web: PowerPlayWebAPI,
     device_info: DeviceInfo,
     restore_stock_os_supported: OnceCell<bool>,
 }
 
-impl PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> PowerPlayBackend<ERROR_HISTORY> {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
         let hash_algorithm = model.hash_algorithm();
-        PowerPlayV1 {
+        Self {
             ip,
             web: PowerPlayWebAPI::new(ip, 4028, auth),
             device_info: DeviceInfo::new(model, EPicFirmware::default(), hash_algorithm),
@@ -299,7 +299,7 @@ impl PowerPlayV1 {
 }
 
 #[async_trait]
-impl APIClient for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> APIClient for PowerPlayBackend<ERROR_HISTORY> {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
@@ -312,7 +312,7 @@ impl APIClient for PowerPlayV1 {
 }
 
 #[async_trait]
-impl SetHashboardsEnabled for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> SetHashboardsEnabled for PowerPlayBackend<ERROR_HISTORY> {
     async fn set_hashboards_enabled(
         &self,
         board_indices: &[u8],
@@ -355,7 +355,7 @@ impl SetHashboardsEnabled for PowerPlayV1 {
     }
 }
 
-impl GetConfigsLocations for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetConfigsLocations for PowerPlayBackend<ERROR_HISTORY> {
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
             command: "summary",
@@ -425,23 +425,13 @@ impl GetConfigsLocations for PowerPlayV1 {
     }
 }
 
-impl CollectConfigs for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> CollectConfigs for PowerPlayBackend<ERROR_HISTORY> {
     fn get_config_collector(&self) -> ConfigCollector<'_> {
         ConfigCollector::new(self)
     }
 }
 
-impl GetDataLocations for PowerPlayV1 {
-    fn is_optional_command(&self, command: &MinerCommand) -> bool {
-        matches!(
-            command,
-            MinerCommand::WebAPI {
-                command: "errors/history",
-                ..
-            }
-        )
-    }
-
+impl<const ERROR_HISTORY: bool> GetDataLocations for PowerPlayBackend<ERROR_HISTORY> {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
             command: "summary",
@@ -715,51 +705,45 @@ impl GetDataLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
-            DataField::Messages => vec![
-                (
-                    WEB_SUMMARY,
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some(""),
-                        tag: None,
-                    },
-                ),
-                (
+            DataField::Messages => vec![(
+                if ERROR_HISTORY {
                     MinerCommand::WebAPI {
                         command: "errors/history",
                         parameters: None,
-                    },
-                    DataExtractor {
-                        func: get_by_pointer,
-                        key: Some(""),
-                        tag: Some("History"),
-                    },
-                ),
-            ],
+                    }
+                } else {
+                    WEB_SUMMARY
+                },
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some(""),
+                    tag: None,
+                },
+            )],
             _ => vec![],
         }
     }
 }
 
-impl GetIP for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetIP for PowerPlayBackend<ERROR_HISTORY> {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
 
-impl GetDeviceInfo for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetDeviceInfo for PowerPlayBackend<ERROR_HISTORY> {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info.clone()
     }
 }
 
-impl CollectData for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> CollectData for PowerPlayBackend<ERROR_HISTORY> {
     fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self)
     }
 }
 
-impl GetMAC for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetMAC for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         match serde_json::from_value::<HashMap<String, Value>>(data.get(&DataField::Mac)?.clone())
             .ok()
@@ -775,7 +759,7 @@ impl GetMAC for PowerPlayV1 {
     }
 }
 
-impl GetSerialNumber for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetSerialNumber for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_serial_number(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         // The manufacturer serial is the meaningful identifier, but PowerPlay
         // only reports it on some units; fall back to the control board CPU
@@ -785,25 +769,25 @@ impl GetSerialNumber for PowerPlayV1 {
     }
 }
 
-impl GetHostname for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetHostname for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
     }
 }
 
-impl GetApiVersion for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetApiVersion for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
     }
 }
 
-impl GetFirmwareVersion for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetFirmwareVersion for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
 
-impl GetControlBoardVersion for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetControlBoardVersion for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_control_board_version(
         &self,
         data: &HashMap<DataField, Value>,
@@ -856,7 +840,7 @@ impl GetControlBoardVersion for PowerPlayV1 {
     }
 }
 
-impl GetHashboards for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetHashboards for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let mut hashboards: Vec<BoardData> =
             (0..self.device_info.hardware.board_count().unwrap_or(0))
@@ -1117,7 +1101,7 @@ impl GetHashboards for PowerPlayV1 {
     }
 }
 
-impl GetHashrate for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetHashrate for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         let mut total_hashrate: f64 = 0.0;
 
@@ -1149,7 +1133,7 @@ impl GetHashrate for PowerPlayV1 {
     }
 }
 
-impl GetExpectedHashrate for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetExpectedHashrate for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| {
             HashRate {
@@ -1162,7 +1146,7 @@ impl GetExpectedHashrate for PowerPlayV1 {
     }
 }
 
-impl GetFans for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetFans for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let mut fans: Vec<FanData> = Vec::new();
 
@@ -1188,13 +1172,13 @@ impl GetFans for PowerPlayV1 {
     }
 }
 
-impl GetPsuFans for PowerPlayV1 {}
-impl GetPsus for PowerPlayV1 {}
-impl GetTuningCapabilities for PowerPlayV1 {}
+impl<const ERROR_HISTORY: bool> GetPsuFans for PowerPlayBackend<ERROR_HISTORY> {}
+impl<const ERROR_HISTORY: bool> GetPsus for PowerPlayBackend<ERROR_HISTORY> {}
+impl<const ERROR_HISTORY: bool> GetTuningCapabilities for PowerPlayBackend<ERROR_HISTORY> {}
 
-impl GetFluidTemperature for PowerPlayV1 {}
+impl<const ERROR_HISTORY: bool> GetFluidTemperature for PowerPlayBackend<ERROR_HISTORY> {}
 
-impl GetWattage for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetWattage for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
@@ -1309,7 +1293,7 @@ fn to_non_negative_u32_target(value: f64, label: &str) -> anyhow::Result<u32> {
     Ok(rounded as u32)
 }
 
-impl GetTuningTarget for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetTuningTarget for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.get(&DataField::TuningTarget).and_then(|summary| {
             if !summary
@@ -1325,7 +1309,7 @@ impl GetTuningTarget for PowerPlayV1 {
     }
 }
 
-impl GetScaledTuningTarget for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetScaledTuningTarget for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_scaled_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.get(&DataField::TuningTarget).and_then(|summary| {
             if !summary
@@ -1341,7 +1325,7 @@ impl GetScaledTuningTarget for PowerPlayV1 {
     }
 }
 
-impl GetLightFlashing for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetLightFlashing for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)
     }
@@ -1379,14 +1363,18 @@ fn format_last_error(last_error: &Value) -> Option<String> {
     }
 }
 
-impl GetMessages for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetMessages for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let Some(data) = data.get(&DataField::Messages) else {
             return Vec::new();
         };
         let timestamp = unix_timestamp_secs();
-        let errors: Vec<_> = if let Some(history) = data.get("History").and_then(Value::as_array) {
-            history.iter().filter_map(format_last_error).collect()
+        let errors: Vec<_> = if ERROR_HISTORY {
+            data.as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(format_last_error)
+                .collect()
         } else {
             // Older firmware only exposes the last error in the summary.
             data.pointer("/Status/Last Error")
@@ -1402,16 +1390,16 @@ impl GetMessages for PowerPlayV1 {
     }
 }
 
-impl GetUptime for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetUptime for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
-impl GetBestShare for PowerPlayV1 {}
-impl GetSessionBestShare for PowerPlayV1 {}
+impl<const ERROR_HISTORY: bool> GetBestShare for PowerPlayBackend<ERROR_HISTORY> {}
+impl<const ERROR_HISTORY: bool> GetSessionBestShare for PowerPlayBackend<ERROR_HISTORY> {}
 
-impl GetOperatingState for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetOperatingState for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
         data.get(&DataField::OperatingState)
             .and_then(Value::as_str)
@@ -1419,13 +1407,13 @@ impl GetOperatingState for PowerPlayV1 {
     }
 }
 
-impl GetDevFeeConnected for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetDevFeeConnected for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_devfee_connected(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.get(&DataField::DevFeeConnected).map(Value::is_null)
     }
 }
 
-impl GetIsMining for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetIsMining for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
             .map(|state| state != "Idling")
@@ -1433,7 +1421,7 @@ impl GetIsMining for PowerPlayV1 {
     }
 }
 
-impl GetPools for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> GetPools for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let Some(pools_data) = data.get(&DataField::Pools) else {
             return vec![];
@@ -1458,7 +1446,7 @@ impl GetPools for PowerPlayV1 {
 }
 
 #[async_trait]
-impl SetFaultLight for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> SetFaultLight for PowerPlayBackend<ERROR_HISTORY> {
     #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         self.web
@@ -1477,14 +1465,14 @@ impl SetFaultLight for PowerPlayV1 {
 }
 
 #[async_trait]
-impl SetPowerLimit for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> SetPowerLimit for PowerPlayBackend<ERROR_HISTORY> {
     fn supports_set_power_limit(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsPoolsConfig for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> SupportsPoolsConfig for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_pools_config(
         &self,
         data: &HashMap<ConfigField, Value>,
@@ -1663,7 +1651,7 @@ impl SupportsPoolsConfig for PowerPlayV1 {
 }
 
 #[async_trait]
-impl SupportsScalingConfig for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> SupportsScalingConfig for PowerPlayBackend<ERROR_HISTORY> {
     async fn set_scaling_config(&self, config: ScalingConfig) -> anyhow::Result<bool> {
         // PowerPlay has no scaling-only endpoint: `min_throttle` and
         // `throttle_step` are written by the same `perpetualtune/algo` call that
@@ -1724,7 +1712,7 @@ impl SupportsScalingConfig for PowerPlayV1 {
 }
 
 #[async_trait]
-impl SupportsTuningConfig for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> SupportsTuningConfig for PowerPlayBackend<ERROR_HISTORY> {
     async fn set_tuning_config(
         &self,
         config: TuningConfig,
@@ -1836,7 +1824,7 @@ impl SupportsTuningConfig for PowerPlayV1 {
 }
 
 #[async_trait]
-impl SupportsFanConfig for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> SupportsFanConfig for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_fan_config(&self, data: &HashMap<ConfigField, Value>) -> anyhow::Result<FanConfig> {
         let fan_mode = data
             .get(&ConfigField::Fan)
@@ -1893,7 +1881,7 @@ impl SupportsFanConfig for PowerPlayV1 {
 }
 
 #[async_trait]
-impl SupportsTimezoneConfig for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> SupportsTimezoneConfig for PowerPlayBackend<ERROR_HISTORY> {
     fn parse_timezone_config(
         &self,
         data: &HashMap<ConfigField, Value>,
@@ -1933,7 +1921,7 @@ impl SupportsTimezoneConfig for PowerPlayV1 {
 }
 
 #[async_trait]
-impl Restart for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> Restart for PowerPlayBackend<ERROR_HISTORY> {
     async fn restart(&self) -> anyhow::Result<bool> {
         self.web
             .send_command("reboot", false, Some(json!({"param": "0"})), Method::POST)
@@ -1946,7 +1934,7 @@ impl Restart for PowerPlayV1 {
 }
 
 #[async_trait]
-impl Pause for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> Pause for PowerPlayBackend<ERROR_HISTORY> {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         self.web
@@ -1960,7 +1948,7 @@ impl Pause for PowerPlayV1 {
 }
 
 #[async_trait]
-impl Resume for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> Resume for PowerPlayBackend<ERROR_HISTORY> {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         self.web
@@ -1979,7 +1967,7 @@ impl Resume for PowerPlayV1 {
 }
 
 #[async_trait]
-impl ChangePassword for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> ChangePassword for PowerPlayBackend<ERROR_HISTORY> {
     async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
         let success = self.web.change_password(password).await?;
         if success {
@@ -1995,7 +1983,7 @@ impl ChangePassword for PowerPlayV1 {
 }
 
 #[async_trait]
-impl ReadLogs for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> ReadLogs for PowerPlayBackend<ERROR_HISTORY> {
     async fn read_logs(&self) -> anyhow::Result<String> {
         self.web.read_logs().await
     }
@@ -2005,14 +1993,14 @@ impl ReadLogs for PowerPlayV1 {
     }
 }
 
-impl FactoryReset for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> FactoryReset for PowerPlayBackend<ERROR_HISTORY> {
     fn supports_factory_reset(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl RestartMining for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> RestartMining for PowerPlayBackend<ERROR_HISTORY> {
     async fn restart_mining(&self) -> anyhow::Result<bool> {
         self.web.soft_reboot().await?;
         Ok(true)
@@ -2024,7 +2012,7 @@ impl RestartMining for PowerPlayV1 {
 }
 
 #[async_trait]
-impl RestoreStockOs for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> RestoreStockOs for PowerPlayBackend<ERROR_HISTORY> {
     async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
         if !self.restore_stock_os_support().await? {
             anyhow::bail!("Restoring the stock OS is not supported by this UMC OS build");
@@ -2046,7 +2034,7 @@ impl RestoreStockOs for PowerPlayV1 {
 }
 
 #[async_trait]
-impl UpgradeFirmware for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> UpgradeFirmware for PowerPlayBackend<ERROR_HISTORY> {
     fn supports_check_firmware_update(&self) -> bool {
         true
     }
@@ -2076,27 +2064,33 @@ impl UpgradeFirmware for PowerPlayV1 {
     }
 }
 
-impl HasDefaultAuth for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> HasDefaultAuth for PowerPlayBackend<ERROR_HISTORY> {
     fn default_auth() -> MinerAuth {
         MinerAuth::new("", "letmein")
     }
 }
 
-impl HasAuth for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> HasAuth for PowerPlayBackend<ERROR_HISTORY> {
     fn set_auth(&mut self, auth: MinerAuth) {
         self.web.set_auth(auth);
     }
 }
 
-impl Validate for PowerPlayV1 {
+impl<const ERROR_HISTORY: bool> Validate for PowerPlayBackend<ERROR_HISTORY> {
     type Firmware = EPicFirmware;
+
+    fn validate(version: Option<&semver::Version>) -> bool {
+        let supports_history =
+            version.is_some_and(|version| version >= &super::v1_39_21::MIN_VERSION);
+        supports_history == ERROR_HISTORY
+    }
 }
 
-impl SupportsTemperatureConfig for PowerPlayV1 {}
-impl GetTuningPercent for PowerPlayV1 {}
-impl SetTuningPercent for PowerPlayV1 {}
+impl<const ERROR_HISTORY: bool> SupportsTemperatureConfig for PowerPlayBackend<ERROR_HISTORY> {}
+impl<const ERROR_HISTORY: bool> GetTuningPercent for PowerPlayBackend<ERROR_HISTORY> {}
+impl<const ERROR_HISTORY: bool> SetTuningPercent for PowerPlayBackend<ERROR_HISTORY> {}
 
-impl SupportsPresets for PowerPlayV1 {}
+impl<const ERROR_HISTORY: bool> SupportsPresets for PowerPlayBackend<ERROR_HISTORY> {}
 
 #[cfg(test)]
 mod tests {
@@ -2107,7 +2101,7 @@ mod tests {
 
     use anyhow::{self, Context};
     use asic_rs_core::{
-        data::{collector::FieldCollectionStatus, operating_state::OperatingState},
+        data::operating_state::OperatingState,
         test::{api::MockAPIClient, util::get_miner},
         traits::firmware::MinerFirmware,
     };
@@ -2118,6 +2112,7 @@ mod tests {
     };
 
     use super::*;
+    use crate::backends::PowerPlayV1;
     use crate::test::json::v1::{
         CAPABILITIES, CHIP_CLOCKS, CHIP_HASHRATES, CHIP_TEMPS, CHIP_VOLTAGES, NETWORK, SUMMARY,
         TEMPS,
@@ -2726,100 +2721,6 @@ mod tests {
         assert!(request.starts_with("GET /summary HTTP/1.1\r\n"));
 
         Ok(())
-    }
-
-    #[tokio::test]
-    async fn collect_messages_prefers_history_and_falls_back_for_older_firmware() {
-        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
-        let history: Vec<_> = (0..10)
-            .map(|index| json!({ "NoSolutions": format!("report {}", index / 2) }))
-            .collect();
-        let expected: Vec<_> = (0..10)
-            .map(|index| format!("report {}", index / 2))
-            .collect();
-
-        for (history, expected) in [
-            (Some(json!(history)), expected),
-            (Some(json!([])), Vec::new()),
-            (None, vec!["legacy error".to_string()]),
-        ] {
-            let mut responses = HashMap::from([(
-                MinerCommand::WebAPI {
-                    command: "summary",
-                    parameters: None,
-                },
-                json!({ "Status": { "Last Error": "legacy error" } }),
-            )]);
-            if let Some(history) = history {
-                responses.insert(
-                    MinerCommand::WebAPI {
-                        command: "errors/history",
-                        parameters: None,
-                    },
-                    history,
-                );
-            }
-            let client = MockAPIClient::new(responses);
-            let mut collector = DataCollector::new_with_client(&miner, &client);
-            let report = collector.collect_report(&[DataField::Messages]).await;
-            let messages = miner.parse_messages(&report.values);
-
-            assert_eq!(report.diagnostics.failed_commands, 0);
-            assert_eq!(
-                report.diagnostics.field_status[&DataField::Messages],
-                FieldCollectionStatus::Extracted
-            );
-
-            assert_eq!(
-                messages
-                    .iter()
-                    .map(|message| &message.message)
-                    .collect::<Vec<_>>(),
-                expected.iter().collect::<Vec<_>>()
-            );
-            assert!(
-                messages
-                    .iter()
-                    .all(|message| message.severity == MessageSeverity::Error)
-            );
-        }
-    }
-
-    #[tokio::test]
-    async fn optional_history_does_not_hide_required_summary_failures() {
-        let miner = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
-
-        for history_available in [false, true] {
-            let mut responses = HashMap::new();
-            if history_available {
-                responses.insert(
-                    MinerCommand::WebAPI {
-                        command: "errors/history",
-                        parameters: None,
-                    },
-                    json!([{ "NoSolutions": "no shares received" }]),
-                );
-            }
-            let client = MockAPIClient::new(responses);
-            let mut collector = DataCollector::new_with_client(&miner, &client);
-            let report = collector
-                .collect_report(&[DataField::Messages, DataField::OperatingState])
-                .await;
-
-            assert_eq!(report.diagnostics.failed_commands, 1);
-            assert_eq!(
-                report.diagnostics.field_status[&DataField::OperatingState],
-                FieldCollectionStatus::Failed
-            );
-            assert_eq!(
-                report.diagnostics.field_status[&DataField::Messages],
-                if history_available {
-                    FieldCollectionStatus::Extracted
-                } else {
-                    FieldCollectionStatus::Failed
-                }
-            );
-        }
     }
 
     #[test]
