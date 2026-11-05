@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use anyhow;
+use super::shared::{format_error, releases, web::PowerPlayWebAPI};
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
@@ -35,15 +35,13 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use reqwest::Method;
+use semver::Version;
 use serde_json::{Value, json};
 use tokio::sync::OnceCell;
-use web::PowerPlayWebAPI;
 
 use crate::firmware::EPicFirmware;
 
-mod releases;
-mod web;
-
+/// Legacy EPIC firmware, collecting messages only from the summary last error.
 #[derive(Debug)]
 pub struct PowerPlayV1 {
     ip: IpAddr,
@@ -56,7 +54,7 @@ impl PowerPlayV1 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
         let hash_algorithm = model.hash_algorithm();
-        PowerPlayV1 {
+        Self {
             ip,
             web: PowerPlayWebAPI::new(ip, 4028, auth),
             device_info: DeviceInfo::new(model, EPicFirmware::default(), hash_algorithm),
@@ -1324,57 +1322,18 @@ impl GetLightFlashing for PowerPlayV1 {
     }
 }
 
-fn format_last_error(last_error: &Value) -> Option<String> {
-    match last_error {
-        Value::Null => None,
-        Value::String(message) => {
-            let message = message.trim();
-            if message.is_empty() {
-                return None;
-            }
-
-            // Older PowerPlay versions may serialize the externally tagged
-            // MinerError object into a JSON string instead of returning the
-            // object directly.
-            serde_json::from_str::<Value>(message)
-                .ok()
-                .filter(|value| value.is_object())
-                .and_then(|value| format_last_error(&value))
-                .or_else(|| Some(message.to_string()))
-        }
-        Value::Object(error) if error.is_empty() => None,
-        Value::Object(error) if error.len() == 1 => {
-            let (kind, details) = error.iter().next()?;
-            match details {
-                Value::Null => Some(kind.clone()),
-                Value::String(message) if message.trim().is_empty() => Some(kind.clone()),
-                Value::String(message) => Some(message.trim().to_string()),
-                details => Some(format!("{kind}: {details}")),
-            }
-        }
-        value => Some(value.to_string()),
-    }
-}
-
 impl GetMessages for PowerPlayV1 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
-        let mut messages = Vec::new();
+        let Some(data) = data.get(&DataField::Messages) else {
+            return Vec::new();
+        };
         let timestamp = unix_timestamp_secs();
+        let errors = data.pointer("/Status/Last Error").and_then(format_error);
 
-        if let Some(last_error) = data
-            .get(&DataField::Messages)
-            .and_then(|v| v.pointer("/Status/Last Error"))
-            .and_then(format_last_error)
-        {
-            messages.push(MinerMessage::new(
-                timestamp as u32,
-                0,
-                last_error,
-                MessageSeverity::Error,
-            ));
-        }
-
-        messages
+        errors
+            .into_iter()
+            .map(|error| MinerMessage::new(timestamp as u32, 0, error, MessageSeverity::Error))
+            .collect()
     }
 }
 
@@ -2066,6 +2025,10 @@ impl HasAuth for PowerPlayV1 {
 
 impl Validate for PowerPlayV1 {
     type Firmware = EPicFirmware;
+
+    fn validate(version: Option<&Version>) -> bool {
+        version.is_none_or(|v| *v < Version::new(1, 28, 4))
+    }
 }
 
 impl SupportsTemperatureConfig for PowerPlayV1 {}

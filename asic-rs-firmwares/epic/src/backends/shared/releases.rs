@@ -69,7 +69,7 @@ impl ReleaseCache {
     }
 }
 
-pub(super) fn repository(
+pub(crate) fn repository(
     platform: Option<&str>,
     cpu: Option<&str>,
     make: &str,
@@ -105,11 +105,11 @@ pub(super) fn repository(
     }
 }
 
-pub(super) fn parse_version(value: &str) -> Option<Version> {
+pub(crate) fn parse_version(value: &str) -> Option<Version> {
     Version::parse(value.split_whitespace().last()?.trim_start_matches('v')).ok()
 }
 
-pub(super) async fn check(
+pub(crate) async fn check(
     repository: &str,
     current_version: Option<Version>,
 ) -> anyhow::Result<FirmwareStats> {

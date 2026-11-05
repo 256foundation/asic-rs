@@ -9,7 +9,6 @@ use asic_rs_core::{
     discovery::HTTP_WEB_ROOT,
     errors::ModelSelectionError,
     traits::{
-        auth::HasAuth,
         discovery::DiscoveryCommands,
         entry::FirmwareEntry,
         firmware::MinerFirmware,
@@ -213,11 +212,11 @@ impl FirmwareEntry for EPicFirmware {
     ) -> Result<Box<dyn Miner>, ModelSelectionError> {
         let (model, uninstall_supported) = Self::get_model_and_uninstall_support(ip).await?;
         let version = EPicFirmware::get_version(ip).await;
-        let mut miner = crate::backends::PowerPlay::build(ip, model, version);
+        let mut miner =
+            crate::backends::PowerPlay::build(ip, model, version, Some(uninstall_supported));
         if let Some(auth) = auth {
             miner.set_auth(auth.clone());
         }
-        miner.set_restore_stock_os_support(uninstall_supported);
-        Ok(Box::new(miner))
+        Ok(miner)
     }
 }
