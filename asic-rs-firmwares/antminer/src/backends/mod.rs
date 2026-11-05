@@ -24,7 +24,7 @@ fn blink_response_matches(response: &Value, fault: bool) -> bool {
 
 fn use_legacy_backend(model: &impl MinerModel, version: Option<&semver::Version>) -> bool {
     AntMinerV2018::validate(version)
-        && matches!(model.to_string().as_str(), "Z11j" | "Z15" | "Z15j")
+        && matches!(model.to_string().as_str(), "Z11j" | "Z15" | "Z15j" | "Z15e")
 }
 
 impl MinerConstructor for AntMiner {
@@ -59,7 +59,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn routes_build_dates_before_2021_to_v2018() {
+    fn legacy_backend_accepts_build_dates_through_january_12_2021() {
         for version in [
             Version::new(2017, 12, 31),
             Version::new(2018, 1, 1),
@@ -67,11 +67,14 @@ mod tests {
             Version::new(2020, 7, 3),
             Version::new(2020, 12, 14),
             Version::new(2020, 12, 31),
+            Version::new(2021, 1, 1),
+            Version::new(2021, 1, 11),
+            Version::new(2021, 1, 12),
         ] {
             assert!(AntMinerV2018::validate(Some(&version)));
         }
 
-        assert!(!AntMinerV2018::validate(Some(&Version::new(2021, 1, 1))));
+        assert!(!AntMinerV2018::validate(Some(&Version::new(2021, 1, 13))));
         assert!(!AntMinerV2018::validate(None));
     }
 
@@ -86,9 +89,14 @@ mod tests {
     }
 
     #[test]
-    fn only_verified_legacy_models_use_form_backend_on_2020_builds() {
+    fn only_legacy_models_use_form_backend_on_2020_builds() {
         let version = Version::new(2020, 7, 3);
-        for model in [AntMinerModel::Z11j, AntMinerModel::Z15, AntMinerModel::Z15j] {
+        for model in [
+            AntMinerModel::Z11j,
+            AntMinerModel::Z15,
+            AntMinerModel::Z15j,
+            AntMinerModel::Z15e,
+        ] {
             assert!(use_legacy_backend(&model, Some(&version)), "{model}");
             let miner = AntMiner::new([127, 0, 0, 1].into(), model, Some(version.clone()));
             assert!(matches!(
@@ -103,6 +111,50 @@ mod tests {
                 miner.get_locations(DataField::Uptime)[0].0,
                 MinerCommand::RPC { .. }
             ));
+        }
+    }
+
+    #[test]
+    fn legacy_routing_and_validation_share_the_january_12_inclusive_cutoff() {
+        for model in [
+            AntMinerModel::Z11j,
+            AntMinerModel::Z15,
+            AntMinerModel::Z15j,
+            AntMinerModel::Z15e,
+        ] {
+            for version in [
+                Version::new(2021, 1, 1),
+                Version::new(2021, 1, 11),
+                Version::new(2021, 1, 12),
+            ] {
+                assert!(use_legacy_backend(&model, Some(&version)), "{model}");
+                assert!(AntMinerV2018::validate(Some(&version)));
+                let miner = AntMiner::new([127, 0, 0, 1].into(), model.clone(), Some(version));
+                assert!(matches!(
+                    miner.get_locations(DataField::Uptime)[0].0,
+                    MinerCommand::WebAPI {
+                        command: "miner_stats",
+                        ..
+                    }
+                ));
+            }
+            for version in [
+                None,
+                Some(Version::new(2021, 1, 13)),
+                Some(Version::new(2026, 4, 27)),
+            ] {
+                assert!(!use_legacy_backend(&model, version.as_ref()), "{model}");
+                assert!(!AntMinerV2018::validate(version.as_ref()));
+                let miner = AntMiner::new([127, 0, 0, 1].into(), model.clone(), version);
+                assert!(matches!(
+                    miner.get_locations(DataField::Uptime)[0].0,
+                    MinerCommand::RPC { .. }
+                ));
+            }
+        }
+        let version = Version::new(2021, 1, 12);
+        for model in [AntMinerModel::Z15Pro, AntMinerModel::S19] {
+            assert!(!use_legacy_backend(&model, Some(&version)), "{model}");
         }
     }
 
