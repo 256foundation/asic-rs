@@ -5,11 +5,11 @@ use asic_rs_core::traits::{
     model::MinerModel,
 };
 pub use v1::PowerPlayV1;
-pub use v1_39_21::PowerPlayV13921;
+pub use v1_28_4::PowerPlayV1284;
 
 mod shared;
 pub mod v1;
-pub mod v1_39_21;
+pub mod v1_28_4;
 
 pub struct PowerPlay;
 
@@ -20,8 +20,8 @@ impl PowerPlay {
         version: Option<semver::Version>,
         uninstall_supported: Option<bool>,
     ) -> Box<dyn Miner> {
-        if PowerPlayV13921::validate(version.as_ref()) {
-            let mut miner = PowerPlayV13921::new(ip, model);
+        if PowerPlayV1284::validate(version.as_ref()) {
+            let mut miner = PowerPlayV1284::new(ip, model);
             if let Some(supported) = uninstall_supported {
                 miner.set_restore_stock_os_support(supported);
             }
@@ -75,14 +75,16 @@ mod tests {
         for (version, command) in [
             (None, SUMMARY),
             (Some(Version::new(1, 22, 5)), SUMMARY),
-            (Some(Version::new(1, 38, 3)), SUMMARY),
-            (Some(Version::new(1, 39, 20)), SUMMARY),
-            (Some(Version::new(1, 39, 21)), HISTORY),
+            (Some(Version::new(1, 28, 3)), SUMMARY),
+            (Some(Version::new(1, 28, 4)), HISTORY),
+            (Some(Version::new(1, 28, 5)), HISTORY),
+            (Some(Version::new(1, 38, 3)), HISTORY),
+            (Some(Version::new(1, 39, 20)), HISTORY),
             (Some(Version::new(1, 40, 0)), HISTORY),
             (Some(Version::new(2, 0, 0)), HISTORY),
         ] {
             assert_eq!(
-                PowerPlayV13921::validate(version.as_ref()),
+                PowerPlayV1284::validate(version.as_ref()),
                 command == HISTORY
             );
             assert_eq!(PowerPlayV1::validate(version.as_ref()), command == SUMMARY);
@@ -98,7 +100,7 @@ mod tests {
         use asic_rs_core::traits::miner::GetMessages;
 
         let legacy = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
-        let history = PowerPlayV13921::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let history = PowerPlayV1284::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
         let summary_data = HashMap::from([(
             DataField::Messages,
             json!({ "Status": { "Last Error": "legacy error" } }),
@@ -122,7 +124,7 @@ mod tests {
 
     #[tokio::test]
     async fn older_and_unknown_firmware_only_collects_summary_errors() {
-        for version in [None, Some(Version::new(1, 38, 3))] {
+        for version in [None, Some(Version::new(1, 28, 3))] {
             let miner = PowerPlay::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, version);
             let client = MockAPIClient::new(HashMap::from([(
                 SUMMARY,
@@ -148,7 +150,7 @@ mod tests {
         let miner = PowerPlay::new(
             IpAddr::from([127, 0, 0, 1]),
             AntMinerModel::S19XP,
-            Some(Version::new(1, 39, 21)),
+            Some(Version::new(1, 28, 4)),
         );
         let history: Vec<_> = (0..10)
             .map(|index| json!({ "NoSolutions": format!("report {}", index / 2) }))
@@ -189,7 +191,7 @@ mod tests {
         let miner = PowerPlay::new(
             IpAddr::from([127, 0, 0, 1]),
             AntMinerModel::S19XP,
-            Some(Version::new(1, 39, 21)),
+            Some(Version::new(1, 28, 4)),
         );
         for (summary_available, history_available) in [(true, false), (false, true), (false, false)]
         {
@@ -230,7 +232,7 @@ mod tests {
 
     #[test]
     fn preserves_discovered_uninstall_support_for_both_backends() {
-        for version in [None, Some(Version::new(1, 39, 21))] {
+        for version in [None, Some(Version::new(1, 28, 4))] {
             for supported in [true, false] {
                 let miner = PowerPlay::build(
                     IpAddr::from([127, 0, 0, 1]),

@@ -1,5 +1,5 @@
-/// First checked-in EPIC API version exposing `/errors/history`.
-pub(crate) const MIN_VERSION: semver::Version = semver::Version::new(1, 39, 21);
+/// First firmware version in summary's `Software` field supporting `/errors/history`.
+pub(crate) const MIN_VERSION: semver::Version = semver::Version::new(1, 28, 4);
 
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
@@ -43,16 +43,16 @@ use tokio::sync::OnceCell;
 
 use crate::firmware::EPicFirmware;
 
-/// EPIC 1.39.21 and newer, collecting messages only from `/errors/history`.
+/// EPIC firmware 1.28.4 and newer, collecting messages only from `/errors/history`.
 #[derive(Debug)]
-pub struct PowerPlayV13921 {
+pub struct PowerPlayV1284 {
     ip: IpAddr,
     web: PowerPlayWebAPI,
     device_info: DeviceInfo,
     restore_stock_os_supported: OnceCell<bool>,
 }
 
-impl PowerPlayV13921 {
+impl PowerPlayV1284 {
     pub fn new(ip: IpAddr, model: impl MinerModel) -> Self {
         let auth = Self::default_auth();
         let hash_algorithm = model.hash_algorithm();
@@ -292,7 +292,7 @@ impl PowerPlayV13921 {
 }
 
 #[async_trait]
-impl APIClient for PowerPlayV13921 {
+impl APIClient for PowerPlayV1284 {
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value> {
         match command {
             MinerCommand::WebAPI { .. } => self.web.get_api_result(command).await,
@@ -305,7 +305,7 @@ impl APIClient for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl SetHashboardsEnabled for PowerPlayV13921 {
+impl SetHashboardsEnabled for PowerPlayV1284 {
     async fn set_hashboards_enabled(
         &self,
         board_indices: &[u8],
@@ -348,7 +348,7 @@ impl SetHashboardsEnabled for PowerPlayV13921 {
     }
 }
 
-impl GetConfigsLocations for PowerPlayV13921 {
+impl GetConfigsLocations for PowerPlayV1284 {
     fn get_configs_locations(&self, data_field: ConfigField) -> Vec<ConfigLocation> {
         const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
             command: "summary",
@@ -418,13 +418,13 @@ impl GetConfigsLocations for PowerPlayV13921 {
     }
 }
 
-impl CollectConfigs for PowerPlayV13921 {
+impl CollectConfigs for PowerPlayV1284 {
     fn get_config_collector(&self) -> ConfigCollector<'_> {
         ConfigCollector::new(self)
     }
 }
 
-impl GetDataLocations for PowerPlayV13921 {
+impl GetDataLocations for PowerPlayV1284 {
     fn get_locations(&self, data_field: DataField) -> Vec<DataLocation> {
         const WEB_SUMMARY: MinerCommand = MinerCommand::WebAPI {
             command: "summary",
@@ -714,25 +714,25 @@ impl GetDataLocations for PowerPlayV13921 {
     }
 }
 
-impl GetIP for PowerPlayV13921 {
+impl GetIP for PowerPlayV1284 {
     fn get_ip(&self) -> IpAddr {
         self.ip
     }
 }
 
-impl GetDeviceInfo for PowerPlayV13921 {
+impl GetDeviceInfo for PowerPlayV1284 {
     fn get_device_info(&self) -> DeviceInfo {
         self.device_info.clone()
     }
 }
 
-impl CollectData for PowerPlayV13921 {
+impl CollectData for PowerPlayV1284 {
     fn get_collector(&self) -> DataCollector<'_> {
         DataCollector::new(self)
     }
 }
 
-impl GetMAC for PowerPlayV13921 {
+impl GetMAC for PowerPlayV1284 {
     fn parse_mac(&self, data: &HashMap<DataField, Value>) -> Option<MacAddr> {
         match serde_json::from_value::<HashMap<String, Value>>(data.get(&DataField::Mac)?.clone())
             .ok()
@@ -748,7 +748,7 @@ impl GetMAC for PowerPlayV13921 {
     }
 }
 
-impl GetSerialNumber for PowerPlayV13921 {
+impl GetSerialNumber for PowerPlayV1284 {
     fn parse_serial_number(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         // The manufacturer serial is the meaningful identifier, but PowerPlay
         // only reports it on some units; fall back to the control board CPU
@@ -758,25 +758,25 @@ impl GetSerialNumber for PowerPlayV13921 {
     }
 }
 
-impl GetHostname for PowerPlayV13921 {
+impl GetHostname for PowerPlayV1284 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::Hostname)
     }
 }
 
-impl GetApiVersion for PowerPlayV13921 {
+impl GetApiVersion for PowerPlayV1284 {
     fn parse_api_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::ApiVersion)
     }
 }
 
-impl GetFirmwareVersion for PowerPlayV13921 {
+impl GetFirmwareVersion for PowerPlayV1284 {
     fn parse_firmware_version(&self, data: &HashMap<DataField, Value>) -> Option<String> {
         data.extract::<String>(DataField::FirmwareVersion)
     }
 }
 
-impl GetControlBoardVersion for PowerPlayV13921 {
+impl GetControlBoardVersion for PowerPlayV1284 {
     fn parse_control_board_version(
         &self,
         data: &HashMap<DataField, Value>,
@@ -829,7 +829,7 @@ impl GetControlBoardVersion for PowerPlayV13921 {
     }
 }
 
-impl GetHashboards for PowerPlayV13921 {
+impl GetHashboards for PowerPlayV1284 {
     fn parse_hashboards(&self, data: &HashMap<DataField, Value>) -> Vec<BoardData> {
         let mut hashboards: Vec<BoardData> =
             (0..self.device_info.hardware.board_count().unwrap_or(0))
@@ -1090,7 +1090,7 @@ impl GetHashboards for PowerPlayV13921 {
     }
 }
 
-impl GetHashrate for PowerPlayV13921 {
+impl GetHashrate for PowerPlayV1284 {
     fn parse_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         let mut total_hashrate: f64 = 0.0;
 
@@ -1122,7 +1122,7 @@ impl GetHashrate for PowerPlayV13921 {
     }
 }
 
-impl GetExpectedHashrate for PowerPlayV13921 {
+impl GetExpectedHashrate for PowerPlayV1284 {
     fn parse_expected_hashrate(&self, data: &HashMap<DataField, Value>) -> Option<HashRate> {
         data.extract_map::<f64, _>(DataField::ExpectedHashrate, |f| {
             HashRate {
@@ -1135,7 +1135,7 @@ impl GetExpectedHashrate for PowerPlayV13921 {
     }
 }
 
-impl GetFans for PowerPlayV13921 {
+impl GetFans for PowerPlayV1284 {
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let mut fans: Vec<FanData> = Vec::new();
 
@@ -1161,13 +1161,13 @@ impl GetFans for PowerPlayV13921 {
     }
 }
 
-impl GetPsuFans for PowerPlayV13921 {}
-impl GetPsus for PowerPlayV13921 {}
-impl GetTuningCapabilities for PowerPlayV13921 {}
+impl GetPsuFans for PowerPlayV1284 {}
+impl GetPsus for PowerPlayV1284 {}
+impl GetTuningCapabilities for PowerPlayV1284 {}
 
-impl GetFluidTemperature for PowerPlayV13921 {}
+impl GetFluidTemperature for PowerPlayV1284 {}
 
-impl GetWattage for PowerPlayV13921 {
+impl GetWattage for PowerPlayV1284 {
     fn parse_wattage(&self, data: &HashMap<DataField, Value>) -> Option<Power> {
         data.extract_map::<f64, _>(DataField::Wattage, Power::from_watts)
     }
@@ -1282,7 +1282,7 @@ fn to_non_negative_u32_target(value: f64, label: &str) -> anyhow::Result<u32> {
     Ok(rounded as u32)
 }
 
-impl GetTuningTarget for PowerPlayV13921 {
+impl GetTuningTarget for PowerPlayV1284 {
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.get(&DataField::TuningTarget).and_then(|summary| {
             if !summary
@@ -1298,7 +1298,7 @@ impl GetTuningTarget for PowerPlayV13921 {
     }
 }
 
-impl GetScaledTuningTarget for PowerPlayV13921 {
+impl GetScaledTuningTarget for PowerPlayV1284 {
     fn parse_scaled_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.get(&DataField::TuningTarget).and_then(|summary| {
             if !summary
@@ -1314,13 +1314,13 @@ impl GetScaledTuningTarget for PowerPlayV13921 {
     }
 }
 
-impl GetLightFlashing for PowerPlayV13921 {
+impl GetLightFlashing for PowerPlayV1284 {
     fn parse_light_flashing(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.extract::<bool>(DataField::LightFlashing)
     }
 }
 
-impl GetMessages for PowerPlayV13921 {
+impl GetMessages for PowerPlayV1284 {
     fn parse_messages(&self, data: &HashMap<DataField, Value>) -> Vec<MinerMessage> {
         let Some(data) = data.get(&DataField::Messages) else {
             return Vec::new();
@@ -1338,16 +1338,16 @@ impl GetMessages for PowerPlayV13921 {
     }
 }
 
-impl GetUptime for PowerPlayV13921 {
+impl GetUptime for PowerPlayV1284 {
     fn parse_uptime(&self, data: &HashMap<DataField, Value>) -> Option<Duration> {
         data.extract_map::<u64, _>(DataField::Uptime, Duration::from_secs)
     }
 }
 
-impl GetBestShare for PowerPlayV13921 {}
-impl GetSessionBestShare for PowerPlayV13921 {}
+impl GetBestShare for PowerPlayV1284 {}
+impl GetSessionBestShare for PowerPlayV1284 {}
 
-impl GetOperatingState for PowerPlayV13921 {
+impl GetOperatingState for PowerPlayV1284 {
     fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
         data.get(&DataField::OperatingState)
             .and_then(Value::as_str)
@@ -1355,13 +1355,13 @@ impl GetOperatingState for PowerPlayV13921 {
     }
 }
 
-impl GetDevFeeConnected for PowerPlayV13921 {
+impl GetDevFeeConnected for PowerPlayV1284 {
     fn parse_devfee_connected(&self, data: &HashMap<DataField, Value>) -> Option<bool> {
         data.get(&DataField::DevFeeConnected).map(Value::is_null)
     }
 }
 
-impl GetIsMining for PowerPlayV13921 {
+impl GetIsMining for PowerPlayV1284 {
     fn parse_is_mining(&self, data: &HashMap<DataField, Value>) -> bool {
         data.extract::<String>(DataField::IsMining)
             .map(|state| state != "Idling")
@@ -1369,7 +1369,7 @@ impl GetIsMining for PowerPlayV13921 {
     }
 }
 
-impl GetPools for PowerPlayV13921 {
+impl GetPools for PowerPlayV1284 {
     fn parse_pools(&self, data: &HashMap<DataField, Value>) -> Vec<PoolGroupData> {
         let Some(pools_data) = data.get(&DataField::Pools) else {
             return vec![];
@@ -1394,7 +1394,7 @@ impl GetPools for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl SetFaultLight for PowerPlayV13921 {
+impl SetFaultLight for PowerPlayV1284 {
     #[allow(unused_variables)]
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         self.web
@@ -1413,14 +1413,14 @@ impl SetFaultLight for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl SetPowerLimit for PowerPlayV13921 {
+impl SetPowerLimit for PowerPlayV1284 {
     fn supports_set_power_limit(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl SupportsPoolsConfig for PowerPlayV13921 {
+impl SupportsPoolsConfig for PowerPlayV1284 {
     fn parse_pools_config(
         &self,
         data: &HashMap<ConfigField, Value>,
@@ -1599,7 +1599,7 @@ impl SupportsPoolsConfig for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl SupportsScalingConfig for PowerPlayV13921 {
+impl SupportsScalingConfig for PowerPlayV1284 {
     async fn set_scaling_config(&self, config: ScalingConfig) -> anyhow::Result<bool> {
         // PowerPlay has no scaling-only endpoint: `min_throttle` and
         // `throttle_step` are written by the same `perpetualtune/algo` call that
@@ -1660,7 +1660,7 @@ impl SupportsScalingConfig for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl SupportsTuningConfig for PowerPlayV13921 {
+impl SupportsTuningConfig for PowerPlayV1284 {
     async fn set_tuning_config(
         &self,
         config: TuningConfig,
@@ -1772,7 +1772,7 @@ impl SupportsTuningConfig for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl SupportsFanConfig for PowerPlayV13921 {
+impl SupportsFanConfig for PowerPlayV1284 {
     fn parse_fan_config(&self, data: &HashMap<ConfigField, Value>) -> anyhow::Result<FanConfig> {
         let fan_mode = data
             .get(&ConfigField::Fan)
@@ -1829,7 +1829,7 @@ impl SupportsFanConfig for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl SupportsTimezoneConfig for PowerPlayV13921 {
+impl SupportsTimezoneConfig for PowerPlayV1284 {
     fn parse_timezone_config(
         &self,
         data: &HashMap<ConfigField, Value>,
@@ -1869,7 +1869,7 @@ impl SupportsTimezoneConfig for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl Restart for PowerPlayV13921 {
+impl Restart for PowerPlayV1284 {
     async fn restart(&self) -> anyhow::Result<bool> {
         self.web
             .send_command("reboot", false, Some(json!({"param": "0"})), Method::POST)
@@ -1882,7 +1882,7 @@ impl Restart for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl Pause for PowerPlayV13921 {
+impl Pause for PowerPlayV1284 {
     #[allow(unused_variables)]
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         self.web
@@ -1896,7 +1896,7 @@ impl Pause for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl Resume for PowerPlayV13921 {
+impl Resume for PowerPlayV1284 {
     #[allow(unused_variables)]
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         self.web
@@ -1915,7 +1915,7 @@ impl Resume for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl ChangePassword for PowerPlayV13921 {
+impl ChangePassword for PowerPlayV1284 {
     async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
         let success = self.web.change_password(password).await?;
         if success {
@@ -1931,7 +1931,7 @@ impl ChangePassword for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl ReadLogs for PowerPlayV13921 {
+impl ReadLogs for PowerPlayV1284 {
     async fn read_logs(&self) -> anyhow::Result<String> {
         self.web.read_logs().await
     }
@@ -1941,14 +1941,14 @@ impl ReadLogs for PowerPlayV13921 {
     }
 }
 
-impl FactoryReset for PowerPlayV13921 {
+impl FactoryReset for PowerPlayV1284 {
     fn supports_factory_reset(&self) -> bool {
         false
     }
 }
 
 #[async_trait]
-impl RestartMining for PowerPlayV13921 {
+impl RestartMining for PowerPlayV1284 {
     async fn restart_mining(&self) -> anyhow::Result<bool> {
         self.web.soft_reboot().await?;
         Ok(true)
@@ -1960,7 +1960,7 @@ impl RestartMining for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl RestoreStockOs for PowerPlayV13921 {
+impl RestoreStockOs for PowerPlayV1284 {
     async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
         if !self.restore_stock_os_support().await? {
             anyhow::bail!("Restoring the stock OS is not supported by this UMC OS build");
@@ -1982,7 +1982,7 @@ impl RestoreStockOs for PowerPlayV13921 {
 }
 
 #[async_trait]
-impl UpgradeFirmware for PowerPlayV13921 {
+impl UpgradeFirmware for PowerPlayV1284 {
     fn supports_check_firmware_update(&self) -> bool {
         true
     }
@@ -2012,19 +2012,19 @@ impl UpgradeFirmware for PowerPlayV13921 {
     }
 }
 
-impl HasDefaultAuth for PowerPlayV13921 {
+impl HasDefaultAuth for PowerPlayV1284 {
     fn default_auth() -> MinerAuth {
         MinerAuth::new("", "letmein")
     }
 }
 
-impl HasAuth for PowerPlayV13921 {
+impl HasAuth for PowerPlayV1284 {
     fn set_auth(&mut self, auth: MinerAuth) {
         self.web.set_auth(auth);
     }
 }
 
-impl Validate for PowerPlayV13921 {
+impl Validate for PowerPlayV1284 {
     type Firmware = EPicFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
@@ -2032,8 +2032,8 @@ impl Validate for PowerPlayV13921 {
     }
 }
 
-impl SupportsTemperatureConfig for PowerPlayV13921 {}
-impl GetTuningPercent for PowerPlayV13921 {}
-impl SetTuningPercent for PowerPlayV13921 {}
+impl SupportsTemperatureConfig for PowerPlayV1284 {}
+impl GetTuningPercent for PowerPlayV1284 {}
+impl SetTuningPercent for PowerPlayV1284 {}
 
-impl SupportsPresets for PowerPlayV13921 {}
+impl SupportsPresets for PowerPlayV1284 {}
