@@ -93,6 +93,33 @@ mod tests {
         }
     }
 
+    #[test]
+    fn backends_only_parse_their_own_error_source() {
+        use asic_rs_core::traits::miner::GetMessages;
+
+        let legacy = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let history = PowerPlayV13921::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
+        let summary_data = HashMap::from([(
+            DataField::Messages,
+            json!({ "Status": { "Last Error": "legacy error" } }),
+        )]);
+        let history_data = HashMap::from([(
+            DataField::Messages,
+            json!([{ "NoSolutions": "history error" }]),
+        )]);
+
+        assert_eq!(
+            legacy.parse_messages(&summary_data)[0].message,
+            "legacy error"
+        );
+        assert!(legacy.parse_messages(&history_data).is_empty());
+        assert_eq!(
+            history.parse_messages(&history_data)[0].message,
+            "history error"
+        );
+        assert!(history.parse_messages(&summary_data).is_empty());
+    }
+
     #[tokio::test]
     async fn older_and_unknown_firmware_only_collects_summary_errors() {
         for version in [None, Some(Version::new(1, 38, 3))] {
