@@ -4,9 +4,7 @@ import sys
 
 
 def run(*args: str) -> None:
-    subprocess.run(
-        args, check=True, cwd=Path(__file__).resolve().parents[1] / "python/pyasic-rs"
-    )
+    subprocess.run(args, check=True, cwd=Path(__file__).resolve().parents[1])
 
 
 def main() -> int:
@@ -25,7 +23,7 @@ def main() -> int:
         "--extras",
         "test",
     )
-    run(*uv, "run", "--extra", "test", "pytest", "tests")
+    run(*uv, "run", "--extra", "test", "pytest", "python/pyasic-rs/tests")
     return 0
 
 

@@ -43,11 +43,40 @@ jobs:
         run: .venv/bin/python -m pip install --upgrade pip maturin
 
       - name: Build and install package with test dependencies
-        working-directory: python/pyasic-rs
         run: VIRTUAL_ENV="$GITHUB_WORKSPACE/.venv" "$GITHUB_WORKSPACE/.venv/bin/maturin" develop --features python --extras test
 
       - name: Run Python tests
         run: .venv/bin/python -m pytest python/pyasic-rs/tests
+
+  python-sdist:
+    name: Python sdist
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check workspace lockfile
+        run: cargo metadata --locked --format-version 1 > /dev/null
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+
+      - name: Validate the packaged workspace and lockfile
+        run: |
+          mkdir "$RUNNER_TEMP/pyasic-sdist" "$RUNNER_TEMP/cargo-offline"
+          tar -xzf dist/pyasic_rs-*.tar.gz -C "$RUNNER_TEMP/pyasic-sdist" --strip-components=1
+          cmp Cargo.toml "$RUNNER_TEMP/pyasic-sdist/Cargo.toml"
+          cmp Cargo.lock "$RUNNER_TEMP/pyasic-sdist/Cargo.lock"
+          cd "$RUNNER_TEMP/pyasic-sdist"
+          mkdir -p .cargo
+          cargo vendor --manifest-path Cargo.toml --locked VENDOR > .cargo/config.toml
+          CARGO_HOME="$RUNNER_TEMP/cargo-offline" cargo metadata --locked --offline --format-version 1 > /dev/null
 
   go-test:
     name: Go Test
