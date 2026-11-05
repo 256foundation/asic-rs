@@ -297,10 +297,15 @@ impl FirmwareEntry for AntMinerStockFirmware {
 
 #[cfg(test)]
 mod tests {
-    use std::{net::IpAddr, str::FromStr, sync::Arc};
+    use std::{collections::HashMap, net::IpAddr, str::FromStr, sync::Arc, time::Duration};
 
     use anyhow::Context;
     use asic_rs_core::data::command::MinerCommand;
+    use asic_rs_core::data::{
+        collector::{DataCollector, DataField},
+        hashrate::HashRateUnit,
+    };
+    use asic_rs_core::test::api::MockAPIClient;
     use asic_rs_core::test::util::get_miner;
     use asic_rs_core::traits::miner::Validate;
     use asic_rs_makes_antminer::models::AntMinerModel;
@@ -316,6 +321,128 @@ mod tests {
         )));
 
         assert!(parse_version_date("FR-1.12(251009-S21)").is_none());
+    }
+
+    #[tokio::test]
+    async fn z15e_2021_build_collects_legacy_telemetry() -> anyhow::Result<()> {
+        // Read-only responses from an authorized Z15e. System info retains
+        // only model, kernel, and build date; no network or pool identity.
+        let system_info: Value = serde_json::from_str(include_str!(
+            "test/json/v2018/z15e_2021_01_12/get_system_info.json"
+        ))?;
+        let stats: Value = serde_json::from_str(include_str!(
+            "test/json/v2018/z15e_2021_01_12/miner_stats.json"
+        ))?;
+        let summary: Value =
+            serde_json::from_str(include_str!("test/json/v2018/z15e_2021_01_12/summary.json"))?;
+        // TCP stats omits a comma between the two STATS objects. Collection
+        // must use the valid HTTP response rather than attempting this JSON.
+        assert!(
+            serde_json::from_str::<Value>(include_str!(
+                "test/json/v2018/z15e_2021_01_12/tcp_stats.txt"
+            ))
+            .is_err()
+        );
+
+        let model = parse_model_response(system_info.clone(), "minertype")?;
+        assert_eq!(model.to_string(), "Z15e");
+        assert_eq!(model.hash_algorithm(), HashAlgorithm::Equihash);
+        let version = parse_version_date(
+            system_info["system_filesystem_version"]
+                .as_str()
+                .context("build date")?,
+        )
+        .context("parsed build date")?;
+        assert_eq!(version, semver::Version::new(2021, 1, 12));
+        let miner = crate::backends::AntMiner::new([127, 0, 0, 1].into(), model, Some(version));
+        let mock_api = MockAPIClient::new(HashMap::from([
+            (
+                MinerCommand::WebAPI {
+                    command: "get_system_info",
+                    parameters: None,
+                },
+                system_info,
+            ),
+            (
+                MinerCommand::WebAPI {
+                    command: "miner_stats",
+                    parameters: None,
+                },
+                stats,
+            ),
+            (
+                MinerCommand::RPC {
+                    command: "summary",
+                    parameters: None,
+                },
+                summary,
+            ),
+        ]));
+        let mut collector = DataCollector::new_with_client(miner.as_ref(), &mock_api);
+        let report = collector
+            .collect_report(&[
+                DataField::FirmwareVersion,
+                DataField::ControlBoardVersion,
+                DataField::Hashrate,
+                DataField::ExpectedHashrate,
+                DataField::Hashboards,
+                DataField::Fans,
+                DataField::Uptime,
+                DataField::Wattage,
+            ])
+            .await;
+        assert_eq!(report.diagnostics.failed_commands, 0);
+        let data = miner.parse_data(report.values);
+
+        assert_eq!(data.device_info.model, "Z15e");
+        assert_eq!(data.device_info.algo, HashAlgorithm::Equihash);
+        assert_eq!(
+            data.firmware_version.as_deref(),
+            Some("Tue Jan 12 16:16:20 CST 2021")
+        );
+        assert_eq!(
+            data.control_board_version.context("control board")?.name,
+            "Xilinx"
+        );
+        let hashrate = data.hashrate.context("hashrate")?;
+        assert_eq!(hashrate.unit, HashRateUnit::KiloSol);
+        assert!((hashrate.value - 305.38109).abs() < 0.00001);
+        assert_eq!(
+            data.expected_hashrate.context("expected hashrate")?.value,
+            200.0
+        );
+        assert_eq!(data.expected_hashboards, Some(3));
+        assert_eq!(data.hashboards.len(), 3);
+        assert_eq!(data.hashboards[0].active, Some(true));
+        assert_eq!(data.hashboards[1].active, Some(false));
+        assert_eq!(data.hashboards[2].active, Some(true));
+        assert_eq!(data.total_chips, Some(6));
+        assert_eq!(
+            data.average_temperature
+                .context("temperature")?
+                .as_celsius(),
+            48.5
+        );
+        assert_eq!(data.hashboards[1].board_temperature, None);
+        assert_eq!(
+            data.hashboards[0]
+                .outlet_chip_temperature
+                .context("chip temperature")?
+                .as_celsius(),
+            70.0
+        );
+        let board_rate = data.hashboards[0]
+            .hashrate
+            .as_ref()
+            .context("board hashrate")?;
+        assert_eq!(board_rate.unit, HashRateUnit::KiloSol);
+        assert!((board_rate.value - 146.79).abs() < 0.00001);
+        assert_eq!(data.fans.len(), 4);
+        assert_eq!(data.uptime, Some(Duration::from_secs(2656)));
+        assert_eq!(data.wattage, None);
+        assert!(!miner.supports_fan_config());
+
+        Ok(())
     }
 
     /// Live model detection always yields an [`AntMinerCompatibleModel`], never

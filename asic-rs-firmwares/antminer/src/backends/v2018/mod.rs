@@ -727,7 +727,7 @@ impl GetHashrate for AntMinerV2018 {
             })
         })?;
 
-        // On the observed Z11j/Z15/Z15j stock builds, "GHS" contains Sol/s.
+        // On the observed Z11j/Z15/Z15j/Z15e stock builds, "GHS" contains Sol/s.
         if self.device_info.algo == HashAlgorithm::Equihash && unit == HashRateUnit::GigaHash {
             unit = HashRateUnit::Hash;
         }
@@ -1277,7 +1277,8 @@ impl Validate for AntMinerV2018 {
     type Firmware = AntMinerStockFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v < Version::new(2021, 1, 1))
+        // Include all builds dated January 12, 2021.
+        version.is_some_and(|v| *v < Version::new(2021, 1, 13))
     }
 }
 
