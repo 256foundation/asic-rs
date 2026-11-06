@@ -7,6 +7,7 @@ use std::{
     pin::Pin,
     str::FromStr,
     sync::Arc,
+    task::{Context, Poll, ready},
     time::Duration,
 };
 
@@ -28,7 +29,8 @@ use futures::{
 };
 use ipnet::IpNet;
 use rand::seq::SliceRandom;
-use tokio::{net::TcpSocket, sync::Semaphore, time::timeout};
+use tokio::{net::TcpSocket, sync::Semaphore, task::JoinHandle, time::timeout};
+use tracing::Instrument;
 
 const IDENTIFICATION_TIMEOUT: Duration = Duration::from_secs(10);
 const CONNECTIVITY_TIMEOUT: Duration = Duration::from_secs(1);
@@ -225,6 +227,35 @@ async fn get_miner_type_from_command_catch_unwind(
             );
             None
         }
+    }
+}
+
+/// One address's scan, run as its own task so it keeps progressing while a
+/// stream consumer is busy between items; its discovery deadlines expire on
+/// wall-clock time either way. Dropping the handle aborts the task.
+struct ScanTask<T>(JoinHandle<T>);
+
+impl<T: Send + 'static> ScanTask<T> {
+    fn spawn(scan: impl Future<Output = T> + Send + 'static) -> Self {
+        Self(tokio::spawn(scan.in_current_span()))
+    }
+}
+
+impl<T> Future for ScanTask<T> {
+    type Output = Option<T>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match ready!(Pin::new(&mut self.0).poll(cx)) {
+            Ok(output) => Poll::Ready(Some(output)),
+            Err(error) if error.is_panic() => std::panic::resume_unwind(error.into_panic()),
+            Err(_) => Poll::Ready(None),
+        }
+    }
+}
+
+impl<T> Drop for ScanTask<T> {
+    fn drop(&mut self) {
+        self.0.abort();
     }
 }
 
@@ -897,6 +928,9 @@ impl MinerFactory {
     ///
     /// Use this when callers should process miners as soon as they are found
     /// instead of waiting for the full scan to finish.
+    ///
+    /// Scans already in flight keep running while the stream is not polled; new
+    /// addresses only start as it is polled, and dropping it cancels the rest.
     pub fn scan_stream(&self) -> Pin<Box<impl Stream<Item = Box<dyn Miner>> + Send + use<>>> {
         let concurrency = self
             .concurrent
@@ -917,18 +951,18 @@ impl MinerFactory {
         let stream = stream::iter(0..ip_count)
             .map(move |i| {
                 let factory = Arc::clone(&factory);
-                let ips = Arc::clone(&ips);
+                let ip = ips[i];
                 let connection_limit = Arc::clone(&connection_limit);
-                async move {
+                ScanTask::spawn(async move {
                     factory
-                        .scan_miner_with_connection_limit(ips[i], connection_limit)
+                        .scan_miner_with_connection_limit(ip, connection_limit)
                         .await
                         .ok()
                         .flatten()
-                }
+                })
             })
             .buffer_unordered(concurrency)
-            .filter_map(|miner_opt| async move { miner_opt });
+            .filter_map(|miner_opt| async move { miner_opt.flatten() });
 
         Box::pin(stream)
     }
@@ -937,6 +971,9 @@ impl MinerFactory {
     ///
     /// Stream items are `(ip, miner)` pairs. `miner` is `None` when the host did
     /// not identify as a supported miner.
+    ///
+    /// Scans already in flight keep running while the stream is not polled; new
+    /// addresses only start as it is polled, and dropping it cancels the rest.
     #[allow(clippy::type_complexity)]
     pub fn scan_stream_with_ip(
         &self,
@@ -960,18 +997,16 @@ impl MinerFactory {
         let stream = stream::iter(0..ip_count)
             .map(move |i| {
                 let factory = Arc::clone(&factory);
-                let ips = Arc::clone(&ips);
+                let ip = ips[i];
                 let connection_limit = Arc::clone(&connection_limit);
-                async move {
-                    (
-                        ips[i],
-                        factory
-                            .scan_miner_with_connection_limit(ips[i], connection_limit)
-                            .await
-                            .ok()
-                            .flatten(),
-                    )
-                }
+                let scan = ScanTask::spawn(async move {
+                    factory
+                        .scan_miner_with_connection_limit(ip, connection_limit)
+                        .await
+                        .ok()
+                        .flatten()
+                });
+                async move { (ip, scan.await.flatten()) }
             })
             .buffer_unordered(concurrency);
 
@@ -1216,6 +1251,34 @@ mod tests {
         assert!(construction_started_rx.try_recv().is_ok());
         server.abort();
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn scan_task_progresses_without_being_polled() {
+        let (done, mut done_rx) = tokio::sync::oneshot::channel();
+        let task = ScanTask::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            let _ = done.send(());
+            7
+        });
+
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        assert!(done_rx.try_recv().is_ok());
+        assert_eq!(task.await, Some(7));
+    }
+
+    #[tokio::test]
+    async fn dropping_scan_task_aborts_it() {
+        let (done, done_rx) = tokio::sync::oneshot::channel::<()>();
+        let task = ScanTask::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            let _ = done.send(());
+        });
+
+        drop(task);
+
+        assert!(done_rx.await.is_err());
     }
 
     #[tokio::test]

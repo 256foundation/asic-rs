@@ -1,124 +1,130 @@
 use std::{
     fmt::Display,
     net::IpAddr,
-    panic::AssertUnwindSafe,
     pin::Pin,
     str::FromStr,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
+    sync::{Arc, Mutex},
 };
 
 use crate::{
     miner::Miner,
     typing::{
         CancelAction, PyAsyncIterator, PyAwaitable, abortable_future_into_py_with_cancel,
-        future_into_py, panic_message,
+        future_into_py,
     },
 };
 use asic_rs::factory::MinerFactory as MinerFactory_Base;
 use asic_rs_core::traits::miner::{Miner as MinerTrait, MinerAuth};
 use asic_rs_pydantic::py_to_string;
-use futures::{FutureExt, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use pyo3::{
     exceptions::{PyConnectionError, PyRuntimeError, PyStopAsyncIteration, PyValueError},
     prelude::*,
     types::PyType,
 };
-use tokio::{
-    sync::{Mutex, mpsc},
-    task::AbortHandle,
-};
 
 type MinerStream = Pin<Box<dyn Stream<Item = Box<dyn MinerTrait>> + Send>>;
 type MinerStreamWithIp = Pin<Box<dyn Stream<Item = (IpAddr, Option<Box<dyn MinerTrait>>)> + Send>>;
 
-/// Drives a scan on a runtime task so it keeps progressing between `__anext__`
-/// calls; otherwise discovery requests time out while Python is busy and those
-/// miners are silently skipped.
-struct ScanResults<T> {
-    receiver: Arc<Mutex<mpsc::UnboundedReceiver<Result<T, String>>>>,
-    closed: Arc<AtomicBool>,
-    scan: AbortHandle,
+enum StreamState<S> {
+    Ready(S),
+    InUse,
+    Closed,
 }
 
-impl<T: Send + 'static> ScanResults<T> {
-    fn spawn<S>(mut stream: S) -> Self
-    where
-        S: Stream<Item = T> + Unpin + Send + 'static,
-    {
-        let (sender, receiver) = mpsc::unbounded_channel();
-        let scan = pyo3_async_runtimes::tokio::get_runtime().spawn(async move {
-            let forward = async {
-                while let Some(item) = stream.next().await {
-                    if sender.send(Ok(item)).is_err() {
-                        return;
-                    }
-                }
-            };
-            if let Err(panic) = AssertUnwindSafe(forward).catch_unwind().await {
-                let _ = sender.send(Err(panic_message(&*panic).to_owned()));
-            }
-        });
-        Self {
-            receiver: Arc::new(Mutex::new(receiver)),
-            closed: Arc::new(AtomicBool::new(false)),
-            scan: scan.abort_handle(),
-        }
-    }
+struct StreamLease<S> {
+    state: Arc<Mutex<StreamState<S>>>,
+    stream: Option<S>,
+}
 
-    fn anext<'py, R>(&self, py: Python<'py>, convert: fn(T) -> R) -> PyResult<Bound<'py, PyAny>>
-    where
-        R: for<'a> IntoPyObject<'a> + Send + 'static,
-    {
-        let receiver = Arc::clone(&self.receiver);
-        let closed = Arc::clone(&self.closed);
-        let close: CancelAction = {
-            let closed = Arc::clone(&self.closed);
-            let scan = self.scan.clone();
-            Box::new(move || {
-                closed.store(true, Ordering::Relaxed);
-                scan.abort();
-            })
-        };
-        abortable_future_into_py_with_cancel(
-            py,
-            async move {
-                if closed.load(Ordering::Relaxed) {
+impl<S> StreamLease<S> {
+    fn take(state: Arc<Mutex<StreamState<S>>>) -> PyResult<Self> {
+        let stream = {
+            let mut guard = state
+                .lock()
+                .map_err(|_| PyRuntimeError::new_err("stream state lock poisoned"))?;
+            match std::mem::replace(&mut *guard, StreamState::InUse) {
+                StreamState::Ready(stream) => stream,
+                StreamState::InUse => {
+                    return Err(PyRuntimeError::new_err("stream is already being polled"));
+                }
+                StreamState::Closed => {
+                    *guard = StreamState::Closed;
                     return Err(PyStopAsyncIteration::new_err("stream complete"));
                 }
-                let Ok(mut receiver) = receiver.try_lock_owned() else {
-                    return Err(PyRuntimeError::new_err("stream is already being polled"));
-                };
-                match receiver.recv().await {
-                    Some(Ok(item)) => Ok(convert(item)),
-                    Some(Err(panic)) => Err(PyRuntimeError::new_err(format!(
-                        "rust future panicked: {panic}"
-                    ))),
-                    None => Err(PyStopAsyncIteration::new_err("stream complete")),
-                }
-            },
-            Some(close),
-        )
+            }
+        };
+
+        Ok(Self {
+            state,
+            stream: Some(stream),
+        })
+    }
+
+    fn stream_mut(&mut self) -> PyResult<&mut S> {
+        self.stream
+            .as_mut()
+            .ok_or_else(|| PyRuntimeError::new_err("stream lease missing stream"))
+    }
+
+    fn store(mut self, state: StreamState<S>) -> PyResult<()> {
+        self.stream = None;
+        let mut guard = self
+            .state
+            .lock()
+            .map_err(|_| PyRuntimeError::new_err("stream state lock poisoned"))?;
+        if matches!(*guard, StreamState::Closed) && matches!(state, StreamState::Ready(_)) {
+            return Ok(());
+        }
+        *guard = state;
+        Ok(())
+    }
+
+    fn store_ready(mut self) -> PyResult<()> {
+        let stream = self
+            .stream
+            .take()
+            .ok_or_else(|| PyRuntimeError::new_err("stream lease missing stream"))?;
+        self.store(StreamState::Ready(stream))
+    }
+
+    fn close(self) -> PyResult<()> {
+        self.store(StreamState::Closed)
     }
 }
 
-impl<T> Drop for ScanResults<T> {
+impl<S> Drop for StreamLease<S> {
     fn drop(&mut self) {
-        self.scan.abort();
+        if self.stream.is_some()
+            && let Ok(mut guard) = self.state.lock()
+        {
+            *guard = StreamState::Closed;
+        }
     }
+}
+
+fn close_stream_state<S>(state: &Arc<Mutex<StreamState<S>>>) {
+    let _previous = {
+        let Ok(mut guard) = state.lock() else {
+            return;
+        };
+        std::mem::replace(&mut *guard, StreamState::Closed)
+    };
+}
+
+fn close_stream_on_cancel<S: Send + 'static>(state: Arc<Mutex<StreamState<S>>>) -> CancelAction {
+    Box::new(move || close_stream_state(&state))
 }
 
 #[pyclass]
 pub struct PyMinerStream {
-    results: ScanResults<Box<dyn MinerTrait>>,
+    inner: Arc<Mutex<StreamState<MinerStream>>>,
 }
 
 impl PyMinerStream {
     fn new(inner: MinerStream) -> Self {
         Self {
-            results: ScanResults::spawn(inner),
+            inner: Arc::new(Mutex::new(StreamState::Ready(inner))),
         }
     }
 }
@@ -129,19 +135,38 @@ impl PyMinerStream {
     }
 
     pub fn __anext__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        self.results.anext(py, Miner::from)
+        let inner = self.inner.clone();
+        let cancel_inner = inner.clone();
+        abortable_future_into_py_with_cancel(
+            py,
+            async move {
+                let mut lease = StreamLease::take(inner)?;
+                match lease.stream_mut()?.next().await {
+                    Some(miner) => {
+                        let miner = Miner::from(miner);
+                        lease.store_ready()?;
+                        Ok(miner)
+                    }
+                    None => {
+                        lease.close()?;
+                        Err(PyStopAsyncIteration::new_err("stream complete"))
+                    }
+                }
+            },
+            Some(close_stream_on_cancel(cancel_inner)),
+        )
     }
 }
 
 #[pyclass]
 pub struct PyMinerStreamWithIP {
-    results: ScanResults<(IpAddr, Option<Box<dyn MinerTrait>>)>,
+    inner: Arc<Mutex<StreamState<MinerStreamWithIp>>>,
 }
 
 impl PyMinerStreamWithIP {
     fn new(inner: MinerStreamWithIp) -> Self {
         Self {
-            results: ScanResults::spawn(inner),
+            inner: Arc::new(Mutex::new(StreamState::Ready(inner))),
         }
     }
 }
@@ -152,8 +177,26 @@ impl PyMinerStreamWithIP {
     }
 
     pub fn __anext__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        self.results
-            .anext(py, |(ip, miner)| (ip, miner.map(Miner::new)))
+        let inner = self.inner.clone();
+        let cancel_inner = inner.clone();
+        abortable_future_into_py_with_cancel(
+            py,
+            async move {
+                let mut lease = StreamLease::take(inner)?;
+                match lease.stream_mut()?.next().await {
+                    Some((ip, miner_opt)) => {
+                        let item = (ip, miner_opt.map(Miner::new));
+                        lease.store_ready()?;
+                        Ok(item)
+                    }
+                    None => {
+                        lease.close()?;
+                        Err(PyStopAsyncIteration::new_err("stream complete"))
+                    }
+                }
+            },
+            Some(close_stream_on_cancel(cancel_inner)),
+        )
     }
 }
 
