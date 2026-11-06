@@ -137,7 +137,7 @@ where
     Ok(awaitable)
 }
 
-fn panic_message(panic: &(dyn Any + Send)) -> &str {
+pub(crate) fn panic_message(panic: &(dyn Any + Send)) -> &str {
     if let Some(message) = panic.downcast_ref::<&str>() {
         message
     } else if let Some(message) = panic.downcast_ref::<String>() {
