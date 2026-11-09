@@ -181,7 +181,7 @@ jobs:
             target: x86
             python_architecture: x86
           - artifact: macos-aarch64
-            os: macos-14
+            os: macos-26
             target: aarch64
             python_architecture: arm64
     steps:
