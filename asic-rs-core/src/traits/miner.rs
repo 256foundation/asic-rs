@@ -1176,6 +1176,26 @@ pub trait UpgradeFirmware {
         anyhow::bail!("Checking for firmware updates is not supported on this platform");
     }
 
+    /// Check vendor releases using the supplied client for miner reads.
+    ///
+    /// This lets an explicit read context reuse raw responses without adding
+    /// configuration or update metadata to telemetry. Implementations must use
+    /// this client for miner requests; vendor release-server requests may still
+    /// be made separately. Defaults to unsupported, without a fresh-read fallback.
+    #[allow(unused_variables)]
+    async fn check_firmware_update_with_client(
+        &self,
+        client: &dyn APIClient,
+    ) -> anyhow::Result<FirmwareStats> {
+        anyhow::bail!(
+            "Checking firmware updates through a read client is not supported on this platform"
+        );
+    }
+
+    fn supports_check_firmware_update_with_client(&self) -> bool {
+        false
+    }
+
     fn supports_check_firmware_update(&self) -> bool {
         false
     }

@@ -1986,8 +1986,18 @@ impl UpgradeFirmware for PowerPlayV1284 {
     }
 
     async fn check_firmware_update(&self) -> anyhow::Result<FirmwareStats> {
-        let data = self
-            .get_collector()
+        self.check_firmware_update_with_client(self).await
+    }
+
+    fn supports_check_firmware_update_with_client(&self) -> bool {
+        true
+    }
+
+    async fn check_firmware_update_with_client(
+        &self,
+        client: &dyn APIClient,
+    ) -> anyhow::Result<FirmwareStats> {
+        let data = DataCollector::new_with_client(self, client)
             .collect(&[DataField::ControlBoardVersion, DataField::FirmwareVersion])
             .await;
         let platform = data.extract_nested::<String>(DataField::ControlBoardVersion, "platform");
