@@ -1,7 +1,7 @@
 use std::{future::Future, time::Duration};
 
 use anyhow::{Context, bail};
-use asic_rs_core::data::firmware::FirmwareStats;
+use asic_rs_core::data::{firmware::FirmwareStats, miner::MinerData};
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use asic_rs_makes_epic::hardware::EPicControlBoard;
 use asic_rs_makes_volcminer::make::VolcMinerMake;
@@ -103,6 +103,22 @@ pub(crate) fn repository(
     } else {
         bail!("Cannot identify control board for ePIC firmware update check")
     }
+}
+
+pub(crate) fn snapshot_update_target(
+    data: &MinerData,
+) -> anyhow::Result<(&'static str, Option<Version>)> {
+    let board = data
+        .control_board_version
+        .as_ref()
+        .context("Snapshot is missing control board metadata")?;
+    let repository = repository(
+        board.platform.as_deref(),
+        board.cpu.as_deref(),
+        &data.device_info.make,
+    )?;
+    let current_version = data.firmware_version.as_deref().and_then(parse_version);
+    Ok((repository, current_version))
 }
 
 pub(crate) fn parse_version(value: &str) -> Option<Version> {
@@ -353,5 +369,107 @@ mod tests {
         assert!(!stats(&release, None).unwrap().update_available());
         assert!(stats(&json!({}), None).is_err());
         assert!(stats(&json!({"tag_name": "bad"}), None).is_err());
+    }
+    #[test]
+    fn snapshot_retains_raw_release_metadata_and_rejects_guessed_board_identity()
+    -> anyhow::Result<()> {
+        use crate::backends::PowerPlay;
+        use asic_rs_core::{data::collector::DataField, traits::miner::MinerConstructor};
+        use asic_rs_makes_antminer::models::AntMinerModel;
+        use std::{collections::HashMap, net::IpAddr};
+
+        for version in [None, Some(Version::new(1, 28, 4))] {
+            let miner = PowerPlay::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, version);
+            for (platform, cpu, expected) in [
+                (Some("UMC"), Some("STM32"), Some(UMC)),
+                (Some("AMLogic"), Some("AMLOGIC"), Some(STOCK)),
+                (None, Some("STM32 (Device Tree Support)"), Some(UMC)),
+                (None, Some("Xilinx Zynq"), Some(STOCK)),
+                (None, Some("unknown"), None),
+                (Some("TVXilinx"), Some("STM32"), None),
+                (None, None, None),
+            ] {
+                let snapshot = miner.parse_data(HashMap::from([
+                    (
+                        DataField::ControlBoardVersion,
+                        json!({"platform": platform, "cpu": cpu}),
+                    ),
+                    (DataField::FirmwareVersion, json!("PowerPlay-BMS v1.28.4")),
+                ]));
+                let encoded = serde_json::to_value(&snapshot)?;
+                let snapshot: MinerData = serde_json::from_value(encoded)?;
+                if let Some(board) = snapshot.control_board_version.as_ref() {
+                    assert_eq!(board.platform.as_deref(), platform);
+                    assert_eq!(board.cpu.as_deref(), cpu);
+                }
+                let target = snapshot_update_target(&snapshot);
+                if let Some(expected) = expected {
+                    let (repository, version) = target?;
+                    assert_eq!(repository, expected);
+                    assert_eq!(version, Some(Version::new(1, 28, 4)));
+                } else {
+                    assert!(target.is_err());
+                }
+            }
+            // An old serialized snapshot lacks raw metadata: never trust the normalized name.
+            let mut snapshot = miner.parse_data(HashMap::new());
+            snapshot.control_board_version = Some(
+                asic_rs_core::data::board::MinerControlBoard::known("ePIC UMC".to_string()),
+            );
+            assert!(snapshot_update_target(&snapshot).is_err());
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn snapshot_update_check_only_uses_the_release_cache() -> anyhow::Result<()> {
+        use crate::backends::PowerPlay;
+        use asic_rs_core::{data::collector::DataField, traits::miner::MinerConstructor};
+        use asic_rs_makes_antminer::models::AntMinerModel;
+        use std::{collections::HashMap, net::IpAddr};
+
+        // No miner or release server is running. Any accidental miner read will fail
+        // or exceed this deadline; the vendor result is provided by the shared cache.
+        *RELEASE_CACHE.umc.lock().await = Some(CachedRelease {
+            result: Ok(json!({"tag_name": "v1.40.0"})),
+            expires_at: Instant::now() + RELEASE_TTL,
+        });
+        for version in [None, Some(Version::new(1, 28, 4))] {
+            let miner = PowerPlay::new(IpAddr::from([192, 0, 2, 1]), AntMinerModel::S19XP, version);
+            assert!(miner.supports_check_firmware_update_from_data());
+            for installed in ["v1.28.4", "v1.41.0"] {
+                let mut snapshot = miner.parse_data(HashMap::from([
+                    (
+                        DataField::ControlBoardVersion,
+                        json!({"platform": "UMC", "cpu": "STM32"}),
+                    ),
+                    (DataField::FirmwareVersion, json!(installed)),
+                ]));
+                let stats = tokio::time::timeout(
+                    Duration::from_secs(1),
+                    miner.check_firmware_update_from_data(&snapshot),
+                )
+                .await??;
+                assert_eq!(stats.current_version, parse_version(installed));
+                assert_eq!(stats.latest_version, Some(Version::new(1, 40, 0)));
+                assert_eq!(stats.update_available(), installed == "v1.28.4");
+                snapshot.ip = IpAddr::from([192, 0, 2, 2]);
+                assert!(
+                    miner
+                        .check_firmware_update_from_data(&snapshot)
+                        .await
+                        .is_err()
+                );
+            }
+            let snapshot = miner.parse_data(HashMap::new());
+            assert!(
+                miner
+                    .check_firmware_update_from_data(&snapshot)
+                    .await
+                    .is_err()
+            );
+        }
+        *RELEASE_CACHE.umc.lock().await = None;
+        Ok(())
     }
 }

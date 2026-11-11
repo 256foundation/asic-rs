@@ -21,7 +21,7 @@ use asic_rs_core::{
         firmware::{FirmwareImage, FirmwareStats, RestoreStockOsResult},
         hashrate::{HashRate, HashRateUnit},
         message::{MessageSeverity, MinerMessage},
-        miner::TuningTarget,
+        miner::{MinerData, TuningTarget},
         operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
@@ -783,51 +783,57 @@ impl GetControlBoardVersion for PowerPlayV1 {
         &self,
         data: &HashMap<DataField, Value>,
     ) -> Option<MinerControlBoard> {
-        if let Some(cb) =
-            data.extract_nested::<EPicControlBoard>(DataField::ControlBoardVersion, "platform")
-        {
-            return Some(cb.into());
-        }
-
-        let is_volcminer_model = self.device_info.make == VolcMinerMake::default().to_string();
-
-        if let Some(platform) =
-            data.extract_nested::<String>(DataField::ControlBoardVersion, "platform")
-        {
-            let is_volcminer_platform = platform.trim().eq_ignore_ascii_case("TVXilinx");
-
-            if (is_volcminer_platform || is_volcminer_model)
-                && let Some(cb) = VolcMinerControlBoard::parse(&platform)
+        let parse_identity = || -> Option<MinerControlBoard> {
+            if let Some(cb) =
+                data.extract_nested::<EPicControlBoard>(DataField::ControlBoardVersion, "platform")
             {
                 return Some(cb.into());
             }
-        }
 
-        if let Some(cb) =
-            data.extract_nested::<AntMinerControlBoard>(DataField::ControlBoardVersion, "platform")
-        {
-            return Some(cb.into());
-        }
+            let is_volcminer_model = self.device_info.make == VolcMinerMake::default().to_string();
 
-        // Fallback for older versions that do not have platform.
-        let cb_type = data.extract_nested::<String>(DataField::ControlBoardVersion, "cpu")?;
+            if let Some(platform) =
+                data.extract_nested::<String>(DataField::ControlBoardVersion, "platform")
+            {
+                let is_volcminer_platform = platform.trim().eq_ignore_ascii_case("TVXilinx");
 
-        match cb_type.as_str() {
-            s if s.to_uppercase().contains("AMLOGIC") => {
-                Some(AntMinerControlBoard::AMLogic).map(|cb| cb.into())
-            }
-            s if s.to_uppercase().contains("GENERIC AM33XX") => {
-                Some(AntMinerControlBoard::BeagleBoneBlack).map(|cb| cb.into())
-            }
-            s if s.to_uppercase().contains("XILINX") => {
-                if is_volcminer_model && let Some(cb) = VolcMinerControlBoard::parse(s) {
+                if (is_volcminer_platform || is_volcminer_model)
+                    && let Some(cb) = VolcMinerControlBoard::parse(&platform)
+                {
                     return Some(cb.into());
                 }
-
-                Some(AntMinerControlBoard::Xilinx).map(|cb| cb.into())
             }
-            _ => Some(EPicControlBoard::EPicUMC).map(|cb| cb.into()),
-        }
+
+            if let Some(cb) = data
+                .extract_nested::<AntMinerControlBoard>(DataField::ControlBoardVersion, "platform")
+            {
+                return Some(cb.into());
+            }
+
+            // Fallback for older versions that do not have platform.
+            let cb_type = data.extract_nested::<String>(DataField::ControlBoardVersion, "cpu")?;
+
+            match cb_type.as_str() {
+                s if s.to_uppercase().contains("AMLOGIC") => {
+                    Some(AntMinerControlBoard::AMLogic).map(|cb| cb.into())
+                }
+                s if s.to_uppercase().contains("GENERIC AM33XX") => {
+                    Some(AntMinerControlBoard::BeagleBoneBlack).map(|cb| cb.into())
+                }
+                s if s.to_uppercase().contains("XILINX") => {
+                    if is_volcminer_model && let Some(cb) = VolcMinerControlBoard::parse(s) {
+                        return Some(cb.into());
+                    }
+
+                    Some(AntMinerControlBoard::Xilinx).map(|cb| cb.into())
+                }
+                _ => Some(EPicControlBoard::EPicUMC).map(|cb| cb.into()),
+            }
+        };
+        let mut board = parse_identity()?;
+        board.platform = data.extract_nested(DataField::ControlBoardVersion, "platform");
+        board.cpu = data.extract_nested(DataField::ControlBoardVersion, "cpu");
+        Some(board)
     }
 }
 
@@ -1991,14 +1997,23 @@ impl UpgradeFirmware for PowerPlayV1 {
             .get_collector()
             .collect(&[DataField::ControlBoardVersion, DataField::FirmwareVersion])
             .await;
-        let platform = data.extract_nested::<String>(DataField::ControlBoardVersion, "platform");
-        let cpu = data.extract_nested::<String>(DataField::ControlBoardVersion, "cpu");
-        let repository =
-            releases::repository(platform.as_deref(), cpu.as_deref(), &self.device_info.make)?;
-        let current_version = self
-            .parse_firmware_version(&data)
-            .as_deref()
-            .and_then(releases::parse_version);
+        let data = self.parse_data(data);
+        self.check_firmware_update_from_data(&data).await
+    }
+
+    fn supports_check_firmware_update_from_data(&self) -> bool {
+        true
+    }
+
+    async fn check_firmware_update_from_data(
+        &self,
+        data: &MinerData,
+    ) -> anyhow::Result<FirmwareStats> {
+        anyhow::ensure!(
+            data.ip == self.ip && data.device_info == self.device_info,
+            "Telemetry snapshot belongs to a different miner"
+        );
+        let (repository, current_version) = releases::snapshot_update_target(data)?;
         releases::check(repository, current_version).await
     }
 

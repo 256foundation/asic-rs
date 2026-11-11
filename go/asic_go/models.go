@@ -5,8 +5,10 @@ type ManualTuningValues map[uint8]ManualBoardSetpoint
 
 // MinerControlBoard preserves both the known flag and the reported name.
 type MinerControlBoard struct {
-	Known bool   `json:"known"`
-	Name  string `json:"name"`
+	Platform *string `json:"platform,omitempty"`
+	CPU      *string `json:"cpu,omitempty"`
+	Known    bool    `json:"known"`
+	Name     string  `json:"name"`
 }
 
 // MinerComponentType identifies the component associated with a miner message.

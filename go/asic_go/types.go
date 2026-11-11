@@ -766,28 +766,29 @@ type ExpectedCounts struct {
 
 // Supports reports which control/config features this miner backend exposes.
 type Supports struct {
-	SetFaultLight       bool `json:"set_fault_light"`
-	SetPowerLimit       bool `json:"set_power_limit"`
-	SetHashboardsEnabled bool `json:"set_hashboards_enabled"`
-	SetTuningPercent    bool `json:"set_tuning_percent"`
-	Presets             bool `json:"presets"`
-	Restart             bool `json:"restart"`
-	RestartMining       bool `json:"restart_mining"`
-	Pause               bool `json:"pause"`
-	Resume              bool `json:"resume"`
-	ChangePassword      bool `json:"change_password"`
-	ReadLogs            bool `json:"read_logs"`
-	FactoryReset        bool `json:"factory_reset"`
-	RestoreStockOS      bool `json:"restore_stock_os"`
-	PoolsConfig         bool `json:"pools_config"`
-	UpgradeFirmware     bool `json:"upgrade_firmware"`
-	PrepareFirmware     bool `json:"prepare_firmware"`
-	CheckFirmwareUpdate bool `json:"check_firmware_update"`
-	TimezoneConfig      bool `json:"timezone_config"`
-	ScalingConfig       bool `json:"scaling_config"`
-	TemperatureConfig   bool `json:"temperature_config"`
-	TuningConfig        bool `json:"tuning_config"`
-	FanConfig           bool `json:"fan_config"`
+	SetFaultLight               bool `json:"set_fault_light"`
+	SetPowerLimit               bool `json:"set_power_limit"`
+	SetHashboardsEnabled        bool `json:"set_hashboards_enabled"`
+	SetTuningPercent            bool `json:"set_tuning_percent"`
+	Presets                     bool `json:"presets"`
+	Restart                     bool `json:"restart"`
+	RestartMining               bool `json:"restart_mining"`
+	Pause                       bool `json:"pause"`
+	Resume                      bool `json:"resume"`
+	ChangePassword              bool `json:"change_password"`
+	ReadLogs                    bool `json:"read_logs"`
+	FactoryReset                bool `json:"factory_reset"`
+	RestoreStockOS              bool `json:"restore_stock_os"`
+	PoolsConfig                 bool `json:"pools_config"`
+	UpgradeFirmware             bool `json:"upgrade_firmware"`
+	PrepareFirmware             bool `json:"prepare_firmware"`
+	CheckFirmwareUpdate         bool `json:"check_firmware_update"`
+	CheckFirmwareUpdateFromData bool `json:"check_firmware_update_from_data"`
+	TimezoneConfig              bool `json:"timezone_config"`
+	ScalingConfig               bool `json:"scaling_config"`
+	TemperatureConfig           bool `json:"temperature_config"`
+	TuningConfig                bool `json:"tuning_config"`
+	FanConfig                   bool `json:"fan_config"`
 }
 
 // Required Rust collections are sequences, even when a Go slice is nil.

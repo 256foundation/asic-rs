@@ -132,15 +132,35 @@ pub struct MinerControlBoard {
     pub known: bool,
     /// Control board name or raw unknown identifier.
     pub name: String,
+    /// Raw platform identifier reported by firmware, before display-name normalization.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    #[ts(optional)]
+    pub platform: Option<String>,
+    /// Raw CPU hardware identifier reported by firmware.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    #[ts(optional)]
+    pub cpu: Option<String>,
 }
 impl MinerControlBoard {
     /// Create an unknown control board identity from a raw name.
     pub fn unknown(name: String) -> Self {
-        Self { known: false, name }
+        Self {
+            known: false,
+            name,
+            platform: None,
+            cpu: None,
+        }
     }
     /// Create a known control board identity.
     pub fn known(name: String) -> Self {
-        Self { known: true, name }
+        Self {
+            known: true,
+            name,
+            platform: None,
+            cpu: None,
+        }
     }
 }
 
@@ -151,5 +171,20 @@ impl Display for MinerControlBoard {
         } else {
             write!(f, "Unknown: {}", self.name)
         }
+    }
+}
+
+#[cfg(test)]
+mod metadata_tests {
+    use super::MinerControlBoard;
+
+    #[test]
+    fn legacy_board_json_defaults_raw_metadata_to_none() -> anyhow::Result<()> {
+        let legacy = serde_json::json!({"known": true, "name": "AMLogic"});
+        let board: MinerControlBoard = serde_json::from_value(legacy.clone())?;
+        assert!(board.platform.is_none());
+        assert!(board.cpu.is_none());
+        assert_eq!(serde_json::to_value(board)?, legacy);
+        Ok(())
     }
 }

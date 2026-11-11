@@ -467,3 +467,21 @@ func TestStructuredTelemetryModels(t *testing.T) {
 		t.Fatalf("capabilities: %+v", data.TuningCapabilities)
 	}
 }
+
+func TestControlBoardRawUpdateMetadata(t *testing.T) {
+	raw := `{"known":true,"name":"AMLogic","platform":"AMLogic","cpu":"AMLOGIC"}`
+	var board MinerControlBoard
+	if err := json.Unmarshal([]byte(raw), &board); err != nil {
+		t.Fatal(err)
+	}
+	if board.Platform == nil || *board.Platform != "AMLogic" || board.CPU == nil || *board.CPU != "AMLOGIC" {
+		t.Fatalf("lost raw board metadata: %+v", board)
+	}
+	var legacy MinerControlBoard
+	if err := json.Unmarshal([]byte(`{"known":true,"name":"AMLogic"}`), &legacy); err != nil {
+		t.Fatal(err)
+	}
+	if legacy.Platform != nil || legacy.CPU != nil {
+		t.Fatal("legacy metadata must be absent")
+	}
+}

@@ -252,6 +252,14 @@ char *asic_rs_miner_get_data_json(const struct AsicMiner *miner, const char *exc
 // `miner` must be a live handle.
 char *asic_rs_miner_check_firmware_update_json(const struct AsicMiner *miner);
 
+// Check vendor releases using snapshot JSON without reading the miner.
+// Returns a JSON object, or a null pointer on error. Free with free_string.
+//
+// # Safety
+// `miner` must be a live handle. `data_json` must point to a NUL-terminated string.
+char *asic_rs_miner_check_firmware_update_from_data_json(const struct AsicMiner *miner,
+                                                         const char *data_json);
+
 // MAC address as JSON (string or null).
 //
 // # Safety

@@ -375,10 +375,16 @@ def test_miner_control_board_uses_generated_model_shape() -> None:
         {"control_board": {"known": False, "name": "unknown"}}
     )
 
-    assert repr(control_board) == "MinerControlBoard(known=True, name='CV1835')"
-    assert control_board.model_dump() == {"known": True, "name": "CV1835"}
-    assert repr(model.control_board) == "MinerControlBoard(known=False, name='unknown')"
-    assert model.model_dump() == {"control_board": {"known": False, "name": "unknown"}}
+    assert repr(control_board) == "MinerControlBoard(known=True, name='CV1835', platform=None, cpu=None)"
+    assert control_board.model_dump() == {
+        "known": True, "name": "CV1835", "platform": None, "cpu": None
+    }
+    assert repr(model.control_board) == "MinerControlBoard(known=False, name='unknown', platform=None, cpu=None)"
+    assert model.model_dump() == {
+        "control_board": {
+            "known": False, "name": "unknown", "platform": None, "cpu": None
+        }
+    }
 
 
 def test_miner_data_repr_uses_pydantic_model_style() -> None:
@@ -1014,6 +1020,8 @@ def test_miner_data_control_board_uses_model_shape() -> None:
     assert model.model_dump()["miner"]["control_board_version"] == {
         "known": True,
         "name": "CV1835",
+        "platform": None,
+        "cpu": None,
     }
 
 
@@ -1131,3 +1139,13 @@ def test_schema_version_data_field_matches_its_schema() -> None:
     assert DataField.model_validate("SchemaVersion") == DataField.SchemaVersion
     assert "SchemaVersion" in DataField.model_json_schema()["enum"]
     assert "Schema" not in DataField.model_json_schema()["enum"]
+
+
+def test_control_board_preserves_raw_update_metadata() -> None:
+    board = MinerControlBoard.model_validate({
+        "known": True, "name": "AMLogic", "platform": "AMLogic", "cpu": "AMLOGIC"
+    })
+    assert board.platform == "AMLogic"
+    assert board.cpu == "AMLOGIC"
+    assert MinerControlBoard.model_validate(board.model_dump()).cpu == "AMLOGIC"
+    assert callable(Miner.check_firmware_update_from_data)

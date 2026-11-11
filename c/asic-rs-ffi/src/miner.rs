@@ -14,6 +14,7 @@ use asic_rs::core::data::collector::DataField;
 use asic_rs::core::data::firmware::{
     FirmwareImage, FirmwareStats, FirmwareUpdate, RestoreStockOsResult,
 };
+use asic_rs::core::data::miner::MinerData;
 use asic_rs::core::traits::auth::MinerAuth;
 use asic_rs::core::traits::miner::Miner as MinerTrait;
 use measurements::Power;
@@ -259,6 +260,7 @@ pub unsafe extern "C" fn asic_rs_miner_supports_json(miner: *const AsicMiner) ->
                 "upgrade_firmware": m.supports_upgrade_firmware(),
                 "prepare_firmware": m.supports_prepare_firmware(),
                 "check_firmware_update": m.supports_check_firmware_update(),
+                "check_firmware_update_from_data": m.supports_check_firmware_update_from_data(),
                 "timezone_config": m.supports_timezone_config(),
                 "scaling_config": m.supports_scaling_config(),
                 "temperature_config": m.supports_temperature_config(),
@@ -378,6 +380,26 @@ pub unsafe extern "C" fn asic_rs_miner_check_firmware_update_json(
     ffi_guard(ptr::null_mut(), || {
         miner_json(miner, |m| {
             let stats = block_on(m.check_firmware_update())?.map_err(|e| e.to_string())?;
+            Ok(firmware_stats_json(&stats))
+        })
+    })
+}
+
+/// Check vendor releases using snapshot JSON without reading the miner.
+/// Returns a JSON object, or a null pointer on error. Free with free_string.
+///
+/// # Safety
+/// `miner` must be a live handle. `data_json` must point to a NUL-terminated string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn asic_rs_miner_check_firmware_update_from_data_json(
+    miner: *const AsicMiner,
+    data_json: *const c_char,
+) -> *mut c_char {
+    ffi_guard(ptr::null_mut(), || {
+        miner_json(miner, |m| {
+            let data: MinerData = parse_json(data_json)?;
+            let stats =
+                block_on(m.check_firmware_update_from_data(&data))?.map_err(|e| e.to_string())?;
             Ok(firmware_stats_json(&stats))
         })
     })
@@ -1352,6 +1374,20 @@ mod tests {
                 })
             );
             crate::error::asic_rs_free_string(raw);
+            asic_rs_miner_free(miner);
+        }
+    }
+    #[test]
+    fn snapshot_update_check_reports_unsupported_without_a_live_read() {
+        let miner = Box::into_raw(Box::new(AsicMiner::new(Box::new(TestMiner))));
+        unsafe {
+            let snapshot = asic_rs_miner_get_data_json(miner, ptr::null());
+            assert!(!snapshot.is_null());
+            let result = asic_rs_miner_check_firmware_update_from_data_json(miner, snapshot);
+            assert!(result.is_null());
+            let error = CStr::from_ptr(asic_rs_last_error()).to_string_lossy();
+            assert!(error.contains("from collected data is not supported"));
+            crate::error::asic_rs_free_string(snapshot);
             asic_rs_miner_free(miner);
         }
     }

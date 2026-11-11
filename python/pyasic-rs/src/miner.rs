@@ -256,6 +256,11 @@ impl Miner {
     fn supports_check_firmware_update(&self, py: Python<'_>) -> bool {
         self.with_miner(py, |miner| miner.supports_check_firmware_update())
     }
+    /// Whether update checks can reuse a collected snapshot without reading the miner.
+    #[getter]
+    fn supports_check_firmware_update_from_data(&self, py: Python<'_>) -> bool {
+        self.with_miner(py, |miner| miner.supports_check_firmware_update_from_data())
+    }
     /// Whether this miner supports reading and writing timezone configuration.
     #[getter]
     fn supports_timezone_config(&self, py: Python<'_>) -> bool {
@@ -348,6 +353,19 @@ impl Miner {
         future_into_py(py, async move {
             let inner = inner.read().await;
             Ok(inner.check_firmware_update().await.ok())
+        })
+    }
+    /// Check vendor releases using a supplied snapshot, without reading the miner.
+    /// Returns `None` if unsupported, metadata is missing, or the check fails.
+    pub fn check_firmware_update_from_data<'a>(
+        &self,
+        py: Python<'a>,
+        data: MinerData,
+    ) -> PyResult<PyAwaitable<Option<FirmwareStats>>> {
+        let inner = Arc::clone(&self.inner);
+        future_into_py(py, async move {
+            let inner = inner.read().await;
+            Ok(inner.check_firmware_update_from_data(&data).await.ok())
         })
     }
     /// Await the miner MAC address, if exposed by the firmware.

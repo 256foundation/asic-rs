@@ -1176,6 +1176,25 @@ pub trait UpgradeFirmware {
         anyhow::bail!("Checking for firmware updates is not supported on this platform");
     }
 
+    /// Check the vendor's releases using an existing telemetry snapshot.
+    ///
+    /// Implementations must not read the miner again. The caller chooses the
+    /// snapshot's freshness; missing metadata is an error, not a live-read fallback.
+    /// Vendor release-server requests may still be made. Defaults to unsupported.
+    #[allow(unused_variables)]
+    async fn check_firmware_update_from_data(
+        &self,
+        data: &MinerData,
+    ) -> anyhow::Result<FirmwareStats> {
+        anyhow::bail!(
+            "Checking firmware updates from collected data is not supported on this platform"
+        );
+    }
+
+    fn supports_check_firmware_update_from_data(&self) -> bool {
+        false
+    }
+
     fn supports_check_firmware_update(&self) -> bool {
         false
     }

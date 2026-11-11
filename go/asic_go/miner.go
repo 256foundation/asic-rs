@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 // Miner is a handle to a discovered ASIC miner.
@@ -240,6 +241,24 @@ func (m *Miner) GetDataJSON(exclude ...DataField) ([]byte, error) {
 func (m *Miner) CheckFirmwareUpdate() (*FirmwareStats, error) {
 	var v *FirmwareStats
 	if err := m.getJSON(func(ptr *C.AsicMiner) *C.char { return C.asic_rs_miner_check_firmware_update_json(ptr) }, &v); err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+// CheckFirmwareUpdateFromData checks vendor releases without reading the miner.
+// The caller chooses the snapshot's freshness. Missing metadata returns an error.
+func (m *Miner) CheckFirmwareUpdateFromData(data MinerData) (*FirmwareStats, error) {
+	payload, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	cs := C.CString(string(payload))
+	defer C.free(unsafe.Pointer(cs))
+	var v *FirmwareStats
+	if err := m.getJSON(func(ptr *C.AsicMiner) *C.char {
+		return C.asic_rs_miner_check_firmware_update_from_data_json(ptr, cs)
+	}, &v); err != nil {
 		return nil, err
 	}
 	return v, nil
