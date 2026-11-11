@@ -117,6 +117,9 @@ pub enum DataField {
     /// Whether the firmware's developer-fee connection is online.
     #[cfg_attr(feature = "python", pydantic(value = "DevFeeConnected"))]
     DevFeeConnected,
+    /// Firmware-reported active tuning algorithm; unavailable or manual tuning is `None`.
+    #[cfg_attr(feature = "python", pydantic(value = "TuningAlgorithm"))]
+    TuningAlgorithm,
 }
 
 /// A function pointer type that takes a JSON `Value` and an optional key,

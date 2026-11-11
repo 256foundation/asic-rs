@@ -36,6 +36,7 @@ const (
 	DataFieldWattage                DataField = "Wattage"
 	DataFieldTuningPercent          DataField = "TuningPercent"
 	DataFieldTuningTarget           DataField = "TuningTarget"
+	DataFieldTuningAlgorithm        DataField = "TuningAlgorithm"
 	DataFieldTuningCapabilities     DataField = "TuningCapabilities"
 	DataFieldEfficiency             DataField = "Efficiency"
 	DataFieldLightFlashing          DataField = "LightFlashing"
@@ -634,6 +635,7 @@ type MinerData struct {
 	Wattage                *float64            `json:"wattage"`
 	TuningPercent          *uint8              `json:"tuning_percent"`
 	TuningTarget           *TuningTarget       `json:"tuning_target"`
+	TuningAlgorithm        *string             `json:"tuning_algorithm"`
 	ScaledTuningTarget     *TuningTarget       `json:"scaled_tuning_target"`
 	TuningCapabilities     *TuningCapabilities `json:"tuning_capabilities"`
 	Efficiency             *float64            `json:"efficiency"`

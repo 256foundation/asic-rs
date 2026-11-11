@@ -204,6 +204,10 @@ pub struct MinerData {
     pub tuning_percent: Option<u8>,
     /// The current tuning target of the miner, such as power target or hashrate target
     pub tuning_target: Option<TuningTarget>,
+    /// Firmware-reported active tuning algorithm; unavailable or manual tuning is `None`.
+    #[serde(default)]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub tuning_algorithm: Option<String>,
     /// The current tuning target adjusted by scaling settings, when available.
     pub scaled_tuning_target: Option<TuningTarget>,
     /// The factory tuning envelope the firmware exposes (default / min / max

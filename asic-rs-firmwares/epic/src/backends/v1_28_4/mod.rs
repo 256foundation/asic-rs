@@ -498,7 +498,7 @@ impl GetDataLocations for PowerPlayV1284 {
                     tag: None,
                 },
             )],
-            DataField::TuningTarget => vec![(
+            DataField::TuningTarget | DataField::TuningAlgorithm => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
                     func: get_by_pointer,
@@ -1281,6 +1281,12 @@ fn to_non_negative_u32_target(value: f64, label: &str) -> anyhow::Result<u32> {
 }
 
 impl GetTuningTarget for PowerPlayV1284 {
+    fn parse_tuning_algorithm(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+        let value = data.get(&DataField::TuningAlgorithm)?.clone();
+        let config = HashMap::from([(ConfigField::Tuning, value)]);
+        self.parse_tuning_config(&config).ok()?.algorithm
+    }
+
     fn parse_tuning_target(&self, data: &HashMap<DataField, Value>) -> Option<TuningTarget> {
         data.get(&DataField::TuningTarget).and_then(|summary| {
             if !summary

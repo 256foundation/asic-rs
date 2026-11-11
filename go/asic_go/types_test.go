@@ -467,3 +467,32 @@ func TestStructuredTelemetryModels(t *testing.T) {
 		t.Fatalf("capabilities: %+v", data.TuningCapabilities)
 	}
 }
+
+func TestMinerDataTuningAlgorithm(t *testing.T) {
+	var data MinerData
+	if err := json.Unmarshal([]byte(`{"tuning_algorithm":"VoltageOptimizer"}`), &data); err != nil {
+		t.Fatal(err)
+	}
+	if data.TuningAlgorithm == nil {
+		t.Fatal("missing tuning_algorithm")
+	}
+	data.DeviceInfo.Algo = "SHA256"
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var again MinerData
+	if err := json.Unmarshal(encoded, &again); err != nil {
+		t.Fatal(err)
+	}
+	if again.TuningAlgorithm == nil {
+		t.Fatal("lost tuning_algorithm")
+	}
+	var legacy MinerData
+	if err := json.Unmarshal([]byte(`{}`), &legacy); err != nil {
+		t.Fatal(err)
+	}
+	if legacy.TuningAlgorithm != nil {
+		t.Fatal("legacy snapshot must omit tuning_algorithm")
+	}
+}

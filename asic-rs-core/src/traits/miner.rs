@@ -316,6 +316,7 @@ impl<
         let wattage = self.parse_wattage(&data);
         let tuning_percent = self.parse_tuning_percent(&data);
         let tuning_target = self.parse_tuning_target(&data);
+        let tuning_algorithm = self.parse_tuning_algorithm(&data);
         let scaled_tuning_target = self.parse_scaled_tuning_target(&data);
         let tuning_capabilities = self.parse_tuning_capabilities(&data);
         let fluid_temperature = self.parse_fluid_temperature(&data);
@@ -414,6 +415,7 @@ impl<
             wattage,
             tuning_percent,
             tuning_target,
+            tuning_algorithm,
             scaled_tuning_target,
             tuning_capabilities,
             efficiency,
@@ -800,6 +802,13 @@ pub trait GetTuningPercent: CollectData {
 // Tuning Target
 #[async_trait]
 pub trait GetTuningTarget: CollectData {
+    /// Parse tuning algorithm from responses in the current telemetry collection.
+    /// This hook performs no I/O; unsupported backends return `None`.
+    #[allow(unused_variables)]
+    fn parse_tuning_algorithm(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+        None
+    }
+
     #[tracing::instrument(level = "debug")]
     async fn get_tuning_target(&self) -> Option<TuningTarget> {
         let mut collector = self.get_collector();

@@ -1131,3 +1131,11 @@ def test_schema_version_data_field_matches_its_schema() -> None:
     assert DataField.model_validate("SchemaVersion") == DataField.SchemaVersion
     assert "SchemaVersion" in DataField.model_json_schema()["enum"]
     assert "Schema" not in DataField.model_json_schema()["enum"]
+
+
+def test_miner_data_tuning_algorithm_is_optional_and_round_trips() -> None:
+    assert MinerData.model_validate(minimal_miner_data()).tuning_algorithm is None
+    payload = "VoltageOptimizer"
+    data = MinerData.model_validate(minimal_miner_data(tuning_algorithm=payload))
+    assert data.model_dump()["tuning_algorithm"] == payload
+    assert MinerData.model_validate(data.model_dump()).model_dump()["tuning_algorithm"] == payload
