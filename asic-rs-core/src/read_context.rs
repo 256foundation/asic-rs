@@ -38,6 +38,7 @@ use crate::{
     data::{
         collector::{DataCollector, DataField},
         command::MinerCommand,
+        firmware::FirmwareStats,
         miner::MinerData,
     },
     traits::miner::{APIClient, Miner},
@@ -67,6 +68,20 @@ impl<'a> ReadContext<'a> {
             miner,
             client: ResponseCache::new(client),
         }
+    }
+
+    /// Whether this backend can check releases through the shared read client.
+    pub fn supports_check_firmware_update(&self) -> bool {
+        self.miner.supports_check_firmware_update_with_client()
+    }
+
+    /// Check releases separately from telemetry, reusing any cached miner responses.
+    /// Required responses are fetched if this is the first read in the context.
+    /// The vendor release lookup retains its normal behavior and cache lifetime.
+    pub async fn check_firmware_update(&self) -> anyhow::Result<FirmwareStats> {
+        self.miner
+            .check_firmware_update_with_client(&self.client)
+            .await
     }
 
     /// Read telemetry, reusing raw responses fetched earlier in this context.
