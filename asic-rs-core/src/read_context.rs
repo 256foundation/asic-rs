@@ -32,6 +32,7 @@ use tokio::sync::{Mutex, OnceCell};
 use crate::{
     config::{
         collector::{ConfigCollector, ConfigField},
+        fan::FanConfig,
         tuning::TuningConfig,
     },
     data::{
@@ -83,6 +84,14 @@ impl<'a> ReadContext<'a> {
         let mut collector = DataCollector::new_with_client(self.miner, &self.client);
         let data = collector.collect(&fields).await;
         self.miner.parse_data(data)
+    }
+
+    /// Read fan configuration independently of telemetry or tuning.
+    /// Any missing command responses are fetched on demand.
+    pub async fn get_fan_config(&self) -> anyhow::Result<FanConfig> {
+        let mut collector = ConfigCollector::new_with_client(self.miner, &self.client);
+        let config = collector.collect(&[ConfigField::Fan]).await;
+        self.miner.parse_fan_config(&config)
     }
 
     /// Read tuning configuration independently of telemetry.
