@@ -134,11 +134,12 @@ pub async fn connect_tcp_stream<A>(addr: A, timeout: Duration) -> anyhow::Result
 where
     A: ToSocketAddrs,
 {
-    tokio::time::timeout(timeout, TcpStream::connect(addr))
+    let stream = tokio::time::timeout(timeout, TcpStream::connect(addr))
         .await
         .map_err(|_| RPCError::ConnectionFailed)?
-        .map_err(RPCError::from)
-        .map_err(Into::into)
+        .map_err(RPCError::from)?;
+    stream.set_zero_linger().map_err(RPCError::from)?;
+    Ok(stream)
 }
 
 /// Read a complete RPC response from a stream.
@@ -328,6 +329,38 @@ mod tests {
     use super::*;
     use crate::errors::RPCError;
     use tokio::{io::AsyncWriteExt, net::TcpListener};
+
+    #[tokio::test]
+    async fn rpc_connection_resets_on_drop_after_complete_response() -> anyhow::Result<()> {
+        use tokio::io::AsyncReadExt;
+
+        let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).await?;
+        let address = listener.local_addr()?;
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await?;
+            let mut request = [0u8; 4];
+            socket.read_exact(&mut request).await?;
+            anyhow::ensure!(&request == b"ping");
+            socket.write_all(b"pong").await?;
+            let mut byte = [0u8; 1];
+            let result =
+                tokio::time::timeout(Duration::from_secs(2), socket.read(&mut byte)).await?;
+            anyhow::ensure!(
+                result.is_err_and(|error| error.kind() == std::io::ErrorKind::ConnectionReset)
+            );
+            Ok::<_, anyhow::Error>(())
+        });
+
+        let mut stream = connect_tcp_stream(address, Duration::from_secs(2)).await?;
+        stream.write_all(b"ping").await?;
+        let mut response = [0u8; 4];
+        stream.read_exact(&mut response).await?;
+        anyhow::ensure!(&response == b"pong");
+        drop(stream);
+
+        server.await??;
+        Ok(())
+    }
 
     #[tokio::test]
     async fn discovery_http_client_times_out_on_stalled_response() -> anyhow::Result<()> {
