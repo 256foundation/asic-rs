@@ -513,6 +513,14 @@ impl GetDataLocations for PowerPlayV1 {
                     tag: None,
                 },
             )],
+            DataField::FanConfig => vec![(
+                WEB_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/Fans/Fan Mode"),
+                    tag: None,
+                },
+            )],
             DataField::Fans => vec![(
                 WEB_SUMMARY,
                 DataExtractor {
@@ -1138,6 +1146,12 @@ impl GetExpectedHashrate for PowerPlayV1 {
 }
 
 impl GetFans for PowerPlayV1 {
+    fn parse_collected_fan_config(&self, data: &HashMap<DataField, Value>) -> Option<FanConfig> {
+        let value = data.get(&DataField::FanConfig)?.clone();
+        let config = HashMap::from([(ConfigField::Fan, value)]);
+        self.parse_fan_config(&config).ok()
+    }
+
     fn parse_fans(&self, data: &HashMap<DataField, Value>) -> Vec<FanData> {
         let mut fans: Vec<FanData> = Vec::new();
 

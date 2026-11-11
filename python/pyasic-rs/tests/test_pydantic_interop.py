@@ -1131,3 +1131,11 @@ def test_schema_version_data_field_matches_its_schema() -> None:
     assert DataField.model_validate("SchemaVersion") == DataField.SchemaVersion
     assert "SchemaVersion" in DataField.model_json_schema()["enum"]
     assert "Schema" not in DataField.model_json_schema()["enum"]
+
+
+def test_miner_data_fan_config_is_optional_and_round_trips() -> None:
+    assert MinerData.model_validate(minimal_miner_data()).fan_config is None
+    payload = {"mode": "auto", "target_temp": 60.0, "idle_speed": 20}
+    data = MinerData.model_validate(minimal_miner_data(fan_config=payload))
+    assert data.model_dump()["fan_config"] == payload
+    assert MinerData.model_validate(data.model_dump()).model_dump()["fan_config"] == payload

@@ -21,6 +21,7 @@ use super::{
     pool::PoolGroupData,
     psu::PsuData,
 };
+use crate::config::fan::FanConfig;
 use crate::data::{
     deserialize::deserialize_macaddr,
     serialize::{serialize_macaddr, serialize_power, serialize_temperature},
@@ -178,6 +179,10 @@ pub struct MinerData {
     pub expected_fans: Option<u8>,
     /// The current fan information for the miner
     pub fans: Vec<FanData>,
+    /// Configured fan control mode and set points, when reported by firmware.
+    #[serde(default)]
+    #[cfg_attr(feature = "python", pydantic(default = None))]
+    pub fan_config: Option<FanConfig>,
     /// The current PDU fan information for the miner
     pub psu_fans: Vec<FanData>,
     /// Power supply telemetry. `None` when the firmware does not report PSU details.

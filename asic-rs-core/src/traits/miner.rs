@@ -321,6 +321,7 @@ impl<
         let fluid_temperature = self.parse_fluid_temperature(&data);
         let outlet_fluid_temperature = self.parse_outlet_fluid_temperature(&data);
         let fans = self.parse_fans(&data);
+        let fan_config = self.parse_collected_fan_config(&data);
         let psu_fans = self.parse_psu_fans(&data);
         let psus = self.parse_psus(&data);
         let hashboards = self.parse_hashboards(&data);
@@ -404,6 +405,7 @@ impl<
             // Cooling information
             expected_fans: device_info.hardware.fans,
             fans,
+            fan_config,
             psu_fans,
             psus,
             average_temperature,
@@ -695,6 +697,13 @@ pub trait GetExpectedHashrate: CollectData {
 // Fans
 #[async_trait]
 pub trait GetFans: CollectData {
+    /// Parse fan config from responses in the current telemetry collection.
+    /// This hook performs no I/O; unsupported backends return `None`.
+    #[allow(unused_variables)]
+    fn parse_collected_fan_config(&self, data: &HashMap<DataField, Value>) -> Option<FanConfig> {
+        None
+    }
+
     #[tracing::instrument(level = "debug")]
     async fn get_fans(&self) -> Vec<FanData> {
         let mut collector = self.get_collector();

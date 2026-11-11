@@ -467,3 +467,32 @@ func TestStructuredTelemetryModels(t *testing.T) {
 		t.Fatalf("capabilities: %+v", data.TuningCapabilities)
 	}
 }
+
+func TestMinerDataFanConfig(t *testing.T) {
+	var data MinerData
+	if err := json.Unmarshal([]byte(`{"fan_config":{"mode":"Manual","fan_speed":75}}`), &data); err != nil {
+		t.Fatal(err)
+	}
+	if data.FanConfig == nil {
+		t.Fatal("missing fan_config")
+	}
+	data.DeviceInfo.Algo = "SHA256"
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var again MinerData
+	if err := json.Unmarshal(encoded, &again); err != nil {
+		t.Fatal(err)
+	}
+	if again.FanConfig == nil {
+		t.Fatal("lost fan_config")
+	}
+	var legacy MinerData
+	if err := json.Unmarshal([]byte(`{}`), &legacy); err != nil {
+		t.Fatal(err)
+	}
+	if legacy.FanConfig != nil {
+		t.Fatal("legacy snapshot must omit fan_config")
+	}
+}

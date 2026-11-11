@@ -117,6 +117,9 @@ pub enum DataField {
     /// Whether the firmware's developer-fee connection is online.
     #[cfg_attr(feature = "python", pydantic(value = "DevFeeConnected"))]
     DevFeeConnected,
+    /// Configured fan control mode and set points, when reported by firmware.
+    #[cfg_attr(feature = "python", pydantic(value = "FanConfig"))]
+    FanConfig,
 }
 
 /// A function pointer type that takes a JSON `Value` and an optional key,

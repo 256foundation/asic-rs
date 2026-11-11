@@ -245,3 +245,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod snapshot_fan_tests;

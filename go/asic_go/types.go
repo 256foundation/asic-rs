@@ -28,6 +28,7 @@ const (
 	DataFieldHashrate               DataField = "Hashrate"
 	DataFieldExpectedHashrate       DataField = "ExpectedHashrate"
 	DataFieldFans                   DataField = "Fans"
+	DataFieldFanConfig              DataField = "FanConfig"
 	DataFieldPSUFans                DataField = "PsuFans"
 	DataFieldPSUs                   DataField = "Psus"
 	DataFieldAverageTemperature     DataField = "AverageTemperature"
@@ -626,6 +627,7 @@ type MinerData struct {
 	TotalChips             *uint16             `json:"total_chips"`
 	ExpectedFans           *uint8              `json:"expected_fans"`
 	Fans                   []FanData           `json:"fans"`
+	FanConfig              *FanConfig          `json:"fan_config"`
 	PSUFans                []FanData           `json:"psu_fans"`
 	PSUs                   []PSUData           `json:"psus"` // nil when the firmware does not report PSUs
 	AverageTemperature     *float64            `json:"average_temperature"`
