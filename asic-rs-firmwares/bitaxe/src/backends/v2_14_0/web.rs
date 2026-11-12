@@ -8,7 +8,7 @@ pub use super::super::v2_0_0::web::BitaxeWebAPI;
 
 #[async_trait]
 #[allow(dead_code)]
-pub(crate) trait Bitaxe2140WebAPI: WebAPIClient {
+pub(in crate::backends) trait Bitaxe2140WebAPI: WebAPIClient {
     /// Pause mining without restarting the device.
     async fn pause(&self) -> Result<Value> {
         self.send_command("system/pause", false, None, Method::POST)

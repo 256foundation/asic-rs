@@ -34,7 +34,7 @@ impl BraiinsGraphQLAPI {
     }
 
     #[cfg(test)]
-    pub(crate) fn new_with_port(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
+    pub(in crate::backends) fn new_with_port(ip: IpAddr, port: u16, auth: MinerAuth) -> Self {
         let mut api = Self::new(ip, auth);
         api.port = port;
         api

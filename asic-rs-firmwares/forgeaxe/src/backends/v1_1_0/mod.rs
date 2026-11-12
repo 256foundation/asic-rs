@@ -34,7 +34,7 @@ use web::ForgeaxeWebAPI;
 
 use crate::firmware::ForgeaxeFirmware;
 
-pub(crate) mod web;
+pub(in crate::backends) mod web;
 
 /// ForgeOS v1.1 backend, initially copied from the ESP-Miner 2.0 implementation.
 #[derive(Debug)]

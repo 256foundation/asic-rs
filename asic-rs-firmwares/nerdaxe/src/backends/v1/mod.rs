@@ -31,7 +31,7 @@ use serde_json::Value;
 
 use crate::{backends::v1::web::NerdAxeWebAPI, firmware::NerdAxeFirmware};
 
-pub(crate) mod web;
+pub(in crate::backends) mod web;
 
 #[derive(Debug)]
 pub struct NerdAxeV1 {

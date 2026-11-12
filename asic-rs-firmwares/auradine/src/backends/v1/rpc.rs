@@ -90,7 +90,7 @@ impl RPCAPIClient for AuradineRPCAPI {
     }
 }
 
-pub(crate) trait StatusFromAuradineV1 {
+pub(in crate::backends) trait StatusFromAuradineV1 {
     fn from_auradine_v1(response: &str) -> Result<Self, RPCError>
     where
         Self: Sized;
