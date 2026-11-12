@@ -18,7 +18,7 @@ use pyo3::{
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-#[cfg_attr(feature = "python", pyclass(from_py_object, module = "asic_rs"))]
+#[cfg_attr(feature = "python", pyclass(skip_from_py_object, module = "asic_rs"))]
 #[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default, TS)]
 /// Unit used to represent a [`HashRate`] value.
@@ -57,6 +57,18 @@ pub enum HashRateUnit {
     /// Thousands of Equihash solutions per second.
     #[cfg_attr(feature = "python", pydantic(value = "KSol/s"))]
     KiloSol,
+}
+
+// PyO3's from_py_object expansion clones even Copy types.
+#[cfg(feature = "python")]
+impl<'a, 'py> FromPyObject<'a, 'py> for HashRateUnit {
+    type Error = pyo3::pyclass::PyClassGuardError<'a, 'py>;
+
+    const INPUT_TYPE: pyo3::inspect::PyStaticExpr = <Self as pyo3::PyTypeInfo>::TYPE_HINT;
+
+    fn extract(obj: Borrowed<'a, 'py, PyAny>) -> Result<Self, Self::Error> {
+        Ok(*obj.extract::<pyo3::PyClassGuard<'_, Self>>()?)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

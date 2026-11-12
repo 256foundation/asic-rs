@@ -10,7 +10,10 @@ use crate::{
 };
 
 /// Represents the individual pieces of data that can be queried from a miner device.
-#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(skip_from_py_object, str, module = "asic_rs")
+)]
 #[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Copy, EnumIter, Display, EnumString)]
 pub enum DataField {
@@ -119,6 +122,18 @@ pub enum DataField {
     DevFeeConnected,
 }
 
+// PyO3's from_py_object expansion clones even Copy types.
+#[cfg(feature = "python")]
+impl<'a, 'py> FromPyObject<'a, 'py> for DataField {
+    type Error = pyo3::pyclass::PyClassGuardError<'a, 'py>;
+
+    const INPUT_TYPE: pyo3::inspect::PyStaticExpr = <Self as pyo3::PyTypeInfo>::TYPE_HINT;
+
+    fn extract(obj: Borrowed<'a, 'py, PyAny>) -> Result<Self, Self::Error> {
+        Ok(*obj.extract::<pyo3::PyClassGuard<'_, Self>>()?)
+    }
+}
+
 /// A function pointer type that takes a JSON `Value` and an optional key,
 /// returning the extracted value if found.
 type ExtractorFn = for<'a> fn(&'a Value, Option<&'static str>) -> Option<&'a Value>;
@@ -142,7 +157,10 @@ pub type DataLocation = (MinerCommand, DataExtractor);
 /// What happened while collecting one requested field. `Extracted` means a
 /// response supplied raw data; it does not certify that a backend parsed the
 /// value into a valid measurement.
-#[cfg_attr(feature = "python", pyclass(from_py_object, str, module = "asic_rs"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(skip_from_py_object, str, module = "asic_rs")
+)]
 #[cfg_attr(feature = "python", derive(asic_rs_pydantic::PyPydanticEnum))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString)]
 pub enum FieldCollectionStatus {
@@ -159,6 +177,18 @@ pub enum FieldCollectionStatus {
     /// fields, such as the timestamp, are constructed locally instead.
     #[cfg_attr(feature = "python", pydantic(value = "Unsupported"))]
     Unsupported,
+}
+
+// PyO3's from_py_object expansion clones even Copy types.
+#[cfg(feature = "python")]
+impl<'a, 'py> FromPyObject<'a, 'py> for FieldCollectionStatus {
+    type Error = pyo3::pyclass::PyClassGuardError<'a, 'py>;
+
+    const INPUT_TYPE: pyo3::inspect::PyStaticExpr = <Self as pyo3::PyTypeInfo>::TYPE_HINT;
+
+    fn extract(obj: Borrowed<'a, 'py, PyAny>) -> Result<Self, Self::Error> {
+        Ok(*obj.extract::<pyo3::PyClassGuard<'_, Self>>()?)
+    }
 }
 
 /// Bounded, credential-free diagnostics for one telemetry collection.

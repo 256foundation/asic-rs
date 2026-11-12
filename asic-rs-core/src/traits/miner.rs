@@ -58,6 +58,7 @@ pub trait Miner:
     + HasAuth
     + HasDefaultAuth
 {
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn revalidate(&self) -> anyhow::Result<bool>;
 }
 
@@ -192,15 +193,19 @@ pub trait GetMinerData:
 {
     /// Asynchronously retrieves standardized information about a miner,
     /// returning it as a `MinerData` struct.
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn get_data(&self) -> MinerData;
     /// Asynchronously retrieves standardized information about a miner,
     /// returning it as a `MinerData` struct.  Removes and data fields
     /// that are added to the exclude list to save data.
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn get_data_filtered(&self, exclude: Vec<DataField>) -> MinerData;
     /// Collect telemetry with per-field read status. An empty collection is an
     /// error instead of a newly timestamped snapshot of defaults.
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn get_data_checked(&self) -> Result<CheckedMinerData, NoTelemetryError>;
     /// Checked telemetry read, excluding selected fields to limit API calls.
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn get_data_checked_filtered(
         &self,
         exclude: Vec<DataField>,
@@ -435,11 +440,13 @@ impl<
 
 #[async_trait]
 pub trait APIClient: Send + Sync {
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn get_api_result(&self, command: &MinerCommand) -> anyhow::Result<Value>;
 }
 
 #[async_trait]
 pub trait WebAPIClient: APIClient {
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn send_command(
         &self,
         command: &str,
@@ -451,6 +458,7 @@ pub trait WebAPIClient: APIClient {
 
 #[async_trait]
 pub trait RPCAPIClient: APIClient {
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn send_command(
         &self,
         command: &str,
@@ -461,6 +469,7 @@ pub trait RPCAPIClient: APIClient {
 
 #[async_trait]
 pub trait GraphQLClient: APIClient {
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn send_command(
         &self,
         command: &str,
@@ -486,6 +495,7 @@ pub trait Validate: GetIP + GetDeviceInfo + Send + Sync {
     /// firmware family, and backend version range. Returns `false` for offline
     /// devices, unsupported responses, or devices that would no longer be valid
     /// for this backend.
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn revalidate(&self) -> anyhow::Result<bool>
     where
         Self: Sized,
@@ -988,6 +998,7 @@ pub trait GetSessionBestShare: CollectData {
 #[async_trait]
 pub trait SetFaultLight {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn set_fault_light(&self, fault: bool) -> anyhow::Result<bool> {
         anyhow::bail!("Setting fault light is not supported on this platform");
     }
@@ -997,6 +1008,7 @@ pub trait SetFaultLight {
 #[async_trait]
 pub trait SetPowerLimit {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn set_power_limit(&self, limit: Power) -> anyhow::Result<bool> {
         anyhow::bail!("Setting power limit is not supported on this platform");
     }
@@ -1007,6 +1019,7 @@ pub trait SetPowerLimit {
 #[async_trait]
 pub trait SetHashboardsEnabled {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn set_hashboards_enabled(
         &self,
         board_indices: &[u8],
@@ -1025,6 +1038,7 @@ pub trait SetHashboardsEnabled {
 pub trait SetTuningPercent {
     /// Set a manual tuning percent of full power (100 = unthrottled).
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn set_tuning_percent(&self, percent: u8) -> anyhow::Result<bool> {
         anyhow::bail!("Setting throttle is not supported on this platform");
     }
@@ -1041,6 +1055,7 @@ pub trait SupportsPresets {
     /// Selecting a preset is done through [`SupportsTuningConfig::set_tuning_config`]
     /// with a [`TuningTarget::Preset`], and the active preset is surfaced via
     /// [`GetTuningTarget::get_tuning_target`].
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn get_presets(&self) -> Vec<PresetInfo> {
         Vec::new()
     }
@@ -1052,6 +1067,7 @@ pub trait SupportsPresets {
 
 #[async_trait]
 pub trait Restart {
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn restart(&self) -> anyhow::Result<bool> {
         anyhow::bail!("Restarting is not supported on this platform");
     }
@@ -1065,6 +1081,7 @@ pub trait Restart {
 /// hashing stops while the mining program comes back up.
 #[async_trait]
 pub trait RestartMining {
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn restart_mining(&self) -> anyhow::Result<bool> {
         anyhow::bail!("Restarting the mining program is not supported on this platform");
     }
@@ -1078,6 +1095,7 @@ pub trait RestartMining {
 #[async_trait]
 pub trait Pause {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn pause(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         anyhow::bail!("Pausing mining is not supported on this platform");
     }
@@ -1087,6 +1105,7 @@ pub trait Pause {
 #[async_trait]
 pub trait Resume {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn resume(&self, at_time: Option<Duration>) -> anyhow::Result<bool> {
         anyhow::bail!("Resuming mining is not supported on this platform");
     }
@@ -1096,6 +1115,7 @@ pub trait Resume {
 #[async_trait]
 pub trait ChangePassword {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn change_password(&mut self, password: &str) -> anyhow::Result<bool> {
         anyhow::bail!("Setting password is not supported on this platform");
     }
@@ -1110,6 +1130,7 @@ pub trait FactoryReset {
     /// system. Use [`RestoreStockOs::restore_stock_os`] to remove an
     /// aftermarket OS and restore the manufacturer OS.
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn factory_reset(&self) -> anyhow::Result<bool> {
         anyhow::bail!("Factory resetting is not supported on this platform");
     }
@@ -1123,6 +1144,7 @@ pub trait FactoryReset {
 /// that the device has completed restoring or rebooting.
 #[async_trait]
 pub trait RestoreStockOs {
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn restore_stock_os(&self) -> anyhow::Result<RestoreStockOsResult> {
         anyhow::bail!("Restoring the stock OS is not supported on this platform");
     }
@@ -1135,6 +1157,7 @@ pub trait RestoreStockOs {
 #[async_trait]
 pub trait ReadLogs {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn read_logs(&self) -> anyhow::Result<String> {
         anyhow::bail!("Reading logs is not supported on this platform");
     }
@@ -1149,6 +1172,7 @@ pub trait UpgradeFirmware {
     /// select a compatible payload. The returned image is the exact filename
     /// and bytes that the backend would pass to its upload implementation.
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn prepare_firmware(&self, image: FirmwareImage) -> anyhow::Result<FirmwareImage> {
         anyhow::bail!("Preparing firmware is not supported on this platform");
     }
@@ -1159,6 +1183,7 @@ pub trait UpgradeFirmware {
     }
 
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn upgrade_firmware(&self, image: FirmwareImage) -> anyhow::Result<bool> {
         anyhow::bail!("Upgrading firmware is not supported on this platform");
     }
@@ -1172,6 +1197,7 @@ pub trait UpgradeFirmware {
     /// This is an on-demand call (it typically queries the vendor's release
     /// server), not part of the regular telemetry poll. Defaults to
     /// unsupported.
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn check_firmware_update(&self) -> anyhow::Result<FirmwareStats> {
         anyhow::bail!("Checking for firmware updates is not supported on this platform");
     }
@@ -1183,6 +1209,7 @@ pub trait UpgradeFirmware {
     /// this client for miner requests; vendor release-server requests may still
     /// be made separately. Defaults to unsupported, without a fresh-read fallback.
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn check_firmware_update_with_client(
         &self,
         client: &dyn APIClient,
@@ -1205,6 +1232,7 @@ pub trait UpgradeFirmware {
 #[async_trait]
 pub trait SupportsPoolsConfig: GetPools + CollectConfigs {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn set_pools_config(&self, config: Vec<PoolGroupConfig>) -> anyhow::Result<bool> {
         anyhow::bail!("Setting pools is not supported on this platform");
     }
@@ -1228,10 +1256,12 @@ pub trait SupportsPoolsConfig: GetPools + CollectConfigs {
 #[async_trait]
 pub trait SupportsScalingConfig: CollectConfigs {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn set_scaling_config(&self, config: ScalingConfig) -> anyhow::Result<bool> {
         anyhow::bail!("Setting scaling config is not supported on this platform");
     }
     /// Clear the active scaling state and restart tuning at its configured target.
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn reset_scaling(&self) -> anyhow::Result<bool> {
         anyhow::bail!("Resetting scaling is not supported on this platform");
     }
@@ -1258,6 +1288,7 @@ pub trait SupportsScalingConfig: CollectConfigs {
 #[async_trait]
 pub trait SupportsTemperatureConfig: CollectConfigs {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn set_temperature_config(&self, config: TemperatureConfig) -> anyhow::Result<bool> {
         anyhow::bail!("Setting temperature config is not supported on this platform");
     }
@@ -1283,6 +1314,7 @@ pub trait SupportsTemperatureConfig: CollectConfigs {
 #[async_trait]
 pub trait SupportsTimezoneConfig: CollectConfigs {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn set_timezone_config(&self, config: TimezoneConfig) -> anyhow::Result<bool> {
         anyhow::bail!("Setting timezone config is not supported on this platform");
     }
@@ -1308,6 +1340,7 @@ pub trait SupportsTimezoneConfig: CollectConfigs {
 #[async_trait]
 pub trait SupportsTuningConfig: CollectConfigs {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn set_tuning_config(
         &self,
         config: TuningConfig,
@@ -1337,6 +1370,7 @@ pub trait SupportsTuningConfig: CollectConfigs {
 #[async_trait]
 pub trait SupportsFanConfig: CollectConfigs {
     #[allow(unused_variables)]
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn set_fan_config(&self, config: FanConfig) -> anyhow::Result<bool> {
         anyhow::bail!("Setting fan config is not supported on this platform");
     }
