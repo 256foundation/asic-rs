@@ -6,6 +6,10 @@ use serde_json::Value;
 
 pub use super::super::v2_0_0::web::BitaxeWebAPI;
 
+#[expect(
+    clippy::double_must_use,
+    reason = "async_trait adds must_use to methods returning must-use futures"
+)]
 #[async_trait]
 #[allow(dead_code)]
 pub(in crate::backends) trait Bitaxe2140WebAPI: WebAPIClient {

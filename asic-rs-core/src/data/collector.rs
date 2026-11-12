@@ -1,3 +1,11 @@
+#![cfg_attr(
+    feature = "python",
+    expect(
+        clippy::clone_on_copy,
+        reason = "PyO3's from_py_object generates a clone for Copy enums"
+    )
+)]
+
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 use serde_json::{Value, json};

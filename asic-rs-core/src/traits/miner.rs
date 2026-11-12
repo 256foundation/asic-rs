@@ -1,3 +1,8 @@
+#![expect(
+    clippy::double_must_use,
+    reason = "async_trait adds must_use to methods returning must-use futures"
+)]
+
 use std::{collections::HashMap, fmt::Debug, net::IpAddr, time::Duration};
 
 use anyhow;
