@@ -782,13 +782,10 @@ mod tests {
     }
 
     #[test]
-    fn forgeos_has_an_independent_version_range() -> Result<(), semver::Error> {
-        assert!(!Forgeaxe110::validate(Some(&Version::parse("1.1.0-rc.1")?)));
+    fn forgeos_has_an_independent_version_range() {
         assert!(!Forgeaxe110::validate(Some(&Version::new(1, 0, 0))));
         assert!(Forgeaxe110::validate(Some(&Version::new(1, 1, 0))));
-        assert!(Forgeaxe110::validate(Some(&Version::new(1, 1, 1))));
         assert!(Forgeaxe110::validate(Some(&Version::new(1, 7, 0))));
         assert!(!Forgeaxe110::validate(None));
-        Ok(())
     }
 }

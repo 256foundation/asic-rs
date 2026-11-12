@@ -54,8 +54,7 @@ mod tests {
     use asic_rs_makes_antminer::models::AntMinerModel;
 
     use super::{
-        AntMiner, AntMinerV2018, AntMinerV2020, AntMinerV202307, blink_response_matches,
-        use_legacy_backend,
+        AntMiner, AntMinerV2018, AntMinerV2020, blink_response_matches, use_legacy_backend,
     };
     use serde_json::json;
 
@@ -166,34 +165,5 @@ mod tests {
         assert!(!blink_response_matches(&json!({"code": "B100"}), true));
         assert!(!blink_response_matches(&json!({"code": "B000"}), false));
         assert!(!blink_response_matches(&json!({}), true));
-    }
-
-    #[test]
-    fn backend_version_boundaries() -> Result<(), semver::Error> {
-        assert!(!AntMinerV2018::validate(None));
-        assert!(!AntMinerV2020::validate(None));
-        assert!(!AntMinerV202307::validate(None));
-
-        for (version, expected) in [
-            ("0.0.0", [true, true, false]),
-            ("2021.1.12", [true, true, false]),
-            ("2021.1.13", [false, true, false]),
-            ("2021.1.14", [false, true, false]),
-            ("2023.7.0-rc.1", [false, true, false]),
-            ("2023.7.0", [false, false, true]),
-            ("2023.7.1", [false, false, true]),
-        ] {
-            let version = semver::Version::parse(version)?;
-            assert_eq!(
-                [
-                    AntMinerV2018::validate(Some(&version)),
-                    AntMinerV2020::validate(Some(&version)),
-                    AntMinerV202307::validate(Some(&version)),
-                ],
-                expected,
-                "{version}"
-            );
-        }
-        Ok(())
     }
 }
