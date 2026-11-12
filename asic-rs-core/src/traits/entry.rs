@@ -15,6 +15,10 @@ use crate::{
 ///
 /// Provides identification logic, discovery commands, and the ability to
 /// construct a fully-typed miner instance after identification succeeds.
+#[expect(
+    clippy::double_must_use,
+    reason = "async_trait adds must_use to methods returning must-use futures"
+)]
 #[async_trait]
 pub trait FirmwareEntry:
     FirmwareIdentification + DiscoveryCommands + Send + Sync + Debug + Display

@@ -7,6 +7,10 @@ use crate::{
     traits::{discovery::DiscoveryCommands, model::MinerModel},
 };
 
+#[expect(
+    clippy::double_must_use,
+    reason = "async_trait adds must_use to methods returning must-use futures"
+)]
 #[async_trait]
 pub trait MinerFirmware: ToString + DiscoveryCommands {
     type Model: MinerModel + Send;
