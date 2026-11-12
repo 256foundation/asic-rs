@@ -126,6 +126,7 @@ impl ForgeaxeWebAPI {
 
     fn build_client() -> Result<Client, ForgeaxeError> {
         Client::builder()
+            .tcp_linger(std::time::Duration::ZERO)
             .timeout(Duration::from_secs(10))
             .build()
             .map_err(|e| ForgeaxeError::RequestError(format!("failed to create HTTP client: {e}")))

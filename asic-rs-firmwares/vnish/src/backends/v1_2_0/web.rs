@@ -110,6 +110,7 @@ impl VnishWebAPI {
 
     fn build_client() -> Result<Client, VnishError> {
         Client::builder()
+            .tcp_linger(std::time::Duration::ZERO)
             .timeout(Duration::from_secs(10))
             .build()
             .map_err(|e| VnishError::RequestError(format!("failed to create HTTP client: {e}")))
