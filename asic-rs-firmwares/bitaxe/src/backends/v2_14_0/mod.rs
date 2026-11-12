@@ -36,6 +36,8 @@ use crate::firmware::BitaxeFirmware;
 
 mod web;
 
+pub(crate) const MIN_VERSION: Version = Version::new(2, 14, 0);
+
 #[derive(Debug)]
 pub struct Bitaxe2140 {
     ip: IpAddr,
@@ -646,7 +648,7 @@ impl Validate for Bitaxe2140 {
     type Firmware = BitaxeFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v >= Version::new(2, 14, 0))
+        version.is_some_and(|v| v >= &MIN_VERSION)
     }
 }
 

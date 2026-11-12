@@ -29,7 +29,6 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::AntMinerRPCAPI;
-use semver::Version;
 use serde_json::{Value, json};
 use web::AntMinerWebAPI;
 
@@ -1304,7 +1303,7 @@ impl Validate for AntMinerV2020 {
     type Firmware = AntMinerStockFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v < Version::new(2023, 7, 0))
+        version.is_some_and(|v| v < &super::v2023_07::MIN_VERSION)
     }
 }
 

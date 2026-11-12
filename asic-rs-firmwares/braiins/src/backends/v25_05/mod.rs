@@ -39,6 +39,8 @@ use crate::{
     firmware::BraiinsFirmware,
 };
 
+pub(crate) const MIN_VERSION: Version = Version::new(25, 5, 0);
+
 #[derive(Debug)]
 pub struct BraiinsV2505 {
     pub ip: IpAddr,
@@ -1108,7 +1110,7 @@ impl Validate for BraiinsV2505 {
     type Firmware = BraiinsFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v >= Version::new(25, 5, 0) && *v < Version::new(25, 7, 0))
+        version.is_some_and(|v| v >= &MIN_VERSION && v < &super::v25_07::MIN_VERSION)
     }
 }
 

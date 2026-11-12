@@ -39,6 +39,8 @@ mod firmware;
 mod rpc;
 pub(in crate::backends) mod web;
 
+pub(crate) const MIN_VERSION: Version = Version::new(2023, 7, 0);
+
 #[derive(Debug)]
 pub struct AntMinerV202307 {
     pub ip: IpAddr,
@@ -1514,7 +1516,7 @@ impl Validate for AntMinerV202307 {
     type Firmware = AntMinerStockFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v >= Version::new(2023, 7, 0))
+        version.is_some_and(|v| v >= &MIN_VERSION)
     }
 }
 
