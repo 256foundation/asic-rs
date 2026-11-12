@@ -134,11 +134,14 @@ pub async fn connect_tcp_stream<A>(addr: A, timeout: Duration) -> anyhow::Result
 where
     A: ToSocketAddrs,
 {
-    tokio::time::timeout(timeout, TcpStream::connect(addr))
+    let stream = tokio::time::timeout(timeout, TcpStream::connect(addr))
         .await
         .map_err(|_| RPCError::ConnectionFailed)?
-        .map_err(RPCError::from)
-        .map_err(Into::into)
+        .map_err(RPCError::from)?;
+    if let Err(error) = stream.set_zero_linger() {
+        tracing::debug!(%error, "cannot set zero linger on RPC socket");
+    }
+    Ok(stream)
 }
 
 /// Read a complete RPC response from a stream.
