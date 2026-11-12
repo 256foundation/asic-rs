@@ -1359,8 +1359,9 @@ impl SupportsPoolsConfig for AntMinerV202307 {
 
         // The S21Plus cminer proxy rejects the browser-shaped payload with
         // M001. Retry its own read-side shape, changing only the pool list.
-        let read_shape = miner_conf_with_read_shape_pools(&conf, pools)
-            .expect("stock miner config was checked to be a JSON object");
+        let Some(read_shape) = miner_conf_with_read_shape_pools(&conf, pools) else {
+            anyhow::bail!("stock miner config is not a JSON object");
+        };
         let response = self.web.set_miner_conf(read_shape).await?;
         if response.get("code").and_then(Value::as_str) == Some("M000") {
             return Ok(true);
