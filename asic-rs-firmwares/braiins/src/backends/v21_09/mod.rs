@@ -25,7 +25,6 @@ use asic_rs_core::{
 use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
-use semver::Version;
 use serde_json::{Value, json};
 use web::BraiinsWebAPI;
 
@@ -1032,7 +1031,7 @@ impl Validate for BraiinsV2109 {
     type Firmware = BraiinsFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v < Version::new(25, 3, 0))
+        version.is_some_and(|v| v < &super::v25_03::MIN_VERSION)
     }
 }
 

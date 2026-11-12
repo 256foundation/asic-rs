@@ -26,7 +26,6 @@ use async_trait::async_trait;
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::WhatsMinerRPCAPI;
-use semver::Version;
 use serde_json::Value;
 
 use crate::firmware::WhatsMinerFirmware;
@@ -644,7 +643,7 @@ impl Validate for WhatsMinerV1 {
     type Firmware = WhatsMinerFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v < Version::new(2022, 7, 29))
+        version.is_some_and(|v| v < &super::v2::MIN_VERSION)
     }
 }
 

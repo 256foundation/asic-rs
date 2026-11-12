@@ -41,6 +41,8 @@ use tokio::sync::OnceCell;
 
 use crate::firmware::EPicFirmware;
 
+pub(crate) const MIN_VERSION: Version = Version::new(1, 28, 4);
+
 /// EPIC firmware 1.28.4 and newer, collecting messages only from `/errors/history`.
 #[derive(Debug)]
 pub struct PowerPlayV1284 {
@@ -2036,7 +2038,7 @@ impl Validate for PowerPlayV1284 {
     type Firmware = EPicFirmware;
 
     fn validate(version: Option<&Version>) -> bool {
-        version.is_some_and(|v| *v >= Version::new(1, 28, 4))
+        version.is_some_and(|v| v >= &MIN_VERSION)
     }
 }
 

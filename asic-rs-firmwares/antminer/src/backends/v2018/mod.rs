@@ -39,6 +39,9 @@ mod firmware;
 mod rpc;
 pub(crate) mod web;
 
+// The JSON backend also accepts older builds, so this is not its minimum version.
+const MAX_VERSION: Version = Version::new(2021, 1, 13);
+
 #[derive(Debug)]
 pub struct AntMinerV2018 {
     pub ip: IpAddr,
@@ -1278,7 +1281,7 @@ impl Validate for AntMinerV2018 {
 
     fn validate(version: Option<&semver::Version>) -> bool {
         // Include all builds dated January 12, 2021.
-        version.is_some_and(|v| *v < Version::new(2021, 1, 13))
+        version.is_some_and(|v| v < &MAX_VERSION)
     }
 }
 

@@ -38,6 +38,8 @@ use measurements::{AngularVelocity, Frequency, Power, Temperature, Voltage};
 use semver::Version;
 use serde_json::{Value, json};
 
+pub(crate) const MIN_VERSION: Version = Version::new(25, 3, 0);
+
 #[derive(Debug)]
 pub struct BraiinsV2503 {
     pub ip: IpAddr,
@@ -1103,7 +1105,7 @@ impl Validate for BraiinsV2503 {
     type Firmware = BraiinsFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v >= Version::new(25, 3, 0) && *v < Version::new(25, 5, 0))
+        version.is_some_and(|v| v >= &MIN_VERSION && v < &super::v25_05::MIN_VERSION)
     }
 }
 

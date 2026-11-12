@@ -39,6 +39,8 @@ use crate::firmware::WhatsMinerFirmware;
 
 mod rpc;
 
+pub(crate) const MIN_VERSION: Version = Version::new(2024, 11, 0);
+
 #[derive(Debug)]
 pub struct WhatsMinerV3 {
     pub ip: IpAddr,
@@ -825,7 +827,7 @@ impl Validate for WhatsMinerV3 {
     type Firmware = WhatsMinerFirmware;
 
     fn validate(version: Option<&semver::Version>) -> bool {
-        version.is_some_and(|v| *v >= Version::new(2024, 11, 0))
+        version.is_some_and(|v| v >= &MIN_VERSION)
     }
 }
 

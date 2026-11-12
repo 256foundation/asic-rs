@@ -82,9 +82,11 @@ impl MinerConstructor for Vnish {
 
 #[cfg(test)]
 mod tests {
+    use asic_rs_core::traits::miner::Validate;
+
     use serde_json::json;
 
-    use super::parse_devfee_connected;
+    use super::{VnishV120, VnishV130, parse_devfee_connected};
 
     #[test]
     fn devfee_connection_uses_typed_pool_status() {
@@ -114,5 +116,29 @@ mod tests {
             ])),
             None
         );
+    }
+
+    #[test]
+    fn backend_version_boundaries() -> Result<(), semver::Error> {
+        assert!(!VnishV120::validate(None));
+        assert!(!VnishV130::validate(None));
+
+        for (version, expected) in [
+            ("0.0.0", [true, false]),
+            ("1.3.0-rc.1", [true, false]),
+            ("1.3.0", [false, true]),
+            ("1.3.1", [false, true]),
+        ] {
+            let version = semver::Version::parse(version)?;
+            assert_eq!(
+                [
+                    VnishV120::validate(Some(&version)),
+                    VnishV130::validate(Some(&version)),
+                ],
+                expected,
+                "{version}"
+            );
+        }
+        Ok(())
     }
 }

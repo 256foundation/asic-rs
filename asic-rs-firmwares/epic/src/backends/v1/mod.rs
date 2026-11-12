@@ -2037,7 +2037,7 @@ impl Validate for PowerPlayV1 {
     type Firmware = EPicFirmware;
 
     fn validate(version: Option<&Version>) -> bool {
-        version.is_none_or(|v| *v < Version::new(1, 28, 4))
+        version.is_none_or(|v| v < &super::v1_28_4::MIN_VERSION)
     }
 }
 
