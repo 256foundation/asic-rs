@@ -20,6 +20,7 @@ impl GoldshellWebAPI {
             ip,
             auth,
             client: Client::builder()
+                .tcp_linger(std::time::Duration::ZERO)
                 .connect_timeout(Duration::from_secs(5))
                 .timeout(Duration::from_secs(5))
                 .redirect(reqwest::redirect::Policy::none())

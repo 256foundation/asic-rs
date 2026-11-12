@@ -82,6 +82,7 @@ fn build_discovery_client_with_timeout(
     timeout: Duration,
 ) -> Result<reqwest::Client, ModelSelectionError> {
     reqwest::Client::builder()
+        .tcp_linger(std::time::Duration::ZERO)
         .connect_timeout(timeout)
         .timeout(timeout)
         // These requests do not reuse connections. Let the peer initiate close
@@ -106,6 +107,7 @@ pub fn is_expected_write_error(err: &anyhow::Error) -> bool {
 /// Reused across all calls to avoid per-request client construction overhead.
 static HTTP_CLIENT: LazyLock<Result<reqwest::Client, reqwest::Error>> = LazyLock::new(|| {
     reqwest::Client::builder()
+        .tcp_linger(std::time::Duration::ZERO)
         .redirect(reqwest::redirect::Policy::none())
         .danger_accept_invalid_certs(true)
         .gzip(true)
