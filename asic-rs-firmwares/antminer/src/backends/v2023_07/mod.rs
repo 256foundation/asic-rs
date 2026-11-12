@@ -37,7 +37,7 @@ use web::AntMinerWebAPI;
 
 mod firmware;
 mod rpc;
-pub(crate) mod web;
+pub(in crate::backends) mod web;
 
 #[derive(Debug)]
 pub struct AntMinerV202307 {

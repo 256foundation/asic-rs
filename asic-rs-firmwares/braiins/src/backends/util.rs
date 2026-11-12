@@ -10,7 +10,7 @@ use serde_json::Value;
 /// Build [`TuningCapabilities`] from a BOS GraphQL `powerTarget` metadata object
 /// (`{ default, min, max }`, all in watts). Older GraphQL BraiinsOS backends only
 /// expose the power-target envelope this way.
-pub(crate) fn power_target_capabilities(power_target: &Value) -> TuningCapabilities {
+pub(in crate::backends) fn power_target_capabilities(power_target: &Value) -> TuningCapabilities {
     let watts = |key: &str| {
         power_target
             .get(key)
@@ -56,7 +56,7 @@ pub(crate) fn parse_bos_version(full: &str) -> Option<semver::Version> {
 /// (`power_target` as `PowerConstraints` in watts, `hashrate_target` as
 /// `HashrateConstraints` in TH/s). Used by the REST BraiinsOS backends
 /// (25.07 and newer).
-pub(crate) fn tuner_constraints_capabilities(
+pub(in crate::backends) fn tuner_constraints_capabilities(
     tuner: &Value,
     algo: HashAlgorithm,
 ) -> TuningCapabilities {
@@ -101,14 +101,14 @@ pub(crate) fn tuner_constraints_capabilities(
     }
 }
 
-pub(crate) fn parse_configured_tuning_target(
+pub(in crate::backends) fn parse_configured_tuning_target(
     value: &Value,
     algo: HashAlgorithm,
 ) -> Option<TuningTarget> {
     parse_tagged_tuning_target(value, "configured", algo)
 }
 
-pub(crate) fn parse_scaled_tuning_target(
+pub(in crate::backends) fn parse_scaled_tuning_target(
     value: &Value,
     algo: HashAlgorithm,
 ) -> Option<TuningTarget> {

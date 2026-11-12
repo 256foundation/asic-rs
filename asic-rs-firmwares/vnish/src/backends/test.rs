@@ -4,9 +4,9 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 
-pub(crate) struct MockHttpServer {
-    pub(crate) port: u16,
-    pub(crate) task: tokio::task::JoinHandle<anyhow::Result<String>>,
+pub(in crate::backends) struct MockHttpServer {
+    pub(in crate::backends) port: u16,
+    pub(in crate::backends) task: tokio::task::JoinHandle<anyhow::Result<String>>,
 }
 
 async fn read_http_request(socket: &mut TcpStream) -> anyhow::Result<String> {
@@ -44,7 +44,7 @@ async fn read_http_request(socket: &mut TcpStream) -> anyhow::Result<String> {
     Ok(String::from_utf8(request)?)
 }
 
-pub(crate) async fn mock_http_server(
+pub(in crate::backends) async fn mock_http_server(
     status: u16,
     reason: &'static str,
     body: &'static str,

@@ -1,6 +1,6 @@
 pub mod avalon_a;
 pub mod avalon_q;
-pub(crate) mod rpc;
+pub(in crate::backends) mod rpc;
 
 use std::{any::Any, net::IpAddr};
 

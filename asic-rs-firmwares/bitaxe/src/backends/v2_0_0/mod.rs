@@ -34,7 +34,7 @@ use web::BitaxeWebAPI;
 
 use crate::firmware::BitaxeFirmware;
 
-pub(crate) mod web;
+pub(in crate::backends) mod web;
 
 #[derive(Debug)]
 pub struct Bitaxe200 {

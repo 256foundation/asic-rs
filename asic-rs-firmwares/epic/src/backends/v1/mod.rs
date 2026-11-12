@@ -69,7 +69,7 @@ impl PowerPlayV1 {
         miner
     }
 
-    pub(crate) fn set_restore_stock_os_support(&mut self, supported: bool) {
+    pub(in crate::backends) fn set_restore_stock_os_support(&mut self, supported: bool) {
         self.restore_stock_os_supported = OnceCell::new_with(Some(supported));
     }
 

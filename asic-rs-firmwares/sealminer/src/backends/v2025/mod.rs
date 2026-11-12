@@ -40,8 +40,8 @@ use web::SealMinerWebAPI;
 
 use crate::firmware::SealMinerStockFirmware;
 
-pub(crate) mod rpc;
-pub(crate) mod web;
+pub(in crate::backends) mod rpc;
+pub(in crate::backends) mod web;
 
 #[derive(Debug)]
 pub struct SealMinerV2025 {
