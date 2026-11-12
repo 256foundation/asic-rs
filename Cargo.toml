@@ -154,7 +154,7 @@ digest_auth = "0.3.1"
 futures = "0.3"
 macaddr = { version = "1.0", features = ["serde_std"] }
 measurements = { version = "0.11", features = ["serde"] }
-reqwest = { version = "0.13.3", features = ["json", "gzip", "rustls", "multipart", "stream", "form"], default-features = false }
+reqwest = { version = "0.13.3", git = "https://github.com/cfilipescu/reqwest.git", branch = "feat/tcp-linger-hyper-util", features = ["json", "gzip", "rustls", "multipart", "stream", "form"], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ts-rs = { version = "12.0.1", features = ["no-serde-warnings"] }
@@ -350,3 +350,7 @@ strip = true
 [lib]
 name = "asic_rs"
 crate-type = ["lib"]
+
+[patch.crates-io]
+reqwest = { git = "https://github.com/cfilipescu/reqwest.git", branch = "feat/tcp-linger-hyper-util" }
+hyper-util = { git = "https://github.com/cfilipescu/hyper-util.git", branch = "feat/tcp-linger" }

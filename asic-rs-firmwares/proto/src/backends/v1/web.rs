@@ -40,6 +40,7 @@ impl ProtoWebAPI {
 
     fn build_client() -> Result<Client> {
         Client::builder()
+            .tcp_linger(std::time::Duration::ZERO)
             .timeout(Duration::from_secs(10))
             .danger_accept_invalid_certs(true)
             .build()

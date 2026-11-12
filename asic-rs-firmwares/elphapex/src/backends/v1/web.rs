@@ -51,6 +51,7 @@ impl ElphapexWebAPI {
 
     fn build_client() -> Result<Client> {
         Client::builder()
+            .tcp_linger(std::time::Duration::ZERO)
             .timeout(Duration::from_secs(10))
             .build()
             .context("failed to create HTTP client")

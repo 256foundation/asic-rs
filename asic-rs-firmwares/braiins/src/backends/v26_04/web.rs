@@ -118,6 +118,7 @@ impl BraiinsWebAPI {
 
     fn build_client() -> Result<Client, BraiinsError> {
         Client::builder()
+            .tcp_linger(std::time::Duration::ZERO)
             .timeout(Duration::from_secs(10))
             .build()
             .map_err(|e| BraiinsError::RequestError(format!("failed to create HTTP client: {e}")))

@@ -38,6 +38,7 @@ impl MaraWebAPI {
 
     fn build_client() -> anyhow::Result<Client> {
         Client::builder()
+            .tcp_linger(std::time::Duration::ZERO)
             .timeout(Duration::from_secs(5))
             .build()
             .map_err(|e| anyhow::anyhow!("failed to create HTTP client: {e}"))

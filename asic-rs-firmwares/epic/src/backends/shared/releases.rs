@@ -123,6 +123,7 @@ pub(in crate::backends) async fn check(
 async fn fetch_release(repository: &str) -> anyhow::Result<Value> {
     // Use a separate client: miner credentials must never be sent to GitHub.
     reqwest::Client::builder()
+        .tcp_linger(std::time::Duration::ZERO)
         .user_agent(concat!("asic-rs/", env!("CARGO_PKG_VERSION")))
         .timeout(Duration::from_secs(15))
         .build()?
