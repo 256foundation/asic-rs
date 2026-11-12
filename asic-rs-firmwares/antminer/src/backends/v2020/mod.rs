@@ -1194,11 +1194,7 @@ impl Resume for AntMinerV2020 {
         };
 
         let response = self.web.set_miner_conf(miner_conf).await?;
-        if response.get("stats").and_then(Value::as_str) != Some("success") {
-            return Ok(false);
-        }
-
-        Ok(true)
+        Ok(response.get("stats").and_then(Value::as_str) == Some("success"))
     }
 }
 
