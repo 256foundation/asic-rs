@@ -26,24 +26,28 @@ pub struct BitaxeWebAPI {
 #[allow(dead_code)]
 trait Bitaxe200WebAPI: WebAPIClient {
     /// Get system information
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn system_info(&self) -> anyhow::Result<Value> {
         self.send_command("system/info", false, None, Method::GET)
             .await
     }
 
     /// Get swarm information
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn swarm_info(&self) -> anyhow::Result<Value> {
         self.send_command("swarm/info", false, None, Method::GET)
             .await
     }
 
     /// Restart the system
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn restart(&self) -> anyhow::Result<Value> {
         self.send_command("system/restart", false, None, Method::POST)
             .await
     }
 
     /// Update system settings
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn update_settings(&self, config: Value) -> anyhow::Result<Value> {
         self.send_command("system", false, Some(config), Method::PATCH)
             .await

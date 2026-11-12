@@ -10,6 +10,7 @@ pub use super::super::v2_0_0::web::BitaxeWebAPI;
 #[allow(dead_code)]
 trait Bitaxe290WebAPI: WebAPIClient {
     /// Get ASIC information
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn asic_info(&self) -> Result<Value> {
         self.send_command("system/asic", false, None, Method::GET)
             .await

@@ -24,6 +24,7 @@ pub trait FirmwareEntry:
     /// When `auth` is provided, it is used for both discovery (e.g.
     /// AntMiner digest auth) and applied to the miner for runtime
     /// operations. When `None`, backends use their default credentials.
+    #[allow(clippy::double_must_use)] // async_trait adds #[must_use] to a must-use future.
     async fn build_miner(
         &self,
         ip: IpAddr,
