@@ -14,6 +14,63 @@
       "DocUrl": "https://docs.luxor.tech/firmware/kb/eventstroubleshooting#reboot-not-hashing",
       "ID": 0,
       "Target": "BOARD"
+    },
+    {
+      "Code": "BOARD_ASIC_ENUMERATION_FAILURE",
+      "CreatedAt": "2018-03-09T12:35:52+00:00",
+      "Description": "Board failure due to ASIC enumeration failure.",
+      "DocUrl": "https://docs.luxor.tech/firmware/kb/eventstroubleshooting#board-asic-enumeration-failure",
+      "ID": 2,
+      "Target": "BOARD"
+    },
+    {
+      "Code": "BOARD_ASIC_ENUMERATION_FAILURE",
+      "CreatedAt": "2018-03-09T12:35:53+00:00",
+      "Description": "Board failure due to ASIC enumeration failure.",
+      "DocUrl": "https://docs.luxor.tech/firmware/kb/eventstroubleshooting#board-asic-enumeration-failure",
+      "ID": 1,
+      "Target": "BOARD"
+    },
+    {
+      "Code": "BOARD_ASIC_ENUMERATION_FAILURE",
+      "CreatedAt": "2018-03-09T12:35:53+00:00",
+      "Description": "Board failure due to ASIC enumeration failure.",
+      "DocUrl": "https://docs.luxor.tech/firmware/kb/eventstroubleshooting#board-asic-enumeration-failure",
+      "ID": 0,
+      "Target": "BOARD"
+    },
+    {
+      "Code": "NOPIC_SHUTDOWN",
+      "CreatedAt": "2018-03-09T12:36:26+00:00",
+      "Description": "Board protection activated for this board.",
+      "DocUrl": "https://docs.luxor.tech/firmware/kb/eventstroubleshooting#nopic-shutdown",
+      "ID": 2,
+      "Target": "BOARD"
+    },
+    {
+      "Code": "NOPIC_SHUTDOWN",
+      "CreatedAt": "2018-03-09T12:36:27+00:00",
+      "Description": "Board protection activated for this board.",
+      "DocUrl": "https://docs.luxor.tech/firmware/kb/eventstroubleshooting#nopic-shutdown",
+      "ID": 1,
+      "Target": "BOARD"
+    },
+    {
+      "Code": "NOPIC_SHUTDOWN",
+      "CreatedAt": "2018-03-09T12:36:27+00:00",
+      "Description": "Board protection activated for this board.",
+      "DocUrl": "https://docs.luxor.tech/firmware/kb/eventstroubleshooting#nopic-shutdown",
+      "ID": 0,
+      "Target": "BOARD"
+    },
+    {
+      "Code": "SHUTDOWN_USER",
+      "CreatedAt": "2018-03-09T12:51:53+00:00",
+      "Description": "Board shutdown due to user request.",
+      "DocUrl": "https://docs.luxor.tech/firmware/introduction-to-firmware",
+      "ID": 2,
+      "Severity": "Info",
+      "Target": "BOARD"
     }
   ],
   "STATUS": [
