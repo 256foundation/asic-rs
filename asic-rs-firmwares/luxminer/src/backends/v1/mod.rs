@@ -16,7 +16,7 @@ use asic_rs_core::{
         fan::FanData,
         firmware::RestoreStockOsResult,
         hashrate::{HashRate, HashRateUnit},
-        message::{MessageSeverity, MinerMessage},
+        message::{MessageSeverity, MinerComponent, MinerMessage},
         miner::TuningTarget,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
@@ -1028,39 +1028,51 @@ impl GetMessages for LuxMinerV1 {
                     .and_then(|v| v.as_str())
                     .unwrap_or(code);
 
-                let severity = if code.contains("FAILURE")
-                    || code.contains("PANIC")
-                    || (code.contains("SHUTDOWN") && !code.ends_with("USER"))
-                {
-                    MessageSeverity::Error
-                } else if matches!(
-                    code,
-                    "MINER_TUNED"
-                        | "MINER_TUNING"
-                        | "IDLE"
-                        | "SLEEP"
-                        | "REBOOT_USER"
-                        | "SHUTDOWN_USER"
-                        | "REBOOT_SYSINIT"
-                        | "HASH_ON_DISCONNECT"
-                ) {
-                    MessageSeverity::Info
-                } else {
-                    MessageSeverity::Warning
-                };
-
-                let message = match (
-                    event.get("Target").and_then(|v| v.as_str()),
-                    event.get("ID").and_then(|v| v.as_u64()),
-                ) {
-                    (Some(target), Some(id)) => {
-                        format!("[{target} {id}] {description}")
+                let severity = match event.get("Severity").and_then(Value::as_str) {
+                    Some("Info") => MessageSeverity::Info,
+                    Some("Warning") => MessageSeverity::Warning,
+                    Some("Critical") => MessageSeverity::Error,
+                    _ => {
+                        if code.contains("FAILURE")
+                            || code.contains("PANIC")
+                            || (code.contains("SHUTDOWN") && !code.ends_with("USER"))
+                        {
+                            MessageSeverity::Error
+                        } else if matches!(
+                            code,
+                            "MINER_TUNED"
+                                | "MINER_TUNING"
+                                | "IDLE"
+                                | "SLEEP"
+                                | "REBOOT_USER"
+                                | "SHUTDOWN_USER"
+                                | "REBOOT_SYSINIT"
+                                | "HASH_ON_DISCONNECT"
+                        ) {
+                            MessageSeverity::Info
+                        } else {
+                            MessageSeverity::Warning
+                        }
                     }
-                    (Some(target), None) => format!("[{target}] {description}"),
-                    _ => description.to_string(),
                 };
 
-                Some(MinerMessage::new(0, 0, message, severity))
+                let target = event.get("Target").and_then(|v| v.as_str());
+                let id = event.get("ID").and_then(|v| v.as_u64());
+                let component =
+                    id.and_then(|id| u16::try_from(id).ok())
+                        .and_then(|idx| match target {
+                            Some("BOARD") => Some(MinerComponent::hashboard(idx)),
+                            Some("FAN") => Some(MinerComponent::fan(idx)),
+                            _ => None,
+                        });
+
+                Some(MinerMessage::with_component(
+                    0,
+                    0,
+                    description.to_string(),
+                    severity,
+                    component,
+                ))
             })
             .collect()
     }
@@ -1548,16 +1560,30 @@ mod tests {
         assert!(miner_data.pools[1].pools[0].last_share_time.is_some());
         assert_eq!(miner_data.pools[1].pools[1].last_share_time, None);
 
-        assert_eq!(miner_data.messages.len(), 2);
+        assert_eq!(miner_data.messages.len(), 9);
         assert_eq!(miner_data.messages[0].severity, MessageSeverity::Warning);
+        assert_eq!(miner_data.messages[0].component, None);
         assert_eq!(
             miner_data.messages[0].message,
-            "[MINER] Miner shutdown due to NOPIC protection."
+            "Miner shutdown due to NOPIC protection."
+        );
+        assert_eq!(miner_data.messages[8].severity, MessageSeverity::Info);
+        assert_eq!(
+            miner_data.messages[8].component,
+            Some(MinerComponent::hashboard(2))
+        );
+        assert_eq!(
+            miner_data.messages[8].message,
+            "Board shutdown due to user request."
         );
         assert_eq!(miner_data.messages[1].severity, MessageSeverity::Warning);
         assert_eq!(
+            miner_data.messages[1].component,
+            Some(MinerComponent::hashboard(0))
+        );
+        assert_eq!(
             miner_data.messages[1].message,
-            "[BOARD 0] Board reboot due to it not hashing."
+            "Board reboot due to it not hashing."
         );
 
         Ok(())
