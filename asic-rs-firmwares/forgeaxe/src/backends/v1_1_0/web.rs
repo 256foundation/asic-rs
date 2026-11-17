@@ -22,10 +22,6 @@ pub struct ForgeaxeWebAPI {
     retries: u32,
 }
 
-#[expect(
-    clippy::double_must_use,
-    reason = "async_trait adds must_use to methods returning must-use futures"
-)]
 #[async_trait]
 #[allow(dead_code)]
 trait Forgeaxe110WebAPI: WebAPIClient {
