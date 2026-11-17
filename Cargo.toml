@@ -199,6 +199,9 @@ pyo3-log = { version = "0.13.3" }
 warnings = "deny"
 
 [workspace.lints.clippy]
+# PyO3 and async-trait generate these patterns; allow them across the workspace.
+clone_on_copy = "allow"
+double_must_use = "allow"
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
