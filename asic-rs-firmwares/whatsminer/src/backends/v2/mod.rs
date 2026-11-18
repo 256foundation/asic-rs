@@ -26,7 +26,6 @@ use asic_rs_core::{
 };
 use asic_rs_makes_whatsminer::hardware::WhatsMinerControlBoard;
 use async_trait::async_trait;
-use chrono::{DateTime, NaiveDateTime, Utc};
 use macaddr::MacAddr;
 use measurements::{AngularVelocity, Frequency, Power, Temperature};
 use rpc::WhatsMinerRPCAPI;
@@ -34,6 +33,8 @@ use semver::Version;
 use serde_json::{Value, json};
 
 use crate::firmware::WhatsMinerFirmware;
+
+use super::parse_log_timestamp;
 
 pub(in crate::backends) mod rpc;
 
@@ -525,12 +526,7 @@ impl GetMessages for WhatsMinerV2 {
                         let Some(time_str) = time.as_str() else {
                             continue;
                         };
-                        let timestamp =
-                            NaiveDateTime::parse_from_str(time_str, "%Y-%m-%d %H:%M:%S")
-                                .map(|t| DateTime::<Utc>::from_naive_utc_and_offset(t, Utc))
-                                .map(|dt| dt.timestamp() as u32);
-
-                        if let Ok(ts) = timestamp {
+                        if let Some(ts) = parse_log_timestamp(time_str) {
                             let parsed_code = code.parse::<u64>().unwrap_or(0);
                             let info = crate::error_codes::error_info(parsed_code);
                             messages.push(MinerMessage::with_component(

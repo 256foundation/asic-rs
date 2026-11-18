@@ -1,7 +1,7 @@
 //! VNish fixed-offset timezone conversions and validation.
 
 use asic_rs_core::config::timezone::Tz;
-use chrono::{DateTime, Datelike, FixedOffset, Offset, TimeZone, Utc};
+use jiff::{Timestamp, civil::DateTime, tz::Offset};
 
 /// Whole hours *east* of UTC encoded by a fixed-offset zone, or `None` for any
 /// zone that carries transition rules.
@@ -10,8 +10,8 @@ use chrono::{DateTime, Datelike, FixedOffset, Offset, TimeZone, Utc};
 /// most people expect: `Etc/GMT+2` is two hours *behind* UTC (UTC−2) and
 /// `Etc/GMT-2` is two hours *ahead* (UTC+2). `Etc/GMT`, `Etc/GMT0`,
 /// `Etc/GMT+0`, `Etc/GMT-0`, `Etc/UTC` and `UTC` are all zero.
-fn fixed_offset_hours(tz: Tz) -> Option<i32> {
-    if matches!(tz, Tz::UTC | Tz::Etc__UTC) {
+fn fixed_offset_hours(tz: &Tz) -> Option<i32> {
+    if matches!(tz.name(), "UTC" | "Etc/UTC") {
         return Some(0);
     }
     let posix_suffix = tz.name().strip_prefix("Etc/GMT")?;
@@ -61,15 +61,16 @@ pub(crate) fn vnish_offset_to_tz(value: &str) -> anyhow::Result<Tz> {
 /// a `Europe/Vienna` pinned in summer would be an hour off all winter. The
 /// error names the `Etc/GMT*` zone for the offset in effect at `now` so the
 /// caller can pick it explicitly.
-fn tz_to_vnish_offset(tz: Tz, now: DateTime<Utc>) -> anyhow::Result<String> {
+fn tz_to_vnish_offset(tz: &Tz, now: Timestamp) -> anyhow::Result<String> {
     if let Some(hours) = fixed_offset_hours(tz) {
         return Ok(format!("GMT{hours:+}"));
     }
 
-    let current = utc_offset_at(tz, now);
+    let current = tz.offset_at(now);
     // Sample mid-winter and mid-summer to tell a DST zone from a plain named one.
-    let january = utc_offset_at(tz, noon_utc(now.year(), 1).unwrap_or(now));
-    let july = utc_offset_at(tz, noon_utc(now.year(), 7).unwrap_or(now));
+    let year = Offset::UTC.to_datetime(now).year();
+    let january = tz.offset_at(noon_utc(year, 1).unwrap_or(now));
+    let july = tz.offset_at(noon_utc(year, 7).unwrap_or(now));
 
     if january != july {
         anyhow::bail!(
@@ -81,44 +82,51 @@ fn tz_to_vnish_offset(tz: Tz, now: DateTime<Utc>) -> anyhow::Result<String> {
             describe_offset(july)
         );
     }
+    let description = display_offset(current);
     match etc_gmt_equivalent(current) {
         Some(etc) => anyhow::bail!(
             "Timezone {tz} is not a fixed-offset Etc/GMT zone, which is all VNish can store. \
-             Use {etc} (UTC{current}) instead."
+             Use {etc} (UTC{description}) instead."
         ),
         None => anyhow::bail!(
-            "Timezone {tz} has a UTC{current} offset, which VNish cannot store \
+            "Timezone {tz} has a UTC{description} offset, which VNish cannot store \
              (whole hours between UTC-12 and UTC+14 only)."
         ),
     }
 }
 
 /// [`tz_to_vnish_offset`] evaluated at the current instant.
-pub(crate) fn tz_to_vnish_offset_now(tz: Tz) -> anyhow::Result<String> {
-    tz_to_vnish_offset(tz, Utc::now())
+pub(crate) fn tz_to_vnish_offset_now(tz: &Tz) -> anyhow::Result<String> {
+    tz_to_vnish_offset(tz, Timestamp::now())
 }
 
-fn utc_offset_at(tz: Tz, at: DateTime<Utc>) -> FixedOffset {
-    tz.offset_from_utc_datetime(&at.naive_utc()).fix()
-}
-
-fn noon_utc(year: i32, month: u32) -> Option<DateTime<Utc>> {
-    Utc.with_ymd_and_hms(year, month, 1, 12, 0, 0).single()
+fn noon_utc(year: i16, month: i8) -> Option<Timestamp> {
+    let date = DateTime::new(year, month, 1, 12, 0, 0, 0).ok()?;
+    Offset::UTC.to_timestamp(date).ok()
 }
 
 /// The `Etc/GMT*` zone with exactly this offset, if it is a whole hour in range.
-fn etc_gmt_equivalent(offset: FixedOffset) -> Option<Tz> {
-    let seconds = offset.local_minus_utc();
+fn etc_gmt_equivalent(offset: Offset) -> Option<Tz> {
+    let seconds = offset.seconds();
     if seconds % 3600 != 0 {
         return None;
     }
     tz_from_offset_hours(seconds / 3600).ok()
 }
 
-fn describe_offset(offset: FixedOffset) -> String {
+fn describe_offset(offset: Offset) -> String {
+    let description = display_offset(offset);
     match etc_gmt_equivalent(offset) {
-        Some(etc) => format!("{etc} (UTC{offset})"),
-        None => format!("UTC{offset} (no Etc/GMT zone)"),
+        Some(etc) => format!("{etc} (UTC{description})"),
+        None => format!("UTC{description} (no Etc/GMT zone)"),
+    }
+}
+
+fn display_offset(offset: Offset) -> String {
+    if offset.seconds() % 3600 == 0 {
+        format!("{offset}:00")
+    } else {
+        offset.to_string()
     }
 }
 
@@ -126,30 +134,30 @@ fn describe_offset(offset: FixedOffset) -> String {
 mod tests {
     use super::*;
 
-    fn at(year: i32, month: u32) -> anyhow::Result<DateTime<Utc>> {
+    fn at(year: i16, month: i8) -> anyhow::Result<Timestamp> {
         noon_utc(year, month).ok_or_else(|| anyhow::anyhow!("invalid date"))
     }
 
     /// VNish `GMT+2` means UTC+2, which is `Etc/GMT-2` in POSIX terms.
     #[test]
     fn vnish_positive_offset_maps_to_etc_gmt_minus() -> anyhow::Result<()> {
-        assert_eq!(vnish_offset_to_tz("GMT+2")?, Tz::Etc__GMTMinus2);
-        assert_eq!(vnish_offset_to_tz("GMT+14")?, Tz::Etc__GMTMinus14);
+        assert_eq!(vnish_offset_to_tz("GMT+2")?.name(), "Etc/GMT-2");
+        assert_eq!(vnish_offset_to_tz("GMT+14")?.name(), "Etc/GMT-14");
         Ok(())
     }
 
     /// VNish `GMT-5` means UTC-5, which is `Etc/GMT+5` in POSIX terms.
     #[test]
     fn vnish_negative_offset_maps_to_etc_gmt_plus() -> anyhow::Result<()> {
-        assert_eq!(vnish_offset_to_tz("GMT-5")?, Tz::Etc__GMTPlus5);
-        assert_eq!(vnish_offset_to_tz("GMT-12")?, Tz::Etc__GMTPlus12);
+        assert_eq!(vnish_offset_to_tz("GMT-5")?.name(), "Etc/GMT+5");
+        assert_eq!(vnish_offset_to_tz("GMT-12")?.name(), "Etc/GMT+12");
         Ok(())
     }
 
     #[test]
     fn vnish_zero_offset_maps_to_etc_gmt() -> anyhow::Result<()> {
-        assert_eq!(vnish_offset_to_tz("GMT+0")?, Tz::Etc__GMT);
-        assert_eq!(vnish_offset_to_tz("GMT-0")?, Tz::Etc__GMT);
+        assert_eq!(vnish_offset_to_tz("GMT+0")?.name(), "Etc/GMT");
+        assert_eq!(vnish_offset_to_tz("GMT-0")?.name(), "Etc/GMT");
         Ok(())
     }
 
@@ -165,8 +173,8 @@ mod tests {
     #[test]
     fn etc_gmt_minus_renders_as_vnish_positive() -> anyhow::Result<()> {
         let now = at(2026, 7)?;
-        assert_eq!(tz_to_vnish_offset(Tz::Etc__GMTMinus2, now)?, "GMT+2");
-        assert_eq!(tz_to_vnish_offset(Tz::Etc__GMTMinus14, now)?, "GMT+14");
+        assert_eq!(tz_to_vnish_offset(&"Etc/GMT-2".parse()?, now)?, "GMT+2");
+        assert_eq!(tz_to_vnish_offset(&"Etc/GMT-14".parse()?, now)?, "GMT+14");
         Ok(())
     }
 
@@ -174,23 +182,23 @@ mod tests {
     #[test]
     fn etc_gmt_plus_renders_as_vnish_negative() -> anyhow::Result<()> {
         let now = at(2026, 7)?;
-        assert_eq!(tz_to_vnish_offset(Tz::Etc__GMTPlus5, now)?, "GMT-5");
-        assert_eq!(tz_to_vnish_offset(Tz::Etc__GMTPlus12, now)?, "GMT-12");
+        assert_eq!(tz_to_vnish_offset(&"Etc/GMT+5".parse()?, now)?, "GMT-5");
+        assert_eq!(tz_to_vnish_offset(&"Etc/GMT+12".parse()?, now)?, "GMT-12");
         Ok(())
     }
 
     #[test]
     fn zero_offset_aliases_render_as_vnish_gmt_plus_zero() -> anyhow::Result<()> {
         let now = at(2026, 7)?;
-        for tz in [
-            Tz::Etc__GMT,
-            Tz::Etc__GMT0,
-            Tz::Etc__GMTPlus0,
-            Tz::Etc__GMTMinus0,
-            Tz::Etc__UTC,
-            Tz::UTC,
+        for name in [
+            "Etc/GMT",
+            "Etc/GMT0",
+            "Etc/GMT+0",
+            "Etc/GMT-0",
+            "Etc/UTC",
+            "UTC",
         ] {
-            assert_eq!(tz_to_vnish_offset(tz, now)?, "GMT+0", "{tz}");
+            assert_eq!(tz_to_vnish_offset(&name.parse()?, now)?, "GMT+0", "{name}");
         }
         Ok(())
     }
@@ -202,22 +210,22 @@ mod tests {
         for hours in -12..=14 {
             let vnish = format!("GMT{hours:+}");
             let tz = vnish_offset_to_tz(&vnish)?;
-            assert_eq!(fixed_offset_hours(tz), Some(hours), "{vnish}");
-            assert_eq!(tz_to_vnish_offset(tz, now)?, vnish);
+            assert_eq!(fixed_offset_hours(&tz), Some(hours), "{vnish}");
+            assert_eq!(tz_to_vnish_offset(&tz, now)?, vnish);
             assert_eq!(tz_from_offset_hours(hours)?, tz);
         }
         Ok(())
     }
 
-    /// The sign inversion checked against the actual offsets chrono-tz applies,
+    /// The sign inversion checked against the actual offsets in the bundled timezone database,
     /// so a consistent-but-wrong mapping cannot pass the name-based tests above.
     #[test]
     fn mapped_zone_has_the_offset_vnish_means() -> anyhow::Result<()> {
         let now = at(2026, 7)?;
         let plus_two = vnish_offset_to_tz("GMT+2")?;
         let minus_five = vnish_offset_to_tz("GMT-5")?;
-        assert_eq!(utc_offset_at(plus_two, now).local_minus_utc(), 2 * 3600);
-        assert_eq!(utc_offset_at(minus_five, now).local_minus_utc(), -5 * 3600);
+        assert_eq!(plus_two.offset_at(now).seconds(), 2 * 3600);
+        assert_eq!(minus_five.offset_at(now).seconds(), -5 * 3600);
         Ok(())
     }
 
@@ -225,7 +233,7 @@ mod tests {
     /// offset in effect at that moment — summer and winter differ.
     #[test]
     fn dst_zone_is_rejected_with_the_current_etc_gmt_equivalent() -> anyhow::Result<()> {
-        let summer = tz_to_vnish_offset(Tz::Europe__Vienna, at(2026, 7)?)
+        let summer = tz_to_vnish_offset(&"Europe/Vienna".parse()?, at(2026, 7)?)
             .err()
             .map(|e| e.to_string())
             .ok_or_else(|| anyhow::anyhow!("Europe/Vienna was accepted"))?;
@@ -233,14 +241,14 @@ mod tests {
         assert!(summer.contains("Use Etc/GMT-2 (UTC+02:00)"), "{summer}");
         assert!(summer.contains("Etc/GMT-1 (UTC+01:00)"), "{summer}");
 
-        let winter = tz_to_vnish_offset(Tz::Europe__Vienna, at(2026, 1)?)
+        let winter = tz_to_vnish_offset(&"Europe/Vienna".parse()?, at(2026, 1)?)
             .err()
             .map(|e| e.to_string())
             .ok_or_else(|| anyhow::anyhow!("Europe/Vienna was accepted"))?;
         assert!(winter.contains("Use Etc/GMT-1 (UTC+01:00)"), "{winter}");
 
         // Western hemisphere: UTC-4 in summer is Etc/GMT+4.
-        let new_york = tz_to_vnish_offset(Tz::America__New_York, at(2026, 7)?)
+        let new_york = tz_to_vnish_offset(&"America/New_York".parse()?, at(2026, 7)?)
             .err()
             .map(|e| e.to_string())
             .ok_or_else(|| anyhow::anyhow!("America/New_York was accepted"))?;
@@ -252,7 +260,7 @@ mod tests {
     /// at the equivalent instead of silently substituting it.
     #[test]
     fn fixed_named_zone_is_rejected_with_its_equivalent() -> anyhow::Result<()> {
-        let tokyo = tz_to_vnish_offset(Tz::Asia__Tokyo, at(2026, 7)?)
+        let tokyo = tz_to_vnish_offset(&"Asia/Tokyo".parse()?, at(2026, 7)?)
             .err()
             .map(|e| e.to_string())
             .ok_or_else(|| anyhow::anyhow!("Asia/Tokyo was accepted"))?;
@@ -263,7 +271,7 @@ mod tests {
 
     #[test]
     fn half_hour_zone_has_no_vnish_equivalent() -> anyhow::Result<()> {
-        let kolkata = tz_to_vnish_offset(Tz::Asia__Kolkata, at(2026, 7)?)
+        let kolkata = tz_to_vnish_offset(&"Asia/Kolkata".parse()?, at(2026, 7)?)
             .err()
             .map(|e| e.to_string())
             .ok_or_else(|| anyhow::anyhow!("Asia/Kolkata was accepted"))?;

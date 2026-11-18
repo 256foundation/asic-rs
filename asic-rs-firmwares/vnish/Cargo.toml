@@ -13,7 +13,7 @@ asic-rs-core.workspace = true
 asic-rs-makes-antminer.workspace = true
 
 async-trait.workspace = true
-chrono.workspace = true
+jiff.workspace = true
 reqwest.workspace = true
 once_cell.workspace = true
 serde_json.workspace = true

@@ -18,7 +18,6 @@ reqwest = { workspace = true, features = ["form"] }
 once_cell.workspace = true
 serde_json.workspace = true
 semver.workspace = true
-chrono.workspace = true
 anyhow.workspace = true
 macaddr.workspace = true
 measurements.workspace = true

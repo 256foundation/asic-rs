@@ -4,6 +4,7 @@ use asic_rs_core::traits::{
     miner::{Miner, MinerConstructor, Validate},
     model::MinerModel,
 };
+use jiff::{civil::DateTime, tz::TimeZone};
 pub use v1::WhatsMinerV1;
 pub use v2::WhatsMinerV2;
 pub use v3::WhatsMinerV3;
@@ -11,6 +12,12 @@ pub use v3::WhatsMinerV3;
 pub mod v1;
 pub mod v2;
 pub mod v3;
+
+fn parse_log_timestamp(value: &str) -> Option<u32> {
+    let date = DateTime::strptime("%Y-%m-%d %H:%M:%S", value).ok()?;
+    let timestamp = TimeZone::UTC.to_timestamp(date).ok()?;
+    Some(timestamp.as_second() as u32)
+}
 
 pub struct WhatsMiner;
 
@@ -27,5 +34,19 @@ impl MinerConstructor for WhatsMiner {
         } else {
             Box::new(WhatsMinerV1::new(ip, model))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_dates_use_utc() {
+        assert_eq!(
+            parse_log_timestamp("2024-02-29 00:00:00"),
+            Some(1_709_164_800)
+        );
+        assert_eq!(parse_log_timestamp("2025-02-29 00:00:00"), None);
     }
 }

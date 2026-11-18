@@ -2943,7 +2943,10 @@ mod tests {
         let data = collector.collect(&[ConfigField::Timezone]).await;
         let config = miner.parse_timezone_config(&data)?;
 
-        assert_eq!(config.timezone, Some(Tz::America__Toronto));
+        assert_eq!(
+            config.timezone.as_ref().map(Tz::name),
+            Some("America/Toronto")
+        );
         assert!(config.available.is_empty());
         assert!(miner.supports_timezone_config());
 
