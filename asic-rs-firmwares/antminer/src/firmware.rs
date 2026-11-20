@@ -20,8 +20,8 @@ use asic_rs_core::{
 use asic_rs_makes_antminer::make::AntMinerMake;
 use asic_rs_makes_antminer::models::AntMinerModel;
 use async_trait::async_trait;
-use chrono::{Datelike, NaiveDateTime};
 use diqwest::WithDigestAuth;
+use jiff::civil::DateTime;
 use reqwest::{Response, StatusCode};
 use serde_json::Value;
 
@@ -195,7 +195,7 @@ fn parse_version_date(fw_version: &str) -> Option<semver::Version> {
         parts.join(" ")
     };
 
-    let dt = NaiveDateTime::parse_from_str(&cleaned, "%a %b %e %H:%M:%S %Y").ok()?;
+    let dt = DateTime::strptime("%a %b %e %H:%M:%S %Y", &cleaned).ok()?;
 
     Some(semver::Version::new(
         dt.year() as u64,
