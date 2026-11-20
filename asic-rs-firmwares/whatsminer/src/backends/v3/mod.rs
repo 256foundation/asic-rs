@@ -349,7 +349,11 @@ impl GetMAC for WhatsMinerV3 {
     }
 }
 
-impl GetSerialNumber for WhatsMinerV3 {}
+impl GetSerialNumber for WhatsMinerV3 {
+    fn parse_serial_number(&self, data: &HashMap<DataField, Value>) -> Option<String> {
+        data.extract::<String>(DataField::SerialNumber)
+    }
+}
 impl SupportsTimezoneConfig for WhatsMinerV3 {}
 impl GetHostname for WhatsMinerV3 {
     fn parse_hostname(&self, data: &HashMap<DataField, Value>) -> Option<String> {
@@ -1161,6 +1165,10 @@ mod integration_tests {
             Some("20251209.16.Rel2".to_string())
         );
         assert_eq!(miner_data.hostname, Some("WhatsMiner".to_string()));
+        assert_eq!(
+            miner_data.serial_number,
+            Some("BTM3CS40HD24083100000000000000000".to_string())
+        );
         assert_eq!(
             miner_data.hashrate,
             Some(HashRate {
