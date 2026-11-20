@@ -126,6 +126,7 @@ impl BitaxeWebAPI {
 
     fn build_client() -> Result<Client, BitaxeError> {
         Client::builder()
+            .tcp_linger(std::time::Duration::ZERO)
             .timeout(Duration::from_secs(10))
             .build()
             .map_err(|e| BitaxeError::RequestError(format!("failed to create HTTP client: {e}")))
