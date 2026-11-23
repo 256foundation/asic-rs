@@ -16,8 +16,8 @@ use asic_rs_core::{
 };
 use async_trait::async_trait;
 use base64::prelude::*;
-use chrono::Utc;
 use ecb::cipher::block_padding::ZeroPadding;
+use jiff::Timestamp;
 use md5crypt::md5crypt;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -260,7 +260,7 @@ impl WhatsMinerRPCAPI {
             .await
             .map_err(|_| RPCError::ConnectionFailed)?;
 
-        let timestamp = Utc::now().timestamp();
+        let timestamp = Timestamp::now().as_second();
 
         let tokenized_command = format!("{}{}{}{}", command, self.auth.password(), salt, timestamp);
 

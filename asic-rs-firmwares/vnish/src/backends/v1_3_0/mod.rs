@@ -1270,7 +1270,7 @@ impl SupportsTimezoneConfig for VnishV130 {
             .ok_or_else(|| anyhow::anyhow!("Timezone config has no timezone to set"))?;
         // Only the fixed-offset `Etc/GMT*` zones survive the trip; a DST zone is
         // rejected with a hint at its current equivalent (see `tz_to_vnish_offset`).
-        let timezone = tz_to_vnish_offset_now(timezone)?;
+        let timezone = tz_to_vnish_offset_now(&timezone)?;
         let mut settings = self.web.settings().await?;
         match settings.pointer_mut("/regional/timezone") {
             Some(tz) => {
@@ -1382,6 +1382,8 @@ impl SupportsFanConfig for VnishV130 {
 
 #[cfg(test)]
 mod tests {
+    const TEST_TOKEN: &str = "test-key-do-not-use";
+
     use asic_rs_core::data::device::HashAlgorithm;
     use asic_rs_core::test::api::MockAPIClient;
     use asic_rs_makes_antminer::models::AntMinerModel;
@@ -1392,7 +1394,7 @@ mod tests {
     fn miner_with_mock_web(port: u16) -> VnishV130 {
         let ip = IpAddr::from([127, 0, 0, 1]);
         let mut miner = VnishV130::new(ip, AntMinerModel::S19);
-        miner.web = VnishWebAPI::new(ip, port, MinerAuth::from_token("test-token"));
+        miner.web = VnishWebAPI::new(ip, port, MinerAuth::from_token(TEST_TOKEN));
         miner
     }
 
@@ -1413,10 +1415,11 @@ mod tests {
             .split_once("\r\n\r\n")
             .expect("complete HTTP request");
         assert!(headers.starts_with("POST /api/v1/firmware/remove HTTP/1.1\r\n"));
+        let expected = format!("authorization: Bearer {TEST_TOKEN}");
         assert!(
             headers
                 .lines()
-                .any(|line| { line.eq_ignore_ascii_case("authorization: Bearer test-token") })
+                .any(|line| line.eq_ignore_ascii_case(&expected))
         );
         assert_eq!(
             serde_json::from_str::<Value>(body)?,
@@ -1436,10 +1439,11 @@ mod tests {
 
         let request = task.await??;
         assert!(request.starts_with("POST /api/v1/mining/restart HTTP/1.1\r\n"));
+        let expected = format!("authorization: Bearer {TEST_TOKEN}");
         assert!(
             request
                 .lines()
-                .any(|line| { line.eq_ignore_ascii_case("authorization: Bearer test-token") })
+                .any(|line| line.eq_ignore_ascii_case(&expected))
         );
 
         Ok(())
@@ -1615,11 +1619,11 @@ mod tests {
         data.insert(ConfigField::Timezone, json!({ "current": "GMT+2" }));
         let config = miner.parse_timezone_config(&data).expect("timezone config");
 
-        assert_eq!(config.timezone, Some(Tz::Etc__GMTMinus2));
+        assert_eq!(config.timezone.as_ref().map(Tz::name), Some("Etc/GMT-2"));
         assert_eq!(config.available.len(), 27);
-        assert_eq!(config.available.first(), Some(&Tz::Etc__GMTPlus12));
-        assert!(config.available.contains(&Tz::Etc__GMT));
-        assert_eq!(config.available.last(), Some(&Tz::Etc__GMTMinus14));
+        assert_eq!(config.available.first().map(Tz::name), Some("Etc/GMT+12"));
+        assert!(config.available.iter().any(|zone| zone.name() == "Etc/GMT"));
+        assert_eq!(config.available.last().map(Tz::name), Some("Etc/GMT-14"));
     }
 
     #[tokio::test]
