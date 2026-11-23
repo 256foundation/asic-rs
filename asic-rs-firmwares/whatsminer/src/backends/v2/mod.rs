@@ -772,8 +772,15 @@ impl SupportsScalingConfig for WhatsMinerV2 {
 
 #[async_trait]
 impl UpgradeFirmware for WhatsMinerV2 {
+    async fn upgrade_firmware(
+        &self,
+        image: asic_rs_core::data::firmware::FirmwareImage,
+    ) -> anyhow::Result<bool> {
+        self.rpc.upgrade_firmware(image).await
+    }
+
     fn supports_upgrade_firmware(&self) -> bool {
-        false
+        true
     }
 }
 

@@ -18,6 +18,10 @@ use asic_rs_makes_whatsminer::make::WhatsMinerMake;
 use async_trait::async_trait;
 use serde_json::json;
 
+pub use crate::backends::shared::update::{
+    FirmwareImageSpan, FirmwareInspection, FirmwareMember, FirmwareRepresentation, LegacyHeader,
+    MAX_PACKAGE_SIZE, UploadOutcomeUnconfirmed, inspect_firmware,
+};
 use crate::backends::v3;
 
 #[derive(Default, Debug)]

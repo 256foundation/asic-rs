@@ -28,6 +28,7 @@ sha2.workspace = true
 md5crypt.workspace = true
 hex.workspace = true
 md5.workspace = true
+crc32fast.workspace = true
 pyo3 = {workspace = true, optional = true}
 
 [features]
