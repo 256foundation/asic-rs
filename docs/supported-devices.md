@@ -32,7 +32,7 @@ Legend:
 | UMC OS | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-list-todo: | :lucide-check-check: |
 | VNish | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-x: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: | :lucide-check-check: |
 | VolcMiner Stock | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-check-check: | :lucide-x: | :lucide-x: | :lucide-x: |
-| WhatsMiner Stock | :lucide-list-todo: | :lucide-x: | :lucide-list-todo: | :lucide-x: | :lucide-list-todo: | :lucide-list-todo: | :lucide-list-todo: | :lucide-x: | :lucide-list-todo: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
+| WhatsMiner Stock | :lucide-list-todo: | :lucide-x: | :lucide-list-todo: | :lucide-x: | :lucide-list-todo: | :lucide-list-todo: | :lucide-list-todo: | :lucide-x: | :lucide-list-todo: | :lucide-list-todo: | :lucide-x: | :lucide-x: | :lucide-x: | :lucide-x: |
 
 ## Exact Supported Models
 
