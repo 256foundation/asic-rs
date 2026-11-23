@@ -511,6 +511,7 @@ dependencies = [
  "asic-rs-makes-whatsminer",
  "async-trait",
  "base64",
+ "crc32fast",
  "ecb",
  "hex",
  "jiff",

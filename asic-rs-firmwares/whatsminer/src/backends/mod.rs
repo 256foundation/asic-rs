@@ -9,6 +9,7 @@ pub use v1::WhatsMinerV1;
 pub use v2::WhatsMinerV2;
 pub use v3::WhatsMinerV3;
 
+pub(crate) mod shared;
 pub mod v1;
 pub mod v2;
 pub mod v3;
