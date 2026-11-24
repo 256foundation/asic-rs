@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use super::shared::{format_error, releases, web::PowerPlayWebAPI};
+use super::shared::{parse_error, releases, web::PowerPlayWebAPI};
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
@@ -20,13 +20,12 @@ use asic_rs_core::{
         fan::FanData,
         firmware::{FirmwareImage, FirmwareStats, RestoreStockOsResult},
         hashrate::{HashRate, HashRateUnit},
-        message::{MessageSeverity, MinerMessage},
+        message::MinerMessage,
         miner::TuningTarget,
         operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
-    util::unix_timestamp_secs,
 };
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use asic_rs_makes_epic::hardware::EPicControlBoard;
@@ -1327,12 +1326,9 @@ impl GetMessages for PowerPlayV1 {
         let Some(data) = data.get(&DataField::Messages) else {
             return Vec::new();
         };
-        let timestamp = unix_timestamp_secs();
-        let errors = data.pointer("/Status/Last Error").and_then(format_error);
-
-        errors
+        data.pointer("/Status/Last Error")
+            .and_then(parse_error)
             .into_iter()
-            .map(|error| MinerMessage::new(timestamp as u32, 0, error, MessageSeverity::Error))
             .collect()
     }
 }
@@ -2056,7 +2052,7 @@ mod tests {
 
     use anyhow::{self, Context};
     use asic_rs_core::{
-        data::operating_state::OperatingState,
+        data::{message::MessageSeverity, operating_state::OperatingState},
         test::{api::MockAPIClient, util::get_miner},
         traits::firmware::MinerFirmware,
     };
