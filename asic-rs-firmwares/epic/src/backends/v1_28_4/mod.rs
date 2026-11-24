@@ -42,22 +42,12 @@ use crate::firmware::EPicFirmware;
 
 pub(crate) const MIN_VERSION: Version = Version::new(1, 28, 4);
 
-const ERROR_HISTORY_V2: MinerCommand = MinerCommand::WebAPI {
-    command: "errors/history/v2",
-    parameters: None,
-};
-
-const ERROR_HISTORY: MinerCommand = MinerCommand::WebAPI {
-    command: "errors/history",
-    parameters: None,
-};
-
 fn error_history_array<'a>(response: &'a Value, _key: Option<&str>) -> Option<&'a Value> {
     // Older PowerPlay firmware can return an HTTP success with an invalid URL error object.
     response.is_array().then_some(response)
 }
 
-/// EPIC firmware 1.28.4 and newer, with versioned history and legacy error fallbacks.
+/// EPIC firmware 1.28.4 and newer, with error history and a summary fallback.
 #[derive(Debug)]
 pub struct PowerPlayV1284 {
     ip: IpAddr,
@@ -444,6 +434,10 @@ impl GetDataLocations for PowerPlayV1284 {
             command: "summary",
             parameters: None,
         };
+        const WEB_ERROR_HISTORY: MinerCommand = MinerCommand::WebAPI {
+            command: "errors/history",
+            parameters: None,
+        };
         const WEB_NETWORK: MinerCommand = MinerCommand::WebAPI {
             command: "network",
             parameters: None,
@@ -714,27 +708,21 @@ impl GetDataLocations for PowerPlayV1284 {
             )],
             DataField::Messages => vec![
                 (
-                    ERROR_HISTORY_V2,
-                    DataExtractor {
-                        func: error_history_array,
-                        key: None,
-                        tag: Some("history_v2"),
-                    },
-                ),
-                (
-                    ERROR_HISTORY,
-                    DataExtractor {
-                        func: error_history_array,
-                        key: None,
-                        tag: Some("history"),
-                    },
-                ),
-                (
                     WEB_SUMMARY,
                     DataExtractor {
                         func: get_by_pointer,
                         key: Some("/Status/Last Error"),
                         tag: Some("last_error"),
+                    },
+                ),
+                // The collector merges in source order. A valid history array,
+                // including an empty one, replaces the summary object.
+                (
+                    WEB_ERROR_HISTORY,
+                    DataExtractor {
+                        func: error_history_array,
+                        key: None,
+                        tag: None,
                     },
                 ),
             ],
@@ -1354,12 +1342,7 @@ impl GetMessages for PowerPlayV1284 {
         let Some(data) = data.get(&DataField::Messages) else {
             return Vec::new();
         };
-        if let Some(history) = data
-            .get("history_v2")
-            .and_then(Value::as_array)
-            .or_else(|| data.get("history").and_then(Value::as_array))
-            .or_else(|| data.as_array())
-        {
+        if let Some(history) = data.as_array() {
             return history.iter().filter_map(parse_error).collect();
         }
 

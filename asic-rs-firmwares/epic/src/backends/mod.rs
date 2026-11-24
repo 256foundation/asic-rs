@@ -70,11 +70,6 @@ mod tests {
         parameters: None,
     };
 
-    const HISTORY_V2: MinerCommand = MinerCommand::WebAPI {
-        command: "errors/history/v2",
-        parameters: None,
-    };
-
     #[test]
     fn selects_message_sources_by_firmware_version() {
         for (version, uses_history) in [
@@ -97,7 +92,7 @@ mod tests {
                 .map(|(command, _)| command)
                 .collect();
             let expected = if uses_history {
-                vec![HISTORY_V2, HISTORY, SUMMARY]
+                vec![SUMMARY, HISTORY]
             } else {
                 vec![SUMMARY]
             };
@@ -167,7 +162,7 @@ mod tests {
         );
         let client = MockAPIClient::new(HashMap::from([
             (
-                HISTORY_V2,
+                HISTORY,
                 json!([
                     { "ShutdownTempReached": "shutdown", "occurred_at": 1_793_363_696_u64 },
                     { "ShutdownTempReached": "shutdown", "occurred_at": 1_793_363_695_u64 },
@@ -177,7 +172,6 @@ mod tests {
                     { "occurred_at": 1_793_363_695_u64 }
                 ]),
             ),
-            (HISTORY, json!([{ "NoSolutions": "legacy history error" }])),
             (
                 SUMMARY,
                 json!({ "Status": { "Last Error": "legacy summary error" } }),
@@ -187,7 +181,7 @@ mod tests {
         let report = collector.collect_report(&[DataField::Messages]).await;
         let messages = miner.parse_messages(&report.values);
 
-        assert_eq!(report.diagnostics.successful_commands, 3);
+        assert_eq!(report.diagnostics.successful_commands, 2);
         assert_eq!(report.diagnostics.failed_commands, 0);
         assert_eq!(
             report.diagnostics.field_status[&DataField::Messages],
@@ -220,48 +214,30 @@ mod tests {
             AntMinerModel::S19XP,
             Some(Version::new(1, 28, 4)),
         );
-        let missing_endpoint = json!({ "result": false, "error": "invalid url" });
+        let missing_endpoint = json!({ "result": false, "error": "invalid url: /errors/history" });
         let legacy_history = json!([{ "NoSolutions": "legacy history error" }]);
         let summary = json!({ "Status": { "Last Error": "legacy summary error" } });
 
-        for (v2, history, summary, expected, status) in [
+        for (history, summary, expected, status) in [
             (
-                Some(missing_endpoint.clone()),
-                Some(legacy_history.clone()),
-                Some(summary.clone()),
-                Some("legacy history error"),
-                FieldCollectionStatus::Extracted,
-            ),
-            (
-                None,
-                Some(legacy_history.clone()),
-                Some(summary.clone()),
-                Some("legacy history error"),
-                FieldCollectionStatus::Extracted,
-            ),
-            (
-                None,
-                None,
-                Some(summary.clone()),
-                Some("legacy summary error"),
-                FieldCollectionStatus::Extracted,
-            ),
-            (
-                Some(missing_endpoint.clone()),
-                Some(missing_endpoint.clone()),
-                Some(summary.clone()),
-                Some("legacy summary error"),
-                FieldCollectionStatus::Extracted,
-            ),
-            (
-                Some(json!([])),
                 Some(legacy_history),
                 Some(summary.clone()),
-                None,
+                Some("legacy history error"),
                 FieldCollectionStatus::Extracted,
             ),
             (
                 None,
+                Some(summary.clone()),
+                Some("legacy summary error"),
+                FieldCollectionStatus::Extracted,
+            ),
+            (
+                Some(missing_endpoint),
+                Some(summary.clone()),
+                Some("legacy summary error"),
+                FieldCollectionStatus::Extracted,
+            ),
+            (
                 Some(json!([])),
                 Some(summary),
                 None,
@@ -269,19 +245,17 @@ mod tests {
             ),
             (
                 None,
-                None,
                 Some(json!({ "Status": { "Last Error": null } })),
                 None,
                 FieldCollectionStatus::Extracted,
             ),
-            (None, None, None, None, FieldCollectionStatus::Failed),
+            (None, None, None, FieldCollectionStatus::Failed),
         ] {
-            let responses: HashMap<_, _> =
-                [(HISTORY_V2, v2), (HISTORY, history), (SUMMARY, summary)]
-                    .into_iter()
-                    .filter_map(|(command, value)| value.map(|value| (command, value)))
-                    .collect();
-            let failed_commands = 3 - responses.len();
+            let responses: HashMap<_, _> = [(HISTORY, history), (SUMMARY, summary)]
+                .into_iter()
+                .filter_map(|(command, value)| value.map(|value| (command, value)))
+                .collect();
+            let failed_commands = 2 - responses.len();
             let client = MockAPIClient::new(responses);
             let mut collector = DataCollector::new_with_client(miner.as_ref(), &client);
             let report = collector
