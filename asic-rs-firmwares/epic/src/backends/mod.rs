@@ -45,7 +45,7 @@ impl MinerConstructor for PowerPlay {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, net::IpAddr};
 
     use asic_rs_core::{
         data::{
@@ -59,7 +59,7 @@ mod tests {
     use semver::Version;
     use serde_json::json;
 
-    use super::*;
+    use super::{MinerConstructor, PowerPlay, PowerPlayV1, PowerPlayV1284, Validate};
 
     const SUMMARY: MinerCommand = MinerCommand::WebAPI {
         command: "summary",
@@ -71,32 +71,37 @@ mod tests {
     };
 
     #[test]
-    fn selects_message_endpoint_by_firmware_version() {
-        for (version, command) in [
-            (None, SUMMARY),
-            (Some(Version::new(1, 22, 5)), SUMMARY),
-            (Some(Version::new(1, 28, 3)), SUMMARY),
-            (Some(Version::new(1, 28, 4)), HISTORY),
-            (Some(Version::new(1, 28, 5)), HISTORY),
-            (Some(Version::new(1, 38, 3)), HISTORY),
-            (Some(Version::new(1, 39, 20)), HISTORY),
-            (Some(Version::new(1, 40, 0)), HISTORY),
-            (Some(Version::new(2, 0, 0)), HISTORY),
+    fn selects_message_sources_by_firmware_version() {
+        for (version, uses_history) in [
+            (None, false),
+            (Some(Version::new(1, 22, 5)), false),
+            (Some(Version::new(1, 28, 3)), false),
+            (Some(Version::new(1, 28, 4)), true),
+            (Some(Version::new(1, 28, 5)), true),
+            (Some(Version::new(1, 38, 3)), true),
+            (Some(Version::new(1, 39, 20)), true),
+            (Some(Version::new(1, 40, 0)), true),
+            (Some(Version::new(2, 0, 0)), true),
         ] {
-            assert_eq!(
-                PowerPlayV1284::validate(version.as_ref()),
-                command == HISTORY
-            );
-            assert_eq!(PowerPlayV1::validate(version.as_ref()), command == SUMMARY);
+            assert_eq!(PowerPlayV1284::validate(version.as_ref()), uses_history);
+            assert_eq!(PowerPlayV1::validate(version.as_ref()), !uses_history);
             let miner = PowerPlay::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP, version);
-            let locations = miner.get_locations(DataField::Messages);
-            assert_eq!(locations.len(), 1);
-            assert_eq!(locations[0].0, command);
+            let commands: Vec<_> = miner
+                .get_locations(DataField::Messages)
+                .into_iter()
+                .map(|(command, _)| command)
+                .collect();
+            let expected = if uses_history {
+                vec![SUMMARY, HISTORY]
+            } else {
+                vec![SUMMARY]
+            };
+            assert_eq!(commands, expected);
         }
     }
 
     #[test]
-    fn backends_only_parse_their_own_error_source() {
+    fn backends_parse_legacy_error_values() {
         use asic_rs_core::traits::miner::GetMessages;
 
         let legacy = PowerPlayV1::new(IpAddr::from([127, 0, 0, 1]), AntMinerModel::S19XP);
@@ -119,7 +124,9 @@ mod tests {
             history.parse_messages(&history_data)[0].message,
             "history error"
         );
-        assert!(history.parse_messages(&summary_data).is_empty());
+        let messages = history.parse_messages(&summary_data);
+        assert_eq!(messages[0].message, "legacy error");
+        assert_eq!(messages[0].timestamp, 0);
     }
 
     #[tokio::test]
@@ -142,6 +149,7 @@ mod tests {
             );
             assert_eq!(messages.len(), 1);
             assert_eq!(messages[0].message, "legacy error");
+            assert_eq!(messages[0].timestamp, 0);
         }
     }
 
@@ -152,81 +160,120 @@ mod tests {
             AntMinerModel::S19XP,
             Some(Version::new(1, 28, 4)),
         );
-        let history: Vec<_> = (0..10)
-            .map(|index| json!({ "NoSolutions": format!("report {}", index / 2) }))
-            .collect();
-        let expected: Vec<_> = (0..10)
-            .map(|index| format!("report {}", index / 2))
-            .collect();
+        let client = MockAPIClient::new(HashMap::from([
+            (
+                HISTORY,
+                json!([
+                    { "ShutdownTempReached": "shutdown", "occurred_at": 1_793_363_696_u64 },
+                    { "ShutdownTempReached": "shutdown", "occurred_at": 1_793_363_695_u64 },
+                    { "NoSolutions": "missing occurrence time" },
+                    { "NoSolutions": "null occurrence time", "occurred_at": null },
+                    { "NoSolutions": "out-of-range occurrence time", "occurred_at": 4_294_967_296_u64 },
+                    { "occurred_at": 1_793_363_695_u64 }
+                ]),
+            ),
+            (
+                SUMMARY,
+                json!({ "Status": { "Last Error": "legacy summary error" } }),
+            ),
+        ]));
+        let mut collector = DataCollector::new_with_client(miner.as_ref(), &client);
+        let report = collector.collect_report(&[DataField::Messages]).await;
+        let messages = miner.parse_messages(&report.values);
 
-        for (history, expected) in [(json!(history), expected), (json!([]), Vec::new())] {
-            let client = MockAPIClient::new(HashMap::from([(HISTORY, history)]));
-            let mut collector = DataCollector::new_with_client(miner.as_ref(), &client);
-            let report = collector.collect_report(&[DataField::Messages]).await;
-            let messages = miner.parse_messages(&report.values);
-
-            assert_eq!(report.diagnostics.successful_commands, 1);
-            assert_eq!(report.diagnostics.failed_commands, 0);
-            assert_eq!(
-                report.diagnostics.field_status[&DataField::Messages],
-                FieldCollectionStatus::Extracted
-            );
-            assert_eq!(
-                messages
-                    .iter()
-                    .map(|message| &message.message)
-                    .collect::<Vec<_>>(),
-                expected.iter().collect::<Vec<_>>()
-            );
-            assert!(
-                messages
-                    .iter()
-                    .all(|message| message.severity == MessageSeverity::Error)
-            );
-        }
+        assert_eq!(report.diagnostics.successful_commands, 2);
+        assert_eq!(report.diagnostics.failed_commands, 0);
+        assert_eq!(
+            report.diagnostics.field_status[&DataField::Messages],
+            FieldCollectionStatus::Extracted
+        );
+        assert_eq!(
+            messages
+                .iter()
+                .map(|message| (message.timestamp, message.message.as_str()))
+                .collect::<Vec<_>>(),
+            [
+                (1_793_363_696, "shutdown"),
+                (1_793_363_695, "shutdown"),
+                (0, "missing occurrence time"),
+                (0, "null occurrence time"),
+                (0, "out-of-range occurrence time"),
+            ]
+        );
+        assert!(
+            messages
+                .iter()
+                .all(|message| message.severity == MessageSeverity::Error)
+        );
     }
 
     #[tokio::test]
-    async fn newer_firmware_reports_history_failures_even_when_summary_succeeds() {
+    async fn newer_firmware_falls_back_when_history_is_unavailable() {
         let miner = PowerPlay::new(
             IpAddr::from([127, 0, 0, 1]),
             AntMinerModel::S19XP,
             Some(Version::new(1, 28, 4)),
         );
-        for (summary_available, history_available) in [(true, false), (false, true), (false, false)]
-        {
-            let mut responses = HashMap::new();
-            if summary_available {
-                responses.insert(
-                    SUMMARY,
-                    json!({ "Status": { "Last Error": "legacy error" } }),
-                );
-            }
-            if history_available {
-                responses.insert(HISTORY, json!([{ "NoSolutions": "no shares received" }]));
-            }
+        let missing_endpoint = json!({ "result": false, "error": "invalid url: /errors/history" });
+        let legacy_history = json!([{ "NoSolutions": "legacy history error" }]);
+        let summary = json!({ "Status": { "Last Error": "legacy summary error" } });
+
+        for (history, summary, expected, status) in [
+            (
+                Some(legacy_history),
+                Some(summary.clone()),
+                Some("legacy history error"),
+                FieldCollectionStatus::Extracted,
+            ),
+            (
+                None,
+                Some(summary.clone()),
+                Some("legacy summary error"),
+                FieldCollectionStatus::Extracted,
+            ),
+            (
+                Some(missing_endpoint),
+                Some(summary.clone()),
+                Some("legacy summary error"),
+                FieldCollectionStatus::Extracted,
+            ),
+            (
+                Some(json!([])),
+                Some(summary),
+                None,
+                FieldCollectionStatus::Extracted,
+            ),
+            (
+                None,
+                Some(json!({ "Status": { "Last Error": null } })),
+                None,
+                FieldCollectionStatus::Extracted,
+            ),
+            (None, None, None, FieldCollectionStatus::Failed),
+        ] {
+            let responses: HashMap<_, _> = [(HISTORY, history), (SUMMARY, summary)]
+                .into_iter()
+                .filter_map(|(command, value)| value.map(|value| (command, value)))
+                .collect();
+            let failed_commands = 2 - responses.len();
             let client = MockAPIClient::new(responses);
             let mut collector = DataCollector::new_with_client(miner.as_ref(), &client);
             let report = collector
                 .collect_report(&[DataField::Messages, DataField::OperatingState])
                 .await;
 
-            assert_eq!(
-                report.diagnostics.failed_commands,
-                usize::from(!summary_available) + usize::from(!history_available)
-            );
+            assert_eq!(report.diagnostics.failed_commands, failed_commands);
             assert_eq!(
                 report.diagnostics.field_status[&DataField::Messages],
-                if history_available {
-                    FieldCollectionStatus::Extracted
-                } else {
-                    FieldCollectionStatus::Failed
-                }
+                status
             );
+            let messages = miner.parse_messages(&report.values);
+            assert_eq!(messages.len(), usize::from(expected.is_some()));
             assert_eq!(
-                miner.parse_messages(&report.values).len(),
-                usize::from(history_available)
+                messages.first().map(|message| message.message.as_str()),
+                expected
             );
+            assert!(messages.iter().all(|message| message.timestamp == 0));
         }
     }
 

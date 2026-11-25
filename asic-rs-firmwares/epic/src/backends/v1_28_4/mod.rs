@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::IpAddr, str::FromStr, time::Duration};
 
-use super::shared::{format_error, releases, web::PowerPlayWebAPI};
+use super::shared::{parse_error, releases, web::PowerPlayWebAPI};
 use asic_rs_core::{
     config::{
         collector::{ConfigCollector, ConfigExtractor, ConfigField, ConfigLocation},
@@ -20,13 +20,12 @@ use asic_rs_core::{
         fan::FanData,
         firmware::{FirmwareImage, FirmwareStats, RestoreStockOsResult},
         hashrate::{HashRate, HashRateUnit},
-        message::{MessageSeverity, MinerMessage},
+        message::MinerMessage,
         miner::TuningTarget,
         operating_state::OperatingState,
         pool::{PoolData, PoolGroupData, PoolURL},
     },
     traits::{miner::*, model::MinerModel},
-    util::unix_timestamp_secs,
 };
 use asic_rs_makes_antminer::hardware::AntMinerControlBoard;
 use asic_rs_makes_epic::hardware::EPicControlBoard;
@@ -43,7 +42,12 @@ use crate::firmware::EPicFirmware;
 
 pub(crate) const MIN_VERSION: Version = Version::new(1, 28, 4);
 
-/// EPIC firmware 1.28.4 and newer, collecting messages only from `/errors/history`.
+fn error_history_array<'a>(response: &'a Value, _key: Option<&str>) -> Option<&'a Value> {
+    // Older PowerPlay firmware can return an HTTP success with an invalid URL error object.
+    response.is_array().then_some(response)
+}
+
+/// EPIC firmware 1.28.4 and newer, with error history and a summary fallback.
 #[derive(Debug)]
 pub struct PowerPlayV1284 {
     ip: IpAddr,
@@ -430,6 +434,10 @@ impl GetDataLocations for PowerPlayV1284 {
             command: "summary",
             parameters: None,
         };
+        const WEB_ERROR_HISTORY: MinerCommand = MinerCommand::WebAPI {
+            command: "errors/history",
+            parameters: None,
+        };
         const WEB_NETWORK: MinerCommand = MinerCommand::WebAPI {
             command: "network",
             parameters: None,
@@ -698,17 +706,26 @@ impl GetDataLocations for PowerPlayV1284 {
                     tag: None,
                 },
             )],
-            DataField::Messages => vec![(
-                MinerCommand::WebAPI {
-                    command: "errors/history",
-                    parameters: None,
-                },
-                DataExtractor {
-                    func: get_by_pointer,
-                    key: Some(""),
-                    tag: None,
-                },
-            )],
+            DataField::Messages => vec![
+                (
+                    WEB_SUMMARY,
+                    DataExtractor {
+                        func: get_by_pointer,
+                        key: Some("/Status/Last Error"),
+                        tag: Some("last_error"),
+                    },
+                ),
+                // The collector merges in source order. A valid history array,
+                // including an empty one, replaces the summary object.
+                (
+                    WEB_ERROR_HISTORY,
+                    DataExtractor {
+                        func: error_history_array,
+                        key: None,
+                        tag: None,
+                    },
+                ),
+            ],
             _ => vec![],
         }
     }
@@ -1325,15 +1342,14 @@ impl GetMessages for PowerPlayV1284 {
         let Some(data) = data.get(&DataField::Messages) else {
             return Vec::new();
         };
-        let timestamp = unix_timestamp_secs();
-        let errors = data
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(format_error);
+        if let Some(history) = data.as_array() {
+            return history.iter().filter_map(parse_error).collect();
+        }
 
-        errors
-            .map(|error| MinerMessage::new(timestamp as u32, 0, error, MessageSeverity::Error))
+        data.get("last_error")
+            .or_else(|| data.pointer("/Status/Last Error"))
+            .and_then(parse_error)
+            .into_iter()
             .collect()
     }
 }
