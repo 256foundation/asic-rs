@@ -528,6 +528,14 @@ impl GetDataLocations for AntMinerV2018 {
                     tag: None,
                 },
             )],
+            DataField::SessionBestShare => vec![(
+                RPC_SUMMARY,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/SUMMARY/0/Best Share"),
+                    tag: None,
+                },
+            )],
             DataField::Pools => vec![(
                 RPC_POOLS,
                 DataExtractor {
@@ -812,7 +820,11 @@ impl GetUptime for AntMinerV2018 {
 }
 
 impl GetBestShare for AntMinerV2018 {}
-impl GetSessionBestShare for AntMinerV2018 {}
+impl GetSessionBestShare for AntMinerV2018 {
+    fn parse_session_best_share(&self, data: &HashMap<DataField, Value>) -> Option<f64> {
+        data.extract::<f64>(DataField::SessionBestShare)
+    }
+}
 
 impl GetOperatingState for AntMinerV2018 {}
 
