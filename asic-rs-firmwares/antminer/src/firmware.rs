@@ -192,6 +192,12 @@ fn parse_version_date(fw_version: &str) -> Option<semver::Version> {
         if parts.len() > 4 {
             parts.remove(4); // remove time zone
         }
+        // Some S21 XP Hydro stock firmware reports its 2026 build year as 20266, see #469.
+        if let Some(year) = parts.last_mut()
+            && *year == "20266"
+        {
+            *year = "2026";
+        }
         parts.join(" ")
     };
 
@@ -321,6 +327,16 @@ mod tests {
         )));
 
         assert!(parse_version_date("FR-1.12(251009-S21)").is_none());
+    }
+
+    #[test]
+    fn overlong_compile_time_year_selects_current_backend() {
+        let version = parse_version_date("Thu Jan 8 15:44:15 CST 20266").unwrap();
+        assert_eq!(version, semver::Version::new(2026, 1, 8));
+        assert!(crate::backends::v2023_07::AntMinerV202307::validate(Some(
+            &version
+        )));
+        assert!(parse_version_date("Thu Jan 8 15:44:15 CST 20267").is_none());
     }
 
     #[tokio::test]
