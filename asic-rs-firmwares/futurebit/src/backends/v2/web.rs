@@ -32,6 +32,14 @@ impl ApolloGraphQLAPI {
         }
     }
 
+    #[cfg(test)]
+    pub(super) fn new_with_port(ip: IpAddr, auth: MinerAuth, port: u16) -> Self {
+        Self {
+            port,
+            ..Self::new(ip, auth)
+        }
+    }
+
     pub fn set_auth(&mut self, auth: MinerAuth) {
         self.auth = auth;
         *self.token.get_mut() = None;
