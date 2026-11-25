@@ -187,29 +187,6 @@ impl PoolGroupData {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use serde_json::json;
-
-    use super::PoolData;
-
-    #[test]
-    fn missing_last_share_time_defaults_to_none() -> serde_json::Result<()> {
-        let pool: PoolData = serde_json::from_value(json!({
-            "position": 0,
-            "url": null,
-            "accepted_shares": 10,
-            "rejected_shares": 1,
-            "active": true,
-            "alive": true,
-            "user": "worker"
-        }))?;
-
-        assert_eq!(pool.last_share_time, None);
-        Ok(())
-    }
-}
-
 #[cfg_attr(feature = "python", pymethods)]
 impl PoolURL {
     pub fn __repr__(&self) -> String {
@@ -261,5 +238,28 @@ fn parse_pool_url(value: &Bound<'_, PyAny>) -> PyResult<PoolURL> {
 impl PoolURL {
     fn to_pydantic_data(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         Ok(self.to_string().into_pyobject(py)?.into_any().unbind())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::PoolData;
+
+    #[test]
+    fn missing_last_share_time_defaults_to_none() -> serde_json::Result<()> {
+        let pool: PoolData = serde_json::from_value(json!({
+            "position": 0,
+            "url": null,
+            "accepted_shares": 10,
+            "rejected_shares": 1,
+            "active": true,
+            "alive": true,
+            "user": "worker"
+        }))?;
+
+        assert_eq!(pool.last_share_time, None);
+        Ok(())
     }
 }
