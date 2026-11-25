@@ -314,6 +314,14 @@ impl GetDataLocations for BraiinsV2507 {
                     tag: None,
                 },
             )],
+            DataField::SessionBestShare => vec![(
+                WEB_MINER_STATS,
+                DataExtractor {
+                    func: get_by_pointer,
+                    key: Some("/miner_stats/best_share"),
+                    tag: None,
+                },
+            )],
             DataField::ControlBoardVersion => vec![(
                 WEB_MINER_DETAILS,
                 DataExtractor {
@@ -604,7 +612,11 @@ impl GetUptime for BraiinsV2507 {
 }
 
 impl GetBestShare for BraiinsV2507 {}
-impl GetSessionBestShare for BraiinsV2507 {}
+impl GetSessionBestShare for BraiinsV2507 {
+    fn parse_session_best_share(&self, data: &HashMap<DataField, Value>) -> Option<f64> {
+        data.extract::<f64>(DataField::SessionBestShare)
+    }
+}
 
 impl GetOperatingState for BraiinsV2507 {
     fn parse_operating_state(&self, data: &HashMap<DataField, Value>) -> Option<OperatingState> {
@@ -1298,6 +1310,7 @@ mod tests {
         );
         assert!(miner_data.hashrate.is_some());
         assert!(miner_data.expected_hashrate.is_some());
+        assert_eq!(miner_data.session_best_share, Some(776_342_690.0));
     }
 
     #[tokio::test]
@@ -1421,6 +1434,7 @@ mod tests {
         assert_eq!(miner_data.pools[0].len(), 2);
         assert!(miner_data.hashrate.is_some());
         assert!(miner_data.expected_hashrate.is_some());
+        assert_eq!(miner_data.session_best_share, Some(2_713_716_437.0));
     }
 
     #[test]
