@@ -45,16 +45,19 @@ impl MinerConstructor for AntMiner {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use asic_rs_core::{
         data::{collector::DataField, command::MinerCommand},
-        traits::miner::{MinerConstructor, Validate},
+        traits::miner::{GetSessionBestShare, MinerConstructor, Validate},
     };
     use semver::Version;
 
     use asic_rs_makes_antminer::models::AntMinerModel;
 
     use super::{
-        AntMiner, AntMinerV2018, AntMinerV2020, blink_response_matches, use_legacy_backend,
+        AntMiner, AntMinerV2018, AntMinerV2020, AntMinerV202307, blink_response_matches,
+        use_legacy_backend,
     };
     use serde_json::json;
 
@@ -165,5 +168,46 @@ mod tests {
         assert!(!blink_response_matches(&json!({"code": "B100"}), true));
         assert!(!blink_response_matches(&json!({"code": "B000"}), false));
         assert!(!blink_response_matches(&json!({}), true));
+    }
+
+    #[test]
+    fn stock_backends_collect_cgminer_session_best_share() {
+        let response = json!({"SUMMARY": [{"Best Share": 12_904_207_043_u64}]});
+        let miners: Vec<Box<dyn GetSessionBestShare>> = vec![
+            Box::new(AntMinerV2018::new(
+                [127, 0, 0, 1].into(),
+                AntMinerModel::S19,
+            )),
+            Box::new(AntMinerV2020::new(
+                [127, 0, 0, 1].into(),
+                AntMinerModel::S19,
+            )),
+            Box::new(AntMinerV202307::new(
+                [127, 0, 0, 1].into(),
+                AntMinerModel::S19,
+            )),
+        ];
+
+        for miner in miners {
+            let locations = miner.get_locations(DataField::SessionBestShare);
+            let (command, extractor) = &locations[0];
+            assert!(matches!(
+                command,
+                MinerCommand::RPC {
+                    command: "summary",
+                    parameters: None
+                }
+            ));
+            let value = (extractor.func)(&response, extractor.key)
+                .cloned()
+                .expect("fixture exposes Best Share");
+            assert_eq!(
+                miner.parse_session_best_share(&HashMap::from([(
+                    DataField::SessionBestShare,
+                    value,
+                )])),
+                Some(12_904_207_043.0)
+            );
+        }
     }
 }
