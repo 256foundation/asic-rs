@@ -735,19 +735,19 @@ impl Restart for ApolloV2 {
     async fn restart(&self) -> anyhow::Result<bool> {
         let data = self
             .graphql
-            .send_graphql_command("mutation { Miner { restart { error { message } } } }", None)
+            .send_graphql_command("mutation { Mcu { reboot { error { message } } } }", None)
             .await?;
         if let Some(message) = data
-            .pointer("/Miner/restart/error/message")
+            .pointer("/Mcu/reboot/error/message")
             .and_then(|v| v.as_str())
         {
-            anyhow::bail!("{} restart failed: {message}", ApolloFirmware::default());
+            anyhow::bail!("{} reboot failed: {message}", ApolloFirmware::default());
         }
         Ok(true)
     }
 
     fn supports_restart(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -768,7 +768,7 @@ impl Pause for ApolloV2 {
     }
 
     fn supports_pause(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -789,7 +789,7 @@ impl Resume for ApolloV2 {
     }
 
     fn supports_resume(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -811,7 +811,29 @@ impl FactoryReset for ApolloV2 {
     }
 }
 
-impl RestartMining for ApolloV2 {}
+#[async_trait]
+impl RestartMining for ApolloV2 {
+    async fn restart_mining(&self) -> anyhow::Result<bool> {
+        let data = self
+            .graphql
+            .send_graphql_command("mutation { Miner { restart { error { message } } } }", None)
+            .await?;
+        if let Some(message) = data
+            .pointer("/Miner/restart/error/message")
+            .and_then(Value::as_str)
+        {
+            anyhow::bail!(
+                "{} mining restart failed: {message}",
+                ApolloFirmware::default()
+            );
+        }
+        Ok(true)
+    }
+
+    fn supports_restart_mining(&self) -> bool {
+        true
+    }
+}
 impl RestoreStockOs for ApolloV2 {}
 
 #[async_trait]
@@ -864,9 +886,69 @@ mod tests {
     use asic_rs_core::data::collector::DataField;
     use asic_rs_makes_futurebit::models::FutureBitModel;
     use serde_json::json;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     fn miner() -> ApolloV2 {
         ApolloV2::new(IpAddr::from([127, 0, 0, 1]), FutureBitModel::Apollo2)
+    }
+
+    async fn mock_graphql_server(
+        command_response: &'static str,
+    ) -> anyhow::Result<(u16, tokio::task::JoinHandle<anyhow::Result<String>>)> {
+        const LOGIN_RESPONSE: &str =
+            r#"{"data":{"Auth":{"login":{"result":{"accessToken":"test-token"},"error":null}}}}"#;
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+        let task = tokio::spawn(async move {
+            let mut command_request = String::new();
+            for body in [LOGIN_RESPONSE, command_response] {
+                let (mut socket, _) =
+                    tokio::time::timeout(Duration::from_secs(2), listener.accept()).await??;
+                let mut request = Vec::new();
+                let mut chunk = [0_u8; 2048];
+                loop {
+                    let read = socket.read(&mut chunk).await?;
+                    if read == 0 {
+                        break;
+                    }
+                    request.extend_from_slice(&chunk[..read]);
+                    let Some(header_end) = request
+                        .windows(4)
+                        .position(|window| window == b"\r\n\r\n")
+                        .map(|position| position + 4)
+                    else {
+                        continue;
+                    };
+                    let headers = String::from_utf8_lossy(&request[..header_end]);
+                    let content_length = headers
+                        .lines()
+                        .find_map(|line| {
+                            let (name, value) = line.split_once(':')?;
+                            name.eq_ignore_ascii_case("content-length")
+                                .then(|| value.trim().parse::<usize>().ok())
+                                .flatten()
+                        })
+                        .unwrap_or(0);
+                    if request.len() >= header_end + content_length {
+                        break;
+                    }
+                }
+                command_request = String::from_utf8(request)?;
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                socket.write_all(response.as_bytes()).await?;
+            }
+            Ok(command_request)
+        });
+        Ok((port, task))
+    }
+
+    fn miner_with_port(port: u16) -> ApolloV2 {
+        let mut miner = miner();
+        miner.graphql = ApolloGraphQLAPI::new_with_port(miner.ip, ApolloV2::default_auth(), port);
+        miner
     }
 
     #[test]
@@ -961,5 +1043,42 @@ mod tests {
             miner.parse_control_board_version(&data),
             Some(MinerControlBoard::unknown("v2".to_string()))
         );
+    }
+
+    #[test]
+    fn documented_miner_controls_are_advertised() {
+        let miner = miner();
+        assert!(miner.supports_restart());
+        assert!(miner.supports_restart_mining());
+        assert!(miner.supports_pause());
+        assert!(miner.supports_resume());
+    }
+
+    #[tokio::test]
+    async fn restart_reboots_mcu_instead_of_restarting_miner() -> anyhow::Result<()> {
+        let (port, task) =
+            mock_graphql_server(r#"{"data":{"Mcu":{"reboot":{"error":null}}}}"#).await?;
+
+        assert!(miner_with_port(port).restart().await?);
+
+        let request = task.await??;
+        assert!(request.contains("Mcu"));
+        assert!(request.contains("reboot"));
+        assert!(!request.contains("Miner"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_mining_targets_only_the_miner_process() -> anyhow::Result<()> {
+        let (port, task) =
+            mock_graphql_server(r#"{"data":{"Miner":{"restart":{"error":null}}}}"#).await?;
+
+        assert!(miner_with_port(port).restart_mining().await?);
+
+        let request = task.await??;
+        assert!(request.contains("Miner"));
+        assert!(request.contains("restart"));
+        assert!(!request.contains("reboot"));
+        Ok(())
     }
 }
